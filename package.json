@@ -1,0 +1,10 @@
+{
+  "name": "ocr-shibie",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "notes": "npx tsx scripts/notes.ts",
+    "verify": "npx tsx scripts/notes.ts verify"
+  }
+}

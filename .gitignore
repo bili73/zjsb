@@ -1,0 +1,10 @@
+.venvs/
+.cache/
+models/
+output/
+outputs/
+node_modules/
+tmp/
+__pycache__/
+.runtime/
+frontend/dist/

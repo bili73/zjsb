@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "dde": {
+      "source": "NianLog/DDE",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "996e4deb7ef9ed60cc0cfa693f8bdb0d7e31b5a3f77bd1c70b4384fddd76f6df"
+    }
+  }
+}

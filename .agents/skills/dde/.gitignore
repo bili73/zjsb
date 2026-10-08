@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+docs/
+# 本 skill 的 self-dogfood 笔记不随包发布
+.agents/notes/
+# 看板生成产物：模板在 assets/agent-notes-board.html，勿提交生成副本
+board.html
+# 7.8MB 脱机内联数据产物不纳入版本库
+demo.html
+# Mimosa 安全扫描本地缓存
+.mimosa/

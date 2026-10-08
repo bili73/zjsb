@@ -1,0 +1,25 @@
+{
+  "name": "dde",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "DDE · Document-Driven Engineering —— 文档驱动工程：把 DeepSeek Harness 的决策笔记方法装进你的仓库（fork 自并致谢 czm15053/write-notes-like-deepseek）",
+  "scripts": {
+    "notes": "npx tsx scripts/notes.ts",
+    "verify": "npx tsx scripts/notes.ts verify",
+    "verify-notes": "npx tsx scripts/notes.ts verify",
+    "verify-agent-note-tree": "npx tsx scripts/verify-agent-note-tree.ts",
+    "verify-agent-note-format": "npx tsx scripts/verify-agent-note-format.ts",
+    "verify-archived": "npx tsx scripts/verify-archived-agent-notes.ts",
+    "verify-module-docs": "npx tsx scripts/verify-module-docs.ts",
+    "query-notes": "npx tsx scripts/notes.ts query",
+    "agent-index": "npx tsx scripts/notes.ts index",
+    "touch-note": "npx tsx scripts/notes.ts touch",
+    "archive-agent-note": "npx tsx scripts/archive-agent-note.ts",
+    "check-anchors": "npx tsx scripts/notes.ts anchors",
+    "init-board": "npx tsx scripts/notes.ts board --init board.html '工程决策看板'",
+    "bundle-board": "npx tsx scripts/notes.ts board --bundle .agents/notes demo.html '工程决策看板'",
+    "import-dsh-notes": "npx tsx scripts/import-dsh-notes.ts",
+    "export-assets": "bash scripts/export-assets.sh"
+  }
+}

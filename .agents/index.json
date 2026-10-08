@@ -1,0 +1,2038 @@
+{
+  "version": 1,
+  "schema": "dde-agent-index/1",
+  "generatedAt": "2026-10-08T03:27:51.416Z",
+  "generator": "npx tsx scripts/notes.ts index",
+  "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
+  "usage": {
+    "retrieve": "npx tsx scripts/notes.ts query --scope <代码路径> | --topic <关键词> | --related <笔记路径> [--json]",
+    "refreshIndex": "npx tsx scripts/notes.ts index",
+    "verify": "npx tsx scripts/notes.ts verify",
+    "updateNote": "直接编辑 notes[].path 指向的文件（行号锚点见 lines），然后 refreshIndex",
+    "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
+  },
+  "stats": {
+    "activeNotes": 18,
+    "archivedNotes": 1,
+    "modules": 0,
+    "relations": 95,
+    "byLifecycle": {
+      "proposed": 2,
+      "implemented": 16
+    },
+    "staleNotes": []
+  },
+  "notes": [
+    {
+      "id": "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+      "path": ".agents/notes/proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+      "anchor": "// Note: .agents/notes/proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+      "title": "Qualify Mac Studio before moving the local OCR service to a shared host",
+      "lifecycle": "proposed",
+      "class": "architecture",
+      "date": "2026-10-08",
+      "scope": [
+        "ARCHITECTURE.md",
+        "SPEC.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md",
+        "backend"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "Keep current recognition optimization independent of the host backend. When the Mac is available, qualify its native Apple GPU route using the existing frozen evidence and separate measurements. The official GLM MLX guide and Paddle Apple S",
+      "bodySha256": "66484b91bc2482ee",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Proposal",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 23
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 29
+          },
+          {
+            "title": "Acceptance criteria",
+            "line": 36
+          },
+          {
+            "title": "Risks",
+            "line": 43
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/proposed/architecture/2026-10-08-mac-studio-inference-service.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "proposed/feature/2026-10-08-hr-document-field-profile.md",
+      "path": ".agents/notes/proposed/feature/2026-10-08-hr-document-field-profile.md",
+      "anchor": "// Note: .agents/notes/proposed/feature/2026-10-08-hr-document-field-profile.md",
+      "title": "Simplify diploma output and extract evidence-bound medical personal information, grades and diagnoses",
+      "lifecycle": "proposed",
+      "class": "feature",
+      "date": "2026-10-08",
+      "scope": [
+        "backend/ocr_app/extraction.py",
+        "backend/ocr_app/documents.py",
+        "backend/ocr_app/task_store.py",
+        "tests",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "DIPLOMA returns11 structured fields instead of13, retaining six required keys and removing only principal/study_mode. DEGREE_CERT keeps study_mode. Deprecated diploma labels remain parsing boundaries so neighboring school, major and certifi",
+      "bodySha256": "0d1cf24774f230e2",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Proposal",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Acceptance criteria",
+            "line": 33
+          },
+          {
+            "title": "Risks",
+            "line": 40
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/proposed/feature/2026-10-08-hr-document-field-profile.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "path": ".agents/notes/implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "anchor": "// Note: .agents/notes/implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "title": "Preload both OCR models for an interactive local session",
+      "lifecycle": "implemented",
+      "class": "architecture",
+      "date": "2026-09-29",
+      "scope": [
+        "ARCHITECTURE.md",
+        "SPEC.md",
+        "openapi.yaml",
+        "IMPLEMENTATION_PLAN.md",
+        "backend",
+        "tests",
+        "scripts/probe_runtime.py",
+        "RUNTIME.md",
+        "start.cmd",
+        "start.ps1",
+        "requirements-app.lock.txt"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+        "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+        "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "The launcher exposes the lightweight local UI/service first and starts an independent runtime worker. It sequentially loads and warms GLM-OCR then PaddleOCR-VL in their existing isolated environments. Both remain resident in default dual_re",
+      "bodySha256": "5a9647aa9bdbdaf5",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Implementation boundary",
+            "line": 21
+          },
+          {
+            "title": "Decision audit",
+            "line": 29
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 37
+          },
+          {
+            "title": "Consequences",
+            "line": 44
+          },
+          {
+            "title": "Testing",
+            "line": 50
+          },
+          {
+            "title": "Future deployment",
+            "line": 62
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/architecture/2026-09-29-local-dual-model-lifecycle.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+      "path": ".agents/notes/implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+      "anchor": "// Note: .agents/notes/implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+      "title": "Install and qualify Paddle 1.6 while retaining the working default",
+      "lifecycle": "implemented",
+      "class": "architecture",
+      "date": "2026-09-30",
+      "scope": [
+        "backend/model_worker.py",
+        "backend/ocr_app/config.py",
+        "scripts",
+        "tests",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/testing/2026-09-30-whole-medical-corpus.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+        "implemented/testing/2026-09-30-whole-medical-corpus.md"
+      ],
+      "lastVerified": "2026-09-30",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.3,
+        "rule": "最近复核 2026-09-30"
+      },
+      "summary": "PaddlePaddle/PaddleOCR-VL-1.6 is installed at pinned revision c5630abae1d940eafe0697512a0325494b02ab42 in models/paddleocr-vl-1.6 and a separate .venvs/paddleocr-vl-1.6 environment with native Transformers 5.17.0 and Torch 2.10.0+cu128. Ori",
+      "bodySha256": "edd7aeb75b526ecd",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Testing",
+            "line": 30
+          },
+          {
+            "title": "Consequences",
+            "line": 39
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "path": ".agents/notes/implemented/architecture/2026-10-08-independent-model-queues.md",
+      "anchor": "// Note: .agents/notes/implemented/architecture/2026-10-08-independent-model-queues.md",
+      "title": "Run certificate and medical tasks through independent model queues",
+      "lifecycle": "implemented",
+      "class": "architecture",
+      "date": "2026-10-08",
+      "scope": [
+        "backend",
+        "tests",
+        "SPEC.md",
+        "ARCHITECTURE.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md",
+        "scripts",
+        "AGENTS.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "When both models complete serial startup successfully, use two bounded document lanes: one certificate lane (DIPLOMA and DEGREE_CERT) and one medical lane, each with at most one supervised CPU task process. Single-resident or startup-degrad",
+      "bodySha256": "1a73b27d9329d96c",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Decision audit",
+            "line": 27
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 31
+          },
+          {
+            "title": "Testing",
+            "line": 39
+          },
+          {
+            "title": "Consequences",
+            "line": 48
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/architecture/2026-10-08-independent-model-queues.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "title": "Restore evidence-bound field mapping and separate medical conclusions",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-09-30",
+      "scope": [
+        "backend/ocr_app/documents.py",
+        "backend/ocr_app/extraction.py",
+        "backend/ocr_app/task_store.py",
+        "tests",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "IMPLEMENTATION_PLAN.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/testing/2026-09-30-whole-medical-corpus.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+        "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+      ],
+      "lastVerified": "2026-09-30",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.3,
+        "rule": "最近复核 2026-09-30"
+      },
+      "summary": "The implementation restores native medical structure and repairs the confirmed certificate mapping defects under the user's approved scope. Both deployed recognition models, the production default, serial GPU ownership, confidence semantics",
+      "bodySha256": "9eff674044a248f3",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 19
+          },
+          {
+            "title": "Decision audit",
+            "line": 52
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 56
+          },
+          {
+            "title": "Testing",
+            "line": 65
+          },
+          {
+            "title": "Consequences",
+            "line": 81
+          },
+          {
+            "title": "Related verification",
+            "line": 87
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+      "title": "Decode Paddle OTSL before medical column mapping",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-09-30",
+      "scope": [
+        "backend/ocr_app/extraction.py",
+        "backend/ocr_app/table_format.py",
+        "tests",
+        "scripts",
+        "IMPLEMENTATION_PLAN.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "implemented/testing/2026-09-30-whole-medical-corpus.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/testing/2026-09-30-whole-medical-corpus.md"
+      ],
+      "lastVerified": "2026-09-30",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.3,
+        "rule": "最近复核 2026-09-30"
+      },
+      "summary": "The small standard-library OTSL-to-HTML decoder runs before existing medical column mapping. It follows official PaddleX token semantics, escapes cell text, preserves horizontal and vertical spans, and never uses field references to repair ",
+      "bodySha256": "086ccd7a2b674376",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Testing",
+            "line": 28
+          },
+          {
+            "title": "Consequences",
+            "line": 35
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+      "title": "Bound medical generation and reuse exact successful region predictions",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-08",
+      "scope": [
+        "backend",
+        "tests",
+        "scripts/probe_current_pipeline.py",
+        "SPEC.md",
+        "ARCHITECTURE.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+        "implemented/testing/2026-09-30-whole-medical-corpus.md",
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/testing/2026-09-30-whole-medical-corpus.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "Dual-resident startup remains the default and loads serially. The later independent queues decision permits cross-model inference and targeted stop while retaining180-second Task and181-second supervision. Medical generation uses20 seconds;",
+      "bodySha256": "e0be0716adbaf843",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Decision audit",
+            "line": 23
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 27
+          },
+          {
+            "title": "Testing",
+            "line": 35
+          },
+          {
+            "title": "Consequences",
+            "line": 45
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-08-bounded-medical-recognition.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+      "title": "Admit verified HDR JPEG primary images without losing multi-picture documents",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-08",
+      "scope": [
+        "backend/ocr_app",
+        "tests",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+        "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "Upload and worker validation share backend/ocr_app/image_admission.py. The policy keeps JPEG/PNG/HEIF/HEIC single-image support and allows exactly two-image MPO only when the first MP entry is a baseline primary JPEG and the second is expli",
+      "bodySha256": "08c5d8e249b928c7",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Testing",
+            "line": 28
+          },
+          {
+            "title": "Consequences",
+            "line": 35
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "path": ".agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
+      "title": "Durable local document tasks with bounded processing",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-09-30",
+      "scope": [
+        "backend",
+        "tests",
+        "scripts/probe_business.py",
+        "scripts/probe_browser.cjs",
+        "access-key.cmd",
+        "requirements-app.lock.txt",
+        "SPEC.md",
+        "openapi.yaml",
+        "ARCHITECTURE.md",
+        "IMPLEMENTATION_PLAN.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+        "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+        "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+        "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+        "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+        "implemented/testing/2026-09-30-whole-medical-corpus.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "Local SQLite uses synchronous SQLAlchemy and versioned Alembic migrations. Short transactions atomically claim tasks and protect run/revision publication, cancellation and reruns. The runtime worker remains the sole model coordinator. All p",
+      "bodySha256": "16e230820741ec42",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 27
+          },
+          {
+            "title": "Testing",
+            "line": 33
+          },
+          {
+            "title": "Consequences",
+            "line": 46
+          },
+          {
+            "title": "Related verification",
+            "line": 52
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "path": ".agents/notes/implemented/feature/2026-09-30-local-diagnostics.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-09-30-local-diagnostics.md",
+      "title": "Local diagnostics that survive model reloads",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-09-30",
+      "scope": [
+        "backend",
+        "scripts",
+        "tests",
+        "collect-diagnostics.cmd",
+        "SPEC.md",
+        "openapi.yaml",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+        "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+        "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "Diagnostics initialize before launcher configuration and business imports. One structured JSONL writer per process instance rotates at 10 MiB across five files; startup/export enforce seven-day retention. Records associate session, request,",
+      "bodySha256": "98782ed8507d1d2e",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Testing",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 43
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-09-30-local-diagnostics.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/process/2026-09-29-dde-project-workflow.md",
+      "path": ".agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
+      "anchor": "// Note: .agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
+      "title": "Keep DDE rules and verification in the project",
+      "lifecycle": "implemented",
+      "class": "process",
+      "date": "2026-09-29",
+      "scope": [
+        "scripts",
+        ".agents/skills/dde",
+        "skills-lock.json",
+        "package.json",
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".gitignore",
+        ".gitattributes"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
+      ],
+      "citedBy": [],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "NianLog/DDE is installed locally for Codex and Claude Code. The project copies the upstream scripts unchanged into scripts/ and retains their license in scripts/DDE-LICENSE.txt. A private package declares Node = 18, no runtime or developmen",
+      "bodySha256": "afd25fd497b4d0df",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Consequences",
+            "line": 26
+          },
+          {
+            "title": "Verification",
+            "line": 34
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/process/2026-09-29-dde-project-workflow.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/simplification/2026-10-08-retire-temporary-frontend.md",
+      "path": ".agents/notes/implemented/simplification/2026-10-08-retire-temporary-frontend.md",
+      "anchor": "// Note: .agents/notes/implemented/simplification/2026-10-08-retire-temporary-frontend.md",
+      "title": "Retire the temporary frontend for an independent rewrite",
+      "lifecycle": "implemented",
+      "class": "simplification",
+      "date": "2026-10-08",
+      "scope": [
+        "start.cmd",
+        "start.ps1",
+        "backend/ocr_app/launcher.py",
+        "backend/ocr_app/api.py",
+        "RUNTIME.md",
+        "ARCHITECTURE.md",
+        "IMPLEMENTATION_PLAN.md",
+        "scripts",
+        "tests"
+      ],
+      "supersedes": "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "The complete old frontend tree is moved inside this workspace to output/frontend-retired-20261008-v1/frontend. Absolute paths and absence of reparse points are checked; all1287 file SHA256 values match before and after. The active frontend ",
+      "bodySha256": "bb3c22096f9090b1",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": 6,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 8
+          },
+          {
+            "title": "Decision",
+            "line": 12
+          },
+          {
+            "title": "Retained reconstruction boundaries",
+            "line": 18
+          },
+          {
+            "title": "Decision audit",
+            "line": 26
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 30
+          },
+          {
+            "title": "Testing",
+            "line": 41
+          },
+          {
+            "title": "Consequences",
+            "line": 47
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-08-retire-temporary-frontend.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+      "path": ".agents/notes/implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+      "anchor": "// Note: .agents/notes/implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+      "title": "Evaluate automatic document regions with frozen OCR references",
+      "lifecycle": "implemented",
+      "class": "testing",
+      "date": "2026-09-29",
+      "scope": [
+        "scripts/run_auto_layout.py",
+        "scripts/test_auto_layout.py",
+        "scripts/run_two_model_retest.py",
+        "scripts/export_auto_layout.py",
+        "scripts/test_auto_layout_export.py"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/testing/2026-09-30-schema-extraction-benchmark.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/process/2026-09-29-dde-project-workflow.md",
+        "implemented/testing/2026-09-30-schema-extraction-benchmark.md"
+      ],
+      "lastVerified": "2026-09-29",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.3,
+        "rule": "最近复核 2026-09-29"
+      },
+      "summary": "The diagnostic benchmark uses PP-DocLayoutV3 on CPU to detect regions in full-resolution source images. It preserves detected tables as separate regions and combines nearby text without crossing tables. Coordinates, omitted image regions an",
+      "bodySha256": "f02c1292c1206ac9",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Consequences",
+            "line": 31
+          },
+          {
+            "title": "Verification",
+            "line": 41
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/testing/2026-09-29-automatic-layout-evaluation.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+      "path": ".agents/notes/implemented/testing/2026-09-30-dual-certificate-extraction.md",
+      "anchor": "// Note: .agents/notes/implemented/testing/2026-09-30-dual-certificate-extraction.md",
+      "title": "Compare serial GLM and Paddle certificate extraction",
+      "lifecycle": "implemented",
+      "class": "testing",
+      "date": "2026-09-30",
+      "scope": [
+        "scripts",
+        "tests",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+      ],
+      "lastVerified": "2026-09-30",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.3,
+        "rule": "最近复核 2026-09-30"
+      },
+      "summary": "The isolated paired diagnostic uses four encrypted certificate inputs and frozen visual references from the valid schema v2 experiment, plus three existing front-side bank-card samples scored only on card_number. Bank references are visuall",
+      "bodySha256": "4646995a10218cf3",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Testing",
+            "line": 32
+          },
+          {
+            "title": "Consequences",
+            "line": 41
+          },
+          {
+            "title": "Related verification",
+            "line": 45
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/testing/2026-09-30-dual-certificate-extraction.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+      "path": ".agents/notes/implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+      "anchor": "// Note: .agents/notes/implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+      "title": "Compare evidence-bound rules with GLM schema extraction",
+      "lifecycle": "implemented",
+      "class": "testing",
+      "date": "2026-09-30",
+      "scope": [
+        "scripts",
+        "tests",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+      ],
+      "lastVerified": "2026-09-30",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.3,
+        "rule": "最近复核 2026-09-30"
+      },
+      "summary": "The diagnostic freezes source images, SPEC field templates and provisional Agent visual references before model inference. Identical inputs run through text recognition plus the unchanged extractor and explicit English-key and Chinese-field",
+      "bodySha256": "887e790aea30fc90",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Testing",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 39
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/testing/2026-09-30-schema-extraction-benchmark.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/testing/2026-09-30-whole-medical-corpus.md",
+      "path": ".agents/notes/implemented/testing/2026-09-30-whole-medical-corpus.md",
+      "anchor": "// Note: .agents/notes/implemented/testing/2026-09-30-whole-medical-corpus.md",
+      "title": "Separate native PDF evidence from model recognition across the medical folder",
+      "lifecycle": "implemented",
+      "class": "testing",
+      "date": "2026-09-30",
+      "scope": [
+        "scripts",
+        "tests",
+        "IMPLEMENTATION_PLAN.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "The frozen corpus contains all four source hashes and encrypted copies, every page's existing decoder evidence, blank-page records and conservative raster regions. Native text/table evidence remains independent of OCR. Twelve table pages ar",
+      "bodySha256": "a5417bd075097d4d",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Testing",
+            "line": 31
+          },
+          {
+            "title": "Consequences",
+            "line": 41
+          },
+          {
+            "title": "Related verification",
+            "line": 45
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/testing/2026-09-30-whole-medical-corpus.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+      "path": ".agents/notes/implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+      "anchor": "// Note: .agents/notes/implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+      "title": "Verify the repaired pipeline through an isolated real API run",
+      "lifecycle": "implemented",
+      "class": "testing",
+      "date": "2026-10-08",
+      "scope": [
+        "scripts",
+        "tests",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/testing/2026-09-30-whole-medical-corpus.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+        "implemented/testing/2026-09-30-whole-medical-corpus.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "The already approved real-file acceptance uses a probe that starts the existing API, Business and RuntimeClient components with a new encrypted data root. A supervised child serves loopback HTTP, and its parent owns the existing GPU byte lo",
+      "bodySha256": "c7eed6a8ebde553f",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 15
+          },
+          {
+            "title": "Decision audit",
+            "line": 25
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 29
+          },
+          {
+            "title": "Testing",
+            "line": 36
+          },
+          {
+            "title": "Consequences",
+            "line": 48
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/testing/2026-10-08-current-pipeline-acceptance.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+      "path": ".agents/notes/archived/feature/2026-10-08-temporary-recognition-workbench.md",
+      "anchor": "// Note: .agents/notes/archived/feature/2026-10-08-temporary-recognition-workbench.md",
+      "title": "Add a temporary source-comparison workbench for recognition testing",
+      "lifecycle": "archived",
+      "class": "feature",
+      "date": "2026-10-08",
+      "scope": [
+        "frontend",
+        "RUNTIME.md",
+        "scripts/probe_workbench_browser.cjs"
+      ],
+      "supersedes": null,
+      "supersededBy": [
+        "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+      ],
+      "cites": [
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": "2026-10-08",
+      "freshness": {
+        "state": "archived",
+        "monthsSinceVerify": null,
+        "rule": "已归档：终态，不再需要复核"
+      },
+      "summary": "Reuse the existing same-origin business API and components. Add a local-only source preview tied to the explicit task IDs returned for the most recent uploaded batch, using the submitted files in request order and checking count/identity co",
+      "bodySha256": "b70891f23784ce69",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": 6,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 8
+          },
+          {
+            "title": "Decision",
+            "line": 12
+          },
+          {
+            "title": "Decision audit",
+            "line": 20
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 24
+          },
+          {
+            "title": "Testing",
+            "line": 31
+          },
+          {
+            "title": "Consequences",
+            "line": 38
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/archived/feature/2026-10-08-temporary-recognition-workbench.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    }
+  ],
+  "modules": [],
+  "relations": [
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+      "to": "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+      "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/testing/2026-09-30-schema-extraction-benchmark.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "proposed/architecture/2026-10-08-mac-studio-inference-service.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+      "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+      "to": "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+      "to": "implemented/testing/2026-09-30-whole-medical-corpus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+      "to": "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "proposed/architecture/2026-10-08-mac-studio-inference-service.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/testing/2026-09-30-whole-medical-corpus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+      "to": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+      "to": "implemented/testing/2026-09-30-whole-medical-corpus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+      "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+      "to": "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+      "to": "implemented/testing/2026-09-30-whole-medical-corpus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+      "to": "proposed/architecture/2026-10-08-mac-studio-inference-service.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+      "to": "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+      "to": "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/testing/2026-09-30-schema-extraction-benchmark.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/process/2026-09-29-dde-project-workflow.md",
+      "to": "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+      "to": "implemented/testing/2026-09-30-schema-extraction-benchmark.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+      "to": "implemented/testing/2026-09-30-schema-extraction-benchmark.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+      "to": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+      "to": "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+      "to": "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+      "to": "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-whole-medical-corpus.md",
+      "to": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-whole-medical-corpus.md",
+      "to": "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-whole-medical-corpus.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-whole-medical-corpus.md",
+      "to": "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-whole-medical-corpus.md",
+      "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+      "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+      "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+      "to": "implemented/testing/2026-09-30-whole-medical-corpus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+      "to": "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+    },
+    {
+      "type": "cite",
+      "from": "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+      "to": "proposed/architecture/2026-10-08-mac-studio-inference-service.md"
+    },
+    {
+      "type": "cite",
+      "from": "archived/feature/2026-10-08-temporary-recognition-workbench.md",
+      "to": "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md"
+    },
+    {
+      "type": "supersede",
+      "from": "implemented/simplification/2026-10-08-retire-temporary-frontend.md",
+      "to": "archived/feature/2026-10-08-temporary-recognition-workbench.md"
+    }
+  ]
+}

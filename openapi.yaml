@@ -1,0 +1,1541 @@
+openapi: 3.0.3
+info:
+  title: 证件关键信息提取系统 API
+  version: 1.11.0
+  description: |
+    内部证件信息提取系统 API 契约（v1.11）。
+
+    当前第二阶段仅实现health、auth/me、创建/查询批次、任务列表/详情/结果及取消/重跑；其余路径仍为后续目标，当前返回404。
+    创建批次必须指定MEDICAL_REPORT、DIPLOMA或DEGREE_CERT。当前不开放银行卡等其他类型；尚未验证误标图片中安全码的入库前检测，不能视为正式银行卡处理版本。
+    当前列表支持分页，不支持关键词/状态过滤；重跑只接受run_id及expected_revision并沿用类型/抽取选项。
+    当前提取未经置信度标定，结果进入NEED_REVIEW；医疗完整覆盖未确认时stats为null，人工复核写入与业务导出后续实现。
+
+    面向每日约50文件、每台人资电脑独立本地部署，仅绑定loopback，无内网推理服务器依赖；接口不绑定数据库、任务队列或Web框架，实现建议见ARCHITECTURE.md。
+    首版使用现有Batch/Task GET接口轮询；SSE后置，v1.9不提供/events/stream。
+    默认dual_resident：界面先显示，GLM/Paddle依次加载预热后同时驻留，加载/预热/识别共享串行GPU执行通道；资源不足有界降为single_resident。
+    模型依赖错误不误判内存不足，降级不改写已保存配置，不因轮询或新任务重复尝试双驻留；CPU-only与16GB未知GPU机器未验证可用。
+
+    重要约定：
+    - 上传、重跑等处理为**异步**，返回 202；查询和人工复核为同步接口
+    - 一个文件对应一个 Task，PDF 的页面存于 pages[]；一文件混装无关证件时置NEED_REVIEW并提示分别上传，首版不增加Document数组
+    - 所有 PDF 优先使用可靠文字层，仅图像或不可靠区域进行 OCR
+    - 置信度与 need_review 由**后端**计算，只有经标定的 confidence 才可非 null；不可用时不得填固定分数
+    - 敏感内容默认脱敏，覆盖 value、raw_text、candidates、generic 全文、轮询响应、复核回显和预览；完整值需显式授权并审计
+    - 文件入库前必须不可恢复遮盖 CVV；不持久化带 CVV 的原图、OCR 输出或缓存，任何响应与导出均禁止 CVV
+    - 无法确认CVV已清理时拒绝保存并要求提供已遮盖文件；含敏感原值的历史审计仅保留7天，到期清理，仅保留脱敏审计
+    - **例外**：`BUSINESS_LICENSE` 的公开营业执照业务字段不脱敏；混入的身份证/卡号等其他敏感内容仍按统一策略保护
+    - **单一入口**：仅网页人工上传，不提供自动接入入口；Batch/Task 不含接入来源 source，Field.source 保留为字段证据定位
+    - **`XUEXIN_DIPLOMA_TABLE` 仅支持《教育部学历证书电子注册备案表》一种**，可靠 PDF 文字层优先，扫描或不可靠区域回退 OCR；
+      在线验证码去空白后 12/16 位 ASCII 字母数字仅作本地兼容候选规则；未确认版本按 UNKNOWN 待核对；其他学信网报告（学籍/学位在线验证报告、学历/学位认证报告）
+      一律 `report_kind=OTHER_REPORT` 并 `NEED_REVIEW`，不抽取字段
+    - 本版不接入自动学信网联网验证，改为人工核验 + `manual_verify_status` 标记
+    - 写操作在同一事务校验 run_id 与 expected_revision；不匹配返回 409 RESULT_VERSION_CONFLICT，禁止覆盖新执行结果
+    - 同步 400/422 仅表示请求或 schema/编辑校验错误；接受任务后的 OCR、模型或抽取问题写入 Task.error、review_issues 或 warnings
+    - worker中断恢复确认旧执行停止后，QUEUED有取消请求则CANCELLED，否则继续排队；执行中run有取消请求则CANCELLED，否则FAILED且error.code=WORKER_INTERRUPTED；不新增Task状态
+    - Settings 后台配置接口不在本轮契约及第一版界面范围
+  license:
+    name: Internal
+servers:
+  - url: http://127.0.0.1:8765/api/v1
+    description: 本机loopback服务（开发及本地部署）
+  - url: /api/v1
+    description: 本机loopback服务同域部署
+
+tags:
+  - name: system
+    description: 系统与健康检查
+  - name: meta
+    description: 元数据（字段字典）
+  - name: batches
+    description: 批次
+  - name: tasks
+    description: 任务
+  - name: export
+    description: 导出
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+
+  /health:
+    get:
+      tags: [system]
+      summary: 健康检查
+      description: 检查数据库、独立worker与存储可用性；任一不可用时status=degraded。worker可响应调度但模型尚未加载不等于down；status=ok不代表所有OCR模型可用。可选runtime独立展示启动及驻留能力，缺失表示未提供该状态而非默认ready。此公开响应仅提供受控状态，不得泄露路径、PID、异常全文、密钥或文件信息。
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, version, queue_depth, components]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, degraded]
+                  version: {type: string, description: 应用版本, example: "1.9.0"}
+                  queue_depth: {type: integer, minimum: 0, nullable: true, example: 3, description: 等待执行且未请求取消的QUEUED任务数；数据库不可查询时为null，不伪造0}
+                  components:
+                    type: object
+                    required: [db, worker, storage]
+                    properties:
+                      db: {type: string, enum: [ok, down]}
+                      worker: {type: string, enum: [ok, down], description: 当前worker进程可响应并调度任务；不要求模型已加载或全部模型可用}
+                      storage: {type: string, enum: [ok, down]}
+                  runtime:
+                    type: object
+                    additionalProperties: false
+                    required: [configured_mode, effective_mode, state, models, reason_code]
+                    description: 可选运行时快照；仅展示能力，不是模型管理接口。自动降级仅影响当前会话，单驻留的unloaded模型可按需加载，failed模型不得因轮询或新任务反复重试。
+                    properties:
+                      configured_mode:
+                        type: string
+                        enum: [dual_resident, single_resident]
+                        default: dual_resident
+                        description: 保存的部署模式；自动降级不改写此值。
+                      effective_mode:
+                        type: string
+                        nullable: true
+                        enum: [dual_resident, single_resident, ocr_unavailable, null]
+                        description: 当前有效模式；启动尚未确定时为null。single_resident仅承诺最多一个模型驻留，具体模型能力见models；全部OCR模型不可用时为ocr_unavailable，不暗示CPU回退可用。
+                      state:
+                        type: string
+                        enum: [starting, ready, degraded, stopping]
+                        description: starting表示启动未稳定；ready表示配置模式已可用；自动降级、模型失败或OCR不可用为degraded；退出为stopping。与组件健康status独立。
+                      models:
+                        type: object
+                        additionalProperties: false
+                        required: [glm_ocr, paddleocr_vl]
+                        description: ready表示该模型已加载预热且可被调度，不代表当前空闲或允许并发执行；unloaded不等于failed。
+                        properties:
+                          glm_ocr: {type: string, enum: [unloaded, loading, warming, ready, failed, stopping]}
+                          paddleocr_vl: {type: string, enum: [unloaded, loading, warming, ready, failed, stopping]}
+                      reason_code:
+                        type: string
+                        nullable: true
+                        enum: [RESOURCE_LIMIT, MODEL_LOAD_FAILED, MODEL_WARMUP_FAILED, MODEL_PROCESS_EXITED, SUPERVISION_FAILED, null]
+                        description: 降级或失败的主原因；正常启动/运行/退出为null。OOM或明确资源不足为RESOURCE_LIMIT，其他加载/预热错误不得误报资源不足；不返回原始异常。
+
+  /auth/me:
+    get:
+      tags: [system]
+      summary: 当前用户与权限
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id: {type: string}
+                  display_name: {type: string}
+                  role:
+                    type: string
+                    enum: [viewer, operator, admin]
+                  permissions:
+                    type: array
+                    items:
+                      type: string
+                      enum: [review, reveal, rerun, delete, configure]
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /doc-types:
+    get:
+      tags: [meta]
+      summary: 证件类型与字段字典
+      description: |
+        前端**必须**基于此接口动态渲染复核表单，**禁止硬编码字段字典**。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  doc_types:
+                    type: array
+                    items: {$ref: '#/components/schemas/DocTypeMeta'}
+                  error_messages:
+                    type: object
+                    description: 错误码 → 中文文案（前端可直接用，也可覆盖）
+                    additionalProperties: {type: string}
+                  thresholds:
+                    type: object
+                    properties:
+                      review_threshold: {type: number, example: 0.85}
+
+  /batches:
+    get:
+      tags: [batches]
+      summary: 批次列表
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PROCESSING, COMPLETED, PARTIAL, FAILED, CANCELLED]
+        - name: page
+          in: query
+          schema: {type: integer, default: 1, minimum: 1}
+        - name: page_size
+          in: query
+          schema: {type: integer, default: 20, minimum: 1, maximum: 100}
+        - name: keyword
+          in: query
+          description: 按批次显示名或文件名模糊搜索
+          schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BatchList'}
+
+    post:
+      tags: [batches]
+      summary: 创建批次（人工上传）
+      description: |
+        异步接口。校验通过后立即返回 202 + batch_id。
+        单文件 ≤ 10MB，单次 1–20 个文件，总大小 ≤ 50MB；每个文件创建一个 Task。
+        实际解码核验格式；已验证 Apple/ISO/Adobe HDR 辅助图的双图 JPEG 按首图处理，原始字节保留。
+        未支持编码或未知多图材料同步返回 415 UNSUPPORTED_FORMAT，整批不创建任务。
+        CVV 在任何持久化写入前不可恢复遮盖；若无法确保遮盖则拒绝入库。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files, doc_type_hint]
+              properties:
+                files:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items: {type: string, format: binary}
+                doc_type_hint:
+                  type: string
+                  enum: [MEDICAL_REPORT, DIPLOMA, DEGREE_CERT]
+                  description: 第二阶段必须明确选择已支持的材料类型
+                abnormal_only:
+                  type: boolean
+                  default: false
+                  description: 仅对 MEDICAL_REPORT 生效；完整抽取后投影异常/未知项，不减少原始结果或 stats
+      responses:
+        '202':
+          description: 已接受
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batch_id: {type: string, format: uuid}
+                  task_ids:
+                    type: array
+                    items: {type: string, format: uuid}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '413': {$ref: '#/components/responses/ErrorResponse'}
+        '415': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+  /batches/{batch_id}:
+    parameters: [{$ref: '#/components/parameters/BatchId'}]
+    get:
+      tags: [batches]
+      summary: 批次详情（含完整性告警）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Batch'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags: [batches]
+      summary: 删除批次及其所有任务
+      description: 仅admin且仅全部Task均为终态时可删除，否则409；保留不含原始敏感值的审计事件。
+      responses:
+        '204': {description: 已删除}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+
+  /batches/{batch_id}/tasks:
+    parameters: [{$ref: '#/components/parameters/BatchId'}]
+    get:
+      tags: [batches]
+      summary: 批次下的任务列表
+      parameters:
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/TaskStatus'}
+        - name: doc_type
+          in: query
+          schema: {$ref: '#/components/schemas/DocTypeEnum'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Task'}
+
+  /batches/{batch_id}/append:
+    parameters: [{$ref: '#/components/parameters/BatchId'}]
+    post:
+      tags: [batches]
+      summary: 向已有批次补充上传文件
+      description: |
+        用于完整性告警的补救（如缺少身份证反面），或后续追加材料。
+        追加后重新触发 Batch 级完整性检查，Batch ID 保持不变。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items: {type: string, format: binary}
+                doc_type_hint:
+                  $ref: '#/components/schemas/DocTypeEnum'
+                abnormal_only:
+                  type: boolean
+                  default: false
+      responses:
+        '202':
+          description: 已接受
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task_ids:
+                    type: array
+                    items: {type: string, format: uuid}
+        '413': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+  /batches/{batch_id}/rename:
+    parameters: [{$ref: '#/components/parameters/BatchId'}]
+    patch:
+      tags: [batches]
+      summary: 重命名批次
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name: {type: string, maxLength: 100}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Batch'}
+
+  /batches/{batch_id}/retry:
+    parameters: [{$ref: '#/components/parameters/BatchId'}]
+    post:
+      tags: [batches]
+      summary: 重试批次内所有失败任务
+      responses:
+        '202':
+          description: 已接受
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  retried_count: {type: integer}
+        '403': {$ref: '#/components/responses/Forbidden'}
+
+  /tasks:
+    get:
+      tags: [tasks]
+      summary: 跨批次任务列表（用于「待复核」工作视图）
+      parameters:
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/TaskStatus'}
+        - name: doc_type
+          in: query
+          schema: {$ref: '#/components/schemas/DocTypeEnum'}
+        - name: page
+          in: query
+          schema: {type: integer, default: 1}
+        - name: page_size
+          in: query
+          schema: {type: integer, default: 20}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskList'}
+
+  /tasks/{task_id}:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    get:
+      tags: [tasks]
+      summary: 任务详情
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+    delete:
+      tags: [tasks]
+      summary: 删除任务（仅 admin）
+      description: |
+        viewer/operator 无权删除。仅终态Task可删除；原子校验run_id与expected_revision，其他状态返回409 INVALID_STATE。
+        删除文件与业务结果时保留不含原始敏感值的审计事件；版本冲突返回409 RESULT_VERSION_CONFLICT。
+        删除最后一个Task时同步删除空批次。
+      parameters:
+        - name: expected_revision
+          in: query
+          required: true
+          schema: {type: integer, minimum: 0}
+        - name: run_id
+          in: query
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '204': {description: 已删除，审计保留}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+  /tasks/{task_id}/result:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    get:
+      tags: [tasks]
+      summary: 任务抽取结果
+      description: |
+        `items_filter` 仅影响 MEDICAL_REPORT 的 `items[]`，不影响 `stats`。
+        始终先完整识别与整理；省略items_filter时，abnormal_only=false返回全部，true返回已确认异常及待判定项目。
+        显式items_filter=all永远返回全部；abnormal仅返回已确认异常；unknown包含UNKNOWN及abnormal_basis=unknown的POSITIVE。
+        不得仅凭某项未出现在模型输出中推断其正常或没有异常。
+      parameters:
+        - name: items_filter
+          in: query
+          schema:
+            type: string
+            enum: [all, abnormal, unknown]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskResult'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /tasks/{task_id}/preview:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    get:
+      tags: [tasks]
+      summary: 预处理后的证件图（复核页左侧对照用）
+      description: |
+        默认脱敏；masked=false 需 operator 及以上显式授权并按 reveal 同等审计，仍禁止 CVV。
+        所有 stage 均来自入库前已不可恢复遮盖 CVV 的文件；raw 不代表可获取带 CVV 的原图。
+        首版仅在stage=corrected时使用字段bbox高亮，raw/enhanced不得直接套用该坐标。
+        必须绑定请求的run_id与result_revision；过期版本返回409 RESULT_VERSION_CONFLICT，不得静默替换为新图。
+        masked=false时reason必填且包含非空白字符，记录访问审计。
+      parameters:
+        - name: run_id
+          in: query
+          required: true
+          schema: {type: string, format: uuid}
+        - name: result_revision
+          in: query
+          required: true
+          schema: {type: integer, minimum: 0}
+        - name: stage
+          in: query
+          description: raw=入库前已遮盖CVV的文件图像, corrected=几何校正后, enhanced=增强后
+          schema:
+            type: string
+            enum: [raw, corrected, enhanced]
+            default: corrected
+        - name: page
+          in: query
+          schema: {type: integer, default: 1, minimum: 1}
+        - name: masked
+          in: query
+          schema: {type: boolean, default: true}
+        - name: reason
+          in: query
+          description: masked=false时必填的非空审计理由
+          schema: {type: string, minLength: 1, maxLength: 200, pattern: '\S'}
+      responses:
+        '200':
+          description: 图片二进制
+          content:
+            image/jpeg:
+              schema: {type: string, format: binary}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+  /tasks/{task_id}/review:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    post:
+      tags: [tasks]
+      summary: 提交人工复核修正
+      description: |
+        仅 operator 及以上可对 NEED_REVIEW 或 COMPLETED 提交，更正字段或记录人工学信核验。
+        原子校验 run_id 与 expected_revision，成功后 result_revision 递增并重新校验。
+        仍有未解决问题则保持/回到 NEED_REVIEW；VERIFIED_MISMATCH 始终 NEED_REVIEW，不无条件完成。
+        仅允许通过 accepted_issues 确认服务端标记 can_accept 的非缺失、非冲突问题；缺必填或冲突必须修正。
+        未知 item_id/当前版本中不存在的 issue_id、同一项目同时更新与删除或不可确认问题返回 422；旧版本 issue_id 或版本冲突返回 409 RESULT_VERSION_CONFLICT。
+        修正及确认理由写入 review_log，回显使用默认脱敏规则。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReviewRequest'}
+      responses:
+        '200':
+          description: 已提交
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+  /tasks/{task_id}/reject:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    post:
+      tags: [tasks]
+      summary: 标记不可用（转为 REJECTED）
+      description: 仅NEED_REVIEW可拒绝，其他状态409 INVALID_STATE；原子校验run_id与expected_revision，成功后result_revision递增，审计保留。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [run_id, expected_revision]
+              properties:
+                run_id: {type: string, format: uuid}
+                expected_revision: {type: integer, minimum: 0}
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+  /tasks/{task_id}/rerun:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    post:
+      tags: [tasks]
+      summary: 重跑任务（可修改抽取参数）
+      description: 原子校验 run_id 与 expected_revision；运行中不可重跑。创建新的 run_id 并回到 QUEUED，旧执行、结果和复核历史保留，旧 worker 不得写回新执行。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RerunRequest'}
+      responses:
+        '202':
+          description: 已接受，任务回到 QUEUED
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+  /tasks/{task_id}/cancel:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    post:
+      tags: [tasks]
+      summary: 取消进行中的任务
+      description: |
+        仅 operator 及以上。原子校验 run_id 与 expected_revision 后置 cancel_requested=true，并递增 result_revision。
+        仅接受QUEUED/PREPROCESSING/OCR/EXTRACTING/VALIDATING；NEED_REVIEW通过reject处理。
+        请求取消不提前设置终态；确认队列任务不会运行或worker停止后才转CANCELLED。
+        完成与取消以事务先后为准：完成先提交则取消409；取消先接受则禁止worker发布COMPLETED。
+        已终态或其他不支持状态返回409 INVALID_STATE；版本冲突返回409 RESULT_VERSION_CONFLICT。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TaskMutationVersion'}
+      responses:
+        '202':
+          description: 已请求取消，返回递增后的版本与cancel_requested=true
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+  /tasks/{task_id}/restore:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    post:
+      tags: [tasks]
+      summary: 恢复已拒绝、取消或失败的任务
+      description: |
+        仅 operator 及以上，仅允许 REJECTED/CANCELLED/FAILED 回到 QUEUED。
+        原子校验 run_id 与 expected_revision，分配新 run_id、清除 cancel_requested、递增 result_revision，并保留历史执行和审计。
+        其他状态返回 409 INVALID_STATE；版本冲突返回 409 RESULT_VERSION_CONFLICT。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TaskMutationVersion'}
+      responses:
+        '202':
+          description: 已恢复并重新排队
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+  /tasks/{task_id}/replace-file:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    post:
+      tags: [tasks]
+      summary: 就地替换该任务的文件并重跑
+      description: |
+        用于质量不合格（模糊/过曝/缺页）时的**就地重传**。
+        **Task ID 与 Batch ID 均保持不变**，新文件分配新 run_id，旧执行与复核历史保留，不覆盖历史结果。
+        原子校验 run_id 与 expected_revision；运行中不可替换，先取消并等待 worker 确认。
+        reset_review=false 仅保留修正记录供对照，不自动将旧文件修正套用到新文件。
+        新文件入库前须不可恢复遮盖 CVV，不保存带 CVV 的原图、OCR 或缓存。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, run_id, expected_revision]
+              properties:
+                file: {type: string, format: binary}
+                run_id: {type: string, format: uuid}
+                expected_revision: {type: integer, minimum: 0}
+                reset_review: {type: boolean, default: true}
+      responses:
+        '202':
+          description: 已接受，任务回到 QUEUED
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '413': {$ref: '#/components/responses/ErrorResponse'}
+        '415': {$ref: '#/components/responses/ErrorResponse'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+  /tasks/{task_id}/reveal:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    post:
+      tags: [tasks]
+      summary: 获取完整敏感值（需 operator 及以上）
+      description: |
+        仅返回本次 fields 明确指定的 `id_number` / `card_number` 完整值，不附带其他字段或原文。
+        **CVV 永不返回。** 每次调用写审计日志。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RevealRequest'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fields:
+                    type: object
+                    description: key → 完整值
+                    additionalProperties: {type: string}
+                  expires_in: {type: integer, description: 前端应在该秒数后重新掩码, example: 60}
+        '403': {$ref: '#/components/responses/Forbidden'}
+
+  /export:
+    get:
+      tags: [export]
+      summary: 导出结构化结果
+      description: 默认全路径脱敏；masked=false需operator及以上显式授权且reason必填非空，并按reveal同等审计，任何导出均禁止CVV。
+      parameters:
+        - name: batch_id
+          in: query
+          schema: {type: string, format: uuid}
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv, xlsx, json]
+            default: xlsx
+        - name: masked
+          in: query
+          description: true=导出掩码值；false=显式请求完整值（需 operator 及以上授权并逐次审计）
+          schema: {type: boolean, default: true}
+        - name: reason
+          in: query
+          description: masked=false时必填的非空审计理由
+          schema: {type: string, minLength: 1, maxLength: 200, pattern: '\S'}
+      responses:
+        '200':
+          description: 文件流
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
+components:
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    BatchId:
+      name: batch_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+
+  responses:
+    BadRequest:
+      description: 参数错误
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Unauthorized:
+      description: 未认证
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Forbidden:
+      description: 无权限
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    NotFound:
+      description: 不存在
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    ErrorResponse:
+      description: 同步业务错误；409 区分 INVALID_STATE 与 RESULT_VERSION_CONFLICT，异步识别错误由 Task.error 返回
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    UnprocessableEntity:
+      description: 请求 schema 或复核编辑无效（未知ID、冲突操作、不可确认问题等）；不用于 PDF 无文字层等异步处理告警
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+
+  schemas:
+
+    Error:
+      type: object
+      description: 同步请求错误或接受任务后的异步 Task.error；处理阶段错误码不表示上传必须同步失败
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - INVALID_REQUEST
+            - FILE_TOO_LARGE
+            - UNSUPPORTED_FORMAT
+            - IMAGE_UNREADABLE
+            - DECODE_FAILED
+            - NO_DOC_EDGE
+            - LOW_QUALITY
+            - OVEREXPOSED
+            - UNSUPPORTED_DOC_TYPE
+            - LUHN_FAILED
+            - MULTI_CANDIDATES
+            - ID_CHECKSUM_FAILED
+            - USCC_CHECKSUM_FAILED
+            - XUEXIN_CODE_INVALID
+            - MISSING_REQUIRED_FIELD
+            - EXTRACT_TIMEOUT
+            - WORKER_INTERRUPTED
+            - RESULT_VERSION_CONFLICT
+            - OCR_TOKEN_LIMIT
+            - OCR_REPETITION
+            - MODEL_CONFLICT
+            - BIN_UNKNOWN
+            - TASK_NOT_REVIEWABLE
+            - FORBIDDEN_REVEAL
+            - INVALID_STATE
+            - INTERNAL_ERROR
+        message: {type: string, description: 中文提示，可直接展示}
+        detail: {type: string, description: 已脱敏诊断摘要，仅经鉴权的本机客户端可见；不得包含路径、密钥或材料原文}
+        task_id: {type: string, format: uuid}
+        error_id: {type: string, description: 安全诊断编号，用于关联本地日志；不包含材料内容}
+        request_id: {type: string, format: uuid, description: 对应X-Request-ID响应头；异步任务错误可以省略}
+        stage:
+          type: string
+          enum: [BOOTSTRAP, QUEUED, PREPROCESSING, OCR, EXTRACTING, VALIDATING, PUBLISHING, CLEANUP]
+          description: 出错的处理阶段；未知时省略
+
+    DocTypeEnum:
+      type: string
+      enum:
+        - ID_CARD_FRONT
+        - ID_CARD_BACK
+        - DIPLOMA
+        - DEGREE_CERT
+        - BANK_CARD
+        - MEDICAL_REPORT
+        - HOUSEHOLD_REGISTER
+        - BUSINESS_LICENSE
+        - XUEXIN_DIPLOMA_TABLE
+        - GENERIC
+
+    TaskStatus:
+      type: string
+      description: COMPLETED/FAILED/REJECTED/CANCELLED 为终态；NEED_REVIEW 为待人工处理的非终态，取消以 worker 停止确认为准
+      enum:
+        - QUEUED
+        - PREPROCESSING
+        - OCR
+        - EXTRACTING
+        - VALIDATING
+        - NEED_REVIEW
+        - COMPLETED
+        - FAILED
+        - REJECTED
+        - CANCELLED
+
+    BatchStatus:
+      type: string
+      description: |
+        批次初建尚在生成Task时或存在非终态任务（包括NEED_REVIEW）则PROCESSING；全部COMPLETED则COMPLETED；
+        全部 CANCELLED 则 CANCELLED；全部 FAILED/REJECTED 或无 COMPLETED 的失败与取消混合则 FAILED；
+        有 COMPLETED 且其他任务均为终态则 PARTIAL。按上述顺序聚合。
+      enum: [PROCESSING, COMPLETED, PARTIAL, FAILED, CANCELLED]
+
+    Warning:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - MISSING_ID_BACK
+            - MISSING_ID_FRONT
+            - MISSING_HOUSEHOLD_PAGE
+            - MISSING_MEDICAL_PAGE
+            - XUEXIN_DIPLOMA_EXPIRED
+            - XUEXIN_TRUNCATED
+            - DUPLICATE_FILE
+            - PDF_NO_TEXT_LAYER
+            - PDF_TEXT_UNRELIABLE
+        message: {type: string}
+        task_ids:
+          type: array
+          items: {type: string, format: uuid}
+
+    Batch:
+      type: object
+      properties:
+        batch_id: {type: string, format: uuid}
+        status: {$ref: '#/components/schemas/BatchStatus'}
+        display_name:
+          type: string
+          description: 批次名，默认取首个文件名或「上传批次 2026-09-29 10:30」，可由操作员编辑
+          example: "上传批次 2026-09-29 10:30"
+        file_count: {type: integer}
+        completed_count: {type: integer}
+        need_review_count: {type: integer}
+        failed_count: {type: integer}
+        cancelled_count: {type: integer}
+        rejected_count: {type: integer, description: 与failed_count、cancelled_count按Task状态互斥计数}
+        warnings:
+          type: array
+          items: {$ref: '#/components/schemas/Warning'}
+        created_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time, nullable: true}
+
+    BatchList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Batch'}
+        total: {type: integer}
+        page: {type: integer}
+        page_size: {type: integer}
+
+    Task:
+      type: object
+      description: 一个文件对应一个 Task；PDF 页属于同一任务，不按页创建 Task。身份、执行与结果版本由后端管理。
+      required: [task_id, run_id, result_revision, cancel_requested, page_count, pages, status]
+      properties:
+        task_id: {type: string, format: uuid}
+        run_id: {type: string, format: uuid, description: 当前执行ID，重跑/替换/恢复时重新分配}
+        result_revision: {type: integer, minimum: 0, description: 任务结果版本，成功写操作原子递增且跨执行单调递增}
+        cancel_requested: {type: boolean, description: 已请求取消但不代表worker已停止}
+        batch_id: {type: string, format: uuid}
+        file_name: {type: string}
+        file_size: {type: integer}
+        content_hash: {type: string}
+        mime_type: {type: string}
+        page_count: {type: integer, minimum: 0, description: 文件页数；尚未解析时为0，解析后等于pages数量}
+        pages:
+          type: array
+          items: {$ref: '#/components/schemas/Page'}
+        status: {$ref: '#/components/schemas/TaskStatus'}
+        progress: {type: integer, minimum: 0, maximum: 100}
+        doc_type: {$ref: '#/components/schemas/DocTypeEnum'}
+        doc_type_confidence: {$ref: '#/components/schemas/Confidence'}
+        doc_type_confidence_method: {$ref: '#/components/schemas/ConfidenceMethod'}
+        error: {$ref: '#/components/schemas/Error'}
+        warnings:
+          type: array
+          items: {$ref: '#/components/schemas/Warning'}
+        # 关键摘要，用于列表页展示（均为掩码值）
+        summary:
+          type: object
+          nullable: true
+          properties:
+            person_name: {type: string, nullable: true}
+            id_number_masked: {type: string, nullable: true}
+            card_number_masked: {type: string, nullable: true}
+            school_name: {type: string, nullable: true}
+            institution: {type: string, nullable: true}
+            company_name: {type: string, nullable: true, description: 仅 BUSINESS_LICENSE，不脱敏}
+            xuexin_kind: {$ref: '#/components/schemas/XuexinKindCheck'}
+            xuexin_expired: {type: boolean, nullable: true, description: 仅 XUEXIN_DIPLOMA_TABLE，有效期是否已过}
+            abnormal_count: {type: integer, nullable: true, description: 仅 MEDICAL_REPORT}
+        need_review_fields:
+          type: array
+          description: 需复核的字段 key 列表
+          items: {type: string}
+        extract_options: {$ref: '#/components/schemas/ExtractOptions'}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    Page:
+      type: object
+      required: [page_id, page_index, width, height, extraction_method]
+      properties:
+        page_id: {type: string, format: uuid}
+        page_index: {type: integer, minimum: 1, description: 文件内部页序号，从1开始}
+        width: {type: integer, minimum: 1, description: corrected完整页预览的像素宽度}
+        height: {type: integer, minimum: 1, description: corrected完整页预览的像素高度}
+        extraction_method:
+          type: string
+          enum: [pdf_text, ocr, mixed, pending]
+          description: 可靠PDF文字层优先；仅图像/不可靠区域OCR，混合页为mixed
+
+    TaskList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Task'}
+        total: {type: integer}
+        page: {type: integer}
+        page_size: {type: integer}
+
+    ExtractOptions:
+      type: object
+      description: 抽取参数，仅对 MEDICAL_REPORT 生效
+      properties:
+        abnormal_only:
+          type: boolean
+          default: false
+          description: 兼容参数；始终全量抽取与整理后才投影已确认异常及未知项，不减少存储结果或stats，items_filter=all仍有效
+        include_normal_summary:
+          type: boolean
+          default: true
+          description: 仅决定是否生成正常项摘要，不影响全量抽取、items或stats
+
+    FieldSource:
+      type: object
+      description: 字段证据来源，区别于Batch/Task接入来源；原文同样应用敏感内容脱敏规则
+      properties:
+        page: {type: integer, minimum: 1, description: '对应pages[].page_index'}
+        region_id: {type: string, format: uuid, description: 页内抽取区域ID}
+        extraction_method: {type: string, enum: [pdf_text, ocr]}
+        bbox_kind:
+          type: string
+          enum: [region, block, row, cell]
+          description: 可选定位粒度；旧结果缺省为未声明，不能把整区域框当精确字段框；当前界面仅显示页码和粒度
+        bbox:
+          type: array
+          description: 归一化坐标 [x0, y0, x1, y1]，相对corrected完整页而非裁剪区域；x0<x1且y0<y1。无法可靠定位时省略，不伪造字框
+          minItems: 4
+          maxItems: 4
+          items: {type: number, minimum: 0, maximum: 1}
+        raw_text: {type: string, description: 默认脱敏的证据原文，永不包含CVV}
+
+    ReportFinding:
+      type: object
+      required: [finding_id, reported_number, text, sources]
+      properties:
+        finding_id: {type: string, format: uuid, description: 同一run内稳定条目ID；不使用原始编号作主键}
+        reported_number: {type: string, nullable: true, description: 报告原始编号；只有项目符号或无编号时为null}
+        text: {type: string, description: 报告原有条目文字，沿用受控结果脱敏路径，不写入诊断日志}
+        sources:
+          type: array
+          description: 条目来源，可跨页；没有可靠定位时不伪造bbox
+          items: {$ref: '#/components/schemas/FieldSource'}
+
+    ReportSummary:
+      type: object
+      required: [scope, declared_count, findings, count_check, sources]
+      description: |
+        独立的报告结论清单，不与实验室stats.abnormal对账。
+        优先按实际标题及章节边界定位“您共有 X项异常需进一步检查并治疗：”等声明，数量只能核对同一标题作用域的清单。
+        未找到该标题时可提取总检结论列表，但declared_count=null且count_check=unverified；不固定页码，不把解释段或人体位置图加入清单。
+        复合顶层条目不按分号擅自拆分，续页解释不重复计数；findings.length只表示观察提取条数。
+        不受items_filter、abnormal_only、include_normal_summary影响，不修改医疗完整覆盖/统计/审核状态，不涉及医学分级。
+      properties:
+        scope:
+          type: string
+          enum: [follow_up_required, overall_conclusion, unidentified]
+          description: follow_up_required为明确标题下需进一步检查及治疗的清单；未找到该标题可返回overall_conclusion总检结论列表，无可靠列表则unidentified。后两者declared_count必须null且count_check必须unverified，不跨清单比较
+        declared_count:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: 同一清单的明确数量声明；缺失、冲突或不可靠时null，不能用findings长度反填
+        findings:
+          type: array
+          description: 同一清单的观察条目，finding_id唯一；空列表不表示无异常
+          items: {$ref: '#/components/schemas/ReportFinding'}
+        count_check:
+          type: string
+          enum: [match, mismatch, unverified]
+          description: match须有明确声明、同一清单完整边界证据、无编号/候选冲突且数量一致；数量相等本身不足。声明缺失或覆盖不可靠为unverified；可靠证据不一致为mismatch。匹配不代表全报告完整或可跳过复核
+        sources:
+          type: array
+          description: 声明、标题和章节边界证据，受既有原文脱敏规则约束
+          items: {$ref: '#/components/schemas/FieldSource'}
+
+    Confidence:
+      type: number
+      nullable: true
+      minimum: 0
+      maximum: 1
+      description: 仅经标定的概率可为数值；未经标定或不可用时必须为null，不得填固定0.95等伪置信度
+
+    ConfidenceMethod:
+      type: string
+      enum: [calibrated, unavailable]
+      description: calibrated对应经标定数值；unavailable对应confidence=null。必填字段无置信度须待核对。
+
+    ReviewIssue:
+      type: object
+      required: [issue_id, code, message, can_accept]
+      properties:
+        issue_id: {type: string, format: uuid}
+        code: {type: string, description: review_reason代码或服务端扩展字符串}
+        message: {type: string}
+        can_accept: {type: boolean, description: 仅非缺失/非冲突问题可由服务端设为true；缺必填/冲突及类型不符/未知/多证混装/输出不完整的任务级问题不可确认放行}
+
+    ValidationCheck:
+      type: object
+      required: [kind, status, rule_id, message]
+      properties:
+        kind: {type: string, enum: [FORMAT, CHECKSUM, CROSS_DOCUMENT, OFFICIAL]}
+        status: {type: string, enum: [PASS, FAIL, UNKNOWN, NOT_APPLICABLE]}
+        rule_id: {type: string}
+        message: {type: string}
+
+    Field:
+      type: object
+      required: [key, label, value, confidence, confidence_method, need_review, review_issues]
+      properties:
+        key: {type: string}
+        label: {type: string}
+        value:
+          description: 值，可能是string/number/boolean/null；敏感字段默认以掩码替代，不能只脱敏value_masked却泄露此值
+          oneOf:
+            - {type: string, nullable: true}
+            - {type: number}
+            - {type: boolean}
+        value_masked: {type: string, nullable: true}
+        confidence: {$ref: '#/components/schemas/Confidence'}
+        confidence_method: {$ref: '#/components/schemas/ConfidenceMethod'}
+        need_review: {type: boolean}
+        review_reason:
+          type: string
+          nullable: true
+          enum: [LOW_CONFIDENCE, VALIDATION_FAILED, MISSING, CORRECTION_PROPOSED, CONFIDENCE_UNAVAILABLE, CONFLICT, INCOMPLETE_OUTPUT, MULTI_CANDIDATES, null]
+        review_issues:
+          type: array
+          items: {$ref: '#/components/schemas/ReviewIssue'}
+        validation_error:
+          type: string
+          nullable: true
+          description: BIN_UNKNOWN表示本地BIN库未覆盖，不等于卡号无效
+          enum: [ID_CHECKSUM_FAILED, USCC_CHECKSUM_FAILED, XUEXIN_CODE_INVALID, LUHN_FAILED, BIN_UNKNOWN, INVALID_DATE, null]
+        validation_checks:
+          type: array
+          items: {$ref: '#/components/schemas/ValidationCheck'}
+        candidates:
+          type: array
+          description: 银行卡全部候选均需人工选择，不能凭Luhn/BIN自动改号；无逐位top3或完整候选覆盖保证，候选值默认脱敏
+          items:
+            type: object
+            required: [value, confidence, confidence_method]
+            properties:
+              value: {type: string}
+              confidence: {$ref: '#/components/schemas/Confidence'}
+              confidence_method: {$ref: '#/components/schemas/ConfidenceMethod'}
+              reason: {type: string, example: "Luhn + BIN 均通过"}
+        source: {$ref: '#/components/schemas/FieldSource'}
+
+    MedicalItem:
+      type: object
+      additionalProperties: false
+      required: [item_id, name, result_raw, abnormal_flag, reported_abnormal_marker, abnormal_basis, confidence, confidence_method, need_review, review_issues]
+      properties:
+        item_id: {type: string, format: uuid, description: 服务端分配的项目稳定ID，复核更新或删除据此定位}
+        name: {type: string, example: "总胆固醇"}
+        alias: {type: string, nullable: true, example: "TC"}
+        category: {type: string, nullable: true, example: "血脂"}
+        result_raw: {type: string, example: "6.82"}
+        value_num: {type: number, nullable: true, example: 6.82, description: 仅精确标量；>5.0等带比较符结果为null且result_raw原样保留}
+        unit: {type: string, nullable: true, example: "mmol/L"}
+        reference_range: {type: string, nullable: true, example: "2.80-5.17"}
+        ref_low: {type: number, nullable: true}
+        ref_high: {type: number, nullable: true}
+        abnormal_flag:
+          type: string
+          enum: [NORMAL, HIGH, LOW, ABNORMAL, POSITIVE, UNKNOWN]
+          description: POSITIVE可保留检出事实但不自动等于异常；abnormal_basis=unknown时仅允许UNKNOWN/POSITIVE，不据省略推断正常
+        reported_abnormal_marker: {type: string, nullable: true, description: 报告原始异常标记，如↑、↓或阳性，不擅自补写}
+        abnormal_basis:
+          type: string
+          enum: [report_marker, reference_comparison, unknown]
+          description: report_marker=报告明确异常标记；reference_comparison=适用规则比较确认；unknown=无足够依据
+        deviation:
+          type: string
+          nullable: true
+          description: 可选数值偏离说明，仅精确数值且适用边界非零时计算，否则null；不代表临床严重程度或跨项目风险排序
+        confidence: {$ref: '#/components/schemas/Confidence'}
+        confidence_method: {$ref: '#/components/schemas/ConfidenceMethod'}
+        need_review: {type: boolean}
+        review_issues:
+          type: array
+          items: {$ref: '#/components/schemas/ReviewIssue'}
+        source: {$ref: '#/components/schemas/FieldSource'}
+
+    MedicalStats:
+      type: object
+      required: [total, normal, abnormal, unknown, categories]
+      description: |
+        基于完整抽取及整理结果计算，不受abnormal_only、items_filter或摘要开关影响；模型漏项不代表无异常。
+        页面/区域结果不完整时total、normal、abnormal、unknown均为null，并在TaskResult.limitations解释；完整时total=normal+abnormal+unknown。
+      properties:
+        total: {type: integer, minimum: 0, nullable: true, description: 完整整理后为三个互斥分类计数之和；输出不完整时为null}
+        normal: {type: integer, minimum: 0, nullable: true}
+        abnormal: {type: integer, minimum: 0, nullable: true, description: 仅报告或适用规则确认的异常；不把所有POSITIVE自动计入}
+        unknown: {type: integer, minimum: 0, nullable: true, description: UNKNOWN及abnormal_basis=unknown的POSITIVE；输出不完整时为null}
+        categories:
+          type: array
+          items: {type: string}
+
+    HouseholdMember:
+      type: object
+      properties:
+        name: {$ref: '#/components/schemas/Field'}
+        gender: {$ref: '#/components/schemas/Field'}
+        birth_date: {$ref: '#/components/schemas/Field'}
+        ethnicity: {$ref: '#/components/schemas/Field'}
+        birth_place: {$ref: '#/components/schemas/Field'}
+        native_place: {$ref: '#/components/schemas/Field'}
+        id_number: {$ref: '#/components/schemas/Field'}
+        relation_to_householder: {$ref: '#/components/schemas/Field'}
+        education: {$ref: '#/components/schemas/Field'}
+        marital_status: {$ref: '#/components/schemas/Field'}
+        occupation: {$ref: '#/components/schemas/Field'}
+        workplace: {$ref: '#/components/schemas/Field'}
+        migration_address: {$ref: '#/components/schemas/Field'}
+
+    TextBlock:
+      type: object
+      required: [text, page, confidence, confidence_method]
+      properties:
+        text: {type: string, description: 默认脱敏全文片段，不含CVV}
+        page: {type: integer, minimum: 1, description: '当前run的pages[].page_index，定位多页通用识别文本'}
+        bbox:
+          type: array
+          description: 相对corrected完整页的归一化坐标[x0,y0,x1,y1]
+          items: {type: number, minimum: 0, maximum: 1}
+          minItems: 4
+          maxItems: 4
+        confidence: {$ref: '#/components/schemas/Confidence'}
+        confidence_method: {$ref: '#/components/schemas/ConfidenceMethod'}
+
+    XuexinKindCheck:
+      type: string
+      description: |
+        种类校验结果（不是证件类型）。doc_type 已固定为 XUEXIN_DIPLOMA_TABLE，
+        这里表示「这份材料到底是不是备案表」，包括文字PDF、扫描件及图像。
+        DIPLOMA_TABLE = 确认是备案表，正常抽取字段；
+        OTHER_REPORT  = 识别为其他学信网报告（学籍在线验证报告 / 学位在线验证报告 / 学历或学位认证报告），
+                        一律置 NEED_REVIEW 且不抽取字段，提示用户改提供备案表；
+        UNKNOWN       = 无法判定，置 NEED_REVIEW；report_kind_confidence可以为null。
+      enum:
+        - DIPLOMA_TABLE
+        - OTHER_REPORT
+        - UNKNOWN
+
+    ManualVerifyStatus:
+      type: string
+      description: |
+        人工在线核验状态；本版不接入自动验证，由操作员手工标记。
+      enum:
+        - NOT_CHECKED
+        - VERIFIED_OK
+        - VERIFIED_MISMATCH
+        - VERIFY_FAILED
+
+    XuexinInfo:
+      type: object
+      description: 仅 doc_type = XUEXIN_DIPLOMA_TABLE 时返回
+      properties:
+        report_kind: {$ref: '#/components/schemas/XuexinKindCheck'}
+        report_kind_confidence: {$ref: '#/components/schemas/Confidence'}
+        report_kind_confidence_method: {$ref: '#/components/schemas/ConfidenceMethod'}
+        # 在线验证码：去空白后12/16位ASCII字母数字仅作兼容候选规则，非官方真伪验证
+        online_verification_code:
+          type: string
+          nullable: true
+          description: 展示用，保留材料中的分组格式，按敏感内容规则脱敏
+          example: "0908 8869 3519"
+        online_verification_code_normalized:
+          type: string
+          nullable: true
+          description: 去所有空白后的本地格式校验用值；兼容候选为12或16位ASCII字母数字，未确认版本不因含字母硬拒绝
+          example: "090888693519"
+        code_valid: {type: boolean, nullable: true, description: 仅本地格式结果，非官方真实性；未确认版本或规则不适用时为null（UNKNOWN）并待核对}
+        verify_url:
+          type: string
+          description: 学信网在线验证页，复核页需提供「一键复制验证码 + 打开验证页」
+          example: "https://www.chsi.com.cn/xlcx/bgcx.jsp"
+        valid_until:
+          type: string
+          format: date
+          nullable: true
+          description: 验证有效期；早于今天会触发 Batch 告警 XUEXIN_DIPLOMA_EXPIRED
+        is_expired: {type: boolean, nullable: true, description: 缺失或无法确定有效期时为null，不推断未过期}
+        manual_verify_status: {$ref: '#/components/schemas/ManualVerifyStatus'}
+        manual_verify_by: {type: string, nullable: true}
+        manual_verify_at: {type: string, format: date-time, nullable: true}
+        report_language:
+          type: string
+          description: zh=中文版；en=翻译件（英文），姓名为拼音、枚举值需映射为中文标准值
+          enum: [zh, en]
+        source_kind:
+          type: string
+          description: |
+            pdf_text    = 可靠PDF文字层提取；不自动代表经标定的高置信度
+            scanned_pdf = 扫描PDF，使用OCR
+            mixed_pdf   = 文字层与图像区域混合，逐区域选择提取方式
+            screenshot  = 电子截图 / 微信转发图（清晰但可能被压缩、可能截断）
+            screen_photo= 用手机翻拍电脑屏幕（有摩尔纹、反光、透视变形，最难）
+            photo       = 普通材料照片；unknown = 无法确定来源形态
+          enum: [pdf_text, scanned_pdf, mixed_pdf, screenshot, screen_photo, photo, unknown]
+        likely_truncated:
+          type: boolean
+          nullable: true
+          description: |
+            仅 screenshot / screen_photo：疑似截图不完整（只截了上半部分或边缘被裁），
+            检测到必填字段集中在图像一侧且底部空白时置 true，见 SPEC 6.10.8
+
+    GenericResult:
+      type: object
+      description: blocks、key_values与full_text均默认脱敏，不允许经通用全文路径泄露敏感值或CVV
+      properties:
+        doc_subtype_guess: {type: string, nullable: true}
+        doc_subtype_confidence: {$ref: '#/components/schemas/Confidence'}
+        doc_subtype_confidence_method: {$ref: '#/components/schemas/ConfidenceMethod'}
+        blocks:
+          type: array
+          items: {$ref: '#/components/schemas/TextBlock'}
+        key_values:
+          type: array
+          items:
+            type: object
+            properties:
+              key: {type: string}
+              value: {type: string}
+              confidence: {$ref: '#/components/schemas/Confidence'}
+              confidence_method: {$ref: '#/components/schemas/ConfidenceMethod'}
+        full_text: {type: string}
+
+    TaskResult:
+      type: object
+      required: [task_id, doc_type, run_id, result_revision, status, review_issues]
+      oneOf:
+        - required: [basic_info, items, stats, abnormal_summary]
+          properties:
+            doc_type: {type: string, enum: [MEDICAL_REPORT]}
+        - properties:
+            doc_type: {type: string, enum: [ID_CARD_FRONT, ID_CARD_BACK, DIPLOMA, DEGREE_CERT, BANK_CARD, HOUSEHOLD_REGISTER, BUSINESS_LICENSE, XUEXIN_DIPLOMA_TABLE, GENERIC]}
+      properties:
+        task_id: {type: string, format: uuid}
+        run_id: {type: string, format: uuid}
+        result_revision: {type: integer, minimum: 0}
+        doc_type: {$ref: '#/components/schemas/DocTypeEnum'}
+        status: {$ref: '#/components/schemas/TaskStatus'}
+        review_issues:
+          type: array
+          description: 任务级待处理问题，如OTHER_REPORT/UNKNOWN/多证混装/输出不完整，必须can_accept=false；不能通过确认跳过修正或重传
+          items: {$ref: '#/components/schemas/ReviewIssue'}
+
+        # 通用扁平字段（ID_CARD_* / DIPLOMA / DEGREE_CERT / BANK_CARD / 户口本扉页 / 体检基础信息）
+        fields:
+          type: array
+          items: {$ref: '#/components/schemas/Field'}
+
+        # 结构化子对象：按 doc_type 选择性出现
+        basic_info:
+          type: object
+          description: MEDICAL_REPORT 基础信息
+          additionalProperties: {$ref: '#/components/schemas/Field'}
+
+        items:
+          type: array
+          description: MEDICAL_REPORT完整整理后的项目投影；省略items_filter遵从abnormal_only，显式all永远返回全量
+          items: {$ref: '#/components/schemas/MedicalItem'}
+
+        stats:
+          $ref: '#/components/schemas/MedicalStats'
+
+        abnormal_summary:
+          type: array
+          description: 报告或适用规则确认的异常项摘要，**无论开关如何始终返回**；不将所有阳性自动视为异常
+          items: {$ref: '#/components/schemas/MedicalItem'}
+
+        normal_summary:
+          type: string
+          nullable: true
+          description: 正常项摘要；include_normal_summary=false时为null，不影响items或stats，也不以省略项目推断正常
+
+        report_summary:
+          $ref: '#/components/schemas/ReportSummary'
+
+        members:
+          type: array
+          nullable: true
+          description: HOUSEHOLD_REGISTER 常住人口登记卡
+          items: {$ref: '#/components/schemas/HouseholdMember'}
+
+        xuexin:
+          $ref: '#/components/schemas/XuexinInfo'
+
+        generic:
+          $ref: '#/components/schemas/GenericResult'
+
+        # 供前端提示的限制信息
+        limitations:
+          type: array
+          description: 结果受限说明，如"输出不完整"或"报告页疑似缺失"；不得把未识别到解释为无异常
+          items: {type: string}
+
+        reviewed_by: {type: string, nullable: true}
+        reviewed_at: {type: string, format: date-time, nullable: true}
+
+    ReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [run_id, expected_revision]
+      description: |
+        只需提交**被修改**的字段，未提交的保持原值；所有提交项记入 review_log。
+        run_id与expected_revision原子校验，冲突返回409 RESULT_VERSION_CONFLICT。
+        items按item_id定位；同一ID不得重复更新或同时更新与删除，未知ID返回422。
+        added_items由服务端分配新item_id；缺必填或冲突不能通过accepted_issues强行放行。
+        修改后重新校验，仍有问题则NEED_REVIEW；VERIFIED_MISMATCH始终NEED_REVIEW。
+      properties:
+        run_id: {type: string, format: uuid}
+        expected_revision: {type: integer, minimum: 0}
+        fields:
+          type: object
+          description: key→修正值；只接受当前doc_type字段字典中的可编辑字段，未知key或类型不符返回422，不能通过此路径修改服务端元数据
+          additionalProperties: {}
+        members:
+          type: array
+          description: 户口本成员修正（按索引定位）
+          items:
+            type: object
+            required: [index, fields]
+            properties:
+              index: {type: integer, minimum: 0}
+              fields:
+                type: object
+                additionalProperties: {}
+        items:
+          type: array
+          description: 按item_id定位的体检项目patch，仅提交修改的可编辑字段；空数组表示不修正
+          items:
+            allOf:
+              - {$ref: '#/components/schemas/MedicalItemEditable'}
+              - type: object
+                required: [item_id]
+                properties:
+                  item_id: {type: string, format: uuid}
+        added_items:
+          type: array
+          description: 完整可编辑字段对象，未知值显式为null；不得提交item_id、confidence、need_review等服务端属性，新ID由服务端分配
+          items:
+            allOf:
+              - {$ref: '#/components/schemas/MedicalItemEditable'}
+              - type: object
+                required: [name, alias, category, result_raw, value_num, unit, reference_range, ref_low, ref_high, abnormal_flag, reported_abnormal_marker]
+                not:
+                  required: [item_id]
+        removed_item_ids:
+          type: array
+          uniqueItems: true
+          description: 按item_id删除项目；未知ID或与更新列表重叠时返回422
+          items: {type: string, format: uuid}
+        accepted_issues:
+          type: array
+          description: 仅允许确认can_accept=true的非缺失/非冲突问题；issue_id必须属于当前run与revision
+          items:
+            type: object
+            required: [issue_id, reason]
+            properties:
+              issue_id: {type: string, format: uuid}
+              reason: {type: string, minLength: 1, pattern: '\S', description: 必须包含非空白字符，记录到审计日志}
+        xuexin_verify:
+          type: object
+          nullable: true
+          description: 人工核验结论绑定当前文件哈希及run_id；重跑或替换后新结论默认NOT_CHECKED，旧结论仅保留历史
+          required: [manual_verify_status]
+          properties:
+            manual_verify_status: {$ref: '#/components/schemas/ManualVerifyStatus'}
+            note: {type: string, maxLength: 500}
+        note: {type: string, maxLength: 1000}
+
+    MedicalItemEditable:
+      type: object
+      additionalProperties: false
+      description: |
+        人工可编辑值；服务端拒绝这里未列出的业务属性（patch额外允许item_id），返回422。
+        confidence、confidence_method、need_review、abnormal_basis、deviation、review_issues及source不可由此修改，修改后由后端重新校验。
+      properties:
+        item_id: {type: string, format: uuid, description: 仅items patch允许且必填；added_items禁止提交，由服务端分配}
+        name: {type: string, minLength: 1}
+        alias: {type: string, nullable: true}
+        category: {type: string, nullable: true}
+        result_raw: {type: string}
+        value_num: {type: number, nullable: true, description: 仅精确标量；如result_raw为>5.0则为null，不删除原始比较符}
+        unit: {type: string, nullable: true}
+        reference_range: {type: string, nullable: true}
+        ref_low: {type: number, nullable: true}
+        ref_high: {type: number, nullable: true}
+        abnormal_flag: {type: string, enum: [NORMAL, HIGH, LOW, ABNORMAL, POSITIVE, UNKNOWN]}
+        reported_abnormal_marker: {type: string, nullable: true}
+
+    TaskMutationVersion:
+      type: object
+      required: [run_id, expected_revision]
+      properties:
+        run_id: {type: string, format: uuid}
+        expected_revision: {type: integer, minimum: 0}
+
+    RerunRequest:
+      type: object
+      required: [run_id, expected_revision]
+      properties:
+        run_id: {type: string, format: uuid}
+        expected_revision: {type: integer, minimum: 0}
+        doc_type_hint: {$ref: '#/components/schemas/DocTypeEnum'}
+        extract_options: {$ref: '#/components/schemas/ExtractOptions'}
+        reset_review: {type: boolean, default: true, description: 重置当前复核状态；false仅保留旧修正供对照，不自动应用到新run，审计历史始终保留}
+
+    RevealRequest:
+      type: object
+      required: [fields, reason]
+      properties:
+        fields:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: 仅允许 id_number / card_number；CVV 永不返回
+          items:
+            type: string
+            enum: [id_number, card_number]
+        reason: {type: string, minLength: 1, maxLength: 200, pattern: '\S', description: 审计用途，必须包含非空白字符}
+
+    DocTypeMeta:
+      type: object
+      properties:
+        code: {$ref: '#/components/schemas/DocTypeEnum'}
+        label: {type: string, example: "身份证（人像面）"}
+        description: {type: string}
+        supports_abnormal_only: {type: boolean, description: 是否支持异常指标开关}
+        supports_multi_page: {type: boolean}
+        fields:
+          type: array
+          items: {$ref: '#/components/schemas/FieldMeta'}
+        sub_objects:
+          type: array
+          description: 子结构（如 members / items）
+          items:
+            type: object
+            properties:
+              key: {type: string, example: "members"}
+              label: {type: string, example: "常住人口登记卡"}
+              fields:
+                type: array
+                items: {$ref: '#/components/schemas/FieldMeta'}
+
+    FieldMeta:
+      type: object
+      properties:
+        key: {type: string}
+        label: {type: string}
+        type:
+          type: string
+          enum: [string, number, date, enum, boolean]
+        required: {type: boolean}
+        sensitive: {type: boolean, description: 是否需脱敏}
+        enum_values:
+          type: array
+          nullable: true
+          items: {type: string}
+        placeholder: {type: string, nullable: true}
+        help_text: {type: string, nullable: true}
