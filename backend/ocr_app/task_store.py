@@ -9,11 +9,11 @@ from time import monotonic
 
 from sqlalchemy import bindparam, text
 
-from .extraction import confirmed_abnormal
+from .extraction import confirmed_abnormal, medical_exclusion_reason, medical_statistics
 
 ACTIVE = {'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING'}
 TERMINAL = {'COMPLETED', 'FAILED', 'REJECTED', 'CANCELLED'}
-SUPPORTED = {'MEDICAL_REPORT', 'DIPLOMA', 'DEGREE_CERT'}
+from .doc_profiles import SUPPORTED, LABELS
 
 
 def now():
@@ -25,32 +25,95 @@ def identity():
 
 
 class TaskError(Exception):
-    def __init__(self, code, message, status=409):
+    def __init__(self, code, message, status=409, details=None):
         super().__init__(code)
         self.code, self.message, self.status = code, message, status
+        self.details = details
 
 
-def mask_text(value):
+def _phone_patterns(result):
+    """Only recognized mainland mobile values/candidates authorize text masking."""
+    numbers = set()
+    fields = [field for field in result.get('fields', []) if field.get('key') == 'phone']
+    fields.append(result.get('basic_info', {}).get('phone', {}))
+    for field in fields:
+        for value in [field.get('value'), *(candidate.get('value') for candidate in field.get('candidates', []))]:
+            if not isinstance(value, str):
+                continue
+            compact = re.sub(r'[\s()（）-]', '', value)
+            match = re.fullmatch(r'(?:\+?86)?(1[3-9][0-9]{9})', compact)
+            if match:
+                numbers.add(match[1])
+    separator = r'[\s()（）-]*'
+    return [(re.compile(r'(?<![0-9])[（(]?(?:\+?86' + separator + r')?' + separator.join(number) + r'[）)]?(?![0-9])'),
+             '****' + number[-4:]) for number in sorted(numbers)]
+
+
+def mask_text(value, phone_patterns=()):
     if not isinstance(value, str):
         return value
+    for pattern, replacement in phone_patterns:
+        value = pattern.sub(replacement, value)
     value = re.sub(r'(?<!\d)\d{17}[\dXx](?!\d)', lambda m: m[0][:3] + '*' * 11 + m[0][-4:], value)
-    value = re.sub(r'(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)',
+    value = re.sub(r'(?<!\d)(?:\d{13,19}|(?:\d{4}[ -]){3}\d{1,4}(?:[ -]\d{1,3})?)(?!\d)',
                    lambda m: '****' + re.sub(r'\D', '', m[0])[-4:], value)
     return value
 
 
-def masked(value):
+def masked(value, phone_patterns=()):
     if isinstance(value, dict):
         # Business values are masked; validated structural identities must stay
         # round-trippable even when a UUID happens to contain mostly digits.
         return {k: v if isinstance(v, str) and (
             k.endswith('_id') and re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', v)
             or k == 'error_id' and re.fullmatch(r'e_[0-9a-f]{32}', v)
-            or k == 'content_hash' and re.fullmatch(r'[0-9a-f]{64}', v)
-        ) else masked(v) for k, v in value.items()}
+            or (k in {'sha256', 'content_hash'} or k.endswith(('_hash', '_sha256'))) and re.fullmatch(r'[0-9a-fA-F]{64}', v)
+        ) else masked(v, phone_patterns) for k, v in value.items()}
     if isinstance(value, list):
-        return [masked(v) for v in value]
-    return mask_text(value)
+        return [masked(v, phone_patterns) for v in value]
+    return mask_text(value, phone_patterns)
+
+
+def public_result(value):
+    """Authenticated internal responses retain full values, never private helpers."""
+    def strip_private(item):
+        if isinstance(item, dict):
+            return {key: strip_private(val) for key, val in item.items()
+                    if not key.startswith('_') and key != 'value_masked'}
+        if isinstance(item, list):
+            return [strip_private(val) for val in item]
+        return item
+    projected = strip_private(value)
+    if isinstance(projected, dict) and projected.get('doc_type') == 'BANK_CARD':
+        projected['fields'] = [field for field in projected.get('fields', [])
+                               if field.get('key') != 'card_number_masked']
+    if (isinstance(projected, dict) and projected.get('doc_type') == 'MEDICAL_REPORT'
+            and ('fields' in projected or 'basic_info' in projected)):
+        from .doc_profiles import profile
+        from .extraction import _field
+        fields = dict(projected.get('basic_info', {}))
+        fields.update({field['key']: field for field in projected.get('fields', [])})
+        current = []
+        for meta in profile('MEDICAL_REPORT'):
+            field = fields.get(meta['key']) or _field(meta['key'], meta['label'], [], meta['required'])
+            field.update(required=meta['required'], editable=meta['editable'])
+            current.append(field)
+        projected.update(fields=current, basic_info={field['key']:field for field in current})
+        from .medical_ledger import refresh_ledger
+        refresh_ledger(projected)
+        for key in ('items', 'abnormal_summary'):
+            for item in projected.get(key, []):
+                exclusion = medical_exclusion_reason(item.get('name'))
+                if exclusion or 'abnormal_exclusion_reason' in item:
+                    item['abnormal_exclusion_reason'] = exclusion
+                if exclusion:
+                    item['need_review'] = False
+        if 'abnormal_summary' in projected:
+            projected['abnormal_summary'] = [item for item in projected['abnormal_summary'] if not item.get('abnormal_exclusion_reason')]
+        if (any(item.get('abnormal_exclusion_reason') for item in projected.get('items', []))
+                and projected.get('stats', {}).get('total') is not None):
+            projected['stats'] = medical_statistics(projected['items'])
+    return projected
 
 
 class TaskStore:
@@ -76,16 +139,21 @@ class TaskStore:
                                 detail=json.dumps(details)))
 
     def create_batch(self, files, doc_type, actor, options=None):
-        if doc_type not in SUPPORTED:
-            raise TaskError('UNSUPPORTED_DOC_TYPE', '本阶段仅接收体检报告、毕业证和学位证，银行卡暂不接收', 422)
+        from .doc_profiles import SUPPORTED as supported_profiles
+        if doc_type not in supported_profiles:
+            raise TaskError('UNSUPPORTED_DOC_TYPE', '材料类型未受支持，请从材料目录选择', 422)
+        if doc_type == 'BANK_CARD':
+            for file in files:
+                if file.get('mime') not in {'image/png', 'image/jpeg', 'image/heic', 'image/heif'} or file.get('actual_source_page_count') != 1:
+                    raise TaskError('UNSUPPORTED_FORMAT', '银行卡请上传已解码的单张照片', 415)
         batch, created, references, task_ids = identity(), now(), [], []
         try:
             with self.transaction() as connection:
                 connection.execute(text('INSERT INTO batches VALUES (:id,:at,:name)'),
-                                   dict(id=batch, at=created, name=self.storage.pack('上传批次')))
+                                   dict(id=batch, at=created, name=self.storage.pack(LABELS[doc_type])))
                 hashes = {}
                 for file in files:
-                    digest = hashlib.sha256(file['data']).hexdigest()
+                    digest = file.get('content_hash') or hashlib.sha256(file['data']).hexdigest()
                     if digest in hashes:
                         duplicate = self._row(connection, hashes[digest])
                         warnings = self.storage.unpack(duplicate['warnings_enc'], [])
@@ -102,8 +170,9 @@ class TaskStore:
                     params = dict(id=task_id, batch=batch, run=run_id, at=created,
                                   expires=(datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
                                   hash=digest, doc=doc_type, reference=reference,
-                                  meta=self.storage.pack(dict(file_name=file['name'], file_size=len(file['data']), mime_type=file['mime'])),
-                                  options=self.storage.pack(options or {}), warnings=self.storage.pack(warnings))
+                                  meta=self.storage.pack(dict(file_name=file['name'], file_size=len(file['data']), mime_type=file['mime'],
+                                      actual_source_page_count=file.get('actual_source_page_count'), processed_content_hash=file.get('processed_content_hash'))),
+                                  options=self.storage.pack(dict(options or {}, **({'bank_admission': file['admission']} if file.get('admission') else {}))), warnings=self.storage.pack(warnings))
                     connection.execute(text('''INSERT INTO tasks
                         (id,batch_id,run_id,status,created_at,updated_at,expires_at,content_hash,doc_type,input_ref,meta_enc,options_enc,warnings_enc)
                         VALUES (:id,:batch,:run,'QUEUED',:at,:at,:expires,:hash,:doc,:reference,:meta,:options,:warnings)'''), params)
@@ -120,8 +189,10 @@ class TaskStore:
             raise
 
     def _public(self, row):
+        from .exporting import required_export_blockers
         pages = self.storage.unpack(row['pages_enc'], [])
-        return masked(dict(task_id=row['id'], batch_id=row['batch_id'], run_id=row['run_id'],
+        export_blockers = required_export_blockers(self.storage.unpack(row['result_enc']))
+        return public_result(dict(task_id=row['id'], batch_id=row['batch_id'], run_id=row['run_id'],
                            result_revision=row['revision'], cancel_requested=bool(row['cancel_requested']),
                            status=row['status'], progress=row['progress'], doc_type=row['doc_type'],
                            doc_type_confidence=None, doc_type_confidence_method='unavailable',
@@ -129,7 +200,8 @@ class TaskStore:
                            created_at=row['created_at'], updated_at=row['updated_at'],
                            error=json.loads(row['error_json']) if row['error_json'] else None,
                            warnings=self.storage.unpack(row['warnings_enc'], []), summary=None,
-                           need_review_fields=[], extract_options=self.storage.unpack(row['options_enc'], {}),
+                           export_ready=not export_blockers, export_blockers=export_blockers,
+                           need_review_fields=[], extract_options={k: v for k, v in self.storage.unpack(row['options_enc'], {}).items() if k != 'bank_admission'},
                            **self.storage.unpack(row['meta_enc'])))
 
     def task(self, task_id):
@@ -158,32 +230,53 @@ class TaskStore:
                 state = 'CANCELLED'
             else:
                 state = 'PARTIAL' if counts['COMPLETED'] else 'FAILED'
-            return dict(batch_id=batch_id, name=self.storage.unpack(row['name_enc']), display_name=self.storage.unpack(row['name_enc']),
+            kinds = sorted({t.get('doc_type') for t in tasks if t.get('doc_type')},
+                           key=lambda kind: list(LABELS).index(kind) if kind in LABELS else len(LABELS))
+            labels = [LABELS.get(kind, '待确定类型') for kind in kinds]
+            display_name = ('混合材料 · ' + ' / '.join(labels)) if len(labels) > 1 else labels[0] if labels else '待确定类型'
+            return dict(batch_id=batch_id, name=display_name, display_name=display_name,
                         status=state, task_count=len(tasks), file_count=len(tasks), total_count=len(tasks), completed_count=counts['COMPLETED'],
                         failed_count=counts['FAILED'], cancelled_count=counts['CANCELLED'], rejected_count=counts['REJECTED'],
                         need_review_count=counts['NEED_REVIEW'], created_at=row['created_at'],
                         updated_at=max((t['updated_at'] for t in tasks), default=row['created_at']), warnings=[])
 
-    def batches(self, page=1, page_size=20):
+    def batches(self, page=1, page_size=20, date_from=None, date_to=None):
+        if date_from and date_to and date_from>date_to:
+            raise TaskError('INVALID_REQUEST', '开始日期不能晚于结束日期', 422)
+        zone = timezone(timedelta(hours=8))
+        try:
+            start = datetime.combine(date_from, datetime.min.time(), zone).astimezone(timezone.utc).isoformat() if date_from else None
+            end = datetime.combine(date_to+timedelta(days=1), datetime.min.time(), zone).astimezone(timezone.utc).isoformat() if date_to else None
+        except (ValueError, OverflowError):
+            raise TaskError('INVALID_REQUEST', '日期超出支持范围', 422) from None
         with self.engine.connect() as connection:
-            ids = connection.execute(text('SELECT id FROM batches ORDER BY created_at DESC,id')).scalars().all()
+            ids = connection.execute(text('SELECT id FROM batches WHERE (:start IS NULL OR created_at>=:start) '
+                'AND (:end IS NULL OR created_at<:end) ORDER BY created_at DESC,id'),dict(start=start,end=end)).scalars().all()
         return dict(items=[self.batch(i) for i in ids[(page-1)*page_size:page*page_size]],
                     total=len(ids), page=page, page_size=page_size)
 
     def result(self, task_id, items_filter=None, include_normal_summary=True):
+        from .exporting import required_export_blockers
         with self.engine.connect() as connection:
             row = self._row(connection, task_id)
             result = self.storage.unpack(row['result_enc'])
             if result is None:
                 raise TaskError('INVALID_STATE', '当前任务尚无可用识别结果')
+            export_blockers = required_export_blockers(result)
+            result.update(export_ready=not export_blockers, export_blockers=export_blockers)
             result.update(task_id=task_id, run_id=row['run_id'], result_revision=row['revision'], status=row['status'])
+            if result.get('doc_type') == 'DIPLOMA':
+                # Public profile only: retain encrypted history and original evidence.
+                result['fields'] = [field for field in result.get('fields', [])
+                                    if field.get('key') not in {'principal', 'study_mode'}]
+            result = public_result(result)
             options = self.storage.unpack(row['options_enc'], {})
             if result.get('doc_type') == 'MEDICAL_REPORT':
                 selected = items_filter or ('flagged' if options.get('abnormal_only') else 'all')
                 def abnormal(item):
                     return confirmed_abnormal(item)
                 def unknown(item):
-                    return item.get('abnormal_flag') == 'UNKNOWN' or (item.get('abnormal_flag') == 'POSITIVE' and not abnormal(item))
+                    return not item.get('abnormal_exclusion_reason') and (item.get('abnormal_flag') == 'UNKNOWN' or (item.get('abnormal_flag') == 'POSITIVE' and not abnormal(item)))
                 if selected == 'flagged':
                     result['items'] = [i for i in result.get('items', []) if abnormal(i) or unknown(i)]
                 elif selected == 'abnormal':
@@ -192,7 +285,7 @@ class TaskStore:
                     result['items'] = [i for i in result.get('items', []) if unknown(i)]
                 if not include_normal_summary:
                     result['normal_summary'] = None
-            return masked(result)
+            return result
 
     def queue_depth(self):
         with self.engine.connect() as connection:
@@ -293,6 +386,131 @@ class TaskStore:
     def _expected(self, row, run_id, revision):
         if row['run_id'] != run_id or row['revision'] != revision:
             raise TaskError('RESULT_VERSION_CONFLICT', '任务版本已变化，请刷新后再操作')
+
+    def _access_history(self, connection, row, actor, event, reason, **details):
+        """Reasons can contain private text: keep them encrypted, not audit JSON."""
+        payload = dict(event=event, actor=actor, reason=reason, at=now(),
+                       run_id=row['run_id'], result_revision=row['revision'], **details)
+        reference = self.storage.put(json.dumps(payload, ensure_ascii=False).encode())
+        try:
+            connection.execute(text('INSERT INTO artifacts(id,task_id,run_id,kind,reference) VALUES (:id,:task,:run,:kind,:ref)'),
+                               dict(id=identity(), task=row['id'], run=row['run_id'], kind='access_history', ref=reference))
+        except BaseException:
+            self.storage.delete(reference)
+            raise
+
+    def review(self, task_id, body, actor):
+        from .review import apply_review, invalid, reason
+        reference = None
+        try:
+            with self.transaction() as connection:
+                row = self._row(connection, task_id)
+                self._expected(row, body.get('run_id'), body.get('expected_revision'))
+                if row['status'] not in {'FAILED', 'NEED_REVIEW', 'COMPLETED'}:
+                    raise TaskError('INVALID_STATE', '当前任务不能进行人工复核')
+                original = self.storage.unpack(row['result_enc'])
+                pages = self.storage.unpack(row['pages_enc'], [])
+                if original is None:
+                    if row['status'] != 'FAILED':
+                        raise TaskError('INVALID_STATE', '当前任务无可用结果')
+                    from .extraction import extract_result
+                    original = extract_result([], row['doc_type'])
+                    original.update(pages=pages, review_issues=original.get('review_issues', []))
+                coverage = body.get('coverage')
+                verified = False
+                if coverage is not None or row['status'] == 'FAILED':
+                    meta = self.storage.unpack(row['meta_enc'], {})
+                    count = meta.get('actual_source_page_count')
+                    if count is None:
+                        # Legacy tasks predate total-page metadata. Decode only;
+                        # never infer coverage from the processed-page prefix.
+                        from .business import validate_upload
+                        checked = validate_upload(self.storage.read(row['input_ref']), meta.get('file_name', 'source.pdf'))
+                        count = checked.get('actual_source_page_count')
+                    artifacts = connection.execute(text("SELECT id,page_index,width,height,reference FROM artifacts WHERE task_id=:task AND run_id=:run AND kind='corrected'"),
+                                                   dict(task=task_id, run=row['run_id'])).mappings().all()
+                    indices = [a['page_index'] for a in artifacts]
+                    if type(count) is not int or count < 1 or sorted(indices) != list(range(1, count + 1)):
+                        invalid('缺少原文件全部页面证据，请重跑或重新上传')
+                    known_pages = {page['page_index']: page for page in pages}
+                    for artifact in artifacts:
+                        known_pages.setdefault(artifact['page_index'], dict(page_id=artifact['id'], page_index=artifact['page_index'],
+                            width=artifact['width'], height=artifact['height'], extraction_method='pending', regions=[]))
+                    pages = [known_pages[index] for index in sorted(known_pages)]
+                    original['pages'] = pages
+                    # A database reference alone does not prove readable page evidence.
+                    from io import BytesIO
+                    from PIL import Image
+                    for artifact in artifacts:
+                        try:
+                            with Image.open(BytesIO(self.storage.read(artifact['reference']))) as image:
+                                image.verify()
+                        except Exception as error:
+                            raise TaskError('INVALID_REQUEST', '页面证据无法读取，请重新处理', 422) from error
+                    if coverage is not None:
+                        if not isinstance(coverage, dict) or set(coverage) - {'pages', 'reason', 'regions'}:
+                            invalid()
+                        if (not isinstance(coverage.get('pages'), list) or any(type(i) is not int for i in coverage['pages'])
+                                or sorted(coverage['pages']) != list(range(1, count + 1))):
+                            invalid('须逐页核对原文件所有页面')
+                        reason(coverage.get('reason'))
+                        pending = {r['region_id'] for page in pages for r in page.get('regions', []) if r.get('status') != 'recognized'}
+                        corrections = coverage.get('regions', [])
+                        if not isinstance(corrections, list) or any(not isinstance(r, dict) for r in corrections):
+                            invalid()
+                        ids = [r.get('region_id') for r in corrections]
+                        if len(ids) != len(set(ids)) or set(ids) != pending:
+                            invalid('须对每个未完成区域明确补录或说明无业务内容')
+                        for correction in corrections:
+                            links = {'field_keys', 'item_ids', 'added_item_indexes', 'finding_ids', 'member_indexes', 'added_member_indexes', 'generic'}
+                            if set(correction) - {'region_id', 'action', 'reason'} - links or correction.get('action') not in {'TRANSCRIBED', 'NO_CONTENT'}:
+                                invalid()
+                            reason(correction.get('reason'))
+                            if correction['action'] == 'TRANSCRIBED':
+                                supplied = {
+                                    'field_keys': set(body.get('fields', {})),
+                                    'item_ids': {i.get('item_id') for i in body.get('items', []) if isinstance(i, dict)},
+                                    'added_item_indexes': set(range(len(body.get('added_items', [])))),
+                                    'finding_ids': {i.get('finding_id') for i in body.get('findings', []) if isinstance(i, dict)},
+                                    'member_indexes': {i.get('index') for i in body.get('members', []) if isinstance(i, dict)},
+                                    'added_member_indexes': set(range(len(body.get('added_members', []))))}
+                                linked = False
+                                for key, available in supplied.items():
+                                    value = correction.get(key, [])
+                                    if not isinstance(value, list) or any(not isinstance(i, (str, int)) or isinstance(i, bool) for i in value) or not set(value) <= available:
+                                        invalid('区域补录引用不属于本次提交')
+                                    linked = linked or bool(value)
+                                if correction.get('generic') is not None:
+                                    if correction['generic'] is not True or not body.get('generic'):
+                                        invalid()
+                                    linked = True
+                                if not linked:
+                                    invalid('补录区域必须关联本次实际补正内容')
+                        verified = True
+                if row['status'] == 'FAILED' and not verified:
+                    invalid('失败任务须完整逐页补正后才能创建人工版本')
+                result = apply_review(original, body, actor=actor, coverage_verified=verified)
+                result.setdefault('recognition_status', row['status'])
+                result.setdefault('recognition_error', json.loads(row['error_json']) if row['error_json'] else None)
+                result.update(task_id=task_id, run_id=row['run_id'], result_revision=row['revision'] + 1,
+                              reviewed_by=actor, reviewed_at=now(), completion_origin='human_review')
+                if result.get('error'):
+                    result.pop('error')
+                history = dict(task_id=task_id, run_id=row['run_id'], base_revision=row['revision'],
+                               result_revision=row['revision'] + 1, actor=actor, at=now(), request=body,
+                               before=original, after=result)
+                reference = self.storage.put(json.dumps(history, ensure_ascii=False, allow_nan=False).encode())
+                connection.execute(text("INSERT INTO artifacts(id,task_id,run_id,kind,reference) VALUES (:id,:task,:run,'review_revision',:ref)"),
+                                   dict(id=identity(), task=task_id, run=row['run_id'], ref=reference))
+                connection.execute(text('UPDATE tasks SET result_enc=:result,pages_enc=:pages,status=:status,revision=revision+1,error_json=NULL,updated_at=:at WHERE id=:id'),
+                                   dict(result=self.storage.pack(result), pages=self.storage.pack(pages), status=result['status'], at=now(), id=task_id))
+                self._audit(connection, 'human_review', actor, row, result_revision=row['revision'] + 1,
+                            status=result['status'])
+            return self.task(task_id)
+        except BaseException:
+            if reference is not None:
+                self.storage.delete(reference)
+            raise
 
     def cancel(self, task_id, run_id, revision, actor):
         with self.transaction() as connection:

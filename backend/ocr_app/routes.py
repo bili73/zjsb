@@ -1,21 +1,74 @@
 """Authenticated phase-two routes. Upload parsing is explicitly memory-only."""
 import uuid
+import hmac
+from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Request, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from python_multipart import MultipartParser
 from python_multipart.multipart import parse_options_header
 
-from .business import validate_upload
+from .business import prepare_uploads
 from .task_store import TaskError, SUPPORTED
+from .auth import SESSION_COOKIE, SESSION_SECONDS, same_origin, csrf_for
 
 
 class Version(BaseModel):
     model_config = ConfigDict(extra='forbid')
     run_id: uuid.UUID
-    expected_revision: int = Field(ge=0)
+    expected_revision: int = Field(ge=0, strict=True)
+
+
+class ReviewBody(Version):
+    fields: dict = Field(default_factory=dict)
+    absence_reasons: dict = Field(default_factory=dict)
+    accepted_issues: list[dict] = Field(default_factory=list)
+    items: list[dict] = Field(default_factory=list)
+    added_items: list[dict] = Field(default_factory=list)
+    removed_item_ids: list[str] = Field(default_factory=list)
+    findings: list[dict] = Field(default_factory=list)
+    report_summary: dict | None = None
+    members: list[dict] = Field(default_factory=list)
+    added_members: list[dict] = Field(default_factory=list)
+    removed_member_indexes: list[int] = Field(default_factory=list)
+    coverage: dict | None = None
+    generic: dict | None = None
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class FullPreview(Version):
+    page: int = Field(default=1, ge=1)
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+class RevealBody(Version):
+    fields: list[str] = Field(min_length=1)
+    reason: str = Field(min_length=1, max_length=1000, pattern=r'\S')
+
+
+class ExportBody(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    batch_id: uuid.UUID | None = None
+    task_ids: list[uuid.UUID] | None = None
+    masked: bool = True
+    reason: str | None = None
+    versions: list[dict] | None = None
+    format: Literal['xlsx'] = 'xlsx'
+
+
+async def bounded_json(request):
+    import json
+    data = bytearray()
+    async for chunk in request.stream():
+        if len(data) + len(chunk) > 8192:
+            raise TaskError('INVALID_REQUEST', '请求内容过大', 413)
+        data.extend(chunk)
+    try:
+        return json.loads(data)
+    except (ValueError, UnicodeError):
+        raise TaskError('INVALID_REQUEST', '请求内容无效', 422)
 
 
 async def memory_form(request):
@@ -76,7 +129,7 @@ async def memory_form(request):
     if not ended[0] or not files or sum(len(data) for data, _ in files) > 50 * 1024 * 1024:
         raise TaskError('INVALID_REQUEST', '上传表单不完整或超出容量', 400)
     if fields.get('doc_type_hint') not in SUPPORTED:
-        raise TaskError('UNSUPPORTED_DOC_TYPE', '本阶段仅接收体检报告、毕业证和学位证；不接收银行卡', 422)
+        raise TaskError('UNSUPPORTED_DOC_TYPE', '材料类型未受支持，请从材料目录选择', 422)
     if fields.get('abnormal_only', 'false').lower() not in {'true', 'false'}:
         raise TaskError('INVALID_REQUEST', '异常项目开关无效', 400)
     return files, fields
@@ -86,9 +139,18 @@ def router(business, runtime):
     routes = APIRouter(prefix='/api/v1')
 
     def principal(request: Request):
-        user = business.accounts.authenticate(request.headers.get('X-API-Key'))
+        token = request.cookies.get(SESSION_COOKIE)
+        user = business.accounts.session(token)
+        request.state.csrf_token = csrf_for(token) if user else None
+        if user and request.method not in {'GET', 'HEAD', 'OPTIONS'}:
+            same_origin(request)
+            provided = request.headers.get('X-CSRF-Token', '')
+            if not provided.isascii() or not hmac.compare_digest(provided, request.state.csrf_token):
+                raise TaskError('FORBIDDEN', '登录校验已变化，请刷新工作台后再试', 403)
         if not user:
-            raise TaskError('INVALID_REQUEST', '访问密钥无效或缺失', 401)
+            user = business.accounts.authenticate(request.headers.get('X-API-Key'))
+        if not user:
+            raise TaskError('UNAUTHORIZED', '请登录工作台', 401)
         return user
 
     def operator(user=Depends(principal)):
@@ -96,22 +158,78 @@ def router(business, runtime):
             raise TaskError('FORBIDDEN_REVEAL', '当前账号无此操作权限', 403)
         return user
 
+    def administrator(user=Depends(principal)):
+        if user['role'] != 'admin':
+            raise TaskError('FORBIDDEN', '只有管理员可以管理账号', 403)
+        return user
+
     @routes.get('/auth/me')
-    def me(user=Depends(principal)):
-        return dict(user, permissions=['rerun'] if user['role'] != 'viewer' else [])
+    def me(request: Request, user=Depends(principal)):
+        payload=dict(user, permissions=['rerun', 'review', 'reveal', 'export'] if user['role'] != 'viewer' else [])
+        if request.state.csrf_token:
+            payload['csrf_token']=request.state.csrf_token
+        return payload
+
+    @routes.post('/auth/login')
+    async def login(request: Request):
+        same_origin(request)
+        body=await bounded_json(request)
+        if (not isinstance(body,dict) or set(body)!={'username','password'} or
+                not isinstance(body['username'],str) or not 1<=len(body['username'])<=64 or
+                not isinstance(body['password'],str) or not 1<=len(body['password'])<=128):
+            raise TaskError('INVALID_REQUEST', '登录请求无效', 422)
+        from starlette.concurrency import run_in_threadpool
+        token=await run_in_threadpool(business.accounts.login,body['username'],body['password'],
+                                     request.client.host,request.cookies.get(SESSION_COOKIE))
+        user=business.accounts.session(token)
+        if user is None:
+            raise TaskError('UNAUTHORIZED', '账号状态已变化，请重新登录', 401)
+        response=JSONResponse(dict(user,csrf_token=csrf_for(token),
+                                  permissions=['rerun','review','reveal','export'] if user['role']!='viewer' else []))
+        response.set_cookie(SESSION_COOKIE,token,max_age=SESSION_SECONDS,httponly=True,
+                            secure=request.url.scheme=='https',samesite='strict',path='/')
+        return response
+
+    @routes.post('/auth/logout',status_code=204)
+    def logout(request: Request, user=Depends(principal)):
+        business.accounts.logout(request.cookies.get(SESSION_COOKIE))
+        response=Response(status_code=204)
+        response.delete_cookie(SESSION_COOKIE,httponly=True,secure=request.url.scheme=='https',samesite='strict',path='/')
+        return response
+
+    @routes.get('/admin/users')
+    def users(user=Depends(administrator)):
+        return dict(items=business.accounts.users())
+
+    @routes.post('/admin/users', status_code=201)
+    async def create_user(request: Request, user=Depends(administrator)):
+        body = await bounded_json(request)
+        if (not isinstance(body, dict) or not {'username', 'password', 'display_name'} <= set(body)
+                or set(body) - {'username', 'password', 'display_name', 'role'}):
+            raise TaskError('INVALID_REQUEST', '账号请求字段无效', 422)
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(business.accounts.set_user, body['username'], body['password'],
+                                      body['display_name'], body.get('role', 'operator'), create_only=True)
+
+    @routes.get('/doc-types')
+    def doc_types(user=Depends(principal)):
+        from .doc_profiles import catalogue
+        return catalogue()
 
     @routes.get('/batches')
-    def batches(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), user=Depends(principal)):
-        return business.store.batches(page, page_size)
+    def batches(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
+                date_from: date | None = None, date_to: date | None = None, user=Depends(principal)):
+        return business.store.batches(page, page_size, date_from, date_to)
 
     @routes.post('/batches', status_code=202)
     async def upload(request: Request, user=Depends(operator)):
         if not runtime.is_alive():
             raise TaskError('INTERNAL_ERROR', '处理服务不可用，请检查引擎状态并重新启动程序', 503)
         files, fields = await memory_form(request)
-        # Decoding is isolated from the event loop; uploads never start model inference.
+        # Admission stays off the event loop. Cards use the bounded memory-only
+        # safety pass before any durable writes; other types only decode here.
         from starlette.concurrency import run_in_threadpool
-        validated = await run_in_threadpool(lambda: [validate_upload(data, name) for data, name in files])
+        validated = await run_in_threadpool(prepare_uploads, files, fields['doc_type_hint'], runtime)
         return await run_in_threadpool(business.store.create_batch, validated, fields['doc_type_hint'], user['user_id'],
                                       {'abnormal_only': fields.get('abnormal_only', 'false').lower() == 'true'})
 
@@ -137,6 +255,38 @@ def router(business, runtime):
     def result(task_id: uuid.UUID, items_filter: Literal['all', 'abnormal', 'unknown'] | None = None,
                include_normal_summary: bool = True, user=Depends(principal)):
         return business.store.result(str(task_id), items_filter, include_normal_summary)
+
+    @routes.post('/tasks/{task_id}/review')
+    def review(task_id: uuid.UUID, body: ReviewBody, user=Depends(operator)):
+        return business.store.review(str(task_id), body.model_dump(mode='json', exclude_unset=True), user['user_id'])
+
+    @routes.get('/tasks/{task_id}/preview')
+    def preview(task_id: uuid.UUID, run_id: uuid.UUID, result_revision: int = Query(ge=0),
+                page: int = Query(1, ge=1), stage: Literal['corrected'] = 'corrected',
+                masked: bool = True, user=Depends(principal)):
+        from .preview import corrected_preview
+        data = corrected_preview(business.store, str(task_id), str(run_id), result_revision, page,
+                                 actor=user['user_id'], role=user['role'])
+        return Response(data, media_type='image/png', headers={'X-Preview-Stage': 'corrected', 'X-Result-Revision': str(result_revision)})
+
+    @routes.post('/tasks/{task_id}/preview')
+    def full_preview(task_id: uuid.UUID, body: FullPreview, user=Depends(operator)):
+        from .preview import corrected_preview
+        data = corrected_preview(business.store, str(task_id), str(body.run_id), body.expected_revision, body.page,
+                                 actor=user['user_id'], role=user['role'], masked=False, access_reason=body.reason)
+        return Response(data, media_type='image/png', headers={'X-Preview-Stage': 'corrected', 'X-Result-Revision': str(body.expected_revision)})
+
+    @routes.post('/tasks/{task_id}/reveal')
+    def reveal(task_id: uuid.UUID, body: RevealBody, user=Depends(operator)):
+        from .preview import reveal_fields
+        return reveal_fields(business.store, str(task_id), body.model_dump(mode='json'), user['user_id'], user['role'])
+
+    @routes.post('/export')
+    def export(body: ExportBody, user=Depends(principal)):
+        from .exporting import export_results
+        data = export_results(business.store, body.model_dump(mode='json', exclude_none=True), user['user_id'], user['role'])
+        return Response(data, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        headers={'Content-Disposition': 'attachment; filename="reviewed-results.xlsx"'})
 
     @routes.post('/tasks/{task_id}/cancel', status_code=202)
     def cancel(task_id: uuid.UUID, version: Version, user=Depends(operator)):

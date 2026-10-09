@@ -1,0 +1,166 @@
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { ApiFailure, isAbort } from '../api.ts'
+import type { BusinessApi } from '../api.ts'
+import type { FieldSource, Task } from '../business.ts'
+import type { LocalPreview } from '../workbench.ts'
+import { errorMessages } from '../diagnostics.ts'
+const props = defineProps<{ task: Task; api: BusinessApi | null; preview?: LocalPreview; source: FieldSource | null; canWrite: boolean }>()
+const emit = defineEmits<{ (e: 'unauthorized'): void }>()
+
+// 每页独立状态：懒加载（IntersectionObserver 滚动到附近才请求），点击进全屏缩放查看器。
+interface PageEntry { url: string; corrected: boolean; loaded: boolean; status: 'idle' | 'loading' | 'done' | 'error' }
+const maxPage = computed(() => Math.max(1, props.task.actual_source_page_count ?? props.task.page_count))
+const entries = reactive<PageEntry[]>(Array.from({ length: maxPage.value }, () => ({ url: '', corrected: false, loaded: false, status: 'idle' })))
+const failure = ref('')
+const jumpPage = ref(1)
+const loading = ref(false)
+const controllers = new Map<number, AbortController>()
+const pageEls = new Map<number, HTMLElement>()
+const visiblePages = new Set<number>()
+let observer: IntersectionObserver | undefined
+let selection = 0
+
+function setPageRef(el: unknown, page: number) {
+  if (el instanceof HTMLElement) {
+    pageEls.set(page, el)
+    observer?.observe(el)
+  } else pageEls.delete(page)
+}
+
+function clearPage(page: number) {
+  const entry = entries[page - 1]
+  if (entry?.url) URL.revokeObjectURL(entry.url)
+  if (entry) { entry.url = ''; entry.corrected = false; entry.loaded = false; entry.status = 'idle' }
+}
+
+function resetAll() {
+  for (const controller of controllers.values()) controller.abort()
+  controllers.clear()
+  for (let page = 1; page <= entries.length; page++) clearPage(page)
+}
+
+async function loadPage(page: number) {
+  if (!props.api || !props.canWrite) { failure.value = props.canWrite ? '预览组件未就绪。' : '当前只读账号无原图预览权限。'; return }
+  const entry = entries[page - 1]
+  if (!entry || entry.status === 'loading' || entry.url) return
+  controllers.get(page)?.abort()
+  const current = new AbortController()
+  controllers.set(page, current)
+  entry.status = 'loading'
+  failure.value = ''
+  try {
+    const response = await props.api.preview(props.task, page, current.signal)
+    if (current.signal.aborted) return
+    entry.url = URL.createObjectURL(response.blob)
+    entry.corrected = response.corrected
+    entry.status = 'done'
+  } catch (error) {
+    if (isAbort(error) || current.signal.aborted) return
+    entry.status = 'error'
+    if (error instanceof ApiFailure) { failure.value = errorMessages[error.card.code]; if (error.card.http_status === 401) emit('unauthorized') }
+  }
+}
+
+function onIntersect(records: IntersectionObserverEntry[]) {
+  for (const record of records) {
+    const page = Number((record.target as HTMLElement).dataset.page)
+    if (!page) continue
+    if (record.isIntersecting) { visiblePages.add(page); void loadPage(page) } else visiblePages.delete(page)
+  }
+}
+
+function goTo(page: number) {
+  const target = Math.min(Math.max(1, Math.floor(page || 1)), maxPage.value)
+  jumpPage.value = target
+  pageEls.get(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  void loadPage(target)
+}
+
+function reloadAll() {
+  resetAll()
+  for (const page of visiblePages) void loadPage(page)
+}
+
+function overlayFor(page: number) {
+  if (props.task.doc_type !== 'MEDICAL_REPORT' || !entries[page - 1]?.corrected || !entries[page - 1]?.loaded || !props.source?.bbox || props.source.page !== page) return null
+  const [x1, y1, x2, y2] = props.source.bbox
+  return { left: `${x1 * 100}%`, top: `${y1 * 100}%`, width: `${(x2 - x1) * 100}%`, height: `${(y2 - y1) * 100}%` }
+}
+
+watch(() => [props.source, entries[(props.source?.page ?? 1) - 1]?.status, entries[(props.source?.page ?? 1) - 1]?.loaded] as const, async ([source]) => {
+  const current = ++selection
+  if (!source) return
+  const page = Math.min(Math.max(1, source.page ?? 1), maxPage.value)
+  jumpPage.value = page
+  await loadPage(page)
+  await nextTick()
+  const entry = entries[page - 1]
+  if (current !== selection || entry?.status === 'loading' || (entry?.url && !entry.loaded)) return
+  const pageEl = pageEls.get(page)
+  const target = pageEl?.querySelector('.bbox-overlay') ?? pageEl
+  target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}, { flush: 'post' })
+watch(() => `${props.task.task_id}:${props.task.run_id}:${props.task.result_revision}`, () => {
+  resetAll()
+  failure.value = ''
+  for (const page of visiblePages) void loadPage(page)
+})
+observer = new IntersectionObserver(onIntersect, { root: null, rootMargin: '150% 0px' })
+onBeforeUnmount(() => {
+  selection++
+  observer?.disconnect()
+  resetAll()
+})
+void (async () => {
+  loading.value = true
+  await loadPage(1)
+  loading.value = false
+})()
+</script>
+<template>
+  <section v-loading="loading" class="source-preview">
+    <h3>原件对照 · 服务端校正页</h3>
+    <div class="page-tools">
+      <span>共 {{ maxPage }} 页 · 上下滚动连续浏览，点击页面全屏缩放</span>
+      <el-input-number v-model="jumpPage" :min="1" :max="maxPage" :precision="0" size="small" controls-position="right" />
+      <el-button size="small" @click="goTo(jumpPage)">跳页</el-button>
+      <el-button size="small" :disabled="!canWrite" @click="reloadAll()">重新读取</el-button>
+    </div>
+    <p v-if="task.doc_type === 'MEDICAL_REPORT'" class="conf">无可靠定位框时显示整页。来源框仅叠加在版本一致的校正页，不能证明模型已读完整页。</p>
+    <p v-else class="conf">证件提供整页原图对照，可点击图片放大查看。</p>
+    <el-alert v-if="failure" type="warning" :closable="false">{{ failure }}</el-alert>
+    <ol class="page-list">
+      <li v-for="n in maxPage" :key="n" :ref="el => setPageRef(el, n)" :data-page="n" class="page-item">
+        <span class="page-no">第 {{ n }} 页</span>
+        <div v-if="entries[n - 1]?.status === 'error'" class="page-error">该页读取失败。<el-button link type="primary" @click="entries[n - 1]!.status = 'idle'; loadPage(n)">重试</el-button></div>
+        <el-skeleton v-else-if="entries[n - 1]?.status === 'loading'" animated class="page-skeleton" />
+        <figure v-if="entries[n - 1]?.url" class="img-wrap">
+          <el-image :src="entries[n - 1]!.url" :preview-src-list="[entries[n - 1]!.url]" preview-teleported hide-on-click-modal fit="scale-down" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
+          <span v-if="overlayFor(n)" class="bbox-overlay" :style="overlayFor(n)!" />
+        </figure>
+        <div v-else-if="entries[n - 1]?.status !== 'error' && entries[n - 1]?.status !== 'loading'" class="page-holder">滚动到此处时加载本页</div>
+      </li>
+    </ol>
+    <details v-if="preview" open class="local-preview">
+      <summary>本地上传材料（会话内，未经校正，不叠加来源框）</summary>
+      <iframe v-if="preview.kind === 'pdf'" class="pdf-frame" :src="`${preview.url}#page=${jumpPage}`" title="本地原件" />
+      <el-image v-else-if="preview.kind === 'image'" :src="preview.url" :preview-src-list="[preview.url]" preview-teleported hide-on-click-modal fit="scale-down" class="local-image" alt="本地上传材料" />
+      <el-alert v-else type="info" :closable="false">本浏览器可能无法直接渲染 HEIC，请在全屏查看器中确认或换用图像格式。</el-alert>
+    </details>
+  </section>
+</template>
+<style scoped>
+.page-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.page-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.page-item { scroll-margin-top: 8px; }
+.page-no { display: block; font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 4px; }
+.page-image { width: 100%; display: block; }
+.img-wrap { display: block; width: 100%; margin: 0; }
+.page-holder { border: 1px dashed var(--el-border-color); border-radius: 6px; min-height: 160px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--el-text-color-secondary); }
+.page-skeleton { min-height: 160px; }
+.page-error { font-size: 13px; color: var(--el-color-danger); }
+.bbox-overlay { position: absolute; border: 2px solid var(--el-color-danger); background: rgba(255, 93, 93, 0.14); pointer-events: none; border-radius: 2px; }
+.local-preview { margin-top: 16px; }
+.local-image { width: 100%; display: block; }
+</style>

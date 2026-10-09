@@ -20,6 +20,8 @@ Reliable PDF text keeps its positions and bypasses OCR. The first pass persists 
 
 ## Decision audit
 
+The implemented [password sessions](2026-10-09-web-password-sessions.md) replace the browser key gate with named Cookie principals after local account provisioning; task persistence, versions and actor audit remain. The [hosted web-session proposal](../../proposed/architecture/2026-10-09-hosted-web-session-auth.md) still requires Mac container/native-inference, secret migration and proxy qualification; it does not replace DPAPI storage or Windows supervision yet.
+
 The [runtime decision](../../implemented/architecture/2026-09-29-local-dual-model-lifecycle.md) partially overlaps in process ownership and is retained. The [layout experiment](../../implemented/testing/2026-09-29-automatic-layout-evaluation.md) supplies failure evidence, not a production coverage guarantee. [Local diagnostics](2026-09-30-local-diagnostics.md) owns error logging and shares task/run identifiers. The DDE tooling note is unrelated.
 
 The [schema extraction diagnostic](../testing/2026-09-30-schema-extraction-benchmark.md) tests a separate candidate route without changing production extraction. Its improved recall and higher false-value rate do not supersede this task workflow.
@@ -56,3 +58,27 @@ The [isolated current-pipeline acceptance](../testing/2026-10-08-current-pipelin
 The [HDR JPEG admission repair](../bug-fix/2026-10-08-hdr-jpeg-upload-admission.md) shares upload/worker image validation, preserves encrypted original bytes and replaces generic unsupported-image errors with actionable safe format rejection. Its actual-route browser acceptance supplements the earlier synthetic mock API checks; admission success is separate from OCR accuracy.
 
 The former frontend portion is retired by the [frontend retirement](../../implemented/simplification/2026-10-08-retire-temporary-frontend.md); current Scope covers surviving code. Old UI checks describe historical acceptance.
+
+The [HR field profile](2026-10-08-hr-document-field-profile.md) narrows only public diploma fields and masks recognized mobile copies without rewriting encrypted history, run/revision or audit records.
+
+
+## Current contract extension
+
+[Document profiles](2026-10-08-card-and-document-profiles.md) extend type admission; [human review/export](2026-10-08-human-review-and-xlsx-export.md) extend the read-only workflow; [internal full values](2026-10-08-internal-unmasking-and-review-friction.md) replace masked business outputs under exact user authorization. Persistence, encryption, versions and original run history remain active.
+
+
+## Batch presentation extension
+
+On2026-10-08 the user requests UTC+8 display, newest-created batch first and document-type batch names. Keep canonical UTC timestamps and persisted original history unchanged; the frontend explicitly formats aware timestamps in Asia/Shanghai across batch, engine and diagnostic displays. Sort known creation timestamps descending rather than reversing API order through repeated unshift; refresh, pagination and optimistic insertion must preserve that order. Invalid/missing times do not invent a time. New encrypted batch names use the canonical document label. Historical response names are derived from actual task document types without rewriting name_enc; mixed known types use a combined readable label, an empty/unknown batch stays explicitly unspecified. UI creation-time labels must not say updated time while showing created_at.
+
+Overwriting every stored timestamp with local wall time seems direct, but can change ordering/audit semantics and creates migration work without improving display; use a fixed display timezone. Renaming only newly uploaded batches avoids touching old records, but leaves historical batches hard to find; project document-type names in responses too. This extends the [current frontend](2026-10-08-frontend-rebuild-element-plus.md) display contract while retaining batch IDs, task lifecycle, encryption and immutable run history.
+
+
+## Batch presentation verification
+
+Failure-first CPU tests reproduce the old stored upload label and reversed first list. New and historical type-name tests preserve encrypted name history and UTC timestamps; empty/mixed types are explicit.54 integrated frontend tests/typecheck/build and the52-batch targeted synthetic browser check pass. Single-task ordering, upload-ID order and worker claim FIFO are unchanged. This is UI/API presentation verification, not OCR or hardware timing.
+
+
+## Current refinement
+
+The [calendar browser](2026-10-09-batch-calendar-browser.md) adds read-only creation-day ranges before pagination without changing identities or UTC storage. The [bank input/recovery refinement](2026-10-09-bank-auto-recognition.md) queues full photos without synchronous OCR and creates a new task for a recovered single crop, retaining original tasks.

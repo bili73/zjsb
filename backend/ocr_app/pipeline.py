@@ -42,6 +42,9 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     # Only coordinates and small metadata survive a page iteration, never PIL images.
     pending = {}
     stage, stop_code = 'PREPROCESSING', None
+    bank_admission = options.get('bank_admission') if doc_type == 'BANK_CARD' else None
+    if not isinstance(bank_admission, dict) or not bank_admission.get('text') or bank_admission.get('termination_reason') != 'eos':
+        bank_admission = None
     medical = doc_type == 'MEDICAL_REPORT'
     model = 'paddleocr_vl' if medical else 'glm_ocr'
     alternate = 'glm_ocr' if medical else 'paddleocr_vl'
@@ -96,6 +99,15 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 for block in page.evidence)
             pages.append(info)
             evidence.extend(page.evidence)
+            if bank_admission:
+                # Admission recognized the exact re-encoded crop before storage.
+                # Reuse that result instead of spending a second model request.
+                region_id = str(uuid4())
+                info['regions'].append(dict(region_id=region_id, bbox=[0., 0., 1., 1.],
+                                             extraction_method='ocr', status='recognized'))
+                evidence.append(dict(text=bank_admission['text'], page=page.index, region_id=region_id,
+                                     bbox=[0., 0., 1., 1.], bbox_kind='region', extraction_method='ocr'))
+                page.ocr_boxes = []
             limitations.extend(page.limitations)
             warnings.extend(dict(code=code, message='PDF文字或布局需通过识别补充。') for code in page.warnings)
             regions = [region for box in page.ocr_boxes
@@ -111,7 +123,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
             if planned:
                 pending[page.index] = planned
             else:
-                info['extraction_method'] = 'pdf_text'
+                info['extraction_method'] = 'ocr' if bank_admission else 'pdf_text'
             publish('PREPROCESSING', 10)
         page = None  # Do not retain the final full-page image while the second pass starts.
         encoded_page = None
@@ -234,6 +246,8 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     if any(region['status'] == 'pending' for page_info in pages for region in page_info['regions']):
         limitations.append('仍有待OCR区域未处理；已读取的全部页文字及原生表格已保留，结果不代表完整识别。')
     result = extract_result(evidence, doc_type, complete=False)
+    if bank_admission:
+        result['admission_seconds'] = bank_admission.get('elapsed_seconds')
     result['limitations'] = list(dict.fromkeys(result['limitations'] + limitations))
     if not stop_code:
         try:

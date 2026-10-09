@@ -194,6 +194,25 @@ def _recover_header_body(page, table, neighbors):
     return dict(bbox=tuple(full_box), rows=rows, cells=geometry, recovery='header_guided_text'), None
 
 
+def _split_header_continuation(page, table, previous):
+    """Join the observed adjacent-page 风险 / 等级 split, only at equal columns."""
+    if previous is None or len(table['rows']) != 1 or table['bbox'][1] > page.rect.height * .25:
+        return None
+    prior = previous['table']
+    labels = [re.sub(r'\s+', '', value or '') for value in table['rows'][0]]
+    old_labels = [re.sub(r'\s+', '', value or '') for value in prior['rows'][0]]
+    if len(labels) != len(old_labels) or labels != [''] * (len(labels) - 1) + ['等级']:
+        return None
+    if abs(page.rect.width - previous['size'][0]) > 1 or abs(page.rect.height - previous['size'][1]) > 1:
+        return None
+    if any(cell is None for cell in table['cells'][0] + prior['cells'][0]):
+        return None
+    if any(abs(a[0] - b[0]) > 1 or abs(a[2] - b[2]) > 1
+           for a, b in zip(table['cells'][0], prior['cells'][0])):
+        return None
+    return dict(table, rows=[prior['rows'][0][:-1] + ['风险等级']])
+
+
 def decode_pages(data: bytes, check=lambda: None):
     """Yield corrected full pages; reliable text and uncovered image regions.
 
@@ -210,12 +229,17 @@ def decode_pages(data: bytes, check=lambda: None):
         yield Page(1, image, ocr_boxes=[(0, 0, *image.size)])
         return
     with _pdf(data) as pdf:
+        continuation = None
         for index, page in enumerate(pdf, 1):
+            previous, continuation = continuation, None
+            continuation_used = False
             check()
             pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
             image = Image.frombytes('RGB', (pix.width, pix.height), pix.samples)
             result = Page(index, image)
             if image.convert('L').getextrema()[0] >= 250:
+                if previous:
+                    result.limitations.append(previous['limitation'])
                 yield result
                 continue
             blocks = page.get_text('blocks')
@@ -258,10 +282,24 @@ def decode_pages(data: bytes, check=lambda: None):
                 try:
                     tables = [_table_snapshot(table) for table in page.find_tables().tables]
                     for table in tables:
+                        inherited = _split_header_continuation(page, table, previous)
                         try:
-                            recovered, limitation = _recover_header_body(page, table, tables)
+                            recovered, limitation = _recover_header_body(page, inherited or table, tables)
                         except Exception:
                             recovered, limitation = table, '原生表体补充恢复失败，保留原线框表格和文字证据。'
+                        if inherited is not None:
+                            continuation_used = True
+                            if len(recovered['rows']) > 1:
+                                recovered['recovery'] = 'split_header_continuation'
+                        # Only defer a known partial header on the immediately following page.
+                        # A failed/unmatched continuation still reports a limitation.
+                        if (limitation and len(table['rows']) == 1 and _header_columns(table['rows'][0])
+                                and re.sub(r'\s+', '', table['rows'][0][-1] or '') == '风险'
+                                and table['bbox'][1] > page.rect.height * .8 and index < len(pdf)):
+                            continuation = dict(table=table, size=(page.rect.width, page.rect.height),
+                                                limitation=limitation, page=index,
+                                                bbox=normalized_box(box_of(table['bbox']), image.size))
+                            limitation = None
                         if limitation:
                             result.limitations.append(limitation)
                         rows = recovered['rows']
@@ -269,6 +307,9 @@ def decode_pages(data: bytes, check=lambda: None):
                                for cell in row) + '</tr>' for row in rows) + '</table>'
                         block = _evidence(html, index, normalized_box(box_of(recovered['bbox']), image.size))
                         block['table_recovery'] = recovered['recovery']
+                        if recovered['recovery'] == 'split_header_continuation':
+                            block['table_header_source'] = dict(page=previous['page'], bbox=previous['bbox'],
+                                                                text=previous['table']['rows'][0])
                         block['table_rows'] = []
                         for row_index, cells in enumerate(recovered['cells']):
                             present = [fitz.Rect(cell) for cell in cells if cell is not None]
@@ -282,6 +323,8 @@ def decode_pages(data: bytes, check=lambda: None):
                         result.evidence.append(block)
                 except Exception:
                     result.limitations.append('PDF原生表格布局提取不可用，保留文字证据供人工核对。')
+            if previous and not continuation_used:
+                result.limitations.append(previous['limitation'])
             check()
             yield result
 

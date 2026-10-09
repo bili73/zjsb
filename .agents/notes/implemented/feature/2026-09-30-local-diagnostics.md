@@ -49,3 +49,5 @@ A sudden power loss cannot guarantee the final buffered event. Safe structured r
 The [HDR JPEG admission repair](../bug-fix/2026-10-08-hdr-jpeg-upload-admission.md) shares upload/worker image validation, preserves encrypted original bytes and replaces generic unsupported-image errors with actionable safe format rejection. Its actual-route browser acceptance supplements the earlier synthetic mock API checks; admission success is separate from OCR accuracy.
 
 The former frontend portion is retired by the [frontend retirement](../../implemented/simplification/2026-10-08-retire-temporary-frontend.md); current Scope covers surviving code. Old UI checks describe historical acceptance.
+
+The [HR field profile](2026-10-08-hr-document-field-profile.md) keeps added personal/diagnosis values in encrypted business evidence and out of safe diagnostics; anonymous native replay counts are separate from diagnostic logs.

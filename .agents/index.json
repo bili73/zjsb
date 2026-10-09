@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-08T03:27:51.416Z",
+  "generatedAt": "2026-10-09T12:51:17.155Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,14 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 18,
+    "activeNotes": 45,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 95,
+    "relations": 284,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 16
+      "implemented": 41,
+      "rejected": 2
     },
     "staleNotes": []
   },
@@ -41,6 +42,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
@@ -48,20 +50,21 @@
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
       ],
       "citedBy": [
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md"
       ],
-      "lastVerified": "2026-10-08",
+      "lastVerified": "2026-10-09",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
         "monthsSinceVerify": 0,
-        "rule": "最近复核 2026-10-08"
+        "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep current recognition optimization independent of the host backend. When the Mac is available, qualify its native Apple GPU route using the existing frozen evidence and separate measurements. The official GLM MLX guide and Paddle Apple S",
-      "bodySha256": "66484b91bc2482ee",
+      "bodySha256": "3e17d212ed6bd854",
       "lines": {
         "title": 1,
         "status": 3,
@@ -86,51 +89,68 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 29
+            "line": 31
           },
           {
             "title": "Acceptance criteria",
-            "line": 36
+            "line": 38
           },
           {
             "title": "Risks",
-            "line": 43
+            "line": 45
           }
         ]
       },
       "updateHint": "编辑 .agents/notes/proposed/architecture/2026-10-08-mac-studio-inference-service.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
-      "id": "proposed/feature/2026-10-08-hr-document-field-profile.md",
-      "path": ".agents/notes/proposed/feature/2026-10-08-hr-document-field-profile.md",
-      "anchor": "// Note: .agents/notes/proposed/feature/2026-10-08-hr-document-field-profile.md",
-      "title": "Simplify diploma output and extract evidence-bound medical personal information, grades and diagnoses",
+      "id": "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "path": ".agents/notes/proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "anchor": "// Note: .agents/notes/proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "title": "Replace the local API-key gate with small-team web sessions",
       "lifecycle": "proposed",
-      "class": "feature",
-      "date": "2026-10-08",
+      "class": "architecture",
+      "date": "2026-10-09",
       "scope": [
-        "backend/ocr_app/extraction.py",
-        "backend/ocr_app/documents.py",
-        "backend/ocr_app/task_store.py",
+        "backend/ocr_app",
+        "backend/model_worker.py",
+        "frontend/src",
         "tests",
-        "scripts",
         "SPEC.md",
         "openapi.yaml",
+        "ARCHITECTURE.md",
+        "FRONTEND_FIELDS.md",
         "RUNTIME.md"
       ],
       "supersedes": null,
       "supersededBy": [],
-      "cites": [],
-      "citedBy": [],
-      "lastVerified": "2026-10-08",
+      "cites": [
+        "implemented/feature/2026-10-09-web-password-sessions.md",
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-09-admin-account-creation.md",
+        "implemented/feature/2026-10-09-web-password-sessions.md"
+      ],
+      "lastVerified": "2026-10-09",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
         "monthsSinceVerify": 0,
-        "rule": "最近复核 2026-10-08"
+        "rule": "最近复核 2026-10-09"
       },
-      "summary": "DIPLOMA returns11 structured fields instead of13, retaining six required keys and removing only principal/study_mode. DEGREE_CERT keeps study_mode. Deprecated diploma labels remain parsing boundaries so neighboring school, major and certifi",
-      "bodySha256": "0d1cf24774f230e2",
+      "summary": "Use a single shared HR workbench with one or two named accounts. Keep username/password login and server-side sessions. Create or reset accounts through a deployment command; omit public registration, email recovery and a user-management ap",
+      "bodySha256": "239c7c1cc6ea851f",
       "lines": {
         "title": 1,
         "status": 3,
@@ -147,27 +167,31 @@
           },
           {
             "title": "Proposal",
-            "line": 11
+            "line": 15
+          },
+          {
+            "title": "Assumptions and implementation order",
+            "line": 27
           },
           {
             "title": "Decision audit",
-            "line": 21
+            "line": 39
           },
           {
             "title": "Alternatives considered",
-            "line": 25
+            "line": 43
           },
           {
             "title": "Acceptance criteria",
-            "line": 33
+            "line": 51
           },
           {
             "title": "Risks",
-            "line": 40
+            "line": 59
           }
         ]
       },
-      "updateHint": "编辑 .agents/notes/proposed/feature/2026-10-08-hr-document-field-profile.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+      "updateHint": "编辑 .agents/notes/proposed/architecture/2026-10-09-hosted-web-session-auth.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
@@ -220,7 +244,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The launcher exposes the lightweight local UI/service first and starts an independent runtime worker. It sequentially loads and warms GLM-OCR then PaddleOCR-VL in their existing isolated environments. Both remain resident in default dual_re",
@@ -384,13 +408,16 @@
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "rejected/feature/2026-10-09-certificate-field-localization.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md"
       ],
       "lastVerified": "2026-10-08",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "When both models complete serial startup successfully, use two bounded document lanes: one certificate lane (DIPLOMA and DEGREE_CERT) and one medical lane, each with at most one supervised CPU task process. Single-resident or startup-degrad",
@@ -455,17 +482,26 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
         "implemented/testing/2026-09-30-whole-medical-corpus.md",
         "implemented/testing/2026-09-30-dual-certificate-extraction.md",
         "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
         "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
-        "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+        "implemented/simplification/2026-10-08-retire-temporary-frontend.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md"
       ],
       "citedBy": [
         "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
         "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
         "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
       ],
       "lastVerified": "2026-09-30",
@@ -476,7 +512,7 @@
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The implementation restores native medical structure and repairs the confirmed certificate mapping defects under the user's approved scope. Both deployed recognition models, the production default, serial GPU ownership, confidence semantics",
-      "bodySha256": "9eff674044a248f3",
+      "bodySha256": "7e066ea84b817a0f",
       "lines": {
         "title": 1,
         "status": 3,
@@ -493,27 +529,27 @@
           },
           {
             "title": "Decision",
-            "line": 19
+            "line": 21
           },
           {
             "title": "Decision audit",
-            "line": 52
+            "line": 54
           },
           {
             "title": "Alternatives considered",
-            "line": 56
+            "line": 58
           },
           {
             "title": "Testing",
-            "line": 65
+            "line": 67
           },
           {
             "title": "Consequences",
-            "line": 81
+            "line": 83
           },
           {
             "title": "Related verification",
-            "line": 87
+            "line": 89
           }
         ]
       },
@@ -637,7 +673,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Dual-resident startup remains the default and loads serially. The later independent queues decision permits cross-model inference and targeted stop while retaining180-second Task and181-second supervision. Medical generation uses20 seconds;",
@@ -713,7 +749,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Upload and worker validation share backend/ocr_app/image_admission.py. The policy keeps JPEG/PNG/HEIF/HEIC single-image support and allows exactly two-image MPO only when the first MP entry is a baseline primary JPEG and the second is expli",
@@ -757,6 +793,856 @@
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-08-medical-review-scope.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-08-medical-review-scope.md",
+      "title": "Apply the medical exclusions to human review",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-08",
+      "scope": [
+        "backend/ocr_app/extraction.py",
+        "backend/ocr_app/task_store.py",
+        "backend/ocr_app/review.py",
+        "frontend",
+        "tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "The same server-derived exact-name eligibility governs abnormal/statistical and medical item review scopes. abnormal_exclusion_reason includes SECTION_SUMMARY for exact 小结 (whitespace/trailing colon normalization only); HEIGHT_WEIGHT covers",
+      "bodySha256": "3283b1a416331d2e",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Testing",
+            "line": 32
+          },
+          {
+            "title": "Consequences",
+            "line": 40
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-08-medical-review-scope.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+      "title": "Show measured biochemical liver results and readable Excel anomalies",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/medical_ledger.py",
+        "backend/ocr_app/exporting.py",
+        "tests/test_medical_ledger.py",
+        "tests/test_business_workbook.py",
+        "backend/ocr_app/api.py",
+        "tests/test_runtime_api.py",
+        "tests/test_document_contract.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/bug-fix/2026-10-09-liver-abnormal-only.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+        "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Keep existing 生化检验报告单 source attribution and its liver-name/abbreviation whitelist; never treat every biochemical or hepatitis measurement as liver function. When liver_function has no abnormal summary or explicit conclusion, serialize the ",
+      "bodySha256": "f01806e2f9c2e3db",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Verified invariants",
+            "line": 32
+          },
+          {
+            "title": "Consequences",
+            "line": 36
+          },
+          {
+            "title": "Release verification",
+            "line": 41
+          },
+          {
+            "title": "Current refinement",
+            "line": 50
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+      "title": "Recover printed diploma school and date fields without suppressing genuine conflicts",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/extraction.py",
+        "backend/ocr_app/doc_profiles.py",
+        "backend/ocr_app/task_store.py",
+        "frontend/src",
+        "tests",
+        "scripts/replay_oct9_repairs.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Add observed signatory boundaries including 院长 with spaced-label forms; these delimiters do not restore removed signatory fields. Rank an explicit printed 校名/学校名称 field above an unlabelled cover/title candidate. Distinct equally authoritati",
+      "bodySha256": "d93741e516d954ee",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Decision audit",
+            "line": 23
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 27
+          },
+          {
+            "title": "Verified invariants",
+            "line": 35
+          },
+          {
+            "title": "Verification",
+            "line": 42
+          },
+          {
+            "title": "Consequences",
+            "line": 46
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+      "title": "Fill the liver ledger field only from confirmed abnormal measurements",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/medical_ledger.py",
+        "tests/test_medical_ledger.py",
+        "backend/ocr_app/api.py",
+        "tests/test_runtime_api.py",
+        "tests/test_document_contract.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "ARCHITECTURE.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+        "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+        "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+        "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Automatically populate liver_function only with confirmed abnormal source-backed measurements attributed to the liver group. Keep actual abnormal names, results, units and diagnoses; ignore normal/unknown measurements and normal or unclassi",
+      "bodySha256": "732fcaaebb538e25",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 15
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 19
+          },
+          {
+            "title": "Consequences",
+            "line": 25
+          },
+          {
+            "title": "Verification",
+            "line": 29
+          },
+          {
+            "title": "Related normal-summary rule",
+            "line": 37
+          },
+          {
+            "title": "Later measured-group summary policy",
+            "line": 41
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-09-liver-abnormal-only.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+      "title": "Read the known medical institution from its cover information row",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/medical_ledger.py",
+        "tests/test_medical_cover_institution.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "backend/ocr_app/api.py",
+        "RUNTIME.md",
+        "FRONTEND_FIELDS.md",
+        "ARCHITECTURE.md",
+        "tests/test_document_contract.py",
+        "tests/test_runtime_api.py"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "When no explicit institution value or conflict already exists, accept the complete observed 普潓/普惠年华健康体检中心 branch line only on page one and within the observed lower-right personal-information band (normalized x-start at least .35, y-start .",
+      "bodySha256": "fd88e475cf387c94",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Verified invariants",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 33
+          },
+          {
+            "title": "Verification",
+            "line": 39
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-09-medical-cover-institution.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+      "title": "Summarize measured medical groups without requiring a conclusion",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/api.py",
+        "backend/ocr_app/medical_ledger.py",
+        "backend/ocr_app/extraction.py",
+        "backend/ocr_app/exporting.py",
+        "frontend/src/business.ts",
+        "frontend/src/components/ResultView.vue",
+        "tests/test_medical_ledger.py",
+        "frontend/tests/business.test.ts",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+        "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+        "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Summarize all six groups from measured rows, independently of a printed conclusion. Keep confirmed abnormal results and conflicts ahead of normal fallback. Allow a source-backed, nonempty A-grade UNKNOWN row as report-level normal evidence,",
+      "bodySha256": "3c334cc3f1271673",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 24
+          },
+          {
+            "title": "Consequences",
+            "line": 31
+          },
+          {
+            "title": "Verification",
+            "line": 35
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+      "title": "Summarize source-backed normal groups without a printed conclusion",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/medical_ledger.py",
+        "tests/test_medical_ledger.py",
+        "backend/ocr_app/api.py",
+        "tests/test_runtime_api.py",
+        "tests/test_document_contract.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+        "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+        "rejected/feature/2026-10-09-medical-threshold-review.md",
+        "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+        "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "For blood_routine, urine_routine, ecg, dr_imaging and abdominal_ultrasound, derive 未见异常 when the observed group contains at least one eligible measured row, every group row has a real source and nonempty result, every row is NORMAL with a r",
+      "bodySha256": "b2f6dd5700b0c8a0",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 24
+          },
+          {
+            "title": "Consequences",
+            "line": 30
+          },
+          {
+            "title": "Verification",
+            "line": 34
+          },
+          {
+            "title": "Later measured-group summary policy",
+            "line": 40
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+      "title": "Keep source navigation for medical reports only",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-09",
+      "scope": [
+        "frontend/src",
+        "frontend/tests",
+        "backend/ocr_app/routes.py",
+        "requirements-app.lock.txt",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "rejected/feature/2026-10-09-certificate-field-localization.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "rejected/feature/2026-10-09-certificate-field-localization.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "The application has no experimental certificate helper, endpoint or added positioning dependencies. Field-level positioning/source controls appear only for medical reports; all document types retain whole-page image preview and manual editi",
+      "bodySha256": "8f170c72b206734e",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 15
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 19
+          },
+          {
+            "title": "Verification",
+            "line": 25
+          },
+          {
+            "title": "Consequences",
+            "line": 31
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-09-medical-only-source-navigation.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+      "title": "Recover observed cross-page laboratory headers and expose missing result links",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/documents.py",
+        "backend/ocr_app/extraction.py",
+        "backend/ocr_app/review.py",
+        "backend/ocr_app/task_store.py",
+        "frontend/src",
+        "tests",
+        "scripts/replay_oct9_repairs.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "rejected/feature/2026-10-09-medical-threshold-review.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Extend native table recovery with one bounded adjacent-page context for an observed split header: a qualified medical header at the prior page bottom ends in 风险, and the aligned next-page top header contains only 等级 in its last cell. Requir",
+      "bodySha256": "0058e5b771493d6b",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Decision audit",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Verified invariants",
+            "line": 32
+          },
+          {
+            "title": "Verification",
+            "line": 39
+          },
+          {
+            "title": "Consequences",
+            "line": 43
+          },
+          {
+            "title": "Later measured-group summary policy",
+            "line": 47
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-09-native-medical-table-continuation.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-09-selected-calendar-period.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-09-selected-calendar-period.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-09-selected-calendar-period.md",
+      "title": "Default calendar browsing to the selected period",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-09",
+      "scope": [
+        "frontend/src/components/BatchBoard.vue",
+        "frontend/src/App.vue",
+        "frontend/src/batchCalendar.ts",
+        "frontend/tests",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "ARCHITECTURE.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "implemented/feature/2026-10-09-material-time-download-names.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Initialize the calendar with today's Shanghai civil date and immediately filter the server-side batch list to that day. Day/week/month select the period containing the chosen anchor, so each view shows only that selected period. Clearing th",
+      "bodySha256": "a62c63747c15e437",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Consequences",
+            "line": 28
+          },
+          {
+            "title": "Verification",
+            "line": 32
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-09-selected-calendar-period.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "path": ".agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -783,6 +1669,8 @@
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/feature/2026-10-09-web-password-sessions.md",
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
@@ -790,10 +1678,18 @@
         "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
         "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
         "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
-        "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+        "implemented/simplification/2026-10-08-retire-temporary-frontend.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md"
       ],
       "citedBy": [
         "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
@@ -801,21 +1697,30 @@
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "implemented/feature/2026-10-09-web-password-sessions.md",
         "implemented/testing/2026-09-30-dual-certificate-extraction.md",
         "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
         "implemented/testing/2026-09-30-whole-medical-corpus.md",
         "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+        "rejected/feature/2026-10-09-certificate-field-localization.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md"
       ],
       "lastVerified": "2026-10-08",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Local SQLite uses synchronous SQLAlchemy and versioned Alembic migrations. Short transactions atomically claim tasks and protect run/revision publication, cancellation and reruns. The runtime worker remains the sole model coordinator. All p",
-      "bodySha256": "16e230820741ec42",
+      "bodySha256": "fecbb064e88fbed7",
       "lines": {
         "title": 1,
         "status": 3,
@@ -840,19 +1745,35 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 27
+            "line": 29
           },
           {
             "title": "Testing",
-            "line": 33
+            "line": 35
           },
           {
             "title": "Consequences",
-            "line": 46
+            "line": 48
           },
           {
             "title": "Related verification",
-            "line": 52
+            "line": 54
+          },
+          {
+            "title": "Current contract extension",
+            "line": 65
+          },
+          {
+            "title": "Batch presentation extension",
+            "line": 70
+          },
+          {
+            "title": "Batch presentation verification",
+            "line": 77
+          },
+          {
+            "title": "Current refinement",
+            "line": 82
           }
         ]
       },
@@ -884,7 +1805,8 @@
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md",
         "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
-        "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+        "implemented/simplification/2026-10-08-retire-temporary-frontend.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md"
       ],
       "citedBy": [
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
@@ -892,17 +1814,19 @@
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md"
       ],
       "lastVerified": "2026-10-08",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Diagnostics initialize before launcher configuration and business imports. One structured JSONL writer per process instance rotates at 10 MiB across five files; startup/export enforce seven-day retention. Records associate session, request,",
-      "bodySha256": "98782ed8507d1d2e",
+      "bodySha256": "a976549110f9ddcc",
       "lines": {
         "title": 1,
         "status": 3,
@@ -942,6 +1866,1304 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-09-30-local-diagnostics.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "path": ".agents/notes/implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "title": "Add evidence-bound card and document profiles",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-08",
+      "scope": [
+        "backend/ocr_app",
+        "tests",
+        "frontend",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "requirements-app.lock.txt"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "A backend document catalogue owns field names, editability, conditional applicability and required fields. GET /doc-types supplies that catalogue to the UI. Pure versioned validation distinguishes FORMAT, CHECKSUM and OFFICIAL outcomes; unk",
+      "bodySha256": "ddb7f07978905a93",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Verified behavior",
+            "line": 34
+          },
+          {
+            "title": "Consequences",
+            "line": 38
+          },
+          {
+            "title": "Verification",
+            "line": 44
+          },
+          {
+            "title": "Final offline-bank and review verification",
+            "line": 48
+          },
+          {
+            "title": "Export-policy boundary",
+            "line": 52
+          },
+          {
+            "title": "Current input-policy refinement",
+            "line": 57
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-08-card-and-document-profiles.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "path": ".agents/notes/implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "title": "Rebuild the frontend with Element Plus and a central batch monitor",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-08",
+      "scope": [
+        "frontend",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-web-password-sessions.md",
+        "implemented/feature/2026-10-09-admin-account-creation.md",
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+        "implemented/bug-fix/2026-10-09-selected-calendar-period.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/feature/2026-10-09-admin-account-creation.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "implemented/feature/2026-10-09-web-password-sessions.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "- Stack: Vue 3.5 + TypeScript + Vite, Element Plus 2.14 full import with zh-cn locale, pinned exact dependency versions. Composables only (no Pinia, no vue-router), matching ARCHITECTURE.md's composable-first stance for this local tool. - C",
+      "bodySha256": "762a784769ddf003",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 38
+          },
+          {
+            "title": "Testing",
+            "line": 49
+          },
+          {
+            "title": "Consequences",
+            "line": 53
+          },
+          {
+            "title": "Current contract extension",
+            "line": 58
+          },
+          {
+            "title": "User presentation corrections",
+            "line": 65
+          },
+          {
+            "title": "Presentation verification",
+            "line": 70
+          },
+          {
+            "title": "Medical review scope",
+            "line": 74
+          },
+          {
+            "title": "Required-value export extension",
+            "line": 78
+          },
+          {
+            "title": "Current refinement",
+            "line": 83
+          },
+          {
+            "title": "Medical-only source navigation",
+            "line": 88
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-08-frontend-rebuild-element-plus.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "path": ".agents/notes/implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "title": "Simplify diploma output and extract evidence-bound medical personal information, grades and diagnoses",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-08",
+      "scope": [
+        "backend/ocr_app/extraction.py",
+        "backend/ocr_app/documents.py",
+        "backend/ocr_app/task_store.py",
+        "tests",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "backend/ocr_app/api.py",
+        "RUNTIME.md",
+        "ARCHITECTURE.md",
+        "IMPLEMENTATION_PLAN.md",
+        "FRONTEND_FIELDS.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/simplification/2026-10-08-retire-temporary-frontend.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/bug-fix/2026-10-09-medical-cover-institution.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+        "implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "rejected/feature/2026-10-09-medical-threshold-review.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "DIPLOMA returns11 structured fields instead of13, retaining six required keys and removing only principal/study_mode. DEGREE_CERT keeps study_mode. Deprecated diploma labels remain parsing boundaries so neighboring school, major and certifi",
+      "bodySha256": "1492f1c9afb8a2eb",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 23
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 29
+          },
+          {
+            "title": "Testing",
+            "line": 43
+          },
+          {
+            "title": "Consequences",
+            "line": 53
+          },
+          {
+            "title": "Current contract extension",
+            "line": 60
+          },
+          {
+            "title": "Subsection-label verification",
+            "line": 65
+          },
+          {
+            "title": "Medical catalogue and anomaly scope",
+            "line": 69
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-08-hr-document-field-profile.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "path": ".agents/notes/implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "title": "Complete human review and gated Excel export",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-08",
+      "scope": [
+        "backend/ocr_app",
+        "tests",
+        "frontend",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "requirements-app.lock.txt",
+        "IMPLEMENTATION_PLAN.md",
+        "RUNTIME.md",
+        "ARCHITECTURE.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "rejected/feature/2026-10-09-certificate-field-localization.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Review binds task_id, run_id and expected_revision in a short atomic transaction. Patches accept only editable business fields, current item/finding/member IDs and explicit acceptance of currently acceptable issues. Keep raw OCR/source and ",
+      "bodySha256": "043743c860395d98",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 24
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 30
+          },
+          {
+            "title": "Verified behavior",
+            "line": 37
+          },
+          {
+            "title": "Consequences",
+            "line": 41
+          },
+          {
+            "title": "Confirmed interaction update",
+            "line": 46
+          },
+          {
+            "title": "Verification",
+            "line": 53
+          },
+          {
+            "title": "Final acceptance checkpoint",
+            "line": 57
+          },
+          {
+            "title": "Export-policy extension",
+            "line": 61
+          },
+          {
+            "title": "Current refinement",
+            "line": 68
+          },
+          {
+            "title": "Medical-only source navigation",
+            "line": 73
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-08-human-review-and-xlsx-export.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "path": ".agents/notes/implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "title": "Show complete internal business values and simplify confirmation",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-08",
+      "scope": [
+        "backend/ocr_app",
+        "tests",
+        "frontend",
+        "scripts",
+        "openapi.yaml",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "ARCHITECTURE.md",
+        "IMPLEMENTATION_PLAN.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-web-password-sessions.md",
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "implemented/feature/2026-10-09-web-password-sessions.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "Authenticated structured business results return complete stored values and original evidence; remove the masked projection and inherited value_masked display values. New bank profiles omit the redundant card_number_masked field. The public",
+      "bodySha256": "51b27663556f2977",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Verified behavior",
+            "line": 30
+          },
+          {
+            "title": "Consequences",
+            "line": 34
+          },
+          {
+            "title": "Verification",
+            "line": 39
+          },
+          {
+            "title": "Export-policy boundary",
+            "line": 43
+          },
+          {
+            "title": "Current refinement",
+            "line": 48
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "path": ".agents/notes/implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "title": "Extract the report's examination-project catalogue",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-08",
+      "scope": [
+        "backend/ocr_app/extraction.py",
+        "backend/ocr_app/doc_profiles.py",
+        "backend/ocr_app/task_store.py",
+        "backend/ocr_app/review.py",
+        "backend/ocr_app/exporting.py",
+        "frontend",
+        "tests",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "exam_projects is an editable optional string Field containing ordered project names separated by the Chinese semicolon. Extraction preserves printed names such as 内科检查 and 心电图 without inventing a fixed department vocabulary. It accepts only",
+      "bodySha256": "826bfb9f4c5960c9",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Decision audit",
+            "line": 21
+          },
+          {
+            "title": "Anthropometric exclusion",
+            "line": 25
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 31
+          },
+          {
+            "title": "Testing",
+            "line": 44
+          },
+          {
+            "title": "Consequences",
+            "line": 54
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-08-medical-project-catalogue.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-09-admin-account-creation.md",
+      "path": ".agents/notes/implemented/feature/2026-10-09-admin-account-creation.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-09-admin-account-creation.md",
+      "title": "Let a named administrator create workbench accounts",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/auth.py",
+        "backend/ocr_app/routes.py",
+        "backend/ocr_app/api.py",
+        "backend/ocr_app/launcher.py",
+        "backend/manage_account.py",
+        "frontend/src",
+        "tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "ARCHITECTURE.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-web-password-sessions.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-09-web-password-sessions.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Provision HRSSC as admin using hidden terminal input and the existing Argon2id account store. Account names remain case-insensitive. Change the creation/reset minimum to eight characters; preserve the 128-character maximum and login throttl",
+      "bodySha256": "d42d75afc16c5739",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Verification",
+            "line": 32
+          },
+          {
+            "title": "Consequences",
+            "line": 38
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-09-admin-account-creation.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-09-bank-auto-recognition.md",
+      "path": ".agents/notes/implemented/feature/2026-10-09-bank-auto-recognition.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-09-bank-auto-recognition.md",
+      "title": "Recognize bank photos before offering per-file crop recovery",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-09",
+      "scope": [
+        "ARCHITECTURE.md",
+        "IMPLEMENTATION_PLAN.md",
+        "backend/ocr_app/business.py",
+        "backend/ocr_app/task_store.py",
+        "backend/ocr_app/pipeline.py",
+        "frontend/src",
+        "tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "BANK_CARD accepts decoded single photographs, including full front faces, and cropped rows. Upload does not call a recognizer; encrypted source persistence and independent per-file tasks match the other document families. PDF remains unsupp",
+      "bodySha256": "3c67da05fe72b73e",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Verified invariants",
+            "line": 30
+          },
+          {
+            "title": "Consequences",
+            "line": 38
+          },
+          {
+            "title": "Release verification",
+            "line": 43
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-09-bank-auto-recognition.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-09-batch-calendar-browser.md",
+      "path": ".agents/notes/implemented/feature/2026-10-09-batch-calendar-browser.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-09-batch-calendar-browser.md",
+      "title": "Browse batches by Shanghai day, week and month",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/routes.py",
+        "backend/ocr_app/task_store.py",
+        "frontend/src/api.ts",
+        "frontend/src/batchCalendar.ts",
+        "frontend/src/monitor.ts",
+        "frontend/src/components/BatchBoard.vue",
+        "frontend/tests",
+        "tests/test_business_api.py",
+        "backend/ocr_app/api.py",
+        "tests/test_runtime_api.py",
+        "tests/test_document_contract.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/bug-fix/2026-10-09-selected-calendar-period.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-selected-calendar-period.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Default to day-grouped all-date browsing. Day/week/month controls change grouping, and a corresponding date/week/month picker selects a server-side creation-date range; clearing it restores all dates. Use Shanghai UTC+8 civil dates and Mond",
+      "bodySha256": "701d4085aa07e410",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 27
+          },
+          {
+            "title": "Verified invariants",
+            "line": 34
+          },
+          {
+            "title": "Consequences",
+            "line": 38
+          },
+          {
+            "title": "Release verification",
+            "line": 43
+          },
+          {
+            "title": "Current refinement",
+            "line": 52
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-09-batch-calendar-browser.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "path": ".agents/notes/implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "title": "Export saved business fields and focused medical abnormalities",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/exporting.py",
+        "backend/ocr_app/task_store.py",
+        "backend/ocr_app/extraction.py",
+        "tests",
+        "scripts/replay_oct9_repairs.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "rejected/feature/2026-10-09-medical-threshold-review.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+        "implemented/feature/2026-10-09-material-time-download-names.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+        "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/feature/2026-10-09-admin-account-creation.md",
+        "implemented/feature/2026-10-09-material-time-download-names.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "rejected/feature/2026-10-09-medical-threshold-review.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Replace the technical workbook with business worksheets grouped by material type. A document row contains its latest saved field values in profile order with Chinese labels, plus a readable source filename to distinguish repeated names/mate",
+      "bodySha256": "b45dd79e71e7728c",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 27
+          },
+          {
+            "title": "Verified invariants",
+            "line": 36
+          },
+          {
+            "title": "Verification",
+            "line": 43
+          },
+          {
+            "title": "Consequences",
+            "line": 47
+          },
+          {
+            "title": "Current refinement",
+            "line": 52
+          },
+          {
+            "title": "Current refinement",
+            "line": 57
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-09-business-xlsx-layout.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-09-material-time-download-names.md",
+      "path": ".agents/notes/implemented/feature/2026-10-09-material-time-download-names.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-09-material-time-download-names.md",
+      "title": "Name workbench Excel downloads by material type and export time",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-09",
+      "scope": [
+        "frontend/src/review.ts",
+        "frontend/src/components/ExportControls.vue",
+        "frontend/src/components/TaskResultDrawer.vue",
+        "frontend/tests/review.test.ts",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/bug-fix/2026-10-09-selected-calendar-period.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-09-business-xlsx-layout.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "All three workbench download actions use Chinese material labels and a Shanghai UTC+8 export-start timestamp: 体检报告_20261009_151530.xlsx. Combine distinct types with + for a mixed selection; unknown or missing types use 识别结果 without copying ",
+      "bodySha256": "f15de52f232feb5b",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 15
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 19
+          },
+          {
+            "title": "Consequences",
+            "line": 25
+          },
+          {
+            "title": "Verification",
+            "line": 29
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-09-material-time-download-names.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "path": ".agents/notes/implemented/feature/2026-10-09-medical-ledger-template.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-09-medical-ledger-template.md",
+      "title": "Extract and export the supplied medical ledger fields",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/doc_profiles.py",
+        "backend/ocr_app/extraction.py",
+        "backend/ocr_app/medical_ledger.py",
+        "backend/ocr_app/review.py",
+        "backend/ocr_app/task_store.py",
+        "backend/ocr_app/exporting.py",
+        "frontend/src",
+        "tests",
+        "scripts/replay_medical_ledger.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "IMPLEMENTATION_PLAN.md",
+        "ARCHITECTURE.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "rejected/feature/2026-10-09-medical-threshold-review.md",
+        "implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+        "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+        "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+        "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+        "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+        "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+        "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+        "implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+        "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+        "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "rejected/feature/2026-10-09-medical-threshold-review.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "The user approves the field/extraction/review/export plan and explicitly defines the project count as the count of the body 本次体检项目意义 catalogue. Keep that editable catalogue as supporting evidence. Derive a read-only integer exam_project_cou",
+      "bodySha256": "335d6a76d2a7186b",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Decision audit",
+            "line": 25
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 35
+          },
+          {
+            "title": "Verification",
+            "line": 44
+          },
+          {
+            "title": "Consequences",
+            "line": 59
+          },
+          {
+            "title": "Current refinement",
+            "line": 68
+          },
+          {
+            "title": "Current refinement",
+            "line": 73
+          },
+          {
+            "title": "Normal-summary refinement",
+            "line": 77
+          },
+          {
+            "title": "Later measured-group summary policy",
+            "line": 81
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-09-medical-ledger-template.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-09-web-password-sessions.md",
+      "path": ".agents/notes/implemented/feature/2026-10-09-web-password-sessions.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-09-web-password-sessions.md",
+      "title": "Restore browser login through named password sessions",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app/auth.py",
+        "backend/ocr_app/routes.py",
+        "backend/ocr_app/business.py",
+        "backend/ocr_app/api.py",
+        "backend/ocr_app/launcher.py",
+        "backend/migrations",
+        "backend/manage_account.py",
+        "frontend/src",
+        "tests",
+        "requirements-app.lock.txt",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "ARCHITECTURE.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/feature/2026-10-09-admin-account-creation.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+      ],
+      "citedBy": [
+        "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-09-admin-account-creation.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Add an additive SQLite migration for named users, hashed opaque sessions and login throttling. Deployment operators create/change/disable accounts with a masked-password CLI; no default password, registration or browser account administrati",
+      "bodySha256": "f9878026892d1bea",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 27
+          },
+          {
+            "title": "Verified invariants",
+            "line": 34
+          },
+          {
+            "title": "Verification",
+            "line": 38
+          },
+          {
+            "title": "Consequences",
+            "line": 42
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-09-web-password-sessions.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/process/2026-09-29-dde-project-workflow.md",
       "path": ".agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
       "anchor": "// Note: .agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
@@ -969,7 +3191,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "NianLog/DDE is installed locally for Codex and Claude Code. The project copies the upstream scripts unchanged into scripts/ and retains their license in scripts/DDE-LICENSE.txt. A private package declares Node = 18, no runtime or developmen",
@@ -1013,6 +3235,99 @@
       "updateHint": "编辑 .agents/notes/implemented/process/2026-09-29-dde-project-workflow.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "path": ".agents/notes/implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "anchor": "// Note: .agents/notes/implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "title": "Export saved results once required values are present",
+      "lifecycle": "implemented",
+      "class": "simplification",
+      "date": "2026-10-08",
+      "scope": [
+        "backend/ocr_app/exporting.py",
+        "backend/ocr_app/task_store.py",
+        "frontend",
+        "tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "ARCHITECTURE.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-08-medical-project-catalogue.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/feature/2026-10-09-material-time-download-names.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "rejected/feature/2026-10-09-medical-threshold-review.md"
+      ],
+      "lastVerified": "2026-10-08",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-08"
+      },
+      "summary": "Export current saved, unfiltered results when their business-required values are present. Resolve conditional top-level requirements through doc_profiles.profile(doc_type,current_values), include basic_info-compatible values, each household",
+      "bodySha256": "35a7c7a6f14a75a7",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Decision audit",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Verified behavior",
+            "line": 34
+          },
+          {
+            "title": "Consequences",
+            "line": 38
+          },
+          {
+            "title": "Verification",
+            "line": 42
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-08-required-fields-only-export.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/simplification/2026-10-08-retire-temporary-frontend.md",
       "path": ".agents/notes/implemented/simplification/2026-10-08-retire-temporary-frontend.md",
       "anchor": "// Note: .agents/notes/implemented/simplification/2026-10-08-retire-temporary-frontend.md",
@@ -1039,13 +3354,14 @@
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
-        "implemented/feature/2026-09-30-local-diagnostics.md"
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md"
       ],
       "lastVerified": "2026-10-08",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The complete old frontend tree is moved inside this workspace to output/frontend-retired-20261008-v1/frontend. Absolute paths and absence of reparse points are checked; all1287 file SHA256 values match before and after. The active frontend ",
@@ -1117,7 +3433,8 @@
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/process/2026-09-29-dde-project-workflow.md",
-        "implemented/testing/2026-09-30-schema-extraction-benchmark.md"
+        "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
+        "rejected/feature/2026-10-09-certificate-field-localization.md"
       ],
       "lastVerified": "2026-09-29",
       "archivedDate": null,
@@ -1186,14 +3503,16 @@
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
-        "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+        "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
       ],
       "citedBy": [
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
-        "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+        "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
       ],
       "lastVerified": "2026-09-30",
       "archivedDate": null,
@@ -1203,7 +3522,7 @@
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The isolated paired diagnostic uses four encrypted certificate inputs and frozen visual references from the valid schema v2 experiment, plus three existing front-side bank-card samples scored only on card_number. Bank references are visuall",
-      "bodySha256": "4646995a10218cf3",
+      "bodySha256": "d27ba34f741d02ef",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1354,7 +3673,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The frozen corpus contains all four source hashes and encrypted copies, every page's existing decoder evidence, blank-page records and conservative raster regions. Native text/table evidence remains independent of OCR. Twelve table pages ar",
@@ -1421,24 +3740,26 @@
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/testing/2026-09-30-whole-medical-corpus.md",
-        "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+        "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/testing/2026-09-30-dual-certificate-extraction.md",
-        "implemented/testing/2026-09-30-whole-medical-corpus.md"
+        "implemented/testing/2026-09-30-whole-medical-corpus.md",
+        "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
       ],
       "lastVerified": "2026-10-08",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The already approved real-file acceptance uses a probe that starts the existing API, Business and RuntimeClient components with a new encrypted data root. A supervised child serves loopback HTTP, and its parent owns the existing GPU byte lo",
-      "bodySha256": "c7eed6a8ebde553f",
+      "bodySha256": "459a386f33e924c3",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1476,6 +3797,248 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/testing/2026-10-08-current-pipeline-acceptance.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/testing/2026-10-09-diploma-accuracy-refresh.md",
+      "path": ".agents/notes/implemented/testing/2026-10-09-diploma-accuracy-refresh.md",
+      "anchor": "// Note: .agents/notes/implemented/testing/2026-10-09-diploma-accuracy-refresh.md",
+      "title": "Freeze updated diploma references before fresh serial inference",
+      "lifecycle": "implemented",
+      "class": "testing",
+      "date": "2026-10-09",
+      "scope": [
+        "scripts/probe_diploma_accuracy.py",
+        "tests/test_diploma_accuracy_protocol.py",
+        "IMPLEMENTATION_PLAN.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+        "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+        "implemented/bug-fix/2026-10-09-medical-cover-institution.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+        "implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+        "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+        "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Visually inspect original images before inference. Copy historical references into a new encrypted fixture and record study endpoints under the user's approved graduation semantics; preserve printed month precision. Add the three current or",
+      "bodySha256": "4ec47ffb43594230",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 26
+          },
+          {
+            "title": "Verified invariants",
+            "line": 33
+          },
+          {
+            "title": "Consequences",
+            "line": 37
+          },
+          {
+            "title": "Verification",
+            "line": 43
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/testing/2026-10-09-diploma-accuracy-refresh.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "rejected/feature/2026-10-09-certificate-field-localization.md",
+      "path": ".agents/notes/rejected/feature/2026-10-09-certificate-field-localization.md",
+      "anchor": "// Note: .agents/notes/rejected/feature/2026-10-09-certificate-field-localization.md",
+      "title": "Match certificate fields to observed text-line coordinates",
+      "lifecycle": "rejected",
+      "class": "feature",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app",
+        "backend",
+        "frontend/src",
+        "frontend/tests",
+        "tests",
+        "requirements-app.lock.txt",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Keep GLM/Paddle as the business recognizers. Use pinned rapidocr-onnxruntime1.4.4 with its bundled PP-OCRv4 detector/recognizer and direction classifier as a CPU-only positioning helper. Independent line text is needed to match values relia",
+      "bodySha256": "7069233b7197a898",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Proposal",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Acceptance criteria",
+            "line": 30
+          },
+          {
+            "title": "Risks",
+            "line": 34
+          },
+          {
+            "title": "Rejection evidence",
+            "line": 39
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/rejected/feature/2026-10-09-certificate-field-localization.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "rejected/feature/2026-10-09-medical-threshold-review.md",
+      "path": ".agents/notes/rejected/feature/2026-10-09-medical-threshold-review.md",
+      "anchor": "// Note: .agents/notes/rejected/feature/2026-10-09-medical-threshold-review.md",
+      "title": "Compare source-backed medical values and retain human employment decisions",
+      "lifecycle": "rejected",
+      "class": "feature",
+      "date": "2026-10-09",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+        "implemented/feature/2026-10-09-business-xlsx-layout.md",
+        "implemented/feature/2026-10-09-medical-ledger-template.md"
+      ],
+      "lastVerified": "2026-10-09",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-09"
+      },
+      "summary": "Keep the current business Excel layout until the business team supplies its template, but add reference-threshold review and a separately saved human hiring-opinion field after the user approves this narrowed contract. Automated output is l",
+      "bodySha256": "585a9102697fbd3c",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Proposal",
+            "line": 15
+          },
+          {
+            "title": "Decision audit",
+            "line": 25
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 29
+          },
+          {
+            "title": "Acceptance criteria",
+            "line": 38
+          },
+          {
+            "title": "Risks",
+            "line": 42
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/rejected/feature/2026-10-09-medical-threshold-review.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "archived/feature/2026-10-08-temporary-recognition-workbench.md",
@@ -1562,6 +4125,11 @@
     {
       "type": "cite",
       "from": "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+      "to": "proposed/architecture/2026-10-09-hosted-web-session-auth.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
       "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
     },
     {
@@ -1583,6 +4151,46 @@
       "type": "cite",
       "from": "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
       "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "to": "implemented/feature/2026-10-09-web-password-sessions.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "to": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "to": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "to": "proposed/architecture/2026-10-08-mac-studio-inference-service.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
     },
     {
       "type": "cite",
@@ -1692,6 +4300,16 @@
     {
       "type": "cite",
       "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
       "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
     },
     {
@@ -1723,6 +4341,11 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
       "to": "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
     },
     {
       "type": "cite",
@@ -1801,6 +4424,211 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+      "to": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+      "to": "implemented/feature/2026-10-08-medical-project-catalogue.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-08-medical-review-scope.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-cover-institution.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
+      "to": "implemented/bug-fix/2026-10-09-liver-abnormal-only.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+      "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+      "to": "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+      "to": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-liver-abnormal-only.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-cover-institution.md",
+      "to": "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+      "to": "implemented/bug-fix/2026-10-09-liver-abnormal-only.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
+      "to": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+      "to": "implemented/bug-fix/2026-10-09-liver-abnormal-only.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+      "to": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+      "to": "rejected/feature/2026-10-09-medical-threshold-review.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+      "to": "rejected/feature/2026-10-09-certificate-field-localization.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+      "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+      "to": "implemented/bug-fix/2026-10-08-medical-review-scope.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-selected-calendar-period.md",
+      "to": "implemented/feature/2026-10-09-batch-calendar-browser.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-selected-calendar-period.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
     },
@@ -1813,6 +4641,16 @@
       "type": "cite",
       "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/feature/2026-10-09-web-password-sessions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "proposed/architecture/2026-10-09-hosted-web-session-auth.md"
     },
     {
       "type": "cite",
@@ -1856,6 +4694,41 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/feature/2026-10-09-batch-calendar-browser.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/feature/2026-10-09-bank-auto-recognition.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-09-30-local-diagnostics.md",
       "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
     },
@@ -1888,6 +4761,531 @@
       "type": "cite",
       "from": "implemented/feature/2026-09-30-local-diagnostics.md",
       "to": "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/feature/2026-10-09-bank-auto-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/feature/2026-10-09-web-password-sessions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/feature/2026-10-09-admin-account-creation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "proposed/architecture/2026-10-09-hosted-web-session-auth.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/bug-fix/2026-10-08-medical-review-scope.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/feature/2026-10-09-batch-calendar-browser.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/feature/2026-10-09-bank-auto-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/simplification/2026-10-08-retire-temporary-frontend.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/feature/2026-10-08-medical-project-catalogue.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/bug-fix/2026-10-08-medical-review-scope.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-hr-document-field-profile.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-cover-institution.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/bug-fix/2026-10-08-medical-review-scope.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/feature/2026-10-09-bank-auto-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "implemented/feature/2026-10-09-web-password-sessions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "proposed/architecture/2026-10-09-hosted-web-session-auth.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "implemented/feature/2026-10-09-batch-calendar-browser.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "implemented/feature/2026-10-09-bank-auto-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-medical-project-catalogue.md",
+      "to": "implemented/bug-fix/2026-10-08-medical-review-scope.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-admin-account-creation.md",
+      "to": "implemented/feature/2026-10-09-web-password-sessions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-admin-account-creation.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-admin-account-creation.md",
+      "to": "proposed/architecture/2026-10-09-hosted-web-session-auth.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-admin-account-creation.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-bank-auto-recognition.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-bank-auto-recognition.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-bank-auto-recognition.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-bank-auto-recognition.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-bank-auto-recognition.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-batch-calendar-browser.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-batch-calendar-browser.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-batch-calendar-browser.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-batch-calendar-browser.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-batch-calendar-browser.md",
+      "to": "implemented/bug-fix/2026-10-09-selected-calendar-period.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "to": "rejected/feature/2026-10-09-medical-threshold-review.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "to": "implemented/feature/2026-10-08-medical-project-catalogue.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "to": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "to": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-business-xlsx-layout.md",
+      "to": "implemented/feature/2026-10-09-material-time-download-names.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-material-time-download-names.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-material-time-download-names.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-material-time-download-names.md",
+      "to": "implemented/bug-fix/2026-10-09-selected-calendar-period.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "implemented/feature/2026-10-08-medical-project-catalogue.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "implemented/bug-fix/2026-10-08-medical-review-scope.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "rejected/feature/2026-10-09-medical-threshold-review.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-cover-institution.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "implemented/bug-fix/2026-10-09-liver-abnormal-only.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-normal-summary-fallback.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-medical-ledger-template.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-web-password-sessions.md",
+      "to": "proposed/architecture/2026-10-09-hosted-web-session-auth.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-web-password-sessions.md",
+      "to": "implemented/feature/2026-10-09-admin-account-creation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-web-password-sessions.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-web-password-sessions.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-web-password-sessions.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
     },
     {
       "type": "cite",
@@ -1896,6 +5294,36 @@
     },
     {
       "type": "cite",
+      "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "to": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
       "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
     },
@@ -1928,6 +5356,11 @@
       "type": "cite",
       "from": "implemented/testing/2026-09-30-dual-certificate-extraction.md",
       "to": "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-09-30-dual-certificate-extraction.md",
+      "to": "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
     },
     {
       "type": "cite",
@@ -1998,6 +5431,81 @@
       "type": "cite",
       "from": "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
       "to": "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-08-current-pipeline-acceptance.md",
+      "to": "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-09-diploma-accuracy-refresh.md",
+      "to": "implemented/testing/2026-10-08-current-pipeline-acceptance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-09-diploma-accuracy-refresh.md",
+      "to": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-09-diploma-accuracy-refresh.md",
+      "to": "implemented/testing/2026-09-30-dual-certificate-extraction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-09-diploma-accuracy-refresh.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-cover-institution.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-09-certificate-field-localization.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-09-certificate-field-localization.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-09-certificate-field-localization.md",
+      "to": "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-09-certificate-field-localization.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-09-certificate-field-localization.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-09-medical-threshold-review.md",
+      "to": "implemented/feature/2026-10-09-business-xlsx-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-09-medical-threshold-review.md",
+      "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-09-medical-threshold-review.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-09-medical-threshold-review.md",
+      "to": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-09-medical-threshold-review.md",
+      "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
     },
     {
       "type": "cite",

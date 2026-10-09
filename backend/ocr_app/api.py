@@ -69,7 +69,7 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
             if business:
                 business.close()
 
-    app = FastAPI(version='1.10.0', lifespan=lifespan, docs_url=None,
+    app = FastAPI(version='1.17.3', lifespan=lifespan, docs_url=None,
                   redoc_url=None, openapi_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost', '127.0.0.1'],
                        www_redirect=False)
@@ -78,8 +78,10 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
     async def task_error(request, error):
         request_id = getattr(request.state, 'request_id', str(uuid.uuid4()))
         error_id = logger.exception('request_failed', error, request_id=request_id, error_code=error.code) if logger else str(uuid.uuid4())
-        return JSONResponse(dict(code=error.code, message=error.message, error_id=error_id,
-                                 request_id=request_id), status_code=error.status)
+        payload = dict(code=error.code, message=error.message, error_id=error_id, request_id=request_id)
+        if getattr(error, 'details', None) is not None:
+            payload['details'] = error.details
+        return JSONResponse(payload, status_code=error.status)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request, error):
@@ -120,7 +122,7 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
             except Exception:
                 # Invalid/internal state must not become a public exception or path leak.
                 snapshot = None
-        response = {'status': 'degraded', 'version': '1.10.0', 'queue_depth': None,
+        response = {'status': 'degraded', 'version': '1.17.3', 'queue_depth': None,
                     'components': {'db': 'down', 'worker': 'ok' if worker_ready else 'down',
                                    'storage': 'ok' if storage_ready else 'down'}}
         if snapshot is not None:

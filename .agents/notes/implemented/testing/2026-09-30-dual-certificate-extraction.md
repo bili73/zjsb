@@ -45,3 +45,5 @@ The four certificate images are an already inspected convenience sample and bank
 ## Related verification
 
 The [isolated current-pipeline acceptance](../testing/2026-10-08-current-pipeline-acceptance.md) verifies the repaired real API path with the same frozen references and a separate encrypted store. It retains the v1 historical medical timeout and distinguishes single-resident loading from inference; it does not replace these historical measurements or qualify production hardware.
+
+The [current diploma refresh](2026-10-09-diploma-accuracy-refresh.md) measures the current application route, not this paired-model experiment. Its new interval-date reference and expanded scores are separate, with original paired references preserved.

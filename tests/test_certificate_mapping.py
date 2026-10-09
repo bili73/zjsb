@@ -47,12 +47,12 @@ class CertificateMappingTests(unittest.TestCase):
         result = fields('校长：测试乙\n2020年6月\n证书编号：000123')
         self.assertEqual(result['issue_date']['value'], '2020-06')
 
-    def test_dates_roles_and_no_inferred_graduation(self):
+    def test_study_interval_is_enrollment_and_graduation_with_separate_issue(self):
         result = fields('学生 测试甲，男，1990年1月1日生。\n于2017年9月至2020年6月在本校测试工程专业学习。\n发证日期：2020年7月')
         self.assertEqual(result['birth_date']['value'], '1990-01-01')
         self.assertEqual(result['enroll_date']['value'], '2017-09')
         self.assertEqual(result['issue_date']['value'], '2020-07')
-        self.assertIsNone(result['graduate_date']['value'])
+        self.assertEqual(result['graduate_date']['value'], '2020-06')
 
     def test_footer_is_issue_or_award_not_birth(self):
         text = '证书编号：000123\n二〇二〇年六月十七日'

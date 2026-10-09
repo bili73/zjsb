@@ -6,6 +6,8 @@ Last-verified: 2026-09-30
 
 ## Problem
 
+New confirmed cases are implemented in [native medical continuation](2026-10-09-native-medical-table-continuation.md) and [diploma school/date mapping](2026-10-09-diploma-school-and-date-mapping.md). They extend same-page recovery and school ranking, and replace the deliberate interval-end abstention with the user's confirmed enrollment/graduation convention. Source evidence and independent-list-count contracts remain.
+
 The user asks to fix text-to-field mapping using the existing samples and to use medical report conclusions/counts when checking abnormal findings. Several independent losses are verified in the pre-fix pipeline rather than inferred from low OCR scores:
 
 - The three PDF blood pages have native text and valid item/result labels. Default line-based table detection finds only two one-row header boxes, not the 24 unruled data rows. The extractor only consumes HTML tables, so all 72 frozen blood results are missing.
@@ -89,3 +91,5 @@ Current visual references are provisional and the small hospital cohort overlaps
 The [isolated current-pipeline acceptance](../testing/2026-10-08-current-pipeline-acceptance.md) verifies the repaired real API path with the same frozen references and a separate encrypted store. It retains the v1 historical medical timeout and distinguishes single-resident loading from inference; it does not replace these historical measurements or qualify production hardware.
 
 The former frontend portion is retired by the [frontend retirement](../../implemented/simplification/2026-10-08-retire-temporary-frontend.md); current Scope covers surviving code. Old UI checks describe historical acceptance.
+
+The [HR field profile](../../implemented/feature/2026-10-08-hr-document-field-profile.md) extends the existing evidence/column rules with titled personal tables, supplementary report grades and unique diagnosis/result association; it retains independent summary counts and unresolved candidates.

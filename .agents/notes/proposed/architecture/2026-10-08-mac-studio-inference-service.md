@@ -2,7 +2,7 @@
 
 Status: proposed
 Scope: ARCHITECTURE.md, SPEC.md, RUNTIME.md, IMPLEMENTATION_PLAN.md, backend
-Last-verified: 2026-10-08
+Last-verified: 2026-10-09
 
 ## Problem
 
@@ -21,6 +21,8 @@ First test each model serially on the actual Mac. Validate numbers, arrows, long
 Choose remote access only after the user chooses a private device network or authenticated HTTPS route. Keep model ports private. The current loopback/Host restrictions, shared local operator Key and unscoped Task queries are not a remote-user identity/ownership contract. Server authentication, proxy trust, task permissions, TLS and log/privacy boundaries require their own concrete implementation and acceptance. Do not publish a tunnel or deploy credentials in this phase.
 
 ## Decision audit
+
+The user now requests central Docker deployment with one or two accounts. The [hosted web-session proposal](2026-10-09-hosted-web-session-auth.md) records the candidate replacement for manual API keys, the retained browser HTTP interfaces and the distinction between containerized business services and native Apple-GPU inference. Both proposals remain unimplemented; the qualification and cancellation gates here still apply.
 
 The current Windows [independent queues](../../implemented/architecture/2026-10-08-independent-model-queues.md) implement authorized cross-model scheduling before Mac qualification. Its supervision, GPU timings and DPAPI remain platform-specific. The [temporary workbench](../../archived/feature/2026-10-08-temporary-recognition-workbench.md) adds local source comparison without exposing remote services.
 

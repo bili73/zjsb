@@ -141,7 +141,8 @@ class ExtractionTests(unittest.TestCase):
         self.assertEqual(values['name'], '测试员')
         self.assertEqual(values['gender'], 'M')
         self.assertEqual(values['age'], 30)
-        self.assertEqual(values['report_no'], '00042')
+        self.assertNotIn('report_no', values)
+        self.assertIn('00042', result['generic']['full_text'])
 
     def test_no_column_guess_without_headers(self):
         result = extract_result([block('<table><tr><td>WBC</td><td>9.0</td><td>3.5-9.5</td></tr></table>')], 'MEDICAL_REPORT')
@@ -154,7 +155,7 @@ class ExtractionTests(unittest.TestCase):
         self.assertEqual(len({item['item_id'] for item in result['items']}), 6)
 
     def test_unsupported_type_remains_generic(self):
-        result = extract_result([block('任意文字')], 'HOUSEHOLD_REGISTER')
+        result = extract_result([block('任意文字')], 'UNKNOWN_TEST_TYPE')
         self.assertEqual(result['fields'], [])
         self.assertTrue(result['review_issues'])
         self.assertEqual(result['generic']['full_text'], '任意文字')

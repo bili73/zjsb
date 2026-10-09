@@ -75,7 +75,8 @@ def launch(diagnostic):
         business.prepare()
         runtime = RuntimeClient(RuntimeConfig(session, mode, data_root=business.root))
         app = create_app(runtime, ROOT / 'frontend/dist', session, business=business, logger=diagnostic)
-        server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=args.port, access_log=False, log_level='warning'))
+        server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=args.port, access_log=False,
+                                             proxy_headers=False, log_level='warning'))
         if not args.no_browser and (ROOT / 'frontend/dist/index.html').is_file():
             def open_when_serving():
                 for _ in range(150):
@@ -88,7 +89,7 @@ def launch(diagnostic):
             threading.Thread(target=open_when_serving, daemon=True).start()
         print(f'Local OCR: http://127.0.0.1:{args.port}/  mode={mode}', flush=True)
         print('Close this launcher window or press Ctrl+C to exit. Closing the browser tab does not stop OCR.', flush=True)
-        print('访问密钥：运行 access-key.cmd 查看当前Windows用户的密钥。诊断日志：运行 collect-diagnostics.cmd。', flush=True)
+        print('使用账号密码登录工作台；管理员可在账号管理中创建账号。诊断日志：运行 collect-diagnostics.cmd。', flush=True)
         # Avoid sleep corrupting active startup/probe timing; restored on normal process exit.
         sleep_guard = ctypes.windll.kernel32.SetThreadExecutionState(0x80000001)
         try:

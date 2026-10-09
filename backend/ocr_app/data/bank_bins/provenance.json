@@ -1,0 +1,32 @@
+{
+  "dataset_id": "hexindai-bcbc",
+  "revision": "de631827ffe8db2792d140f3476b02498fc1244f",
+  "license": "MIT",
+  "copyright": "2018 - 2020 Runrioter",
+  "data_updated_at": "2020-12-11",
+  "retrieved_at": "2026-10-08",
+  "source_url": "https://github.com/hexindai/bcbc/tree/de631827ffe8db2792d140f3476b02498fc1244f",
+  "files": {
+    "LICENSE": {
+      "source_url": "https://raw.githubusercontent.com/hexindai/bcbc/de631827ffe8db2792d140f3476b02498fc1244f/LICENSE",
+      "sha256": "954003d4c34aebb17f6df7500d6ee8cc0ff326dce5779a5d5aaceb17004f56b2",
+      "bytes": 1072
+    },
+    "bin.csv": {
+      "source_url": "https://raw.githubusercontent.com/hexindai/bcbc/de631827ffe8db2792d140f3476b02498fc1244f/data/bin.csv",
+      "sha256": "9ebabf828af89e50c6fbfdcaac3cf6f46757d36003007a9458b5c04fc1140de6",
+      "bytes": 31515
+    },
+    "name.csv": {
+      "source_url": "https://raw.githubusercontent.com/hexindai/bcbc/de631827ffe8db2792d140f3476b02498fc1244f/data/name.csv",
+      "sha256": "1a77cec8dacac144179173917512500b63a7814005ad15d04cd722d11558b20f",
+      "bytes": 6849
+    }
+  },
+  "limitations": [
+    "Community snapshot, not an official or current issuer registry.",
+    "Only winning 6/8 digit prefixes are emitted; other stored prefix lengths veto shorter guesses.",
+    "Longest prefix wins before PAN length validation. No shorter fallback on mismatch.",
+    "Type codes are preserved verbatim: DC, CC, SCC, PC. No card scheme or Luhn applicability is inferred."
+  ]
+}

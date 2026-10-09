@@ -1,0 +1,117 @@
+/* 简洁清新浅色主题：青绿主色 + 浅灰画布 + 白色卡片。 */
+:root {
+  color-scheme: light;
+  --el-color-primary: #0f9d8f;
+  --el-color-primary-light-3: #57bab1;
+  --el-color-primary-light-5: #87cec7;
+  --el-color-primary-light-7: #b7e2dd;
+  --el-color-primary-light-8: #cfebe9;
+  --el-color-primary-light-9: #e7f5f4;
+  --el-color-primary-dark-2: #0c7e72;
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; padding: 0; min-height: 100vh; }
+body { background: linear-gradient(180deg, #f4f8f7 0%, #f6f8fa 240px); color: var(--el-text-color-primary); }
+
+.app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+
+.app-header {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-logo { display: block; height: 40px; width: auto; }
+.brand h1 { margin: 0; font-size: 16px; font-weight: 600; }
+.brand p { margin: 2px 0 0; font-size: 12px; color: var(--el-text-color-secondary); }
+.header-side { display: flex; align-items: center; gap: 12px; }
+.engine-badge { cursor: pointer; user-select: none; }
+
+.app-main { flex: 1; width: min(1280px, 100% - 32px); margin: 20px auto 32px; }
+.app-footer { padding: 16px; text-align: center; font-size: 12px; color: var(--el-text-color-secondary); }
+
+/* 上传面板 */
+.type-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.type-card {
+  display: block; width: 100%; text-align: left; padding: 14px 16px;
+  background: #fff; border: 1px solid var(--el-border-color); border-radius: 10px;
+  cursor: pointer; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.type-card:hover { border-color: var(--el-color-primary-light-5); }
+.type-card.active {
+  border-color: var(--el-color-primary); background: var(--el-color-primary-light-9);
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+}
+.type-card .el-icon { font-size: 22px; color: var(--el-color-primary); vertical-align: -5px; margin-right: 8px; }
+.type-card .type-title { font-size: 14px; font-weight: 600; }
+.type-card .type-desc { margin: 6px 0 0; font-size: 12px; color: var(--el-text-color-secondary); line-height: 1.5; }
+.upload-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.upload-hint { font-size: 12px; color: var(--el-text-color-secondary); }
+
+/* 批次面板 */
+.poll-hint { font-size: 12px; color: var(--el-text-color-secondary); }
+.batch-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.batch-name { font-weight: 600; }
+.batch-meta { font-size: 12px; color: var(--el-text-color-secondary); }
+.pending-note { font-size: 12px; color: var(--el-color-primary); margin-top: 2px; }
+.file-cell { display: flex; flex-direction: column; }
+.board-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+
+/* 结果视图 */
+.field-value { font-weight: 600; word-break: break-all; }
+.field-line { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.conf { font-size: 12px; color: var(--el-text-color-secondary); }
+.stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+.stat-card { background: #fff; border: 1px solid var(--el-border-color-lighter); border-radius: 10px; padding: 12px 16px; }
+.stat-card .stat-label { font-size: 12px; color: var(--el-text-color-secondary); }
+.stat-card .stat-value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+.result-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+.section-title { font-size: 14px; font-weight: 600; margin: 20px 0 10px; }
+
+/* 原图对照 */
+.img-wrap { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
+.img-wrap img { max-width: 100%; border-radius: 6px; }
+.bbox-overlay {
+  position: absolute; pointer-events: none;
+  border: 2px solid var(--el-color-danger);
+  background: rgba(245, 108, 108, 0.16);
+}
+.pdf-frame { width: 100%; height: 72vh; border: 0; border-radius: 6px; }
+
+@media (max-width: 768px) {
+  .type-cards { grid-template-columns: 1fr; }
+  .stat-cards { grid-template-columns: repeat(2, 1fr); }
+  .app-main { width: calc(100% - 24px); }
+}
+
+/* 彩虹加载转圈：全局替换 Element Plus 的按钮加载图标与 v-loading 转圈（新增加载点自动生效）。
+   圆环七等分，每段一种彩虹色，段间留透明缝隙，整体匀速旋转。 */
+.rainbow-spinner, .el-loading-spinner::before, .el-button.is-loading::before {
+  border-radius: 50%;
+  background: conic-gradient(from 0deg,
+    #ff6b6b 0deg 41.43deg, transparent 41.43deg 51.43deg,
+    #ffa94d 51.43deg 92.86deg, transparent 92.86deg 102.86deg,
+    #ffd43b 102.86deg 144.29deg, transparent 144.29deg 154.29deg,
+    #69db7c 154.29deg 195.71deg, transparent 195.71deg 205.71deg,
+    #38d9a9 205.71deg 247.14deg, transparent 247.14deg 257.14deg,
+    #4dabf7 257.14deg 298.57deg, transparent 298.57deg 308.57deg,
+    #9775fa 308.57deg 350deg, transparent 350deg 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring, 4px)), #000 calc(100% - var(--ring, 4px) + 1px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring, 4px)), #000 calc(100% - var(--ring, 4px) + 1px));
+  animation: rainbow-spin 0.9s linear infinite;
+}
+.rainbow-spinner { display: inline-block; width: 28px; height: 28px; }
+.el-loading-spinner .circular { display: none; }
+.el-loading-spinner::before { content: ''; display: inline-block; width: 42px; height: 42px; }
+.el-button.is-loading .el-icon { display: none; }
+.el-button.is-loading::before { content: ''; width: 1em; height: 1em; --ring: 2.5px; margin-right: 8px; }
+@keyframes rainbow-spin { to { transform: rotate(1turn); } }
+@media (prefers-reduced-motion: reduce) {
+  .rainbow-spinner, .el-loading-spinner::before, .el-button.is-loading::before { animation-duration: 2.4s; }
+}

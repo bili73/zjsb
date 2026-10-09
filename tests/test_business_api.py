@@ -40,6 +40,59 @@ class FakeRuntime:
 
 
 class BusinessAPITests(unittest.TestCase):
+    def test_batch_names_derive_from_types_without_rewriting_history(self):
+        from sqlalchemy import text
+        created = self.upload().json()
+        identifier = created['batch_id']
+        with self.business.store.transaction() as connection:
+            saved = connection.execute(text('SELECT name_enc FROM batches WHERE id=:id'), {'id': identifier}).scalar_one()
+            self.assertEqual(self.business.storage.unpack(saved), '毕业证')
+            historical = self.business.storage.pack('上传批次')
+            connection.execute(text('UPDATE batches SET name_enc=:name WHERE id=:id'), dict(id=identifier, name=historical))
+        batch = self.business.store.batch(identifier)
+        self.assertEqual((batch['name'], batch['display_name']), ('毕业证', '毕业证'))
+        with self.business.engine.connect() as connection:
+            self.assertEqual(connection.execute(text('SELECT name_enc FROM batches WHERE id=:id'), {'id': identifier}).scalar_one(), historical)
+        with patch.object(self.business.store, 'tasks', return_value=[{'doc_type': 'DIPLOMA', 'status': 'COMPLETED', 'updated_at': batch['created_at']}, {'doc_type': 'DEGREE_CERT', 'status': 'COMPLETED', 'updated_at': batch['created_at']} ]):
+            self.assertEqual(self.business.store.batch(identifier)['name'], '混合材料 · 毕业证 / 学位证')
+        with patch.object(self.business.store, 'tasks', return_value=[]):
+            self.assertEqual(self.business.store.batch(identifier)['name'], '待确定类型')
+
+    def test_batches_are_descending_and_timestamps_remain_utc(self):
+        first = self.upload().json()['batch_id']
+        second = self.upload('DEGREE_CERT').json()['batch_id']
+        listed = self.business.store.batches()['items']
+        self.assertEqual([item['batch_id'] for item in listed], [second, first])
+        self.assertTrue(all(item['created_at'].endswith('+00:00') for item in listed))
+
+    def test_batch_date_range_uses_shanghai_days_before_count_and_pagination(self):
+        from sqlalchemy import text
+        times=['2026-10-08T15:59:59+00:00','2026-10-08T16:00:00+00:00',
+               '2026-10-09T15:59:59+00:00','2026-10-09T16:00:00+00:00']
+        ids=[]
+        for timestamp in times:
+            identifier=self.upload().json()['batch_id'];ids.append(identifier)
+            with self.business.store.transaction() as connection:
+                connection.execute(text('UPDATE batches SET created_at=:at WHERE id=:id'),dict(at=timestamp,id=identifier))
+        query='/api/v1/batches?date_from=2026-10-09&date_to=2026-10-09&page_size=1'
+        first=self.client.get(query,headers=self.headers).json()
+        second=self.client.get(query+'&page=2',headers=self.headers).json()
+        self.assertEqual(first['total'],2)
+        self.assertEqual([b['batch_id'] for b in first['items']],[ids[2]])
+        self.assertEqual([b['batch_id'] for b in second['items']],[ids[1]])
+        self.assertEqual(self.client.get('/api/v1/batches',headers=self.headers).json()['total'],4)
+        lower=self.client.get('/api/v1/batches?date_from=2026-10-10',headers=self.headers).json()
+        self.assertEqual([b['batch_id'] for b in lower['items']],[ids[3]])
+        upper=self.client.get('/api/v1/batches?date_to=2026-10-08',headers=self.headers).json()
+        self.assertEqual([b['batch_id'] for b in upper['items']],[ids[0]])
+
+    def test_batch_date_range_rejects_invalid_reversed_and_unsupported_bounds(self):
+        for query in ['date_from=2026-02-30','date_from=invalid',
+                      'date_from=2026-10-10&date_to=2026-10-09',
+                      'date_from=0001-01-01','date_to=9999-12-31']:
+            with self.subTest(query=query):
+                self.assert_error(self.client.get('/api/v1/batches?'+query,headers=self.headers),422)
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -115,13 +168,19 @@ class BusinessAPITests(unittest.TestCase):
         self.assertEqual(me['role'], 'viewer')
         self.assertNotIn('key', me)
 
-    def test_bank_rejection_happens_before_blob_write(self):
+    def test_bank_full_photo_is_queued_and_original_is_encrypted(self):
+        raw = io.BytesIO()
+        Image.new('RGB', (850, 540), 'white').save(raw, format='PNG')
         with patch.object(self.business.storage, 'put', wraps=self.business.storage.put) as put:
-            response = self.upload('BANK_CARD', data=b'NOT_DECODED_PRIVATE_CARD_BYTES')
-            self.assertEqual(self.assert_error(response, 422)['code'], 'UNSUPPORTED_DOC_TYPE')
-            put.assert_not_called()
-        self.assertEqual(list(self.business.storage.blobs.iterdir()), [])
-        self.assertEqual(self.business.store.tasks(), [])
+            response = self.upload('BANK_CARD', data=raw.getvalue())
+            self.assertEqual(response.status_code, 202, response.text)
+            put.assert_called_once()
+        task_id = response.json()['task_ids'][0]
+        self.assertEqual(self.task(task_id)['status'], 'QUEUED')
+        worker = self.business.store.claim_next()
+        self.assertEqual(self.business.storage.read(worker['input_ref']), raw.getvalue())
+        for blob in self.business.storage.blobs.iterdir():
+            self.assertNotIn(raw.getvalue(), blob.read_bytes())
 
     def test_multipart_is_memory_only_and_duplicates_are_reused(self):
         with patch('starlette.requests.Request.form', side_effect=AssertionError('No automatic form spooling')), \

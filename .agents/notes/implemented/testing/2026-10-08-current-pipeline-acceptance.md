@@ -48,3 +48,5 @@ The separate [v2 run](../../../../output/current-pipeline-acceptance-20261008-v2
 ## Consequences
 
 The references are provisional, overlapping convenience samples and not independently double-reviewed. Neither seven v1 tasks nor nine v2 tasks establish throughput or held-out accuracy. V1 single residency includes switch costs in task wall time; v2 dual startup is reported separately and is not interchangeable with cached synthetic startup timing. The large-image failure remains historical measurement rather than permission to hide coverage. V2 completes processing, but full medical content is not fully labelled: NEED_REVIEW and null medical stats remain. The probe itself does not implement review editing/export, qualify Mac/16 GB machines or add a model; the separately documented bounded-medical change owns the new scheduling behavior.
+
+The separately frozen [diploma refresh](2026-10-09-diploma-accuracy-refresh.md) reuses this runner with seven serial single-resident cases and current date semantics. Its expanded 75 present fields remain separate from the old common39 controls (new38/39, old37/39); historical results above are unchanged.

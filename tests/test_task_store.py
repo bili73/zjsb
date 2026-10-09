@@ -55,7 +55,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertNotEqual(second['task_ids'], first['task_ids'])
         self.assertEqual(self.count('tasks'), 2)
 
-    def test_numeric_uuid_identity_is_not_redacted_as_card_number(self):
+    def test_numeric_uuid_and_complete_business_values_are_preserved(self):
         serial = itertools.count(1)
         with patch('ocr_app.task_store.identity', side_effect=lambda: str(uuid.UUID(int=next(serial)))):
             task = self.create(data=b'identity-only')
@@ -74,7 +74,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(result['run_id'], task['run_id'])
         self.assertEqual(result['fields'][0]['source']['page_id'], item_id)
         self.assertEqual(result['error']['error_id'], 'e_' + '1' * 32)
-        self.assertNotEqual(result['fields'][0]['value'], '6222021234567890123')
+        self.assertEqual(result['fields'][0]['value'], '6222021234567890123')
 
     def test_partial_file_failure_rolls_back_batch_tasks_and_blobs(self):
         original = self.storage.put
@@ -278,7 +278,7 @@ class TaskStoreTests(unittest.TestCase):
         self.store.save_page(claimed, 0, secret.encode(), 20, 20)
         self.store.publish(claimed, self.result(secret=secret))
         self.assertEqual(self.storage.read(claimed['input_ref']), secret.encode())
-        self.assertNotIn('6222021234567890123', json.dumps(self.store.result(task['task_id'])))
+        self.assertEqual(self.store.result(task['task_id'])['raw_text'], secret)
         for path in self.root.rglob('*'):
             if path.is_file():
                 self.assertNotIn(secret.encode(), path.read_bytes(), path.name)
@@ -303,7 +303,7 @@ class TaskStoreTests(unittest.TestCase):
             filtered = self.store.result(task['task_id'], selected, include_normal_summary=False)
             self.assertEqual(filtered['report_summary'], all_result['report_summary'])
             self.assertEqual(len(filtered['items']), expected)
-        self.assertNotIn('6222021234567890123', json.dumps(all_result))
+        self.assertEqual(all_result['report_summary'], summary)
         for path in self.root.rglob('*'):
             if path.is_file():
                 self.assertNotIn(secret.encode(), path.read_bytes(), path.name)
