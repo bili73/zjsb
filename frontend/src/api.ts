@@ -75,6 +75,19 @@ export class BusinessApi {
     return this.request('/admin/users', 'account_create', parseManagedUser, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   }
   catalogue(signal: AbortSignal) { return this.request('/doc-types', 'catalogue', parseCatalogue, signal) }
+  updateUserEnabled(userId: string, enabled: boolean, signal: AbortSignal) {
+    return this.request(`/admin/users/${encodeURIComponent(userId)}`, 'account_update', parseManagedUser, signal, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) })
+  }
+  deleteUser(userId: string, signal: AbortSignal) {
+    return this.request(`/admin/users/${encodeURIComponent(userId)}`, 'account_delete', () => undefined, signal, { method: 'DELETE' })
+  }
+  resetUserPassword(userId: string, newPassword: string, signal: AbortSignal) {
+    return this.request(`/admin/users/${encodeURIComponent(userId)}/password`, 'password_change', () => undefined, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_password: newPassword }) })
+  }
+  async changePassword(currentPassword: string, newPassword: string, signal: AbortSignal) {
+    await this.request('/auth/password', 'password_change', () => undefined, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }) })
+    this.csrfToken = undefined
+  }
   requiredFields(signal: AbortSignal) { return this.request('/admin/required-fields', 'required_settings_read', parseRequiredFieldSettings, signal) }
   saveRequiredFields(body: RequiredFieldSave, signal: AbortSignal) {
     return this.request('/admin/required-fields', 'required_settings_save', parseRequiredFieldSettings, signal, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })

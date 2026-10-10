@@ -70,7 +70,7 @@ class Accounts:
             connection.exec_driver_sql('BEGIN IMMEDIATE')
             yield connection
 
-    def set_user(self, username, password, display_name, role='operator', *, create_only=False):
+    def set_user(self, username, password, display_name, role='operator', *, create_only=False, actor_id=None, token=None):
         if (not isinstance(username, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', username)
                 or not isinstance(password, str) or not 8 <= len(password) <= 128 or not password.strip()
                 or not isinstance(display_name, str) or not 1 <= len(display_name.strip()) <= 80
@@ -80,6 +80,8 @@ class Accounts:
         params=dict(id=str(uuid.uuid4()),username=username.lower(),password=self.hasher.hash(password),
                     name=display_name.strip(),role=role)
         with self.transaction() as c:
+            if actor_id is not None:
+                self._acting_user(c, actor_id, token, administrator=True)
             conflict = ('DO NOTHING' if create_only else
                         'DO UPDATE SET display_name=:name,role=:role,password_hash=:password,enabled=1')
             created = c.execute(text('INSERT INTO web_users VALUES (:id,:username,:name,:role,:password,1) '
@@ -103,6 +105,83 @@ class Accounts:
             params={'username':username.lower()}
             c.execute(text('UPDATE web_users SET enabled=0 WHERE username=:username'),params)
             c.execute(text('DELETE FROM web_sessions WHERE user_id=(SELECT id FROM web_users WHERE username=:username)'),params)
+
+    def _acting_user(self, connection, actor_id, token, *, administrator=False):
+        if not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9_-]{43}', token):
+            raise TaskError('UNAUTHORIZED', '请重新登录工作台', 401)
+        row = connection.execute(text('''SELECT u.* FROM web_users u JOIN web_sessions s ON s.user_id=u.id
+            WHERE u.id=:id AND u.enabled=1 AND s.token_hash=:hash AND s.expires_at>:now'''),
+            dict(id=actor_id, hash=hashlib.sha256(token.encode()).hexdigest(), now=time())).mappings().first()
+        if row is None:
+            raise TaskError('UNAUTHORIZED', '账号状态已变化，请重新登录', 401)
+        if administrator and row['role'] != 'admin':
+            raise TaskError('FORBIDDEN', '只有管理员可以管理账号', 403)
+        return row
+
+    def _admin_target(self, connection, actor_id, target_id, token):
+        self._acting_user(connection, actor_id, token, administrator=True)
+        row = connection.execute(text('SELECT * FROM web_users WHERE id=:id'), {'id': target_id}).mappings().first()
+        if row is None:
+            raise TaskError('NOT_FOUND', '账号不存在，请刷新列表', 404)
+        return row
+
+    @staticmethod
+    def _protect_removal(connection, actor_id, target):
+        if actor_id == target['id']:
+            raise TaskError('ACCOUNT_PROTECTED', '不能禁用或删除当前登录账号', 409)
+        if target['enabled'] and target['role'] == 'admin':
+            count = connection.execute(text("SELECT COUNT(*) FROM web_users WHERE enabled=1 AND role='admin'")).scalar_one()
+            if count <= 1:
+                raise TaskError('ACCOUNT_PROTECTED', '必须保留至少一个启用的管理员', 409)
+
+    def _new_password_hash(self, password):
+        if not isinstance(password, str) or not 8 <= len(password) <= 128 or not password.strip():
+            raise TaskError('INVALID_REQUEST', '密码需8至128个字符，不能全为空白', 422)
+        return self.hasher.hash(password)
+
+    def update_enabled(self, actor_id, target_id, enabled, token):
+        with self.transaction() as c:
+            target = self._admin_target(c, actor_id, target_id, token)
+            if not enabled:
+                self._protect_removal(c, actor_id, target)
+            c.execute(text('UPDATE web_users SET enabled=:enabled WHERE id=:id'), dict(id=target_id, enabled=int(enabled)))
+            if not enabled or not target['enabled']:
+                c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': target_id})
+            return dict(user_id=target_id, username=target['username'], display_name=target['display_name'],
+                        role=target['role'], enabled=enabled)
+
+    def delete_user(self, actor_id, target_id, token):
+        with self.transaction() as c:
+            target = self._admin_target(c, actor_id, target_id, token)
+            self._protect_removal(c, actor_id, target)
+            c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': target_id})
+            c.execute(text('DELETE FROM web_users WHERE id=:id'), {'id': target_id})
+
+    def reset_password(self, actor_id, target_id, new_password, token):
+        password_hash = self._new_password_hash(new_password)
+        with self.transaction() as c:
+            self._admin_target(c, actor_id, target_id, token)
+            if actor_id == target_id:
+                raise TaskError('ACCOUNT_PROTECTED', '请从右上角菜单修改自己的密码', 409)
+            c.execute(text('UPDATE web_users SET password_hash=:hash WHERE id=:id'), dict(id=target_id, hash=password_hash))
+            c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': target_id})
+
+    def change_password(self, actor_id, current_password, new_password, token):
+        with self.engine.connect() as c:
+            user = self._acting_user(c, actor_id, token)
+        try:
+            valid = self.hasher.verify(user['password_hash'], current_password)
+        except (VerificationError, InvalidHashError):
+            valid = False
+        if not valid:
+            raise TaskError('CURRENT_PASSWORD_INCORRECT', '原密码不正确，请重新输入', 422)
+        password_hash = self._new_password_hash(new_password)
+        with self.transaction() as c:
+            current = self._acting_user(c, actor_id, token)
+            if current['password_hash'] != user['password_hash']:
+                raise TaskError('UNAUTHORIZED', '密码已变化，请重新登录', 401)
+            c.execute(text('UPDATE web_users SET password_hash=:hash WHERE id=:id'), dict(id=actor_id, hash=password_hash))
+            c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': actor_id})
 
     def _attempt(self, client):
         # Reserve an attempt before expensive hashing, including concurrent requests.

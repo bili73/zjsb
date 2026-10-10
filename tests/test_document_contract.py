@@ -143,7 +143,7 @@ class DocumentContractTests(unittest.TestCase):
         with self.assertRaises(jsonschema.ValidationError):self.validate('FieldDerivation',bad)
 
     def test_implemented_methods_and_explicit_future_paths(self):
-        self.assertEqual(self.document['info']['version'],'1.17.3')
+        self.assertEqual(self.document['info']['version'],'1.18.0')
         self.assertIn('post',self.document['paths']['/export'])
         self.assertNotIn('get',self.document['paths']['/export'])
         permissions=self.document['paths']['/auth/me']['get']['responses']['200']['content']['application/json']['schema']['properties']['permissions']['items']['enum']

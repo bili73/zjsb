@@ -213,7 +213,45 @@ def router(business, runtime):
             raise TaskError('INVALID_REQUEST', '账号请求字段无效', 422)
         from starlette.concurrency import run_in_threadpool
         return await run_in_threadpool(business.accounts.set_user, body['username'], body['password'],
-                                      body['display_name'], body.get('role', 'operator'), create_only=True)
+                                      body['display_name'], body.get('role', 'operator'), create_only=True,
+                                      actor_id=user['user_id'], token=request.cookies.get(SESSION_COOKIE))
+
+    @routes.patch('/admin/users/{user_id}')
+    async def update_user(user_id: uuid.UUID, request: Request, user=Depends(administrator)):
+        body = await bounded_json(request)
+        if not isinstance(body, dict) or set(body) != {'enabled'} or type(body['enabled']) is not bool:
+            raise TaskError('INVALID_REQUEST', '只能提交布尔类型的启用状态', 422)
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(business.accounts.update_enabled, user['user_id'], str(user_id),
+                                      body['enabled'], request.cookies.get(SESSION_COOKIE))
+
+    @routes.delete('/admin/users/{user_id}', status_code=204)
+    def delete_user(user_id: uuid.UUID, request: Request, user=Depends(administrator)):
+        business.accounts.delete_user(user['user_id'], str(user_id), request.cookies.get(SESSION_COOKIE))
+        return Response(status_code=204)
+
+    @routes.post('/admin/users/{user_id}/password', status_code=204)
+    async def reset_user_password(user_id: uuid.UUID, request: Request, user=Depends(administrator)):
+        body = await bounded_json(request)
+        if not isinstance(body, dict) or set(body) != {'new_password'}:
+            raise TaskError('INVALID_REQUEST', '密码请求字段无效', 422)
+        from starlette.concurrency import run_in_threadpool
+        await run_in_threadpool(business.accounts.reset_password, user['user_id'], str(user_id),
+                               body['new_password'], request.cookies.get(SESSION_COOKIE))
+        return Response(status_code=204)
+
+    @routes.post('/auth/password', status_code=204)
+    async def change_password(request: Request, user=Depends(principal)):
+        body = await bounded_json(request)
+        if (not isinstance(body, dict) or set(body) != {'current_password', 'new_password'}
+                or not isinstance(body['current_password'], str) or not 1 <= len(body['current_password']) <= 128):
+            raise TaskError('INVALID_REQUEST', '密码请求字段无效', 422)
+        from starlette.concurrency import run_in_threadpool
+        await run_in_threadpool(business.accounts.change_password, user['user_id'], body['current_password'],
+                               body['new_password'], request.cookies.get(SESSION_COOKIE))
+        response = Response(status_code=204)
+        response.delete_cookie(SESSION_COOKIE, httponly=True, secure=request.url.scheme == 'https', samesite='strict', path='/')
+        return response
 
     @routes.get('/doc-types')
     def doc_types(user=Depends(principal)):

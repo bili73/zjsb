@@ -1,9 +1,10 @@
 openapi: 3.0.3
 info:
   title: 证件关键信息提取系统 API
-  version: 1.17.3
+  version: 1.18.0
   description: |
-    内部证件信息提取系统 API 契约（SPEC v1.23）。
+    内部证件信息提取系统 API 契约（SPEC v1.24）。
+    管理员支持创建、启用/禁用、删除其他账号及重置密码；所有角色可凭原密码修改自己的密码。删除保留历史任务，禁用及改密撤销全部会话；保护当前账号和最后一个启用的管理员。
     六类检查包含肝功，优先汇总明确异常；无小结时按有来源的检测明细汇总正常，报告A级可作摘要依据，不覆盖阳性、异常或矛盾，也不修改检测行分类/复核。
     明细缺失或未知不默认正常；完整有序且已闭合的原生PDF项目意义表可证明未载明，使用value=null/absence_reason=NOT_ON_DOCUMENT、derived和项目来源，页面/医疗Excel显示报告未载明。保留人工优先、历史密文与既有复核要求。
 
@@ -122,7 +123,7 @@ paths:
     post:
       tags: [system]
       summary: 管理员创建账号
-      description: 仅admin可调用，同源Origin及X-CSRF-Token验证；请求体最多8192字节。账号名不区分大小写，以小写保存，默认角色operator。大小写等价的重复账号返回409 USERNAME_EXISTS，不覆盖原密码、角色、启用状态或会话。网页仅创建；重置密码与停用仍使用本地CLI。
+      description: 仅admin可调用，同源Origin及X-CSRF-Token验证；请求体最多8192字节。账号名不区分大小写，以小写保存，默认角色operator。大小写等价的重复账号返回409 USERNAME_EXISTS，不覆盖原密码、角色、启用状态或会话。
       parameters:
         - in: header
           name: X-CSRF-Token
@@ -142,6 +143,105 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+  /admin/users/{user_id}:
+    parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema: {type: string, format: uuid}
+      - in: header
+        name: X-CSRF-Token
+        required: true
+        schema: {type: string, pattern: '^[0-9a-f]{64}$'}
+    patch:
+      tags: [system]
+      security: [{SessionAuth: []}]
+      summary: 管理员启用或禁用其他账号
+      description: 同源Origin；正文最多8192字节，只接受enabled布尔值。禁用和会话撤销同一事务提交，启用不会恢复旧会话。不允许禁用自己或最后一个启用的管理员（409 ACCOUNT_PROTECTED）；目标不存在404。事务内重新核验操作者的有效会话与admin权限。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [enabled]
+              properties:
+                enabled: {type: boolean}
+      responses:
+        '200':
+          description: 更新后的公共账号信息
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ManagedUser'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+    delete:
+      tags: [system]
+      security: [{SessionAuth: []}]
+      summary: 管理员删除其他登录账号
+      description: 同源Origin。只删除账号及会话，保留任务、识别结果及审计中的原操作者UUID；同名重建使用新UUID。不允许删除自己或最后一个启用的管理员（409 ACCOUNT_PROTECTED）。目标不存在404；事务内重新核验有效会话与admin权限。无需请求体。
+      responses:
+        '204': {description: 账号及其会话已删除，历史记录保留}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+  /admin/users/{user_id}/password:
+    parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema: {type: string, format: uuid}
+      - in: header
+        name: X-CSRF-Token
+        required: true
+        schema: {type: string, pattern: '^[0-9a-f]{64}$'}
+    post:
+      tags: [system]
+      security: [{SessionAuth: []}]
+      summary: 管理员重置其他账号的密码
+      description: 同源Origin；正文最多8192字节。只更新密码摘要并撤销目标全部会话；禁用的账号不会隐式启用。不允许用此入口重置自己（409 ACCOUNT_PROTECTED），应使用auth/password。目标不存在404；哈希后在事务内重新核验有效会话与admin权限，不返回或记录密码。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ResetPasswordRequest'}
+      responses:
+        '204': {description: 密码已重置，所有旧登录已失效}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+  /auth/password:
+    post:
+      tags: [system]
+      security: [{SessionAuth: []}]
+      summary: 当前用户凭原密码修改自己的密码
+      description: 所有角色均可使用，同源Origin及X-CSRF-Token；正文最多8192字节。原密码不正确返回422 CURRENT_PASSWORD_INCORRECT，保留当前登录。成功修改密码与撤销全部会话原子提交，并清除请求浏览器Cookie，必须重新登录。并发重置使旧会话失效时返回401，不覆盖新密码。
+      parameters:
+        - in: header
+          name: X-CSRF-Token
+          required: true
+          schema: {type: string, pattern: '^[0-9a-f]{64}$'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChangePasswordRequest'}
+      responses:
+        '204': {description: 密码已修改，全部会话撤销且Cookie已清除}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
         '413': {$ref: '#/components/responses/ErrorResponse'}
         '422': {$ref: '#/components/responses/UnprocessableEntity'}
   /auth/login:
@@ -1167,6 +1267,19 @@ components:
         password: {type: string, minLength: 8, maxLength: 128, writeOnly: true, description: 密码不能全为空白；仅保存Argon2id摘要，不返回或记录原值}
         display_name: {type: string, minLength: 1, maxLength: 80, description: 非空且可打印的显示姓名，首尾空白去除}
         role: {type: string, enum: [viewer, operator, admin], default: operator}
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [new_password]
+      properties:
+        new_password: {type: string, minLength: 8, maxLength: 128, writeOnly: true, format: password, description: 不能全为空白；只保存Argon2id摘要}
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [current_password, new_password]
+      properties:
+        current_password: {type: string, minLength: 1, maxLength: 128, writeOnly: true, format: password}
+        new_password: {type: string, minLength: 8, maxLength: 128, writeOnly: true, format: password, description: 不能全为空白；只保存Argon2id摘要}
     AuthUser:
       type: object
       additionalProperties: false
@@ -1194,6 +1307,8 @@ components:
             - LOGIN_THROTTLED
             - AUTH_NOT_CONFIGURED
             - USERNAME_EXISTS
+            - ACCOUNT_PROTECTED
+            - CURRENT_PASSWORD_INCORRECT
             - FILE_TOO_LARGE
             - UNSUPPORTED_FORMAT
             - IMAGE_UNREADABLE

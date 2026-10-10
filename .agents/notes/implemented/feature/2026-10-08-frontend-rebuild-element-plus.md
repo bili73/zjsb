@@ -106,3 +106,7 @@ The [required-value export policy](../simplification/2026-10-08-required-fields-
 78 frontend tests, TypeScript checking and production build pass. The independent headless browser probe at output/required-markers-20261010-v1/attempt-007 verifies batch counts, Chinese missing names, row styling, pending/absent/ready distinctions, filtering with a hidden selected task, unchanged batch vs selected export scope and saved completion clearing markers while NEED_REVIEW remains. All business APIs are intercepted with synthetic data, with one simulated review and zero production writes/model calls/page errors. Prior selector, animation and timing failures remain alongside the successful run.
 
 The export hint describes the entire blocked selection as lacking a result or required values, because queued/absent-result tasks also block export but are not business-field marker counts. The final browser probe verifies this wording separately; eligibility and export targets are unchanged.
+
+## User manual entry
+
+The [web user manual](2026-10-10-web-user-manual.md) adds the authenticated header's 使用说明 link and generic static documentation under frontend/public/help. Reading in a separate tab preserves this workbench's upload selection, review draft and monitor ownership; no business API or authorization contract is replaced.

@@ -1,8 +1,12 @@
 # 前端字段与当前 API 说明
 
-对应 SPEC v1.23、OpenAPI / 应用 1.17.3。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入，HRSSC管理员已配置；体检台账新版验收及切换见运行记录。
+对应 SPEC v1.24、OpenAPI / 应用 1.18.0。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入，HRSSC管理员已配置；各版本验收及切换见运行记录。
 
-管理员登录后显示“账号管理”，调用`GET /api/v1/admin/users`查询账号公共信息，`POST /api/v1/admin/users`提交username/password/display_name及可选role（默认operator，可选viewer/admin），Cookie写请求沿用同源Origin及X-CSRF-Token。密码8至128字符且不能全空白，账号名大小写等价；201返回新账号公共信息，409 USERNAME_EXISTS表示重复且没有修改原账号。只有admin可使用，operator/viewer返回403；请求体最多8192字节。公共账号信息为user_id、username、display_name、role、enabled，不含密码摘要。网页仅创建；重置/停用保留本地CLI。
+管理员登录后显示“账号管理”，调用`GET /api/v1/admin/users`查询账号公共信息，`POST /api/v1/admin/users`提交username/password/display_name及可选role（默认operator，可选viewer/admin），Cookie写请求沿用同源Origin及X-CSRF-Token。密码8至128字符且不能全空白，账号名大小写等价；201返回新账号公共信息，409 USERNAME_EXISTS表示重复且没有修改原账号。只有admin可使用，operator/viewer返回403；请求体最多8192字节。公共账号信息为user_id、username、display_name、role、enabled，不含密码摘要。
+
+已有账号行提供“禁用／启用”“重置密码”“删除”；禁用/删除先确认，取消不请求后端。`PATCH /api/v1/admin/users/{user_id}`只接受`{enabled:boolean}`，200返回公共账号；`DELETE`同一路径无请求体，成功204；`POST /api/v1/admin/users/{user_id}/password`只接受`{new_password:string}`，成功204。删除保留历史任务、结果与审计UUID，同名重建使用新UUID；禁用、删除和重置均撤销目标全部登录，重置不会启用禁用账号，启用不会恢复旧登录。当前账号及最后一个启用的管理员不能禁用/删除；自己的密码按钮打开自助入口，管理员重置自己返回409 ACCOUNT_PROTECTED。目标不存在404，权限变化或会话撤销按401/403处理，操作成功刷新列表，不自动重放写请求。
+
+所有角色从右上角姓名菜单“修改密码”进入；`POST /api/v1/auth/password`只接受`{current_password:string,new_password:string}`。原密码1至128字符，新密码与创建相同；前端还要求确认新密码一致。原密码不正确为422 CURRENT_PASSWORD_INCORRECT，保留登录并允许重输；成功204清除Cookie并撤销全部会话，前端回登录页。密码输入在提交结束、关闭和卸载时清空，不进入诊断。请求未结束时不允许关闭密码弹窗；CLI仅作为本地恢复工具。
 
 体检按业务台账18列导出，不追加临时“人工录取意见”或分级列。应用不自动分级或决定录取；Word仅参考，具体遵循用户已确认的模板和规则。
 
@@ -15,6 +19,10 @@
 | `GET /health`、`GET /api/v1/health` | 组件、模型状态与队列；无须登录 |
 | `POST /api/v1/auth/login`、`POST /api/v1/auth/logout` | 账号密码登录／撤销会话 |
 | `GET /api/v1/auth/me` | 当前身份、权限、Cookie会话csrf_token；刷新恢复 |
+| `POST /api/v1/auth/password` | 所有角色凭原密码修改自己密码，成功后重新登录 |
+| `GET/POST /api/v1/admin/users` | 管理员查询／创建账号 |
+| `PATCH/DELETE /api/v1/admin/users/{user_id}` | 管理员启用／禁用／删除其他账号 |
+| `POST /api/v1/admin/users/{user_id}/password` | 管理员重置其他账号密码 |
 | `GET /api/v1/doc-types` | 11种材料目录；返回数组，每项doc_type/label/fields |
 | `POST /api/v1/batches` | multipart 上传，返回202及显式 task_ids；必须指定 doc_type_hint |
 | `GET /api/v1/batches`、`GET /api/v1/batches/{id}` | 批次列表/详情 |

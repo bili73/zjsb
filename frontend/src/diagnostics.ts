@@ -20,17 +20,19 @@ export const errorMessages = {
   UNAUTHORIZED: '账号或密码错误，或登录已失效，请重新登录。', FORBIDDEN: '登录校验或权限无效，请刷新工作台后重试。',
   LOGIN_THROTTLED: '登录尝试过多，请五分钟后再试。', AUTH_NOT_CONFIGURED: '账号尚未配置，请联系管理员。',
   USERNAME_EXISTS: '账号已存在，请使用其他账号名；原账号不会被修改。',
+  ACCOUNT_PROTECTED: '当前账号或最后一个启用的管理员受保护，不能执行该操作；自己的密码请从右上角修改。',
+  CURRENT_PASSWORD_INCORRECT: '原密码不正确，请重新输入。',
   NOT_FOUND: '请求的记录暂不存在。', NETWORK_ERROR: '无法连接本地服务，请确认启动器仍在运行。',
   REQUEST_TIMEOUT: '服务未在等待时间内响应。', INVALID_RESPONSE: '服务响应格式不符合约定。',
   CLIENT_ERROR: '界面发生错误，请复制诊断信息交给维护人员。', UNKNOWN_ERROR: '操作未完成，请查看错误编号。',
 } as const
 export type ErrorCode = keyof typeof errorMessages
-export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'required_settings_read' | 'required_settings_save' | 'batch_list' | 'batch_tasks' | 'upload' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export'
+export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'required_settings_read' | 'required_settings_save' | 'batch_list' | 'batch_tasks' | 'upload' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export'
 export type Stage = 'BOOTSTRAP' | 'QUEUED' | 'PREPROCESSING' | 'OCR' | 'EXTRACTING' | 'VALIDATING' | 'PUBLISHING' | 'CLEANUP'
 export type DiagnosticOrigin = 'http' | 'task' | 'vue' | 'window' | 'promise'
 const stages = new Set(['BOOTSTRAP', 'QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING', 'PUBLISHING', 'CLEANUP'])
 const origins = new Set(['http', 'task', 'vue', 'window', 'promise'])
-const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'required_settings_read', 'required_settings_save', 'batch_list', 'batch_tasks', 'upload', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export'])
+const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'required_settings_read', 'required_settings_save', 'batch_list', 'batch_tasks', 'upload', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export'])
 const exceptionNames = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'URIError', 'EvalError', 'DOMException'])
 export function safeId(value: unknown): string | null {
   return typeof value === 'string' && (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) || /^e_[A-Za-z0-9]{1,80}$/.test(value)) ? value : null

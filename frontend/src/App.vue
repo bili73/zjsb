@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 'vue'
 import { ElMessage } from 'element-plus'
-import { SwitchButton, User as UserIcon } from '@element-plus/icons-vue'
+import { Reading, SwitchButton, Tools, User as UserIcon } from '@element-plus/icons-vue'
 import { ApiFailure, BusinessApi } from './api.ts'
 import { resultKey } from './business.ts'
 import type { DocProfile, Task, User } from './business.ts'
@@ -15,8 +15,10 @@ import BatchBoard from './components/BatchBoard.vue'
 import EngineStatus from './components/EngineStatus.vue'
 import TaskResultDrawer from './components/TaskResultDrawer.vue'
 import DiagnosticsPanel from './components/DiagnosticsPanel.vue'
+import HelpDrawer from './components/HelpDrawer.vue'
 import AccountManagement from './components/AccountManagement.vue'
 import RequiredFieldSettings from './components/RequiredFieldSettings.vue'
+import PasswordDialog from './components/PasswordDialog.vue'
 
 const api = shallowRef<BusinessApi | null>(null)
 const user = shallowRef<User | null>(null)
@@ -31,6 +33,8 @@ const previews = new LocalPreviewBatch()
 const activeTab = ref('upload')
 const uploadReset = ref(0)
 const diagnosticsOpen = ref(false)
+const helpOpen = ref(false)
+const passwordOpen = ref(false)
 const drawerInfo = reactive({ open: false, batchId: '', taskId: '' })
 
 const canWrite = computed(() => user.value?.role === 'operator' || user.value?.role === 'admin')
@@ -58,6 +62,7 @@ function endSession(message?: string) {
   user.value = null
   activeTab.value = 'upload'
   drawerInfo.open = false
+  passwordOpen.value = false
   monitor.clear()
   previews.clear()
   if (message) ElMessage.warning(message)
@@ -73,6 +78,7 @@ function openResult(task: Task, batchId: string) {
 
 function handleSubmitted() { uploadReset.value++; activeTab.value = 'batches' }
 async function onHeaderCommand(command: string | number | object) {
+  if (command === 'password') { passwordOpen.value = true; return }
   if (command !== 'logout' || !api.value) return
   try { await api.value.logout(new AbortController().signal); endSession() }
   catch (error) {
@@ -80,6 +86,7 @@ async function onHeaderCommand(command: string | number | object) {
     else ElMessage.error('退出未完成，请检查连接后重试。')
   }
 }
+function passwordChanged() { endSession(); ElMessage.success('密码已更新，请使用新密码重新登录。') }
 async function registerPreviews(files: readonly File[], tasks: readonly Task[]) { try { await previews.addMatched(files, tasks) } catch { /* A preview binding failure must never change accepted tasks. */ } }
 function reviewed(task: Task) { const entry=monitor.entryOf(task.task_id); if(entry) entry.tasks=entry.tasks.map(t=>t.task_id===task.task_id?task:t); monitor.start() }
 async function requiredFieldsSaved() {
@@ -128,7 +135,10 @@ onBeforeUnmount(() => {
         <el-tag class="engine-badge" :type="engineSummary.tone" effect="light" round title="查看引擎状态" @click="activeTab = 'engine'">
           {{ engineSummary.label }}
         </el-tag>
-        <el-button link type="primary" @click="diagnosticsOpen = true">诊断</el-button>
+        <div class="header-actions">
+          <el-button :icon="Reading" text class="header-text-btn" @click="helpOpen = true">使用说明</el-button>
+          <el-button :icon="Tools" text class="header-text-btn" @click="diagnosticsOpen = true">诊断</el-button>
+        </div>
         <el-divider direction="vertical" />
         <el-dropdown @command="onHeaderCommand">
           <span class="user-chip">
@@ -138,6 +148,7 @@ onBeforeUnmount(() => {
           </span>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item command="password">修改密码</el-dropdown-item>
               <el-dropdown-item command="logout" divided>
                 <el-icon><SwitchButton /></el-icon>退出登录
               </el-dropdown-item>
@@ -160,7 +171,7 @@ onBeforeUnmount(() => {
           <EngineStatus :engine="engine" />
         </el-tab-pane>
         <el-tab-pane v-if="user.role === 'admin'" label="账号管理" name="accounts" lazy>
-          <AccountManagement v-if="api" :api="api" @unauthorized="handleUnauthorized" />
+          <AccountManagement v-if="api" :api="api" :current-user="user" @change-password="passwordOpen = true" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane v-if="user.role === 'admin'" label="必填字段设置" name="required" lazy>
           <RequiredFieldSettings v-if="api" :api="api" @saved="requiredFieldsSaved" @unauthorized="handleUnauthorized" />
@@ -171,12 +182,17 @@ onBeforeUnmount(() => {
     <footer class="app-footer">登录会话由服务端 Cookie 保持（最长 12 小时），过期或退出后需重新登录；诊断信息不含密码与识别内容。</footer>
 
     <TaskResultDrawer v-model:open="drawerInfo.open" :task="liveTask" :api="api" :monitor="monitor" :previews="previews" :can-write="canWrite" :catalogue="catalogue" @reviewed="reviewed" @bank-retried="drawerInfo.open = false; handleSubmitted()" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
+    <PasswordDialog v-if="passwordOpen && api" :api="api" @close="passwordOpen = false" @saved="passwordChanged" @unauthorized="handleUnauthorized" />
   </div>
   <DiagnosticsPanel v-model:open="diagnosticsOpen" />
+  <HelpDrawer v-model:open="helpOpen" />
 </template>
 
 <style scoped>
 .restoring { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--el-text-color-secondary); font-size: 14px; }
 .restoring-logo { height: 40px; width: auto; }
 .user-chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: var(--el-text-color-primary); outline: none; }
+.header-actions { display: inline-flex; align-items: center; gap: 4px; }
+.header-text-btn { --el-button-text-color: var(--el-text-color-regular); font-weight: 500; }
+.header-text-btn:hover { --el-button-text-color: var(--el-color-primary); --el-button-hover-text-color: var(--el-color-primary); }
 </style>

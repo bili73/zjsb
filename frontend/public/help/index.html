@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="../../favicon.ico">
+  <title>使用说明 · HRSSC识别工作台</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --brand: #0f9d8f;
+      --brand-dark: #0c7e72;
+      --brand-soft: #e7f5f4;
+      --brand-line: #cfe9e5;
+      --ink: #24332f;
+      --muted: #65736c;
+      --line: #e1e9e5;
+      --bg: #f4f8f7;
+      --warn-bg: #fff8ef;
+      --warn-line: #f5d9a8;
+      --warn-tag: #b45309;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-padding-top: 92px; }
+    body { margin: 0; font-size: 16px; line-height: 1.9; }
+    a { color: var(--brand-dark); text-underline-offset: 4px; }
+    a:hover { color: #05594f; }
+    a:focus-visible { outline: 3px solid var(--brand); outline-offset: 4px; border-radius: 4px; }
+    .skip-link { position: absolute; top: -100px; left: 20px; background: white; padding: 8px 16px; z-index: 30; border-radius: 6px; box-shadow: 0 4px 14px rgba(16,60,54,.14); }
+    .skip-link:focus { top: 12px; }
+
+    .topbar { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+    .topbar-inner { max-width: 1280px; margin: auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+    .brand img { width: 34px; height: 34px; border-radius: 8px; display: block; }
+    .return-link { white-space: nowrap; text-decoration: none; font-size: 14px; padding: 7px 14px; border: 1px solid var(--brand-line); border-radius: 999px; background: white; transition: .2s; }
+    .return-link:hover { border-color: var(--brand); color: var(--brand-dark); background: var(--brand-soft); }
+    /* 在工作台内嵌打开时（抽屉 iframe），隐藏“返回工作台”，避免 iframe 内套娃跳转。 */
+    .embedded .return-link { display: none; }
+
+    .layout { max-width: 1280px; margin: 26px auto 48px; padding: 0 24px; display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 28px; align-items: start; }
+    nav { position: sticky; top: 92px; max-height: calc(100vh - 116px); overflow-y: auto; background: white; border: 1px solid var(--line); border-radius: 12px; padding: 16px 10px; }
+    nav .nav-title { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .12em; padding: 0 10px 10px; }
+    nav a { display: block; padding: 8px 12px; text-decoration: none; line-height: 1.55; font-size: 14.5px; color: var(--ink); border-radius: 8px; border-left: 3px solid transparent; transition: .15s; }
+    nav a:hover { background: var(--brand-soft); }
+    nav a.active { background: var(--brand-soft); border-left-color: var(--brand); color: var(--brand-dark); font-weight: 600; }
+
+    main { min-width: 0; padding: 40px 44px 36px; background: white; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 1px 3px rgba(16,60,54,.04), 0 14px 36px rgba(16,60,54,.05); }
+    h1 { margin: 0 0 10px; font-size: 30px; line-height: 1.35; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+    .meta span { font-size: 13px; color: var(--brand-dark); background: var(--brand-soft); border-radius: 999px; padding: 3px 12px; }
+    h2 { margin: 0 0 18px; font-size: 23px; line-height: 1.5; padding-bottom: 12px; border-bottom: 1px solid var(--line); position: relative; }
+    h2::before { content: ""; position: absolute; left: 0; bottom: -2px; width: 58px; height: 3px; border-radius: 2px; background: var(--brand); }
+    h3 { margin: 26px 0 10px; font-size: 18px; line-height: 1.6; display: flex; align-items: center; gap: 8px; }
+    h3::before { content: ""; width: 6px; height: 16px; border-radius: 3px; background: var(--brand); opacity: .75; flex: none; }
+    p { margin: 12px 0; overflow-wrap: anywhere; }
+    .muted { color: var(--muted); font-size: 14.5px; }
+    .lead { font-size: 16.5px; }
+    section + section { margin-top: 52px; }
+
+    /* 步骤列表：圆形数字徽章 */
+    ol.steps { list-style: none; counter-reset: step; margin: 16px 0; padding: 0; display: grid; gap: 13px; }
+    ol.steps li { counter-increment: step; position: relative; padding: 3px 0 3px 44px; }
+    ol.steps li::before { content: counter(step); position: absolute; left: 0; top: 5px; width: 28px; height: 28px; border-radius: 50%; background: var(--brand-dark); color: #fff; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+    ol.steps li strong { margin-right: 8px; }
+
+    /* 快速上手：六步卡片 */
+    .step-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 20px 0 10px; }
+    .step-card { background: linear-gradient(180deg, #ffffff, #f5fbfa); border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 14px; }
+    .step-card .no { font-size: 26px; font-weight: 800; line-height: 1; color: var(--brand); opacity: .32; }
+    .step-card h4 { margin: 8px 0 6px; font-size: 15.5px; }
+    .step-card p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.75; }
+
+    /* 提示与注意 */
+    .callout { border-radius: 10px; padding: 14px 16px; margin: 18px 0; font-size: 15px; line-height: 1.85; overflow-wrap: anywhere; }
+    .callout .tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 10px; border-radius: 999px; margin-right: 8px; vertical-align: 1px; }
+    .callout.info { background: var(--brand-soft); border: 1px solid var(--brand-line); }
+    .callout.info .tag { background: var(--brand-dark); color: #fff; }
+    .callout.warn { background: var(--warn-bg); border: 1px solid var(--warn-line); }
+    .callout.warn .tag { background: var(--warn-tag); color: #fff; }
+
+    .table-wrap { border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; margin: 18px 0; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14.5px; }
+    th { background: #eef6f3; color: var(--brand-dark); font-weight: 600; padding: 10px 14px; border-bottom: 2px solid #d5e8e2; white-space: nowrap; }
+    td { padding: 11px 14px; border-bottom: 1px solid #eef2f0; vertical-align: top; overflow-wrap: anywhere; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #f6faf8; }
+    figcaption { color: var(--muted); font-size: 13.5px; }
+
+    figure { margin: 26px 0; }
+    .shot { display: block; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(15,157,143,.08); transition: .2s; }
+    .shot:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15,157,143,.15); }
+    .shot img { display: block; width: 100%; height: auto; }
+    figure.small-shot { max-width: 460px; margin-inline: auto; }
+    figcaption { margin-top: 10px; text-align: center; }
+
+    footer { margin: 44px 0 0; padding-top: 18px; border-top: 1px solid var(--line); font-size: 14.5px; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; gap: 18px; margin-top: 18px; padding: 0 16px; }
+      nav { position: static; max-height: none; }
+      nav a { display: inline-block; margin: 2px 4px 2px 0; border-left: 0; }
+      main { padding: 26px 22px; }
+      .step-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
+      .topbar-inner { padding: 10px 14px; }
+      .brand { font-size: 15px; }
+      main { padding: 20px 16px; }
+      h1 { font-size: 25px; }
+      h2 { font-size: 21px; }
+      .step-grid { grid-template-columns: 1fr; }
+      th, td { padding: 8px 10px; }
+    }
+    @media print {
+      :root { background: white; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .topbar, nav, .reading-hint, footer, .skip-link { display: none; }
+      .layout { display: block; margin: 0; padding: 0; }
+      main { border: 0; padding: 0; box-shadow: none; }
+      h2, h3 { break-after: avoid; }
+      figure, tr { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#manual">跳到说明正文</a>
+  <header class="topbar"><div class="topbar-inner">
+    <span class="brand"><img src="../../favicon.ico" alt="">HRSSC识别工作台</span>
+    <a class="return-link" href="../../">返回工作台</a>
+  </div></header>
+  <div class="layout">
+    <nav aria-label="说明书章节">
+      <div class="nav-title">说 明 目 录</div>
+      <a href="#quick-start">第一次使用 · 六步上手</a>
+      <a href="#upload">1 登录和上传材料</a>
+      <a href="#batches">2 查找批次和缺失信息</a>
+      <a href="#review">3 人工核对和修正</a>
+      <a href="#medical">4 体检报告先看台账信息</a>
+      <a href="#abnormal">5 体检异常和未识别怎么处理</a>
+      <a href="#export">6 导出 Excel</a>
+      <a href="#bank">7 银行卡和其他材料</a>
+      <a href="#faq">8 常见问题和反馈方法</a>
+      <a href="#admin">9 管理员设置</a>
+    </nav>
+    <main id="manual">
+      <h1>使用说明</h1>
+      <p class="meta"><span>适用版本 v1.18.0</span><span>编写日期 2026年10月10日</span></p>
+      <p class="muted reading-hint">按左侧目录查找操作步骤。工作台保留在原标签页，阅读说明不影响正在填写的内容。</p>
+
+      <section id="quick-start" aria-label="快速上手">
+        <p class="lead">本说明介绍如何将证件照片、学历材料和体检报告整理成可下载的 Excel。系统先识别，人工再核对；认不清的内容可以对照原件补填。体检异常的解释和是否录取，由人工按公司制度处理。</p>
+        <h3>第一次使用照这六步做</h3>
+        <div class="step-grid">
+          <div class="step-card"><div class="no">1</div><h4>登录</h4><p>打开管理员提供的网址，输入自己的账号和密码。</p></div>
+          <div class="step-card"><div class="no">2</div><h4>选类型</h4><p>在“上传识别”选择毕业证、银行卡、体检报告等对应类型。</p></div>
+          <div class="step-card"><div class="no">3</div><h4>传材料</h4><p>同一类型的文件一起上传，点击“开始识别”。</p></div>
+          <div class="step-card"><div class="no">4</div><h4>找漏项</h4><p>进入“任务批次”，优先处理红色“必填未填”的任务。</p></div>
+          <div class="step-card"><div class="no">5</div><h4>核对保存</h4><p>点“查看”或“补填”，对照左侧原图，在右侧修正并保存。</p></div>
+          <div class="step-card"><div class="no">6</div><h4>下载表格</h4><p>必填信息齐全后，导出单份、勾选的任务或整个批次。</p></div>
+        </div>
+        <h3>先记住这三个区别</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th scope="col">页面提示</th><th scope="col">实际意思</th></tr></thead>
+          <tbody>
+            <tr><td>待人工核对</td><td>有内容需要人看一遍，不等于识别失败。</td></tr>
+            <tr><td>必填未填</td><td>规定必须有的信息为空，需要补齐后才能导出。</td></tr>
+            <tr><td>必填已齐</td><td>当前必填信息都有值，不代表每个值都正确。</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout info"><span class="tag">说明</span>本说明配图均使用虚构演示资料。页面按钮以实际工作台为准；账号、密码和访问网址由管理员另行提供。</div>
+      </section>
+
+      <section id="upload"><h2>1 登录和上传材料</h2>
+        <p>使用电脑浏览器打开工作台网址。输入账号和密码，点击“进入工作台”。使用完毕后点击右上角的姓名，选择“退出登录”。若提示登录失效，重新登录即可；忘记密码时联系管理员或维护人员。</p>
+        <p>需要修改自己的密码时，点击右上角姓名，选择“修改密码”，填写原密码、新密码和确认新密码，再点“保存新密码”。新密码需8至128个字符。修改成功后会返回登录页，所有设备都需用新密码重新登录；原密码输错时，重新填写即可。</p>
+        <ol class="steps">
+          <li><strong>先选择材料类型</strong>例如毕业证选“毕业证”，学位证选“学位证”。身份证人像面和国徽面分别选择。学信网入口目前对应“学历证书电子注册备案表”。</li>
+          <li><strong>添加文件</strong>把文件拖到上传区域，或点击“点击选择”，可一次选择多份。传错时删除对应文件，或用“一键清除”重新选择。</li>
+          <li><strong>检查后提交</strong>确认类型和文件都正确，再点击“开始识别”。提交成功后会进入任务批次，可切回上传页继续提交其他类型。</li>
+        </ol>
+        <figure><a class="shot" href="images/upload.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/upload.png" alt="" loading="lazy"></a>
+        <figcaption>图1  文件选择和开始识别入口（点击图片可查看大图）</figcaption></figure>
+        <div class="callout warn">上传限制：支持 JPG、JPEG、PNG、HEIC、PDF；单文件不超过 50 MB，每批最多 100 个文件，总大小不超过 500 MB。银行卡入口只接收图片，不接收 PDF。</div>
+        <p>一个批次只按一种材料类型处理。切换类型会清空尚未提交的文件；已提交的任务继续在后台处理。体检 PDF 建议上传完整原文件，照片尽量清楚、端正、无遮挡。</p>
+      </section>
+
+      <section id="batches"><h2>2 查找批次和缺失信息</h2>
+        <p>打开“任务批次”，点击批次标题展开文件列表。批次按材料类型命名，较新的批次排在前面；时间按北京时间显示。</p>
+        <figure><a class="shot" href="images/batches.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/batches.png" alt="" loading="lazy"></a>
+        <figcaption>图2  批次中的缺失标记和导出入口（点击图片可查看大图）</figcaption></figure>
+        <ol class="steps">
+          <li><strong>按时间找</strong>用“日／周／月”和日期选择器缩小范围。找不到时清空日期，查看“全部日期”；旧记录可点“加载更早的批次”。</li>
+          <li><strong>优先补缺失</strong>批次标题会显示“几个任务缺必填”。展开后勾选“只看必填未填”，即可只看需要补录的文件。</li>
+          <li><strong>直接打开处理</strong>“必填信息”列会列出缺少的中文字段名。点“补填”进入修正；没有缺失时点“查看”核对。补齐并保存后，标记会更新。</li>
+        </ol>
+        <div class="table-wrap"><table>
+          <thead><tr><th scope="col">任务状态</th><th scope="col">你需要做什么</th></tr></thead>
+          <tbody>
+            <tr><td>排队中／识别中／整理中</td><td>等待处理，任务列表会自动刷新。不要反复上传同一文件。</td></tr>
+            <tr><td>待人工核对</td><td>打开结果，对照原件核对和修正。</td></tr>
+            <tr><td>已完成</td><td>人工处理已完成；使用前仍可抽查重要信息。</td></tr>
+            <tr><td>处理失败／已拒绝／已取消</td><td>先看提示；有部分结果时可查看。必要时重跑或更换清晰材料。</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout warn">注意：“只看必填未填”只改变列表显示，不会缩小“本批次全部”的导出范围。只想导出部分文件，必须勾选它们并选择“已勾选”。</div>
+      </section>
+
+      <section id="review"><h2>3 人工核对和修正</h2>
+        <p>点任务的“查看”或“补填”后，会打开结果窗口。左侧是原件，右侧是识别结果及“人工核对与修正”。左右中间的分隔条可以拖动，双击可恢复宽度。</p>
+        <figure class="small-shot"><a class="shot" href="images/review.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/review.png" alt="" loading="lazy"></a>
+        <figcaption>图3  缺失的学校名称可在修正区直接补填（点击图片可查看大图）</figcaption></figure>
+        <ol class="steps">
+          <li><strong>对照关键内容</strong>先看姓名、学校、证件编号、日期等重要信息。识别结果可能漏字或读错数字；置信度“未标定”表示没有可供参考的可靠分数，仍需对照原件核对。</li>
+          <li><strong>在修正区填写</strong>向下找到“人工核对与修正”。把空白的必填项补上，把识别错误的值改正。带“必填”的字段必须填写真实内容。</li>
+          <li><strong>处理原件没有的信息</strong>选填项在原件中确实不存在时，可选择“原件未记载”或“不适用”。必填项原件也没有时，补取材料或请管理员确认规则，不要编造。</li>
+          <li><strong>保存</strong>点击“保存修正并重新校验”。可确认的核对问题会在保存时自动确认；缺失和冲突仍需实际修正。保存后检查“必填未填”是否消失。</li>
+        </ol>
+        <h3>毕业证尤其要核对这些内容</h3>
+        <p>学校名称、专业、学历层次、学制、证书编号和毕业日期。2.5 年不要误写成 5 年，专科和本科也要看清。证书“某年某月至某年某月”的前一个日期是入学日期，后一个是毕业日期；证书落款日期对应发证日期，两者不能互相代替。</p>
+        <div class="callout warn">编号按原件逐位核对，保留开头的 0；日期精度以原件为准，不要为只有年月的内容编一个日期。关闭窗口前请保存，否则未提交的修改会丢失。</div>
+      </section>
+
+      <section id="medical"><h2>4 体检报告先看台账信息</h2>
+        <p>打开体检报告后，先核对“体检台账字段”，再看检测项目和异常信息。体检字段旁的“定位”“相关来源”“各项目来源”可帮助查看原文；证件当前只提供原图查看，不做字段定位。</p>
+        <h3>个人信息和体检机构</h3>
+        <p>先核对姓名、性别、年龄、体检日期、体检机构、报告日期、身高、体重和血压。常用报告的个人信息可在“一、个人信息”下的表格找到；体检机构可检查封面右侧底部的机构名称。不同机构版式可能不同，识别不到时对照原件补录。</p>
+        <h3>体检大项目和数量</h3>
+        <p>“体检项目”指内科、眼科、血常规等大项目，来源是“八、本次体检项目意义”标题下“项目”这一列。把大项目名称填进“体检项目”清单，建议每行一个；重复项目只保留一次。</p>
+        <p>“体检项目数量”由这份大项目清单自动计算，不能直接修改数字。发现数量不对，先修改“体检项目”清单，再保存。</p>
+        <figure><a class="shot" href="images/medical.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/medical.png" alt="" loading="lazy"></a>
+        <figcaption>图4  体检台账字段示例  可向下滚动查看后续信息（点击图片可查看大图）</figcaption></figure>
+        <h3>六类检查从哪里看</h3>
+        <p>血常规、尿常规、心电图、DR 影像、腹部彩超、肝功五项（生化检测）应分别查看对应报告页。血常规、尿常规和生化检验往往只有明细，没有“小结”，仍需看结果、参考范围和异常标记；肝功相关内容可在“生化检验报告单”中查找。</p>
+        <div class="callout warn"><span class="tag">口径</span>体检项目数量、异常指标条数、报告结论中的异常清单数量，是不同口径，不要求三个数字相等。</div>
+      </section>
+
+      <section id="abnormal"><h2>5 体检异常和未识别怎么处理</h2>
+        <div class="table-wrap"><table>
+          <thead><tr><th scope="col">显示内容</th><th scope="col">如何理解</th><th scope="col">操作建议</th></tr></thead>
+          <tbody>
+            <tr><td>未见异常</td><td>该类检查已有正常结论或正常结果的依据。</td><td>对照对应原文，确认没有遗漏的异常项。</td></tr>
+            <tr><td>未识别</td><td>系统没有提取到可用内容，不能据此认定正常。</td><td>查对应检查页；有内容就人工补录。</td></tr>
+            <tr><td>报告未载明</td><td>该报告确实没有记载这一项。</td><td>确认原件未记载后，使用选填项的缺省原因。</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout warn"><span class="tag">注意</span>原件有这项检查，经人工逐项核对确实没有异常时，可在对应修正框填写“未见异常”。原件根本没有这项检查时，不要填写“未见异常”。</div>
+        <h3>核对异常指标</h3>
+        <p>查看“仅异常”和“仅待判定”，核对项目名称、检测结果、单位、参考范围、报告等级和异常诊断。常见提示有结果偏高／偏低、阳性、异常符号，以及报告中的风险等级；这些是核对线索，不能直接当作录取结论。</p>
+        <p>身高、体重可以保留在台账基本字段中，但不计入异常汇总或异常数量复核；BMI（体重指数）仍需核对。“小结”是原文结论，不作为独立检测项目重复计数。</p>
+        <h3>漏项或重复项可以人工修正</h3>
+        <p>展开“编辑检测项目／增删项目”。发现漏项可点“新增项目”，至少填项目名称和检测结果；发现重复或误收的项目可勾选“删除该项目（提交后生效）”。把原报告的等级和诊断一并补齐后，再保存。</p>
+        <h3>报告写着共有几项异常时</h3>
+        <p>找到“您共有 x项异常需进一步检查并治疗”这类标题，逐条核对其下的清单，不固定在第六页。“清单条目数吻合”只表示这份清单的数量对上了，不代表所有化验异常都找全。数量不符时，检查有无漏条、重复条或关联错误。</p>
+        <p>需要修正这份清单时，展开“清单声明数／增删条目”，按原件填写标题、声明数量、所在页和修正依据。不要为凑数量，把正常项、身高体重或“小结”算进去。</p>
+        <h3>是否录取由人工决定</h3>
+        <p>系统辅助提取信息，不自动给出公司异常分级或录取结论。按公司标准完成审核，必要时由相关专业人员复核，再在导出的台账中填写人工意见。</p>
+      </section>
+
+      <section id="export"><h2>6 导出 Excel</h2>
+        <p>先保存所有修改，再导出。当前规则主要检查所选任务是否有可用的已保存结果，以及管理员规定的必填信息是否齐全；“待人工核对”本身不是禁止导出的条件。</p>
+        <h3>三种导出方式</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th scope="col">需要什么</th><th scope="col">在哪里操作</th></tr></thead>
+          <tbody>
+            <tr><td>只导出当前一份</td><td>打开结果窗口，点击右上角“导出 Excel”。</td></tr>
+            <tr><td>导出本批次全部</td><td>展开批次，选择“本批次全部”，点击“下载 Excel”。</td></tr>
+            <tr><td>只导出勾选的几份</td><td>在文件列表左侧勾选任务，再选择“已勾选”，点击“下载 Excel”。</td></tr>
+          </tbody>
+        </table></div>
+        <figure><a class="shot" href="images/export.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/export.png" alt="" loading="lazy"></a>
+        <figcaption>图5  选择导出范围后点击“下载 Excel”（点击图片可查看大图）</figcaption></figure>
+        <h3>按钮不能点或导出被阻止时</h3>
+        <ol class="steps">
+          <li><strong>检查有没有选中任务</strong>使用勾选导出时，至少勾选一份材料。</li>
+          <li><strong>检查必填项</strong>回到批次，用“只看必填未填”找到漏项，补齐并保存。</li>
+          <li><strong>检查任务是否有结果</strong>排队、失败且没有结果、取消等任务可能无法导出；等待完成或处理失败原因。</li>
+          <li><strong>检查保存和权限</strong>结果窗口有未保存修改时先保存。只读账号不能导出，需要操作员或管理员账号。</li>
+        </ol>
+        <p>所选范围内只要有一份不满足条件，整次导出会停止。可以先补齐，也可以改为仅勾选符合条件的文件。下载后的文件名由“识别类型＋导出时间”组成，通常保存在浏览器下载目录。</p>
+        <p>Excel 使用已保存的修正结果。证件表导出对应业务字段；体检台账包括个人信息、六类检查结果、体检项目数量和异常指标。下载后再检查人员对应关系、编号和异常信息；编号和电话以完整内容显示，表格按公司要求保存和使用。</p>
+      </section>
+
+      <section id="bank"><h2>7 银行卡和其他材料</h2>
+        <h3>银行卡先直接识别</h3>
+        <p>选择“银行卡”，直接上传清晰的单张卡片照片并开始识别，无需事先把每一张都裁剪。结果出来后，逐位核对卡号，并检查发卡行；自动匹配的银行名称也可能缺失或有误。</p>
+        <ol class="steps">
+          <li><strong>读不清的卡片再处理</strong>打开该任务。若提示卡号未可靠读出，点击“裁剪这张重新识别”；也可以直接在“人工核对与修正”里补填卡号。</li>
+          <li><strong>旋转并裁剪</strong>用“向左旋转90°”或“向右旋转90°”把卡号转正，再拖动框选完整卡号一行。框选横向的号码条，不要框整张卡；旋转后需要重新框选。点击“确认裁图并上传”。</li>
+          <li><strong>检查新结果</strong>裁图会单独提交为新任务，原任务和其他卡片保留。导出时选择最终核对正确的任务，避免把同一张卡重复导出。</li>
+        </ol>
+        <h3>选对材料类型</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th scope="col">材料</th><th scope="col">选择和核对重点</th></tr></thead>
+          <tbody>
+            <tr><td>身份证</td><td>人像面与国徽面分开选；核对姓名、号码、签发机关和有效期。</td></tr>
+            <tr><td>毕业证／学位证</td><td>分别选择对应入口；重点核对校名、专业、层次或学位、编号和日期。</td></tr>
+            <tr><td>学信网材料</td><td>目前专门入口对应“学历证书电子注册备案表”；其他网页截图不能直接当作这类表。</td></tr>
+            <tr><td>护照／户口本／营业执照</td><td>选择对应类型；户口本还需核对成员页和是否漏人。</td></tr>
+            <tr><td>其他文件</td><td>可选“通用识别”，核对正文和键值；不保证自动整理成特定证件字段。</td></tr>
+          </tbody>
+        </table></div>
+        <p>所有类型都需要对照原件。遇到号码遮挡、反光、图片模糊、严重倾斜或缺页时，优先补取清晰材料，不要仅凭识别结果猜内容。</p>
+      </section>
+
+      <section id="faq"><h2>8 常见问题和反馈方法</h2>
+        <h3>上传时提示文件解析失败</h3>
+        <p>先确认文件能在电脑上正常打开，且格式和大小符合要求。不要只修改扩展名把其他文件伪装成 JPG 或 PDF。可重新保存为清晰的 JPG／PNG，或重新导出 PDF 后再试。多份一起失败时，可分小批或逐份提交，查找有问题的文件。银行卡请用图片。</p>
+        <h3>处理很久或超时了</h3>
+        <p>体检 PDF 页数多，通常比证件慢。先查看任务状态，任务仍在处理时不要重复上传。出现失败或超时后，先打开已有结果检查是否有部分内容，再决定补录、重跑或反馈；重跑前确认没有需要保留的未保存修正。重跑生成的新结果需要重新核对。</p>
+        <h3>保存后仍然显示待人工核对</h3>
+        <p>可能还有低置信度、冲突、覆盖不完整或其他核对问题。先看“待核对”和“核对项”的具体提示。“保存成功”“已完成”和“允许导出”不是同一件事；是否可导出以当前必填检查为准。</p>
+        <h3>提示结果或设置已经更新</h3>
+        <p>可能有人修改了同一任务，或管理员调整了必填设置。先记下尚未保存的内容，点击“读取最新版本”，重新核对后再保存。不要连续重复点击保存。</p>
+        <h3>列表不更新或找不到刚上传的批次</h3>
+        <p>点击“刷新”，检查日期范围，必要时切回“全部日期”。如果刚刚取消了等待上传，服务端仍可能已经接收，先查任务列表，避免重复提交。</p>
+        <h3>怎样把问题反馈给维护人员</h3>
+        <ol class="steps">
+          <li><strong>记录发生位置</strong>记下出现问题的时间、材料类型、文件名，以及当时点了哪个按钮。</li>
+          <li><strong>保留错误提示</strong>截图错误提示；打开右上角“诊断”，使用“复制”或“下载 JSON”保存错误编号等信息。</li>
+          <li><strong>说明预期和实际</strong>例如“原件学制是2.5年，结果显示5年”，或“尿蛋白阳性没有进入异常指标”。通过公司约定渠道反馈。</li>
+        </ol>
+        <p>如果没有诊断记录，仍可提供问题描述和截图。截图可能含个人信息，按公司内部要求传递；说明书不包含任何真实账号密码。</p>
+      </section>
+
+      <section id="admin"><h2>9 管理员设置</h2>
+        <p>普通操作员日常只需要上传、核对和导出。本页仅供具有管理员权限的账号使用；只读账号可查看已有任务和识别结果，不能上传、修正或导出。</p>
+        <h3>创建其他账号</h3>
+        <ol class="steps">
+          <li><strong>进入账号管理</strong>点击“账号管理”，查看现有账号，避免重复创建。</li>
+          <li><strong>填写新账号</strong>填写账号、姓名、密码和确认密码，再选择角色。日常经办人员一般选“操作员”，只查阅的人员选“只读”；按职责决定是否授予管理员。</li>
+          <li><strong>完成创建</strong>点击页面创建按钮，确认新账号已在列表中出现，再将登录信息单独告知使用人。密码长度按页面要求填写，当前为8至128个字符。</li>
+        </ol>
+        <h3>管理已有账号</h3>
+        <ol class="steps">
+          <li><strong>禁用或启用</strong>在已有账号列表找到对应账号，点击“禁用”并确认。该账号立即退出，禁用期间不能登录。需要恢复时点击“启用”，再让对方重新登录。</li>
+          <li><strong>重置密码</strong>忘记密码时，管理员点击该账号的“重置密码”，填写两次新密码，点“确认重置”。所有旧登录立即失效。已禁用账号仍保持禁用，需要时另行启用。</li>
+          <li><strong>删除账号</strong>账号不再使用时点击“删除”，确认账号无误后点“确认删除”。删除不能撤销，但历史任务和识别记录会保留。同名重新创建是一个新账号。</li>
+        </ol>
+        <p>当前登录账号和最后一个启用的管理员不能禁用或删除。修改自己的密码需使用右上角菜单，填写原密码。不要通过重复创建账号来重置密码。</p>
+        <h3>按材料类型调整必填信息</h3>
+        <figure><a class="shot" href="images/settings.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/settings.png" alt="" loading="lazy"></a>
+        <figcaption>图6  管理员统一设置必填字段  会影响历史批次（点击图片可查看大图）</figcaption></figure>
+        <ol class="steps">
+          <li><strong>选择材料类型</strong>打开“必填字段设置”，选择毕业证、体检报告等要调整的类型。</li>
+          <li><strong>勾选并保存</strong>勾选必须填写的项目，点击“保存设置”。未选中项是选填；自动计算的字段不能设为必填。</li>
+          <li><strong>核查影响</strong>设置对所有账号、当前任务和历史任务统一生效，不需要重新识别，也不会改变已经保存的识别内容。需要回到原规则时点“恢复默认”。</li>
+        </ol>
+        <div class="callout warn"><span class="tag">提醒</span>请先按业务要求确定必填项，再修改设置。清空所有必填项后，空白业务字段将不再阻止该类型导出，但仍需有已保存的结果；不要为了导出某一份材料临时放宽所有人的规则。</div>
+      </section>
+      <footer><a href="#manual">回到顶部</a></footer>
+    </main>
+  </div>
+  <script>
+    // 在工作台抽屉中以 iframe 打开时隐藏“返回工作台”，避免 iframe 内套娃跳转。
+    if (window.parent !== window) document.documentElement.classList.add('embedded');
+    // 目录滚动高亮：当前阅读的章节在左侧目录中加亮。
+    (function () {
+      var links = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));
+      var byId = {};
+      links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          links.forEach(function (a) { a.classList.remove('active'); });
+          var active = byId[entry.target.id];
+          if (active) active.classList.add('active');
+        });
+      }, { rootMargin: '-25% 0px -65% 0px' });
+      document.querySelectorAll('main section[id]').forEach(function (s) { observer.observe(s); });
+    })();
+  </script>
+</body>
+</html>

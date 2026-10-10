@@ -18,7 +18,7 @@ Every management request verifies current session/role; writes also use existing
 
 ## Decision audit
 
-The [frontend rebuild](2026-10-08-frontend-rebuild-element-plus.md) retains its task monitoring, expiry handling and saved-result UI. This decision adds only the admin account tab and public account DTOs; no browser self-registration, reset or disabling page is added.
+The [frontend rebuild](2026-10-08-frontend-rebuild-element-plus.md) retains its task monitoring, expiry handling and saved-result UI. This decision introduces the admin account tab and public account DTOs. The later [account lifecycle decision](2026-10-10-account-lifecycle-management.md) expands its initial creation-only browser scope with enable/disable, deletion and password management; initial provisioning, duplicate-safe creation and roles remain owned here. No public self-registration is added.
 
 The password-session decision partially overlaps: revoke/expire/cookie/CSRF and named task actors stay; the CLI-only administration choice is superseded only for listing and creating users, and the minimum length changes to eight. Its previous rationale remains recorded. [Hosted deployment](../../proposed/architecture/2026-10-09-hosted-web-session-auth.md) retains Mac/TLS/migration qualification. [Business Excel](2026-10-09-business-xlsx-layout.md) keeps its layout pending the business template, apart from its separately authorized manual-opinion placeholder. No decision is wholly superseded or archived. Related proposed/implemented/rejected notes and auth scope were searched before this decision.
 
