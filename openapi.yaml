@@ -36,7 +36,7 @@ info:
     - 写操作在同一事务校验 run_id 与 expected_revision；不匹配返回 409 RESULT_VERSION_CONFLICT，禁止覆盖新执行结果
     - 同步 400/422 仅表示请求或 schema/编辑校验错误；接受任务后的 OCR、模型或抽取问题写入 Task.error、review_issues 或 warnings
     - worker中断恢复确认旧执行停止后，QUEUED有取消请求则CANCELLED，否则继续排队；执行中run有取消请求则CANCELLED，否则FAILED且error.code=WORKER_INTERRUPTED；不新增Task状态
-    - Settings 后台配置接口不在本轮契约及第一版界面范围
+    - 管理员可按材料类型统一设置必填字段；当前及历史任务读取、补填和导出使用最新设置，不重跑OCR或改写人工值
   license:
     name: Internal
 servers:
@@ -62,6 +62,43 @@ security:
   - ApiKeyAuth: []
 
 paths:
+  /admin/required-fields:
+    get:
+      tags: [system]
+      summary: 管理员读取共享必填字段设置
+      responses:
+        '200':
+          description: 所有材料的当前有效字段及全局设置版本
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RequiredFieldSettings'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    put:
+      tags: [system]
+      summary: 管理员保存一种材料的共享必填字段设置
+      description: 同源Origin及X-CSRF-Token验证，正文最多8192字节。required_fields数组为该类型精确必填集合，空数组允许所有业务字段选填；null恢复默认及条件必填。派生只读字段不可设必填。更新影响所有账号和历史任务，但不改写结果密文、人工值、任务状态或结果版本。expected_revision匹配全局设置版本；过期返回409 SETTINGS_VERSION_CONFLICT，不自动重放。未变更不递增版本。
+      parameters:
+        - in: header
+          name: X-CSRF-Token
+          required: true
+          schema: {type: string, pattern: '^[0-9a-f]{64}$'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RequiredFieldSave'}
+      responses:
+        '200':
+          description: 保存后的全部有效设置
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RequiredFieldSettings'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
   /admin/users:
     get:
       tags: [system]
@@ -321,7 +358,7 @@ paths:
       tags:
       - batches
       summary: 创建批次（人工上传）
-      description: 银行卡直接上传单张JPG/PNG/HEIC照片（可为整张正面或卡号裁图），PDF不支持。上传只做解码与大小检查，不调用模型；每张图片入独立Task，后台默认GLM识别并按现有规则提取卡号、离线匹配银行。卡号缺失、冲突或格式失败时，结果页可只裁这张重识别或手工补录；置信度未知/BIN未覆盖不强迫裁剪。裁图可左右90°旋转，使用真实旋转像素，作为新任务提交；原任务及其他卡片保留。裁图上传失败保留已生成文件，检查任务列表后可直接重试。整图现会加密保存在服务端，原文/尝试可能包含卡面其他内容；不新增安全码字段或导出列，仍拒绝检测到的明确CVV等文本，但不承诺通用安全码检测。 单批1–20文件、单文件10MB、总计50MB。一文件一Task。
+      description: 银行卡直接上传单张JPG/PNG/HEIC照片（可为整张正面或卡号裁图），PDF不支持。上传只做解码与大小检查，不调用模型；每张图片入独立Task，后台默认GLM识别并按现有规则提取卡号、离线匹配银行。卡号缺失、冲突或格式失败时，结果页可只裁这张重识别或手工补录；置信度未知/BIN未覆盖不强迫裁剪。裁图可左右90°旋转，使用真实旋转像素，作为新任务提交；原任务及其他卡片保留。裁图上传失败保留已生成文件，检查任务列表后可直接重试。整图现会加密保存在服务端，原文/尝试可能包含卡面其他内容；不新增安全码字段或导出列，仍拒绝检测到的明确CVV等文本，但不承诺通用安全码检测。 单批1–100文件、单文件50MB、总计500MB，MB按1024×1024字节计算，包含上限，超限返回FILE_TOO_LARGE/413，拒绝整批且不创建部分任务。一文件一Task；同批重复内容复用任务。
       requestBody:
         required: true
         content:
@@ -335,10 +372,11 @@ paths:
                 files:
                   type: array
                   minItems: 1
-                  maxItems: 20
+                  maxItems: 100
                   items:
                     type: string
                     format: binary
+                    description: 非空文件，最多50MB（50×1024×1024字节）；整批文件内容最多500MB。
                 doc_type_hint:
                   $ref: '#/components/schemas/DocTypeEnum'
                 abnormal_only:
@@ -449,10 +487,11 @@ paths:
                 files:
                   type: array
                   minItems: 1
-                  maxItems: 20
+                  maxItems: 100
                   items:
                     type: string
                     format: binary
+                    description: 非空文件，最多50MB（50×1024×1024字节）；整批文件内容最多500MB。此追加接口尚未实现。
                 doc_type_hint:
                   $ref: '#/components/schemas/DocTypeEnum'
                 abnormal_only:
@@ -1076,6 +1115,39 @@ components:
           schema: {$ref: '#/components/schemas/Error'}
 
   schemas:
+    RequiredFieldSettings:
+      type: object
+      additionalProperties: false
+      required: [revision, items]
+      properties:
+        revision: {type: integer, minimum: 0}
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [doc_type, label, uses_defaults, fields]
+            properties:
+              doc_type: {$ref: '#/components/schemas/DocTypeEnum'}
+              label: {type: string}
+              uses_defaults: {type: boolean, description: true时保留原默认及条件必填；false时使用精确自定义集合}
+              fields:
+                type: array
+                description: 户口成员以members.key表示，通用正文为generic.full_text；其余使用业务字段key
+                items: {$ref: '#/components/schemas/FieldMeta'}
+    RequiredFieldSave:
+      type: object
+      additionalProperties: false
+      required: [doc_type, required_fields, expected_revision]
+      properties:
+        doc_type: {$ref: '#/components/schemas/DocTypeEnum'}
+        required_fields:
+          type: array
+          nullable: true
+          uniqueItems: true
+          items: {type: string}
+          description: 可编辑字段key的精确集合；空数组全选填，null恢复默认
+        expected_revision: {type: integer, minimum: 0}
     ManagedUser:
       type: object
       additionalProperties: false
@@ -1139,6 +1211,7 @@ components:
             - EXTRACT_TIMEOUT
             - WORKER_INTERRUPTED
             - RESULT_VERSION_CONFLICT
+            - SETTINGS_VERSION_CONFLICT
             - OCR_TOKEN_LIMIT
             - OCR_REPETITION
             - MODEL_CONFLICT
@@ -1227,6 +1300,7 @@ components:
     Batch:
       type: object
       properties:
+        required_fields_revision: {type: integer, minimum: 0, description: 当前共享必填设置版本，与任务结果版本独立}
         batch_id: {type: string, format: uuid}
         status: {$ref: '#/components/schemas/BatchStatus'}
         display_name:
@@ -1260,6 +1334,7 @@ components:
       description: 一个文件对应一个 Task；PDF 页属于同一任务，不按页创建 Task。身份、执行与结果版本由后端管理。
       required: [task_id, run_id, result_revision, cancel_requested, page_count, pages, status]
       properties:
+        required_fields_revision: {type: integer, minimum: 0, description: 本次必填标记所用的共享设置版本}
         export_ready:
           type: boolean
           description: 已保存未筛选结果必填值齐全即true，与COMPLETED独立；医疗筛选不改变此值，导出不改变审核/识别状态。
@@ -2117,6 +2192,11 @@ components:
             - GENERIC
             - PASSPORT
       properties:
+        required_fields_revision: {type: integer, minimum: 0, description: 本次投影所用共享设置版本；不改变result_revision}
+        required_field_keys:
+          type: array
+          items: {type: string}
+          description: 当前材料及值条件下的有效必填集合，含members.key和generic.full_text；缺省时兼容旧默认
         export_ready:
           type: boolean
           description: 已保存未筛选结果必填值齐全即true，与COMPLETED独立；医疗筛选不改变此值，导出不改变审核/识别状态。

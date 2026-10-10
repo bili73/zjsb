@@ -30,8 +30,8 @@ export const looksMasked = (value: unknown) => typeof value === 'string' && /[*�
 export function memberFields(member: Record<string, unknown>): Field[] {
   return Object.entries(member).filter(([key]) => key !== 'member_id' && key !== 'source_page').map(([,value]) => value as Field)
 }
-export function addedMember(fields: Record<string, Scalar>, page: number, pageCount: number) {
-  if (!Number.isInteger(page) || page < 1 || page > pageCount || typeof fields.name !== 'string' || !fields.name.trim()) throw new Error('MEMBER_SOURCE')
+export function addedMember(fields: Record<string, Scalar>, page: number, pageCount: number, requiredKeys: readonly string[] = ['name']) {
+  if (!Number.isInteger(page) || page < 1 || page > pageCount || requiredKeys.some(key => fields[key] == null || typeof fields[key] === 'string' && !fields[key].trim())) throw new Error('MEMBER_SOURCE')
   return { fields: changedValues({}, fields) as Record<string, Scalar>, source_page: page }
 }
 export function summaryPatch(original: ReportSummary | undefined, scope: ReportSummary['scope'], count: number | undefined, title: string, reason: string, page: number, pageCount: number): NonNullable<ReviewBody['report_summary']> {
@@ -77,7 +77,7 @@ export function buildReview(result: TaskResult, draft: ReviewDraft): ReviewBody 
 export function exportBlockReason(tasks: readonly Pick<Task, 'status' | 'export_ready'>[]): string | null {
   if (!tasks.length) return '请先选择需要导出的任务。'
   const missing = tasks.filter(t => t.export_ready === false).length
-  return missing ? `有 ${missing} 个任务的必填字段未填写完整，请补齐并保存后导出。` : null
+  return missing ? `有 ${missing} 个任务尚不能导出：识别结果未生成或必填字段未填写完整。` : null
 }
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)

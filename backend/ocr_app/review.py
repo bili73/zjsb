@@ -68,7 +68,7 @@ def _sync(target):
         target['review_reason'] = target['review_issues'][0]['code'] if target['review_issues'] else None
 
 
-def _field_patch(result, patches, absences, actor, definitions_override=None):
+def _field_patch(result, patches, absences, actor, definitions_override=None, required_overrides=None):
     from .doc_profiles import profile
     from .validation import validate_field
     fields = {entry['key']: entry for entry in result.get('fields', [])}
@@ -80,7 +80,7 @@ def _field_patch(result, patches, absences, actor, definitions_override=None):
     values.update({key: None for key in absences})
     if isinstance(values.get('gender'), str):
         values['gender'] = {'男': 'M', '女': 'F'}.get(values['gender'], values['gender'])
-    definitions = {entry['key']: entry for entry in (definitions_override if definitions_override is not None else profile(result['doc_type'], values))}
+    definitions = {entry['key']: entry for entry in (definitions_override if definitions_override is not None else profile(result['doc_type'], values, required_overrides))}
     if (set(patches) | set(absences)) - definitions.keys() or set(patches) & set(absences):
         invalid('字段不属于当前材料类型，或同时填写值与缺省理由')
     for key, meta in definitions.items():
@@ -330,9 +330,12 @@ def blockers(result):
     return found
 
 
-def apply_review(original, body, *, actor, coverage_verified=False):
+def apply_review(original, body, *, actor, coverage_verified=False, required_overrides=None):
     if set(mapping(body)) - REQUEST_KEYS:
         invalid('复核包含未知参数')
+    if required_overrides is not None:
+        from .required_fields import project_requirements
+        original = project_requirements(deepcopy(original), required_overrides)
     # Validate acceptance against the incoming revision before patches remove
     # resolved issues. Accepting a resolved issue is harmless, not a stale write.
     prior = {p['issue_id']: p for _, target in _targets(original) for p in target.get('review_issues', [])}
@@ -355,7 +358,8 @@ def apply_review(original, body, *, actor, coverage_verified=False):
             result.setdefault('review_issues', []).append(issue('UNKNOWN', '报告类型尚未确认，请上传正确材料或更正类型重新识别。'))
     if xuexin.get('manual_verify_status') == 'VERIFIED_MISMATCH' and not any(p['code'] == 'CONFLICT' for p in result.get('review_issues', [])):
         result.setdefault('review_issues', []).append(issue('CONFLICT', '人工官方核验不一致，不能放行。'))
-    _field_patch(result, mapping(body.get('fields', {})), mapping(body.get('absence_reasons', {})), actor)
+    _field_patch(result, mapping(body.get('fields', {})), mapping(body.get('absence_reasons', {})), actor,
+                 required_overrides=required_overrides)
     if result['doc_type']=='BANK_CARD':
         from .bank_bins import normalize_pan
         from .document_fields import refresh_bank_fields
@@ -380,7 +384,8 @@ def apply_review(original, body, *, actor, coverage_verified=False):
     if any(body.get(k) for k in ('members', 'added_members', 'removed_member_indexes')) and result['doc_type'] != 'HOUSEHOLD_REGISTER':
         invalid()
     if result['doc_type'] == 'HOUSEHOLD_REGISTER':
-        from .doc_profiles import MEMBER_PROFILE
+        from .doc_profiles import member_profile
+        member_definitions = member_profile(required_overrides)
         members = result.get('members', [])
         removed = sequence(body.get('removed_member_indexes', []))
         if any(type(i) is not int or not 0 <= i < len(members) for i in removed) or len(set(removed)) != len(removed):
@@ -396,7 +401,7 @@ def apply_review(original, body, *, actor, coverage_verified=False):
         for index, member in enumerate(members):
             patch = patch_map.get(index, {})
             temporary = dict(doc_type='HOUSEHOLD_REGISTER', fields=_member_fields(member))
-            _field_patch(temporary, mapping(patch.get('fields', {})), mapping(patch.get('absence_reasons', {})), actor, MEMBER_PROFILE)
+            _field_patch(temporary, mapping(patch.get('fields', {})), mapping(patch.get('absence_reasons', {})), actor, member_definitions)
             if isinstance(member.get('fields'), list):
                 member['fields'] = temporary['fields']
             else:
@@ -409,7 +414,7 @@ def apply_review(original, body, *, actor, coverage_verified=False):
             if type(page) is not int or page not in {p['page_index'] for p in result.get('pages', [])}:
                 invalid('新增成员须指定本文件原件页')
             temporary = dict(doc_type='HOUSEHOLD_REGISTER', fields=[])
-            _field_patch(temporary, mapping(patch.get('fields', {})), mapping(patch.get('absence_reasons', {})), actor, MEMBER_PROFILE)
+            _field_patch(temporary, mapping(patch.get('fields', {})), mapping(patch.get('absence_reasons', {})), actor, member_definitions)
             result['members'].append(dict({f['key']: f for f in temporary['fields']}, member_id=str(uuid4()), source_page=page))
         result['review_issues'] = [p for p in result.get('review_issues', []) if p.get('rule_id') != 'household_members'
                                   and not (result['members'] and p['code'] == 'MISSING' and p.get('message') == '未确认常住人口登记卡页面，需核对材料完整性。')]
@@ -423,7 +428,9 @@ def apply_review(original, body, *, actor, coverage_verified=False):
         if result['doc_type'] != 'GENERIC':
             invalid()
         generic = mapping(body['generic'])
-        if set(generic) != {'full_text', 'key_values'} or not isinstance(generic['full_text'], str) or not generic['full_text'].strip():
+        from .doc_profiles import generic_required
+        if (set(generic) != {'full_text', 'key_values'} or not isinstance(generic['full_text'], str)
+                or generic_required(required_overrides) and not generic['full_text'].strip()):
             invalid('通用材料须填写并核对正文')
         clean_value(generic['full_text'], max_length=1000000)
         for pair in sequence(generic['key_values']):
@@ -472,6 +479,8 @@ def apply_review(original, body, *, actor, coverage_verified=False):
         result['abnormal_summary'] = [item for item in items if confirmed_abnormal(item)]
         if result.get('coverage_review') and not any(p['code'] == 'INCOMPLETE_OUTPUT' for p in result.get('review_issues', [])):
             result['stats'] = medical_statistics(items)
+    if required_overrides is not None:
+        project_requirements(result, required_overrides)
     result['status'] = 'NEED_REVIEW' if blockers(result) else 'COMPLETED'
     result['state'] = result['status']
     return result

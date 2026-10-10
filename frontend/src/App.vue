@@ -16,6 +16,7 @@ import EngineStatus from './components/EngineStatus.vue'
 import TaskResultDrawer from './components/TaskResultDrawer.vue'
 import DiagnosticsPanel from './components/DiagnosticsPanel.vue'
 import AccountManagement from './components/AccountManagement.vue'
+import RequiredFieldSettings from './components/RequiredFieldSettings.vue'
 
 const api = shallowRef<BusinessApi | null>(null)
 const user = shallowRef<User | null>(null)
@@ -81,6 +82,12 @@ async function onHeaderCommand(command: string | number | object) {
 }
 async function registerPreviews(files: readonly File[], tasks: readonly Task[]) { try { await previews.addMatched(files, tasks) } catch { /* A preview binding failure must never change accepted tasks. */ } }
 function reviewed(task: Task) { const entry=monitor.entryOf(task.task_id); if(entry) entry.tasks=entry.tasks.map(t=>t.task_id===task.task_id?task:t); monitor.start() }
+async function requiredFieldsSaved() {
+  if (!api.value) return
+  try { catalogue.value = await api.value.catalogue(new AbortController().signal) }
+  catch (error) { if (error instanceof ApiFailure && error.card.http_status === 401) handleUnauthorized() }
+  monitor.start()
+}
 
 const onVisibility = () => { monitor.onVisible(!document.hidden) }
 onMounted(async () => {
@@ -147,13 +154,16 @@ onBeforeUnmount(() => {
           <UploadPanel :api="api" :catalogue="catalogue" :monitor="monitor" :can-write="canWrite" @submitted="handleSubmitted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane label="任务批次" name="batches">
-          <BatchBoard :api="api" :monitor="monitor" :can-write="canWrite" :upload-reset="uploadReset" @open-result="openResult" @unauthorized="handleUnauthorized" />
+          <BatchBoard :api="api" :monitor="monitor" :can-write="canWrite" :upload-reset="uploadReset" :catalogue="catalogue" @open-result="openResult" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane label="引擎状态" name="engine">
           <EngineStatus :engine="engine" />
         </el-tab-pane>
         <el-tab-pane v-if="user.role === 'admin'" label="账号管理" name="accounts" lazy>
           <AccountManagement v-if="api" :api="api" @unauthorized="handleUnauthorized" />
+        </el-tab-pane>
+        <el-tab-pane v-if="user.role === 'admin'" label="必填字段设置" name="required" lazy>
+          <RequiredFieldSettings v-if="api" :api="api" @saved="requiredFieldsSaved" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
       </el-tabs>
     </main>

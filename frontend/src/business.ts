@@ -19,10 +19,10 @@ export const batchLabels = { PROCESSING: '处理中 / 待核对', COMPLETED: '�
 export type BatchStatus = keyof typeof batchLabels
 export interface User { user_id: string; display_name: string; role: 'viewer' | 'operator' | 'admin'; permissions: string[]; csrf_token?: string }
 export interface ManagedUser { user_id: string; username: string; display_name: string; role: User['role']; enabled: boolean }
-export interface Batch { batch_id: string; display_name?: string; status: BatchStatus; file_count?: number; completed_count?: number; need_review_count?: number; failed_count?: number; created_at?: string }
+export interface Batch { batch_id: string; display_name?: string; status: BatchStatus; file_count?: number; completed_count?: number; need_review_count?: number; failed_count?: number; created_at?: string; required_fields_revision?: number }
 export interface BatchList { items: Batch[]; total: number; page: number; page_size: number }
 export interface TaskError { code: ErrorCode; error_id: string | null; stage: Stage | null }
-export interface ExportEligibility { export_ready?: boolean; export_blockers?: { field: string; code: string }[] }
+export interface ExportEligibility { export_ready?: boolean; export_blockers?: { field: string; code: string }[]; required_fields_revision?: number; required_field_keys?: string[] }
 export interface Task extends ExportEligibility { task_id: string; batch_id?: string; run_id: string; result_revision: number; cancel_requested: boolean; status: TaskStatus; file_name?: string; doc_type?: string; progress?: number; page_count: number; actual_source_page_count?: number; content_hash?: string; pages: { page_id: string; page_index: number; extraction_method: string; regions?: { region_id: string }[] }[]; error?: TaskError | null; extract_options?: { abnormal_only?: boolean } }
 export type ItemsFilter = 'all' | 'abnormal' | 'unknown'
 export interface ReviewIssue { issue_id: string; code: string; message: string; can_accept: boolean }
@@ -49,13 +49,32 @@ export interface MedicalItem { item_id: string; name: string; alias?: string | n
 export interface TaskResult extends ExportEligibility { task_id: string; run_id: string; result_revision: number; doc_type: string; status: TaskStatus; review_issues: ReviewIssue[]; fields?: Field[]; basic_info?: Record<string, Field>; items?: MedicalItem[]; stats?: { total: number | null; normal: number | null; abnormal: number | null; unknown: number | null; categories: string[] }; abnormal_summary?: MedicalItem[]; normal_summary?: string | null; report_summary?: ReportSummary; limitations?: string[]; members?: Record<string, Field>[]; generic?: { full_text: string; key_values: { key: string; value: string | null }[] }; reviewed_generic?: { full_text: string; key_values: { key: string; value: string | null }[] } }
 export const runningStatuses = new Set<TaskStatus>(['QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING'])
 export const hasResult = (task: Pick<Task, 'status'>) => ['NEED_REVIEW', 'COMPLETED', 'FAILED'].includes(task.status)
-export const resultKey = (task: Pick<Task, 'task_id' | 'run_id' | 'result_revision'>) => `${task.task_id}:${task.run_id}:${task.result_revision}`
+export const householdMemberLabels: Record<string, string> = { name: '姓名', gender: '性别', birth_date: '出生日期', ethnicity: '民族', birth_place: '出生地', native_place: '籍贯', id_number: '公民身份号码', relation_to_householder: '与户主关系', education: '文化程度', marital_status: '婚姻状况', occupation: '职业', workplace: '服务处所', migration_address: '迁入地址' }
+type RequiredTask = Pick<Task, 'status' | 'doc_type' | 'export_ready' | 'export_blockers'>
+export function hasMissingRequiredFields(task: RequiredTask): boolean {
+  return hasResult(task) && task.export_ready === false &&
+    !task.export_blockers?.some(blocker => ['task', 'doc_type'].includes(blocker.field))
+}
+export function requiredFieldLabels(task: RequiredTask, catalogue: readonly DocProfile[]): string[] {
+  if (!hasMissingRequiredFields(task)) return []
+  const labels = new Map(catalogue.find(profile => profile.doc_type === task.doc_type)?.fields.map(field => [field.key, field.label]))
+  const keys = [...new Set((task.export_blockers ?? []).filter(blocker => blocker.code === 'MISSING').map(blocker => blocker.field))]
+  return keys.map(key => {
+    if (key === 'generic.full_text') return '正文'
+    const member = /^members\[(\d+)\]\.([a-zA-Z_][a-zA-Z0-9_]*)$/.exec(key)
+    if (member) return `成员 ${Number(member[1]) + 1} / ${householdMemberLabels[member[2]!] ?? labels.get(member[2]!) ?? member[2]}`
+    return labels.get(key) ?? key
+  })
+}
+export const resultKey = (task: Pick<Task, 'task_id' | 'run_id' | 'result_revision' | 'required_fields_revision'>) => `${task.task_id}:${task.run_id}:${task.result_revision}${task.required_fields_revision === undefined ? '' : `:required-${task.required_fields_revision}`}`
 export const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
 const integer = (v: unknown, minimum = 0) => Number.isInteger(v) && Number(v) >= minimum
 const uuid = (v: unknown) => typeof v === 'string' && /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(v)
 function requireValue(condition: unknown): asserts condition { if (!condition) throw new Error('INVALID_RESPONSE') }
 function exportEligibilityValid(value: Record<string, unknown>): boolean {
-  return (value.export_ready === undefined || typeof value.export_ready === 'boolean') &&
+  return (value.required_fields_revision === undefined || integer(value.required_fields_revision)) &&
+    (value.required_field_keys === undefined || Array.isArray(value.required_field_keys) && value.required_field_keys.every(key => typeof key === 'string')) &&
+    (value.export_ready === undefined || typeof value.export_ready === 'boolean') &&
     (value.export_blockers === undefined || (Array.isArray(value.export_blockers) && value.export_blockers.every(b =>
       isRecord(b) && typeof b.field === 'string' && /^[a-zA-Z_][a-zA-Z0-9_.\[\]]{0,127}$/.test(b.field) &&
       typeof b.code === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(b.code))))
@@ -68,7 +87,7 @@ export function parseUser(value: unknown): User {
 }
 export function parseBatches(value: unknown): BatchList {
   requireValue(isRecord(value) && Array.isArray(value.items) && integer(value.total) && integer(value.page, 1) && integer(value.page_size, 1))
-  requireValue(value.items.every(b => isRecord(b) && uuid(b.batch_id) && typeof b.status === 'string' && Object.hasOwn(batchLabels, b.status)))
+  requireValue(value.items.every(b => isRecord(b) && uuid(b.batch_id) && typeof b.status === 'string' && Object.hasOwn(batchLabels, b.status) && (b.required_fields_revision === undefined || integer(b.required_fields_revision))))
   return value as unknown as BatchList
 }
 export function parseTask(value: unknown): Task {
@@ -142,12 +161,14 @@ export function parseResult(value: unknown): TaskResult {
   return value as unknown as TaskResult
 }
 
+export const uploadLimits = { maxFiles: 100, maxFileMB: 50, maxBatchMB: 500 } as const
+
 export function validateUpload(files: readonly Pick<File, 'size' | 'name'>[]): string | null {
-  if (files.length < 1 || files.length > 20) return '请选择 1–20 个文件。'
+  if (files.length < 1 || files.length > uploadLimits.maxFiles) return `请选择 1–${uploadLimits.maxFiles} 个文件。`
   if (files.some(f => !/\.(?:pdf|jpe?g|png|heic)$/i.test(f.name))) return '请选择 JPG、PNG、HEIC 或 PDF 文件。'
   if (files.some(f => f.size <= 0)) return '文件内容为空，请检查后重新选择。'
-  if (files.some(f => f.size > 10 * 1024 * 1024)) return '单个文件不能超过 10 MB。'
-  if (files.reduce((sum, f) => sum + f.size, 0) > 50 * 1024 * 1024) return '本批次文件总大小不能超过 50 MB。'
+  if (files.some(f => f.size > uploadLimits.maxFileMB * 1024 * 1024)) return `单个文件不能超过 ${uploadLimits.maxFileMB} MB。`
+  if (files.reduce((sum, f) => sum + f.size, 0) > uploadLimits.maxBatchMB * 1024 * 1024) return `本批次文件总大小不能超过 ${uploadLimits.maxBatchMB} MB。`
   return null
 }
 export const abnormalBasisLabels: Record<AbnormalBasis, string> = { report_marker: '报告标记', report_grade: '报告等级', reference_comparison: '参考区间比较', unknown: '依据不足' }

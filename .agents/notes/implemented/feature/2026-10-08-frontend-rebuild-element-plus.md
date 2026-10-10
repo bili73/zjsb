@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: frontend, IMPLEMENTATION_PLAN.md
-Last-verified: 2026-10-09
+Last-verified: 2026-10-10
 
 ## Problem
 
@@ -36,6 +36,8 @@ Same-day addendum (adversarial review + concurrent admin-accounts round): a four
 The implemented [password sessions](2026-10-09-web-password-sessions.md) are now qualified with an independent seven-check browser probe, 61 frontend tests and build. FRONTEND_FIELDS.md describes Cookie login, restoration, logout and CSRF. The current running service/build remain unchanged until local first-account provisioning and controlled restart; Mac/proxy deployment stays proposed.
 
 ## Alternatives considered
+
+The [shared required-field settings](2026-10-10-configurable-required-fields.md) make required sets administrator configurable by material type for current and historical tasks. Existing tables are defaults; uncustomized types retain conditional rules. Current metadata, review and atomic export use the same persisted policy. Config revision is separate from task revision, and settings changes preserve OCR/manual values and ciphertext. This partly overlaps the required-field source without superseding presence-only export, monitoring, permissions or evidence preservation.
 
 Administrator listing/creation is now implemented and qualified in [admin account creation](2026-10-09-admin-account-creation.md), with formal HRSSC provisioning and version1.15.0 activation; the earlier CLI-only and proposed snapshots above remain historical. Reset/disable stays CLI-only. Synthetic browser acceptance verifies creation, duplicate rejection, a new viewer's permissions and refresh restoration.
 
@@ -88,3 +90,19 @@ The [calendar browser](2026-10-09-batch-calendar-browser.md) separates filtered 
 ## Medical-only source navigation
 
 The user cancels certificate positioning. The [medical navigation decision](../bug-fix/2026-10-09-medical-only-source-navigation.md) limits field/row source controls to medical reports, fixes same-page reselection and waits for corrected images to load before highlighting. Whole-page preview and manual entry remain for every material type. Existing source/version, recognition, review and export contracts here remain active.
+
+
+## Upload capacity alignment
+
+The picker, selected count, exceeded-count message and submission validator share uploadLimits:100 files,50 MiB per file and500 MiB per batch, displayed as MB. The [durable upload admission](2026-09-30-durable-document-tasks.md) owns matching backend limits, aggregate payload vs multipart overhead and atomic failure behavior.73 frontend tests, typecheck and production build pass; recognition concurrency and the upload timeout are unchanged.
+
+
+## Required-field task markers
+
+Batch headers show the number of result-bearing tasks whose saved server export_ready is false due to missing business-required values. Task rows show a visible required-field warning and catalogue-derived Chinese names from export_blockers. The per-batch missing-only filter is a table projection: it does not alter the monitor's complete task list, batch export targets, stored state or model work. Table selection is retained by task_id across filter changes. Saving through the existing reviewed-task update clears the marker from the saved response, including when the recognition state stays NEED_REVIEW. Pending recognition, absent results and unavailable legacy flags have distinct neutral states rather than being classified as missing business fields. Unknown blocker keys remain visible without inventing a local required set; member names and generic text have explicit readable labels.
+
+The [required-value export policy](../simplification/2026-10-08-required-fields-only-export.md) owns eligibility and the [calendar browser](2026-10-09-batch-calendar-browser.md) owns batch/task loading and ordering; both remain active. Only using NEED_REVIEW is simple and already available but conflates filled optional warnings with missing required values. Fetching every full result gives rich labels but adds requests and duplicated presence logic; use the existing saved eligibility and already-loaded catalogue instead. An unloaded task list never displays a zero-missing assurance.
+
+78 frontend tests, TypeScript checking and production build pass. The independent headless browser probe at output/required-markers-20261010-v1/attempt-007 verifies batch counts, Chinese missing names, row styling, pending/absent/ready distinctions, filtering with a hidden selected task, unchanged batch vs selected export scope and saved completion clearing markers while NEED_REVIEW remains. All business APIs are intercepted with synthetic data, with one simulated review and zero production writes/model calls/page errors. Prior selector, animation and timing failures remain alongside the successful run.
+
+The export hint describes the entire blocked selection as lacking a result or required values, because queued/absent-result tasks also block export but are not business-field marker counts. The final browser probe verifies this wording separately; eligibility and export targets are unchanged.

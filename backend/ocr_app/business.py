@@ -11,6 +11,7 @@ from .storage import Storage
 from .task_store import TaskError, TaskStore, SUPPORTED
 from .runtime import RuntimeFailure
 from .image_admission import ImageAdmissionError, validate_image
+from .upload_limits import MAX_FILES, MAX_FILE_BYTES, MAX_BATCH_BYTES
 
 
 def validate_upload(data: bytes, name: str):
@@ -19,8 +20,8 @@ def validate_upload(data: bytes, name: str):
     from PIL import Image
     from pillow_heif import register_heif_opener
     register_heif_opener()
-    if not data or len(data) > 10 * 1024 * 1024:
-        raise TaskError('FILE_TOO_LARGE', '单文件须非空且不超过10MB', 413)
+    if not data or len(data) > MAX_FILE_BYTES:
+        raise TaskError('FILE_TOO_LARGE', '单文件须非空且不超过50MB', 413)
     try:
         if data.startswith(b'%PDF-'):
             with fitz.open(stream=data, filetype='pdf') as document:
@@ -54,14 +55,16 @@ def validate_upload(data: bytes, name: str):
 
 def prepare_uploads(files, doc_type, runtime):
     """Decode before storage; recognize each accepted photo in its own queued task."""
+    if len(files) > MAX_FILES:
+        raise TaskError('FILE_TOO_LARGE', '每批最多100个文件', 413)
+    if sum(len(data) for data, _ in files) > MAX_BATCH_BYTES:
+        raise TaskError('FILE_TOO_LARGE', '单次上传总大小不超过500MB，请减少文件数量', 413)
     prepared = []
     for data, name in files:
         file = validate_upload(data, name)
         if doc_type == 'BANK_CARD' and file['mime'] == 'application/pdf':
             raise TaskError('UNSUPPORTED_FORMAT', '银行卡请上传单张JPG/PNG/HEIC照片；不接收PDF', 415)
         prepared.append(file)
-    if sum(len(file['data']) for file in prepared) > 50 * 1024 * 1024:
-        raise TaskError('FILE_TOO_LARGE', '处理后的单批材料超过50MB，请减少文件数量', 413)
     return prepared
 
 

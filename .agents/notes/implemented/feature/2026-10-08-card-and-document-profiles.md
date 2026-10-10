@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend/ocr_app, tests, frontend, scripts, SPEC.md, openapi.yaml, FRONTEND_FIELDS.md, requirements-app.lock.txt
-Last-verified: 2026-10-08
+Last-verified: 2026-10-10
 
 ## Problem
 
@@ -23,6 +23,8 @@ Model lifecycle, independent FIFO queues, deadlines and frozen benchmarks are pr
 The [durable tasks](../../implemented/feature/2026-09-30-durable-document-tasks.md), [HR fields](../../implemented/feature/2026-10-08-hr-document-field-profile.md), [field mapping](../../implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md), [frontend rebuild](../../implemented/feature/2026-10-08-frontend-rebuild-element-plus.md) and [independent queues](../../implemented/architecture/2026-10-08-independent-model-queues.md) partially overlap and remain active. No note is fully superseded or archived. The [review/export proposal](2026-10-08-human-review-and-xlsx-export.md) owns completion and editing.
 
 ## Alternatives considered
+
+The [shared required-field settings](2026-10-10-configurable-required-fields.md) make required sets administrator configurable by material type for current and historical tasks. Existing tables are defaults; uncustomized types retain conditional rules. Current metadata, review and atomic export use the same persisted policy. Config revision is separate from task revision, and settings changes preserve OCR/manual values and ciphertext. This partly overlaps the required-field source without superseding presence-only export, monitoring, permissions or evidence preservation.
 
 - Only expanding the accepted type whitelist enables uploads quickly, but leaves empty profiles, unchecked identifiers and unsafe card persistence. Implement catalogue, extraction and admission together.
 - An online card-information API can provide fresher issuer mappings with little bundled data, but it would disclose card values and make local recognition depend on a network provider. Use a licensed pinned offline table; record its age and leave uncovered ranges unknown.

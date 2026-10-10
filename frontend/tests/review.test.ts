@@ -64,6 +64,14 @@ test('spreadsheetName uses material types and Shanghai export time across midnig
   assert.equal(spreadsheetName(['DIPLOMA', 'DIPLOMA', 'DEGREE_CERT'], at), '毕业证+学位证_20261009_000509.xlsx')
   assert.equal(spreadsheetName(['BANK_CARD'], new Date('2026-10-08T15:59:59Z')), '银行卡_20261008_235959.xlsx')
 })
+
+test('added member validation uses current shared requirements with legacy defaults',()=>{
+  assert.deepEqual(addedMember({gender:'F'},1,1,['gender']),{fields:{gender:'F'},source_page:1})
+  assert.throws(()=>addedMember({name:'合成成员'},1,1,['gender']),/MEMBER_SOURCE/)
+  assert.deepEqual(addedMember({},1,1,[]),{fields:{},source_page:1})
+  assert.throws(()=>addedMember({gender:'****'},1,1,[]),/MASKED/)
+  assert.throws(()=>addedMember({},0,1,[]),/MEMBER_SOURCE/)
+})
 test('spreadsheetName only uses known material labels and a safe fallback', () => {
   const at = new Date('2026-10-09T07:15:30Z')
   assert.equal(spreadsheetName([], at), '识别结果_20261009_151530.xlsx')

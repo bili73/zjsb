@@ -20,9 +20,9 @@ def _missing(value):
     return value is None or isinstance(value, str) and not value.strip()
 
 
-def required_export_blockers(result):
+def required_export_blockers(result, required_overrides=None):
     """Check only required value presence in a saved, unfiltered result."""
-    from .doc_profiles import profile, MEMBER_PROFILE, SUPPORTED
+    from .doc_profiles import profile, member_profile, generic_required, SUPPORTED
     if not result:
         return [dict(field='task', code='MISSING')]
     kind = result.get('doc_type')
@@ -30,7 +30,7 @@ def required_export_blockers(result):
         return [dict(field='doc_type', code='MISSING')]
     values = _field_values(result)
     context = {key: value.strip() if isinstance(value, str) else value for key, value in values.items()}
-    missing = [field['key'] for field in profile(kind, context)
+    missing = [field['key'] for field in profile(kind, context, required_overrides)
                if field['required'] and _missing(values.get(field['key']))]
     if kind == 'HOUSEHOLD_REGISTER':
         members = result.get('members') or [{}]
@@ -38,9 +38,9 @@ def required_export_blockers(result):
             fields = member.get('fields') if isinstance(member.get('fields'), list) else [
                 value for value in member.values() if isinstance(value, dict) and 'key' in value]
             member_values = {field['key']: field.get('value') for field in fields}
-            missing.extend(f'members[{index}].{field["key"]}' for field in MEMBER_PROFILE
+            missing.extend(f'members[{index}].{field["key"]}' for field in member_profile(required_overrides)
                            if field['required'] and _missing(member_values.get(field['key'])))
-    if kind == 'GENERIC' and _missing((_generic(result) or {}).get('full_text')):
+    if kind == 'GENERIC' and generic_required(required_overrides) and _missing((_generic(result) or {}).get('full_text')):
         missing.append('generic.full_text')
     return [dict(field=key, code='MISSING') for key in missing]
 
@@ -172,6 +172,7 @@ def export_results(store, request, actor, role):
     optional_reason(request.get('reason'))
     snapshots = []
     with store.transaction() as connection:
+        policy = store.required_policy(connection)
         if request.get('batch_id'):
             rows = connection.execute(text('SELECT * FROM tasks WHERE batch_id=:id ORDER BY created_at,id'), {'id': request['batch_id']}).mappings().all()
         else:
@@ -194,18 +195,19 @@ def export_results(store, request, actor, role):
                 version = version_map[row['id']]
                 store._expected(row, version['run_id'], version['result_revision'])
             result = store.storage.unpack(row['result_enc'])
-            problems = required_export_blockers(result)
+            problems = required_export_blockers(result, policy['overrides'])
             if problems:
                 blocked.append(dict(task_id=row['id'], status=row['status'], blockers=problems))
                 continue
             result.update(task_id=row['id'], run_id=row['run_id'], result_revision=row['revision'], status=row['status'])
-            snapshot = public_result(result)
+            snapshot = public_result(result, policy['overrides'])
             snapshot['_source_filename'] = store.storage.unpack(row['meta_enc']).get('file_name')
             snapshots.append(snapshot)
         if blocked:
             raise TaskError('EXPORT_BLOCKED', '所选任务仍缺必填值，未导出任何任务', 409, {'tasks': blocked})
         for row in rows:
             store._audit(connection, 'export_full', actor, row,
+                         required_fields_revision=policy['revision'],
                          result_revision=row['revision'], legacy_masked=is_masked)
             store._access_history(connection, row, actor, 'export_full', request.get('reason'), legacy_masked=is_masked)
     return workbook_bytes(snapshots)

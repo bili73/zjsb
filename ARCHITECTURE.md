@@ -105,7 +105,7 @@ Windows 采用 Job Object 与 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`，由生命�
 
 ## 6. 前端与接口
 
-替代前端已接入服务端11类材料目录、补录表单、版本绑定corrected预览和批次/勾选/单任务XLSX下载。API类型当前手写snake_case DTO与守卫，并由真实HTTP和OpenAPI合同测试检查；尚未生成客户端。文件上限保持1–20/批、10MB/文件、50MB/批。银行卡整图直接上传识别，失败逐张裁图或补录；其余JPG/PNG/HEIC/未加密PDF正常接收。Key只驻留页面内存。缺失字段默认整页，无可靠框不伪造高亮。用户已授权内部完整显示，GET预览经operator/admin鉴权后直接同版本corrected图。追加/拒绝/恢复/替换等标记未来接口仍未实现。
+替代前端已接入服务端11类材料目录、补录表单、版本绑定corrected预览和批次/勾选/单任务XLSX下载。API类型当前手写snake_case DTO与守卫，并由真实HTTP和OpenAPI合同测试检查；尚未生成客户端。文件上限为1–100/批、50MB/文件、500MB/批（MB=1024×1024字节）。后端共享限额约束multipart解析与解码准入，前端共享常量约束选择器、提示与校验；表单头有独立有界余量，超限在整批入库前拒绝。仍使用内存上传，模型队列并发不变。银行卡整图直接上传识别，失败逐张裁图或补录；其余JPG/PNG/HEIC/未加密PDF正常接收。Key只驻留页面内存。缺失字段默认整页，无可靠框不伪造高亮。用户已授权内部完整显示，GET预览经operator/admin鉴权后直接同版本corrected图。追加/拒绝/恢复/替换等标记未来接口仍未实现。
 
 Task轮询只读取当前页面需要的批次/任务状态，不每次重新下载全部PDF、图片或医疗结果。结果版本变化后再按需取详情；防止较早发出的请求后返回时覆盖较新数据。离开页面取消请求，断网退避重试；NEED_REVIEW等待人工操作时停止Task自动轮询，操作成功后主动刷新。启动runtime轮询按下述独立规则执行。
 
@@ -191,7 +191,9 @@ HR字段版API1.12.0曾按[字段说明](FRONTEND_FIELDS.md)返回：毕业证�
 
 机构无明确字段证据时，只使用已观察医院家族的第1页右侧个人信息末行和完整分店名，不从logo/整页粗OCR/其他页猜机构。没有可靠来源则留人工补录，原始证据与数字分店代码仍保留；不新增OCR请求。版式适用边界见[机构定位笔记](.agents/notes/implemented/bug-fix/2026-10-09-medical-cover-institution.md)。
 
-沿用低吞吐SQLite和加密artifact，无新数据库迁移、消息服务或语义模型。实施与验证见[材料目录笔记](.agents/notes/implemented/feature/2026-10-08-card-and-document-profiles.md)和[审核导出笔记](.agents/notes/implemented/feature/2026-10-08-human-review-and-xlsx-export.md)。
+沿用低吞吐SQLite和加密artifact，不引入消息服务或语义模型。实施与验证见[材料目录笔记](.agents/notes/implemented/feature/2026-10-08-card-and-document-profiles.md)和[审核导出笔记](.agents/notes/implemented/feature/2026-10-08-human-review-and-xlsx-export.md)。
+
+`required_fields.py`通过migration0004的单行设置表持久保存按材料类型的必填覆盖及全局revision。管理员GET/PUT受现有Cookie/CSRF/Origin权限保护，保存按expected_revision在BEGIN IMMEDIATE内比较更新并审计；空集合表示全选填，null恢复默认，不允许派生字段必填。当前设置在任务/批次/结果读取、补填及原子整选导出处统一应用，不批量改写旧结果或人工值。`required_fields_revision`独立于任务版本，前端用它刷新终态行并保护过期草稿。默认未设置时保留原字典及条件必填，细节见[共享必填设置](.agents/notes/implemented/feature/2026-10-10-configurable-required-fields.md)。
 
 
 用户于2026-10-08明确确认内部全部号码、电话、原文、原图和Excel完整显示，一键确认可省略理由；鉴权、加密原始历史、置信度未标定与审核完成规则保持；按用户后续授权，导出门槛仅为保存结果必填有值，缺必填仍整次阻止，冲突/覆盖问题保留但不额外阻止导出。决策见[完整显示与确认](.agents/notes/implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md)。

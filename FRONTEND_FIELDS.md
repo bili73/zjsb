@@ -23,9 +23,9 @@
 | `GET /api/v1/tasks/{id}/result` | 当前已发布结果；无结果时409 INVALID_STATE |
 | `POST /api/v1/tasks/{id}/cancel`、`POST /api/v1/tasks/{id}/rerun` | 提交当前 run_id 与 expected_revision，返回202；409冲突后重新查询，不能自动重试写操作 |
 
-支持 `ID_CARD_FRONT / ID_CARD_BACK / DIPLOMA / DEGREE_CERT / MEDICAL_REPORT / BANK_CARD / BUSINESS_LICENSE / XUEXIN_DIPLOMA_TABLE / PASSPORT / HOUSEHOLD_REGISTER / GENERIC`。支持JPG/JPEG、PNG、HEIC、未加密PDF（银行卡只接收单张照片）；每批1–20文件，单文件10MB、总计50MB，一文件一Task。
+支持 `ID_CARD_FRONT / ID_CARD_BACK / DIPLOMA / DEGREE_CERT / MEDICAL_REPORT / BANK_CARD / BUSINESS_LICENSE / XUEXIN_DIPLOMA_TABLE / PASSPORT / HOUSEHOLD_REGISTER / GENERIC`。支持JPG/JPEG、PNG、HEIC、未加密PDF（银行卡只接收单张照片）；每批1–100文件，单文件50MB、总计500MB（MB=1024×1024字节），达到上限可上传。选择器、计数、超限提示与提交前校验共用 `uploadLimits`，后端仍独立校验；一文件一Task，同批重复内容沿用任务复用规则。
 
-新增已实现入口如下；追加/拒绝/恢复/替换文件及设置仍未开放。OpenAPI标记x-implemented:false的目标路径不能调用。
+新增已实现入口如下；追加/拒绝/恢复/替换文件仍未开放。OpenAPI标记x-implemented:false的目标路径不能调用。
 
 | 请求 | 用途 |
 |---|---|
@@ -34,6 +34,16 @@
 | `POST /api/v1/tasks/{id}/preview` | 旧调用兼容，同版本corrected PNG，body含page |
 | `POST /api/v1/tasks/{id}/reveal` | 旧调用兼容；字段已完整返回，UI无需再揭示 |
 | `POST /api/v1/export` | 批次全部或明确task_ids，整选门禁XLSX |
+| `GET /api/v1/admin/required-fields` | admin读取各类型必填字段、uses_defaults及全局revision |
+| `PUT /api/v1/admin/required-fields` | admin保存一种类型的required_fields与expected_revision；null恢复默认 |
+
+## 共享必填字段设置
+
+管理员进入“必填字段设置”，选择材料类型并勾选必填项，保存后对所有账号、当前和历史批次生效，服务重启后保留。下文各类型表格中的必填列描述默认规则；实际界面和导出使用服务端返回的当前设置。未自定义的类型保留原有条件必填；自定义集合完全替代该类型默认必填，恢复默认同时恢复条件规则。户口成员使用`members.key`，通用正文为`generic.full_text`，自动计算的只读字段不可设为必填。清空保存后空白业务字段不阻止导出，仍须有已保存的支持类型结果。
+
+GET返回`{revision,items:[{doc_type,label,uses_defaults,fields}]}`，PUT发送`{doc_type,required_fields:string[]|null,expected_revision}`，响应为全部新设置。空数组与null含义不同；其他类型不受本次保存影响。相同设置保存不递增版本。写请求沿用管理员、同源Origin和CSRF校验，409 `SETTINGS_VERSION_CONFLICT`保留当前选择，重新读取并核对后再保存，不自动覆盖其他管理员的变更。
+
+Batch、Task及TaskResult可选携带`required_fields_revision`，独立于`result_revision`；结果缓存身份包含该版本。TaskResult还返回当前值条件下的`required_field_keys`。保存设置会刷新当前页面目录与已加载的终态任务；其他会话在下一次读取、聚焦或刷新时取得设置，服务端每次补正及导出始终使用最新版本。打开中的表单遇到设置变化会保留草稿并提示重新读取。设置只投影必填元数据和缺失问题，不改写历史密文、人工值、OCR结果、审核状态或任务版本，不重新识别。
 
 ## 通用字段与任务状态
 
@@ -56,6 +66,8 @@
 “业务必填”不等于识别响应里 value 必须非null：缺失必填保留空值并给 MISSING，前端应突出显示。可选字段为空通常不形成必填缺失，但也不能编造值。任务、字段和医疗行的 review_issues 分层显示，不能只看任务级问题数组。
 
 Task 状态为 `QUEUED / PREPROCESSING / OCR / EXTRACTING / VALIDATING / NEED_REVIEW / COMPLETED / FAILED / REJECTED / CANCELLED`。当前成功识别进入 NEED_REVIEW。运行中串行轮询，进入待核对或终态停止无必要轮询；过期请求不能覆盖新 run/revision。取消请求成功不代表运行任务已经停止，继续查询直到服务确认终态。失败/超时可能仍有已发布部分结果，显示限制和错误，不能当完整成功。
+
+批次标题显示已加载任务中“X个任务缺必填”；任务表增加“必填信息”列，依据已保存的 `export_ready=false` 和 `export_blockers` 标红并列出字段名称，名称来自材料目录。户口成员显示序号与字段，通用正文显示“正文”。运行中的任务显示尚未检查，缺少结果或材料类型的任务显示暂无识别结果，未知历史标志不推断完整。每批可勾选“只看必填未填”，仅筛选任务表；完整批次和已勾选导出的范围不因此缩减，隐藏行的勾选按task_id保留。点击“补填”打开现有结果编辑器，补齐并保存后根据服务器新版本自动更新标记；未保存草稿不清除标记。
 
 ## 毕业证 DIPLOMA
 

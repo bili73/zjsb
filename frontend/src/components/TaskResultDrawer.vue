@@ -213,7 +213,7 @@ async function runExport() {
         </template>
       </el-result>
       <template v-else-if="result && task">
-        <el-alert v-if="stale || reviewError" type="warning" :closable="false">{{ reviewError || '任务已更新，当前草稿已保留；请明确刷新后重新核对。' }}<el-button @click="refreshDraft">读取最新版本</el-button></el-alert>
+        <el-alert v-if="stale || reviewError" type="warning" :closable="false">{{ reviewError || '任务结果或必填设置已更新，当前草稿已保留；请明确刷新后重新核对。' }}<el-button @click="refreshDraft">读取最新版本</el-button></el-alert>
         <el-alert v-if="task.status === 'NEED_REVIEW'" type="warning" :closable="false" show-icon class="drawer-alert">
           该任务包含需要人工核对的内容，请结合左侧原图核对后再使用。
         </el-alert>

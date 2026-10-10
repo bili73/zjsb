@@ -4,6 +4,8 @@ import { isRecord, parseBatches, parseCatalogue, parseCreated, parseResult, pars
 import type { ItemsFilter, Task, UploadDocType, User } from './business.ts'
 import type { ReviewBody } from './review.ts'
 import type { BatchDateRange } from './batchCalendar.ts'
+import { parseRequiredFieldSettings } from './requiredFields.ts'
+import type { RequiredFieldSave } from './requiredFields.ts'
 
 export class ApiFailure extends Error {
   readonly card: DiagnosticCard
@@ -73,6 +75,10 @@ export class BusinessApi {
     return this.request('/admin/users', 'account_create', parseManagedUser, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   }
   catalogue(signal: AbortSignal) { return this.request('/doc-types', 'catalogue', parseCatalogue, signal) }
+  requiredFields(signal: AbortSignal) { return this.request('/admin/required-fields', 'required_settings_read', parseRequiredFieldSettings, signal) }
+  saveRequiredFields(body: RequiredFieldSave, signal: AbortSignal) {
+    return this.request('/admin/required-fields', 'required_settings_save', parseRequiredFieldSettings, signal, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  }
   review(taskId: string, body: ReviewBody, signal: AbortSignal) {
     return this.request(`/tasks/${encodeURIComponent(taskId)}/review`, 'review', parseTask, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   }

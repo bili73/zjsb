@@ -30,7 +30,7 @@ LABELS = dict(zip(PROFILES, ['身份证人像面','身份证国徽面','毕业�
 SUPPORTED = frozenset(PROFILES)
 
 
-def profile(doc_type, values=None):
+def profile(doc_type, values=None, required_overrides=None):
     if doc_type not in PROFILES:
         raise ValueError('UNSUPPORTED_DOC_TYPE')
     result = deepcopy(PROFILES[doc_type])
@@ -52,8 +52,26 @@ def profile(doc_type, values=None):
             field['required_when'] = 'household_type is not explicitly collective'
             if '集体' in str(values.get('household_type') or ''):
                 field['required'] = False
+    if required_overrides is not None and doc_type in required_overrides:
+        selected = set(required_overrides[doc_type])
+        for field in result:
+            field['required'] = field['key'] in selected
+            field.pop('required_when', None)
     return result
 
 
-def catalogue():
-    return [dict(doc_type=kind, label=LABELS[kind], fields=profile(kind)) for kind in PROFILES]
+def member_profile(required_overrides=None):
+    result = deepcopy(MEMBER_PROFILE)
+    if required_overrides is not None and 'HOUSEHOLD_REGISTER' in required_overrides:
+        selected = set(required_overrides['HOUSEHOLD_REGISTER'])
+        for field in result:
+            field['required'] = 'members.' + field['key'] in selected
+    return result
+
+
+def generic_required(required_overrides=None):
+    return required_overrides is None or 'GENERIC' not in required_overrides or 'generic.full_text' in required_overrides['GENERIC']
+
+
+def catalogue(required_overrides=None):
+    return [dict(doc_type=kind, label=LABELS[kind], fields=profile(kind, required_overrides=required_overrides)) for kind in PROFILES]

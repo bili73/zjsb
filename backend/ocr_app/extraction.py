@@ -19,6 +19,7 @@ COMMON = {
     'certificate_no': ('证书编号', ('学位证书编号', '毕业证书编号', '证书编号', '证书号码')),
 }
 DIPLOMA = {**{key: value for key, value in COMMON.items() if key != 'study_mode'}, 'education_level': ('学历层次', ('学历层次', '层次', '学历')),
+           'certificate_no': (COMMON['certificate_no'][0], (*COMMON['certificate_no'][1], '书编号', '编号')),
            'duration': ('学制', ('学制',)), 'enroll_date': ('入学日期', ('入学日期', '入学时间')),
            'graduate_date': ('毕业日期', ('毕业日期', '毕业时间')), 'issue_date': ('发证日期', ('发证日期',))}
 DEGREE = {**COMMON, 'degree_category': ('学位级别', ('学位级别', '学位门类', '学位类别')),
@@ -77,9 +78,10 @@ def _field(key, label, candidates, required):
 
 
 _CERT_DATE = r'(?:(?:[0-9Oo〇○零一二三四五六七八九]\s*){4}年\s*[0-9一二三四五六七八九十]{1,3}\s*月(?:\s*[0-9一二三四五六七八九十]{1,3}\s*日)?|[0-9]{4}-[0-9]{1,2}(?:-[0-9]{1,2})?)'
+_CERT_ISSUE_DATE = rf'(?:{_CERT_DATE}|(?:[0-9Oo〇○零一二三四五六七八九]\s*){{4}}年\s*[0-9一二三四五六七八九十]{{1,3}}\s*月\s*[0-9一二三四五六七八九十]{{1,3}})'
 
 
-def _certificate_date(raw):
+def _certificate_date(raw, *, allow_missing_day_suffix=False):
     """Calendar validation preserves month precision; missing days are never supplied."""
     from datetime import date
     compact = re.sub(r'\s+', '', raw)
@@ -91,7 +93,8 @@ def _certificate_date(raw):
             return (int(digits.get(left, left)) if left else 1) * 10 + (int(digits.get(right, right)) if right else 0)
         return int(''.join(digits.get(c, c) for c in token))
 
-    parts = re.fullmatch(r'(.+?)年(.+?)月(?:(.+?)日)?', compact)
+    day_suffix = r'日?' if allow_missing_day_suffix else '日'
+    parts = re.fullmatch(rf'(.+?)年(.+?)月(?:(.+?){day_suffix})?', compact)
     tokens = parts.groups() if parts else compact.split('-')
     try:
         year, month = number(tokens[0]), number(tokens[1])
@@ -113,12 +116,14 @@ def _certificate_text(raw):
     return soup.get_text('\n', strip=True)
 
 
-def _certificate_value(key, raw):
+def _certificate_value(key, raw, doc_type=None):
     value = raw.strip(' ：:|\t')
     if not value or len(value) > 100:
         return None
     if key.endswith('_date'):
-        return _certificate_date(value) if re.fullmatch(_CERT_DATE, value) else None
+        allow_missing_day = key == 'issue_date' and doc_type == 'DIPLOMA'
+        date_pattern = _CERT_ISSUE_DATE if allow_missing_day else _CERT_DATE
+        return _certificate_date(value, allow_missing_day_suffix=allow_missing_day) if re.fullmatch(date_pattern, value) else None
     if key == 'gender':
         return {'男': 'M', '女': 'F', 'M': 'M', 'F': 'F'}.get(value)
     if key == 'certificate_no':
@@ -127,8 +132,9 @@ def _certificate_value(key, raw):
             return None
         remainder = value[token.end():].strip(' \t，,。;；')
         # A second digit group or mask may be part of the identifier, never its tail.
-        known_tail = rf'(?:{_CERT_DATE}\s*)?(?:查询(?:网址|地址|网站)?|网址)\s*[:：].*'
-        if remainder and not re.fullmatch(_CERT_DATE, remainder) and not re.fullmatch(known_tail, remainder):
+        date_pattern = _CERT_ISSUE_DATE if doc_type == 'DIPLOMA' else _CERT_DATE
+        known_tail = rf'(?:{date_pattern}\s*)?(?:查询(?:网址|地址|网站)?|网址)\s*[:：].*'
+        if remainder and not re.fullmatch(date_pattern, remainder) and not re.fullmatch(known_tail, remainder):
             return None
         return token[0]
     if key == 'name':
@@ -169,7 +175,7 @@ def _extract_certificate_fields(evidence, doc_type):
 
         def add(key, value, raw, school_strength=2):
             if key in candidates:
-                value = _certificate_value(key, value)
+                value = _certificate_value(key, value, doc_type)
                 if value is not None:
                     candidates[key].append((value, block, raw))
                     if key == 'school_name':
@@ -212,8 +218,8 @@ def _extract_certificate_fields(evidence, doc_type):
                     add('graduate_date', match[2], match[0])
         if doc_type == 'DIPLOMA':
             for key, pattern in {
-                'education_level': r'(本\s*科|专\s*科|研\s*究\s*生)\s*(?:阶段|层次|专业|学习|毕业)',
-                'duration': r'([一二三四五六七八九十0-9]+\s*年)\s*制',
+                'education_level': r'(本\s*科|专\s*科|研\s*究\s*生)\s*(?:阶段|层次|专业|学习|毕业|教\s*学\s*计\s*划)',
+                'duration': r'(?<![0-9.．])((?:[0-9]+(?:\.[0-9]+)?|[一二三四五六七八九十]+)\s*年)\s*制',
             }.items():
                 for match in re.finditer(pattern, text):
                     add(key, re.sub(r'\s+', '', match[1]), match[0])
@@ -224,15 +230,19 @@ def _extract_certificate_fields(evidence, doc_type):
             for match in re.finditer(r'(学士|硕士|博士)\s*学位证书', text):
                 add('degree_category', match[1], match[0])
         # A standalone footer date requires certificate context, not an arbitrary date.
-        number_matches = list(re.finditer(r'(?:证书编号|证书号码)\s*[:：]?\s*[A-Za-z0-9]+', text))
+        number_label = r'(?:证书编号|证书号码)'
+        if doc_type == 'DIPLOMA':
+            number_label = r'(?<!\w)(?:' + '|'.join(label_pattern(a) for a in dictionary['certificate_no'][1]) + ')'
+        number_matches = list(re.finditer(rf'{number_label}\s*[:：]?\s*[A-Za-z0-9]+', text))
         if number_matches:
+            footer_date = _CERT_ISSUE_DATE if doc_type == 'DIPLOMA' else _CERT_DATE
             for number in number_matches:
                 line_end = text.find('\n', number.end())
                 tail = text[number.end():line_end if line_end >= 0 else len(text)]
-                footer = re.match(rf'\s+({_CERT_DATE})(?=\s*(?:$|查询|网址))', tail)
+                footer = re.match(rf'\s+({footer_date})(?=\s*(?:$|查询|网址))', tail)
                 if footer:
                     add('issue_date' if doc_type == 'DIPLOMA' else 'award_date', footer[1], number[0] + footer[0])
-            for match in re.finditer(rf'(?:^|\n)\s*({_CERT_DATE})\s*(?=\n|$)', text):
+            for match in re.finditer(rf'(?:^|\n)\s*({footer_date})\s*(?=\n|$)', text):
                 if any(start < match.end(1) and end > match.start(1) for start, end in claimed_dates):
                     continue
                 add('issue_date' if doc_type == 'DIPLOMA' else 'award_date', match[1], match[0])

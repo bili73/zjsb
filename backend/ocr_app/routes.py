@@ -13,6 +13,7 @@ from python_multipart.multipart import parse_options_header
 from .business import prepare_uploads
 from .task_store import TaskError, SUPPORTED
 from .auth import SESSION_COOKIE, SESSION_SECONDS, same_origin, csrf_for
+from .upload_limits import MAX_FILES, MAX_FILE_BYTES, MAX_BATCH_BYTES
 
 
 class Version(BaseModel):
@@ -95,16 +96,18 @@ async def memory_form(request):
         header.clear()
 
     def data_part(data, start, end):
-        if len(current['body']) + end - start > 10 * 1024 * 1024:
-            raise TaskError('FILE_TOO_LARGE', '单文件不超过10MB', 413)
+        if len(current['body']) + end - start > MAX_FILE_BYTES:
+            raise TaskError('FILE_TOO_LARGE', '单文件不超过50MB', 413)
         current['body'].extend(data[start:end])
 
     def part_end():
         _, values = parse_options_header(current['headers'].get(b'content-disposition', b''))
         name = values.get(b'name', b'').decode('utf-8', errors='strict')
         if name == 'files' and b'filename' in values:
-            if len(files) >= 20:
-                raise TaskError('FILE_TOO_LARGE', '每批最多20个文件', 413)
+            if len(files) >= MAX_FILES:
+                raise TaskError('FILE_TOO_LARGE', '每批最多100个文件', 413)
+            if sum(len(data) for data, _ in files) + len(current['body']) > MAX_BATCH_BYTES:
+                raise TaskError('FILE_TOO_LARGE', '单次上传总大小不超过500MB', 413)
             files.append((bytes(current['body']), values[b'filename'].decode('utf-8', errors='strict')))
         elif name in {'doc_type_hint', 'abnormal_only'} and len(current['body']) <= 64 and name not in fields:
             fields[name] = bytes(current['body']).decode('utf-8')
@@ -118,16 +121,17 @@ async def memory_form(request):
     try:
         async for chunk in request.stream():
             size += len(chunk)
-            if size > 50 * 1024 * 1024 + 65536:
-                raise TaskError('FILE_TOO_LARGE', '单次上传总大小不超过50MB', 413)
+            # Framing is bounded separately from the aggregate file payload.
+            if size > MAX_BATCH_BYTES + (MAX_FILES + 2) * 8192:
+                raise TaskError('FILE_TOO_LARGE', '单次上传总大小不超过500MB', 413)
             parser.write(chunk)
         parser.finalize()
     except TaskError:
         raise
     except Exception as error:
         raise TaskError('INVALID_REQUEST', '上传表单不完整或编码无效', 400) from error
-    if not ended[0] or not files or sum(len(data) for data, _ in files) > 50 * 1024 * 1024:
-        raise TaskError('INVALID_REQUEST', '上传表单不完整或超出容量', 400)
+    if not ended[0] or not files:
+        raise TaskError('INVALID_REQUEST', '上传表单不完整', 400)
     if fields.get('doc_type_hint') not in SUPPORTED:
         raise TaskError('UNSUPPORTED_DOC_TYPE', '材料类型未受支持，请从材料目录选择', 422)
     if fields.get('abnormal_only', 'false').lower() not in {'true', 'false'}:
@@ -160,7 +164,7 @@ def router(business, runtime):
 
     def administrator(user=Depends(principal)):
         if user['role'] != 'admin':
-            raise TaskError('FORBIDDEN', '只有管理员可以管理账号', 403)
+            raise TaskError('FORBIDDEN', '只有管理员可以修改管理设置', 403)
         return user
 
     @routes.get('/auth/me')
@@ -214,7 +218,18 @@ def router(business, runtime):
     @routes.get('/doc-types')
     def doc_types(user=Depends(principal)):
         from .doc_profiles import catalogue
-        return catalogue()
+        return catalogue(business.store.required_policy()['overrides'])
+
+    @routes.get('/admin/required-fields')
+    def required_fields(user=Depends(administrator)):
+        from .required_fields import configuration
+        return configuration(business.store.required_policy())
+
+    @routes.put('/admin/required-fields')
+    async def update_required_fields(request: Request, user=Depends(administrator)):
+        from .required_fields import save_configuration
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(save_configuration, business.store, await bounded_json(request), user['user_id'])
 
     @routes.get('/batches')
     def batches(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),

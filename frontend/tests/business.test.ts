@@ -149,12 +149,15 @@ test('hasResult and resultKey behave', () => {
 const file = (name: string, size: number) => ({ name, size })
 
 test('validateUpload covers count, type, size and batch limits', () => {
-  assert.match(validateUpload([])!, /1–20/)
+  assert.match(validateUpload([])!, /1–100/)
   assert.match(validateUpload([file('a.exe', 10)])!, /JPG/)
   assert.match(validateUpload([file('a.png', 0)])!, /内容为空/)
-  assert.match(validateUpload([file('a.png', 11 * 1024 * 1024)])!, /10 MB/)
-  assert.match(validateUpload(Array.from({ length: 21 }, () => file('a.png', 100)))!, /1–20/)
-  assert.match(validateUpload(Array.from({ length: 6 }, () => file('a.png', 9 * 1024 * 1024)))!, /50 MB/)
+  assert.match(validateUpload([file('a.png', 50 * 1024 * 1024 + 1)])!, /50 MB/)
+  assert.match(validateUpload(Array.from({ length: 101 }, () => file('a.png', 100)))!, /1–100/)
+  const fullBatch = Array.from({ length: 10 }, () => file('a.pdf', 50 * 1024 * 1024))
+  assert.equal(validateUpload(fullBatch), null)
+  assert.match(validateUpload([...fullBatch, file('extra.png', 1)])!, /500 MB/)
+  assert.equal(validateUpload(Array.from({ length: 100 }, () => file('a.png', 100))), null)
   assert.equal(validateUpload([file('体检报告.PDF', 1024), file('x.jpeg', 2048), file('y.heic', 512)]), null)
 })
 

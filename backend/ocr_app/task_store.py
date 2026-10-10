@@ -74,7 +74,7 @@ def masked(value, phone_patterns=()):
     return mask_text(value, phone_patterns)
 
 
-def public_result(value):
+def public_result(value, required_overrides=None):
     """Authenticated internal responses retain full values, never private helpers."""
     def strip_private(item):
         if isinstance(item, dict):
@@ -113,12 +113,22 @@ def public_result(value):
         if (any(item.get('abnormal_exclusion_reason') for item in projected.get('items', []))
                 and projected.get('stats', {}).get('total') is not None):
             projected['stats'] = medical_statistics(projected['items'])
+    if required_overrides is not None and isinstance(projected, dict):
+        from .required_fields import project_requirements
+        project_requirements(projected, required_overrides)
     return projected
 
 
 class TaskStore:
     def __init__(self, engine, storage, logger=None):
         self.engine, self.storage, self.logger = engine, storage, logger
+
+    def required_policy(self, connection=None):
+        from .required_fields import load_policy
+        if connection is not None:
+            return load_policy(connection)
+        with self.engine.connect() as current:
+            return load_policy(current)
 
     @contextmanager
     def transaction(self):
@@ -188,10 +198,11 @@ class TaskStore:
                 self.storage.delete(reference)
             raise
 
-    def _public(self, row):
+    def _public(self, row, policy=None):
         from .exporting import required_export_blockers
+        policy = policy if policy is not None else self.required_policy()
         pages = self.storage.unpack(row['pages_enc'], [])
-        export_blockers = required_export_blockers(self.storage.unpack(row['result_enc']))
+        export_blockers = required_export_blockers(self.storage.unpack(row['result_enc']), policy['overrides'])
         return public_result(dict(task_id=row['id'], batch_id=row['batch_id'], run_id=row['run_id'],
                            result_revision=row['revision'], cancel_requested=bool(row['cancel_requested']),
                            status=row['status'], progress=row['progress'], doc_type=row['doc_type'],
@@ -201,22 +212,25 @@ class TaskStore:
                            error=json.loads(row['error_json']) if row['error_json'] else None,
                            warnings=self.storage.unpack(row['warnings_enc'], []), summary=None,
                            export_ready=not export_blockers, export_blockers=export_blockers,
+                           required_fields_revision=policy['revision'],
                            need_review_fields=[], extract_options={k: v for k, v in self.storage.unpack(row['options_enc'], {}).items() if k != 'bank_admission'},
                            **self.storage.unpack(row['meta_enc'])))
 
     def task(self, task_id):
         with self.engine.connect() as connection:
-            return self._public(self._row(connection, task_id))
+            return self._public(self._row(connection, task_id), self.required_policy(connection))
 
-    def tasks(self, batch_id=None, status=None):
+    def tasks(self, batch_id=None, status=None, *, policy=None):
         with self.engine.connect() as connection:
+            policy = policy if policy is not None else self.required_policy(connection)
             rows = connection.execute(text('SELECT * FROM tasks WHERE (:batch IS NULL OR batch_id=:batch) '
                                            'AND (:status IS NULL OR status=:status) ORDER BY created_at,id'),
                                       dict(batch=batch_id, status=status)).mappings()
-            return [self._public(row) for row in rows]
+            return [self._public(row, policy) for row in rows]
 
-    def batch(self, batch_id):
-        tasks = self.tasks(batch_id)
+    def batch(self, batch_id, *, policy=None):
+        policy = policy if policy is not None else self.required_policy()
+        tasks = self.tasks(batch_id, policy=policy)
         with self.engine.connect() as connection:
             row = connection.execute(text('SELECT * FROM batches WHERE id=:id'), {'id': batch_id}).mappings().first()
             if row is None:
@@ -235,6 +249,7 @@ class TaskStore:
             labels = [LABELS.get(kind, '待确定类型') for kind in kinds]
             display_name = ('混合材料 · ' + ' / '.join(labels)) if len(labels) > 1 else labels[0] if labels else '待确定类型'
             return dict(batch_id=batch_id, name=display_name, display_name=display_name,
+                        required_fields_revision=policy['revision'],
                         status=state, task_count=len(tasks), file_count=len(tasks), total_count=len(tasks), completed_count=counts['COMPLETED'],
                         failed_count=counts['FAILED'], cancelled_count=counts['CANCELLED'], rejected_count=counts['REJECTED'],
                         need_review_count=counts['NEED_REVIEW'], created_at=row['created_at'],
@@ -250,26 +265,29 @@ class TaskStore:
         except (ValueError, OverflowError):
             raise TaskError('INVALID_REQUEST', '日期超出支持范围', 422) from None
         with self.engine.connect() as connection:
+            policy = self.required_policy(connection)
             ids = connection.execute(text('SELECT id FROM batches WHERE (:start IS NULL OR created_at>=:start) '
                 'AND (:end IS NULL OR created_at<:end) ORDER BY created_at DESC,id'),dict(start=start,end=end)).scalars().all()
-        return dict(items=[self.batch(i) for i in ids[(page-1)*page_size:page*page_size]],
+        return dict(items=[self.batch(i, policy=policy) for i in ids[(page-1)*page_size:page*page_size]],
                     total=len(ids), page=page, page_size=page_size)
 
     def result(self, task_id, items_filter=None, include_normal_summary=True):
         from .exporting import required_export_blockers
         with self.engine.connect() as connection:
+            policy = self.required_policy(connection)
             row = self._row(connection, task_id)
             result = self.storage.unpack(row['result_enc'])
             if result is None:
                 raise TaskError('INVALID_STATE', '当前任务尚无可用识别结果')
-            export_blockers = required_export_blockers(result)
+            export_blockers = required_export_blockers(result, policy['overrides'])
             result.update(export_ready=not export_blockers, export_blockers=export_blockers)
             result.update(task_id=task_id, run_id=row['run_id'], result_revision=row['revision'], status=row['status'])
             if result.get('doc_type') == 'DIPLOMA':
                 # Public profile only: retain encrypted history and original evidence.
                 result['fields'] = [field for field in result.get('fields', [])
                                     if field.get('key') not in {'principal', 'study_mode'}]
-            result = public_result(result)
+            result['required_fields_revision'] = policy['revision']
+            result = public_result(result, policy['overrides'])
             options = self.storage.unpack(row['options_enc'], {})
             if result.get('doc_type') == 'MEDICAL_REPORT':
                 selected = items_filter or ('flagged' if options.get('abnormal_only') else 'all')
@@ -489,7 +507,8 @@ class TaskStore:
                         verified = True
                 if row['status'] == 'FAILED' and not verified:
                     invalid('失败任务须完整逐页补正后才能创建人工版本')
-                result = apply_review(original, body, actor=actor, coverage_verified=verified)
+                result = apply_review(original, body, actor=actor, coverage_verified=verified,
+                                      required_overrides=self.required_policy(connection)['overrides'])
                 result.setdefault('recognition_status', row['status'])
                 result.setdefault('recognition_error', json.loads(row['error_json']) if row['error_json'] else None)
                 result.update(task_id=task_id, run_id=row['run_id'], result_revision=row['revision'] + 1,

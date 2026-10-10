@@ -5,7 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadUserFile } from 'element-plus'
 import { CreditCard, Files, FirstAidKit, Medal, Notebook, OfficeBuilding, Postcard, Reading, Stamp, UploadFilled } from '@element-plus/icons-vue'
 import { ApiFailure, isAbort } from '../api.ts'
-import { docTypes, validateUpload } from '../business.ts'
+import { docTypes, uploadLimits, validateUpload } from '../business.ts'
 import type { BusinessApi } from '../api.ts'
 import type { DocProfile, Task, UploadDocType } from '../business.ts'
 import { errorMessages } from '../diagnostics.ts'
@@ -36,7 +36,7 @@ const typeMeta: Partial<Record<UploadDocType, { icon: Component; desc: string }>
 const selectedFiles = computed<File[]>(() => fileList.value.flatMap(item => (item.raw instanceof File ? [item.raw] : [])))
 const invalidReason = computed(() => (selectedFiles.value.length ? validateUpload(selectedFiles.value) : null))
 
-function onExceed() { ElMessage.warning('一次最多提交 20 个文件。') }
+function onExceed() { ElMessage.warning(`一次最多提交 ${uploadLimits.maxFiles} 个文件。`) }
 
 // 一个批次只携带一个 doc_type_hint：带着未提交的文件切换类型，会把两种
 // 材料合成一批并按单一类型处理（正是实测中体检文件被按毕业证处理的根因），
@@ -125,13 +125,13 @@ async function uploadFiles(files: File[]) {
         action="#"
         :auto-upload="false"
         accept=".pdf,.jpg,.jpeg,.png,.heic"
-        :limit="20"
+        :limit="uploadLimits.maxFiles"
         :on-exceed="onExceed"
       >
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
         <div class="el-upload__text">将 {{ docTypes[docType] }}文件拖到此处，或 <em>点击选择</em></div>
         <template #tip>
-          <div class="el-upload__tip">支持 JPG / PNG / HEIC / PDF，单文件 ≤ 10 MB，每批 1–20 个文件、总计 ≤ 50 MB。</div>
+          <div class="el-upload__tip">支持 JPG / PNG / HEIC / PDF，单文件 ≤ {{ uploadLimits.maxFileMB }} MB，每批 1–{{ uploadLimits.maxFiles }} 个文件、总计 ≤ {{ uploadLimits.maxBatchMB }} MB。</div>
         </template>
       </el-upload>
 
@@ -143,7 +143,7 @@ async function uploadFiles(files: File[]) {
       </div>
 
       <div class="upload-row">
-        <span class="upload-hint" :class="{ 'at-limit': selectedFiles.length >= 20 }">已选择 {{ selectedFiles.length }} / 20 个文件</span>
+        <span class="upload-hint" :class="{ 'at-limit': selectedFiles.length >= uploadLimits.maxFiles }">已选择 {{ selectedFiles.length }} / {{ uploadLimits.maxFiles }} 个文件</span>
         <div class="upload-actions">
           <el-button v-if="selectedFiles.length && !submitting" @click="clearFiles">一键清除</el-button>
           <el-button v-if="submitting" @click="cancelSubmit">取消上传</el-button>

@@ -77,6 +77,27 @@ function makeMonitorCase() {
   return { server, monitor, signal }
 }
 
+test('policy changes refresh terminal rows, including previously loaded older pages', async () => {
+  const { server, monitor, signal } = makeMonitorCase()
+  try {
+    const first = crypto.randomUUID(), older = crypto.randomUUID()
+    server.db.batches = [{ ...mkBatch(first, 'COMPLETED'), required_fields_revision: 0 }]
+    server.db.page2 = [{ ...mkBatch(older, 'COMPLETED'), required_fields_revision: 0 }]
+    server.db.tasks[first] = [{ ...mkTask(crypto.randomUUID(), first, 'COMPLETED', 'DIPLOMA'), required_fields_revision: 0, export_ready: true }]
+    server.db.tasks[older] = [{ ...mkTask(crypto.randomUUID(), older, 'COMPLETED', 'DIPLOMA'), required_fields_revision: 0, export_ready: true }]
+    await monitor.pollOnce(signal())
+    await monitor.loadMore(signal())
+    await monitor.loadTasks(older, signal())
+    server.db.batches[0]!.required_fields_revision = 1
+    server.db.tasks[first] = server.db.tasks[first]!.map(task => ({ ...task, required_fields_revision: 1, export_ready: false }))
+    server.db.tasks[older] = server.db.tasks[older]!.map(task => ({ ...task, required_fields_revision: 1, export_ready: false }))
+    await monitor.pollOnce(signal())
+    assert.equal(monitor.state.entries[first]!.tasks[0]!.export_ready, false)
+    assert.equal(monitor.state.entries[older]!.tasks[0]!.export_ready, false)
+    assert.equal(monitor.state.entries[older]!.tasks[0]!.required_fields_revision, 1)
+  } finally { monitor.dispose() }
+})
+
 const pdf = (name: string) => new File(['%PDF-1.4 fake'], name, { type: 'application/pdf' })
 
 test('first refresh and merged pages remain descending without losing optimistic uploads', async () => {

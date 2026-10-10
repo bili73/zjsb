@@ -110,6 +110,7 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
       // A batch that just left PROCESSING needs one final task fetch,
       // otherwise its rows would freeze on the last running snapshot.
       const finalized = new Set<string>()
+      const policyRevision = list.items.find(batch => batch.required_fields_revision !== undefined)?.required_fields_revision
       for (const batch of list.items) {
         if (state.entries[batch.batch_id]?.batch?.status === 'PROCESSING' && batch.status !== 'PROCESSING') finalized.add(batch.batch_id)
         upsertBatch(batch)
@@ -120,7 +121,8 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
         if (!entry) continue
         // Refresh task rows for anything that can still change; terminal
         // batches keep their last known snapshot without extra requests.
-        if (!entry.tasksLoaded || entry.batch?.status === 'PROCESSING' || finalized.has(id)) {
+        if (!entry.tasksLoaded || entry.batch?.status === 'PROCESSING' || finalized.has(id) ||
+          policyRevision !== undefined && entry.tasks.some(task => task.required_fields_revision !== policyRevision)) {
           entry.tasks = await client.tasks(id, signal)
           entry.tasksLoaded = true
           reconcilePending(entry)

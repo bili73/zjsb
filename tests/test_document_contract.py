@@ -26,6 +26,18 @@ class DocumentContractTests(unittest.TestCase):
     def validate(self,name,value):
         jsonschema.Draft7Validator(dict(self.document,**{'$ref':'#/components/schemas/'+name}),format_checker=jsonschema.FormatChecker()).validate(value)
 
+    def test_upload_limit_contract_matches_admission(self):
+        from ocr_app.upload_limits import MAX_FILES, MAX_FILE_BYTES, MAX_BATCH_BYTES
+        self.assertEqual((MAX_FILES, MAX_FILE_BYTES, MAX_BATCH_BYTES),
+                         (100, 50 * 1024 * 1024, 500 * 1024 * 1024))
+        upload = self.document['paths']['/batches']['post']
+        files = upload['requestBody']['content']['multipart/form-data']['schema']['properties']['files']
+        self.assertEqual((files['minItems'], files['maxItems']), (1, MAX_FILES))
+        self.assertIn('50MB', files['items']['description'])
+        self.assertIn('500MB', files['items']['description'])
+        self.assertIn('413', upload['responses'])
+        self.assertIn('FILE_TOO_LARGE/413', upload['description'])
+
     def envelope(self,result):
         return dict(result,task_id=str(uuid4()),run_id=str(uuid4()),result_revision=1,status=result.get('status','NEED_REVIEW'))
 
@@ -36,6 +48,19 @@ class DocumentContractTests(unittest.TestCase):
             with self.subTest(doc_type=entry['doc_type']):
                 result=extract_result([dict(text='字段：合成内容',page=1,region_id=str(uuid4()),bbox=[0,0,1,1],extraction_method='pdf_text')],entry['doc_type'])
                 self.validate('TaskResult',self.envelope(public_result(result)))
+
+    def test_shared_required_settings_contract(self):
+        from ocr_app.required_fields import configuration, project_requirements
+        self.validate('RequiredFieldSettings', configuration(dict(revision=0, overrides={})))
+        policy = dict(revision=2, overrides={'DIPLOMA':['duration'], 'HOUSEHOLD_REGISTER':['members.gender'], 'GENERIC':[]})
+        self.validate('RequiredFieldSettings', configuration(policy))
+        for selected in [[], ['duration'], None]:
+            self.validate('RequiredFieldSave', dict(doc_type='DIPLOMA', required_fields=selected, expected_revision=2))
+        for extra in [dict(required_fields=['name','name']), dict(expected_revision=-1), dict(extra=True)]:
+            with self.assertRaises(jsonschema.ValidationError):
+                self.validate('RequiredFieldSave', dict(dict(doc_type='DIPLOMA',required_fields=[],expected_revision=2),**extra))
+        result = project_requirements(extract_result([], 'DIPLOMA'), policy['overrides'])
+        self.validate('TaskResult', self.envelope(dict(result,required_fields_revision=2)))
 
     def test_real_human_medical_shapes_and_readonly_rejection(self):
         result=extract_result([dict(text='<table><tr><th>项目名称</th><th>检测结果</th><th>风险等级</th></tr><tr><td>合成项目</td><td>2</td><td>A</td></tr></table>',page=1,region_id=str(uuid4()),extraction_method='pdf_text')],'MEDICAL_REPORT')

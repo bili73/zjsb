@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend/ocr_app/extraction.py, backend/ocr_app/doc_profiles.py, backend/ocr_app/task_store.py, frontend/src, tests, scripts/replay_oct9_repairs.py, SPEC.md, openapi.yaml, FRONTEND_FIELDS.md, IMPLEMENTATION_PLAN.md
-Last-verified: 2026-10-09
+Last-verified: 2026-10-10
 
 ## Problem
 
@@ -24,7 +24,18 @@ First replay current frozen OCR outputs and original sample labels to isolate ma
 
 [Evidence-bound mapping](2026-09-30-evidence-bound-field-mapping.md) partly overlaps: source-bound extraction and conservative abstention remain, while school authority ranking and the user-confirmed study-interval date roles are new decisions. [HR profiles](../feature/2026-10-08-hr-document-field-profile.md) keep removed principal/study-mode fields absent. [Business Excel](../feature/2026-10-09-business-xlsx-layout.md) exports the saved mapping, not raw OCR. Related notes were searched; no complete supersession or archival is warranted.
 
+## Diploma number-label tolerance
+
+Only DIPLOMA adds standalone 书编号 and 编号 to its certificate_no aliases; existing label-token boundaries, separators and spaced-print support remain. HTML cells and wrapped values share the existing parser. Diploma footer-date context uses the same aliases, so a recovered number can also anchor issue_date without supplying graduate_date. COMMON and DEGREE labels remain unchanged.
+
+Leading zeros, letters, source text and uncalibrated confidence remain unchanged. Duplicate values merge, different values stay conflicts, and masked digits or unknown tails stay missing. Compound labels such as 身份证编号 and 档案编号 do not supply a certificate number or footer-date context. A standalone 编号 on a diploma is interpreted as the certificate label; damaged source context cannot prove its semantic identity. This is label tolerance, not digit reconstruction, and does not overwrite saved human corrections.
+
+The new regression cases fail before the fix and pass after it. All 82 focused diploma, certificate, HR-profile, document-pipeline and schema tests pass without model calls or production result writes. The first combined test invocation failed because a legacy test imports a helper directly from tests; adding tests to sys.path matches discovery behavior and the corrected invocation passes. This validation is synthetic mapping regression, not a new real-sample accuracy measurement.
+
 ## Alternatives considered
+
+- Add the aliases to shared COMMON: shorter and covers more certificate kinds, but changes degree behavior outside the user's requested scope. Keep diploma-specific aliases.
+- Match arbitrary substrings containing 编号: could rescue more damaged labels, but also accepts unrelated compound labels. Keep label-token and value delimiters.
 
 - Keep all school candidates equally ranked: reliably exposes disagreement, but lets decorative-cover OCR override a clear printed field. Prioritize explicit field context and retain true same-tier conflicts.
 - Add only more school aliases: small, but does not fix the unsupported signatory boundary or cover/body ranking. Fix the observed boundaries and authority rule.
@@ -48,3 +59,18 @@ Six focused diploma tests and the existing certificate regression pass. The orig
 Authority ranking can suppress a genuine difference without a printed field context; only observed field/narrative authority is ranked. The user's correction authorizes interval mapping; candidates, original runs and printed precision remain protected. Unreadable or equally authoritative conflicts still require human review, and frozen replay is not fresh model accuracy.
 
 The subsequent [fresh serial accuracy measurement](../testing/2026-10-09-diploma-accuracy-refresh.md) adds actual inference evidence without rewriting this replay: six diplomas65/66, date roles18/18, 0 missing. The remaining school error is already in raw OCR and is not a mapper omission.
+
+## Decimal duration and curriculum level repair
+
+The user reports Zhao's diploma as duration 5年 and missing 专科. Original-image inspection confirms 2.5年制 专科教学计划. Both production records and their GLM source text retain 2.5年制 专\n科教学计划; the integer-only duration pattern starts after the decimal point and captures 5年制, while the level suffix grammar omits 教学计划. This is a mapping defect, not unreadable model output.
+
+The diploma duration grammar accepts a complete Arabic decimal or existing Arabic/Chinese integer, preventing suffix matches inside malformed or leading-dot numbers. Diploma level narrative matching includes whitespace-tolerant 教学计划. Numeric precision, raw evidence and conflicts are preserved. Degrees remain unchanged; level is not inferred from school/study length and duration is not derived from date intervals. Saved corrections remain protected. New regression cases fail before the change and pass after it.
+
+Rerunning or changing OCR models can help source recognition errors, but both archived models already read this sample correctly; it adds cost without fixing the mapper. Inferring years from study dates is convenient, but those dates are distinct evidence and must not replace printed duration.
+
+## Missing issue-date glyph repair
+
+The user identifies Xiao's diploma with an obscured 日 glyph. Original-image and read-only production inspection show the footer 二〇二六年 七 月 二 with a retained day numeral and the damaged 书编号 label. Only diploma issue_date grammar and its matching number-tail context accept a complete calendar-valid Chinese date without the 日 suffix. Birth, enrollment, graduation, degree award and medical date grammars remain strict. Keep month-only precision, reject invalid/masked/unknown suffixes, and preserve competing dates as conflicts. Never substitute an issuance date for graduation or fill missing day numerals. Regression tests cover missing/invalid/masked day digits, month precision and competing issue dates before and after implementation.
+
+
+The read-only [mapping replay](../../../../output/diploma-duration-20261010-v1/replay.json) compares 68 frozen OCR texts with the mapper snapshot taken after number aliases but before decimal/date changes: 10 texts change, solely duration, curriculum level or issue_date. Both archived models already read Zhao's 2.5 and 专科 correctly. Four saved production OCR runs replay as Zhao duration2.5年/level专科 and Xiao issue_date2026-07-02 while graduation stays2026-07; all four saved result ciphertexts and revisions remain unchanged. There are zero model calls or task writes. This is mapping replay, not new accuracy or speed measurement. Full backend regression passes519 tests, frontend85 and build; the first full run's stale migration assertion and short wall-clock timeout failure remain recorded separately from the passing reruns.

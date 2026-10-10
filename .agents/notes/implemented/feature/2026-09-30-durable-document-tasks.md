@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend, tests, scripts/probe_business.py, scripts/probe_browser.cjs, access-key.cmd, requirements-app.lock.txt, SPEC.md, openapi.yaml, ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, RUNTIME.md
-Last-verified: 2026-10-08
+Last-verified: 2026-10-10
 
 ## Problem
 
@@ -17,6 +17,16 @@ Sensitive source files, corrected pages, results and attempt bodies use AES-GCM 
 Reliable PDF text keeps its positions and bypasses OCR. The first pass persists corrected pages and collects all native text/table evidence; the second pass handles image/unreliable regions. Only page metadata and pending boxes are retained between passes, not a full-document image cache. This costs extra rendering but preserves later-page native evidence when an earlier OCR region times out. Small images are not blindly discarded as decoration. Certificates retain whole pages; long medical regions use conservative horizontal white-band cuts, not the experimental PP layout model. Source coverage remains unverified, confidence stays null, and successful extraction enters NEED_REVIEW. Read-only results include available partial results after FAILED; full review/export endpoints remain unavailable.
 
 [Bounded medical recognition](../bug-fix/2026-10-08-bounded-medical-recognition.md) now limits medical generation to a soft 20 seconds and at most two original-image attempts, while certificates retain their three-attempt repair policy. Exact error-free EOS reuse stays inside one Task and binds current sources; neither cancellation/rerun nor a new Task inherits the cache. The shared deadline, hard supervision and conservative review state remain unchanged.
+
+## Upload admission limits
+
+The user approves up to100 files per upload,50 MiB per nonempty file and500 MiB of file payload per upload. The UI labels these binary limits as MB, consistently with the existing byte calculation. Shared backend constants bind streamed multipart admission and decoder validation; frontend constants bind the picker, messages and validation. Multipart framing receives separate bounded headroom scaled for100 filenames, while the aggregate file payload still cannot exceed500 MiB. Exactly-at-limit uploads are valid; excess count or size returns FILE_TOO_LARGE/413 before persistent task creation. Existing malformed-form400, format/page/pixel validation, authentication and task queues remain active.
+
+Files remain in memory until decoding and encrypted persistence complete. Larger accepted uploads can increase peak memory and admission time; these limits do not qualify100-file OCR throughput, simultaneous500 MiB clients or Mac deployment. The existing upload client timeout and one-request batch transaction remain unchanged. No append/replace endpoint is introduced. The [frontend workbench](2026-10-08-frontend-rebuild-element-plus.md) uses the same limits without increasing per-model concurrency.
+
+Only raising the browser limit gives immediate selection relief but leaves server rejection intact; update both sides and their API contract. Removing total-size limits accepts arbitrary scans but leaves unbounded memory use under the current in-memory parser; keep the approved500 MiB ceiling. Disk spooling would reduce request memory but introduces plaintext temporary files and lifecycle work outside this parameter change; retain memory-only admission and revisit it if deployment measurements require it.
+
+The upload regression passes74 targeted backend tests and73 frontend tests, including a real500 MiB streamed multipart payload with100 long filenames, a50 MiB decoded/encrypted source,100 distinct queued tasks, byte/count excess413, invalid-last-file rejection and mid-write rollback. Typecheck and the production frontend build pass. Fixtures use isolated stores and no recognition model; this is admission qualification, not OCR throughput or a concurrent-client memory benchmark.
 
 ## Decision audit
 

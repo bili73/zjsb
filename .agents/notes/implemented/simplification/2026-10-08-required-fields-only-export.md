@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend/ocr_app/exporting.py, backend/ocr_app/task_store.py, frontend, tests, SPEC.md, openapi.yaml, FRONTEND_FIELDS.md, ARCHITECTURE.md, RUNTIME.md, IMPLEMENTATION_PLAN.md
-Last-verified: 2026-10-08
+Last-verified: 2026-10-10
 
 ## Problem
 
@@ -23,6 +23,8 @@ Task and TaskResult expose optional export_ready and export_blockers using the s
 [Human review/export](../../implemented/feature/2026-10-08-human-review-and-xlsx-export.md), [document profiles](../../implemented/feature/2026-10-08-card-and-document-profiles.md), [frontend rebuilding](../../implemented/feature/2026-10-08-frontend-rebuild-element-plus.md) and [full internal values](../../implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md) remain partially active. Only their export eligibility statements are superseded; review completion, source preservation, permissions, type rules and historical benchmarks still apply. None is fully superseded or archived.
 
 ## Alternatives considered
+
+The [shared required-field settings](../feature/2026-10-10-configurable-required-fields.md) make required sets administrator configurable by material type for current and historical tasks. Existing tables are defaults; uncustomized types retain conditional rules. Current metadata, review and atomic export use the same persisted policy. Config revision is separate from task revision, and settings changes preserve OCR/manual values and ciphertext. This partly overlaps the required-field source without superseding presence-only export, monitoring, permissions or evidence preservation.
 
 The approved [medical ledger template](../../implemented/feature/2026-10-09-medical-ledger-template.md) keeps the medical required set name/gender/exam_date. Newly added measurements, report metadata and group summaries remain optional; the catalogue count is derived rather than a new required gate. This presence-only policy is unchanged.
 
