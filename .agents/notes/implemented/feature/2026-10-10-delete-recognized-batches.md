@@ -40,4 +40,6 @@ The idle Windows service is backed up and restarted as1.19.0. [Activation eviden
 
 ## Consequences
 
+The [cross-session review repairs](../bug-fix/2026-10-12-review-repairs.md) also remove a batch confirmed inaccessible by its own task-list404, clear its pending actions/previews and close its drawer, while other jobs keep polling. Pagination resets and totals reconcile from the server. A batch omitted by pagination or filtering is retained.
+
 Permanent deletion is not recoverable through the application. A filesystem failure after SQL commit leaves inaccessible encrypted orphan files until maintenance/startup cleanup; the UI does not claim complete cleanup. Already-issued downloads or in-flight read snapshots cannot be recalled. Deployment uses a backed-up idle backend restart; no queued or active tasks are interrupted.

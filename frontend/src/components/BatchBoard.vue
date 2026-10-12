@@ -27,6 +27,7 @@ const loadingMore = ref(false)
 const acting = ref('')
 let moreController: AbortController | undefined
 let actionController: AbortController | undefined
+let disposed = false
 const period = ref<BatchPeriod>('day')
 const today = () => formatTime(new Date().toISOString()).slice(0, 10)
 const anchor = ref<string | null>(today())
@@ -37,7 +38,7 @@ watch(() => props.uploadReset, () => {
   props.monitor.setDateRange(periodBounds(anchor.value, period.value))
 })
 watch(() => props.monitor.state.dateRange, range => { if (!range) anchor.value = null })
-onUnmounted(() => { moreController?.abort(); actionController?.abort() })
+onUnmounted(() => { disposed = true; moreController?.abort(); actionController?.abort() })
 
 // Keyed by the id from monitor.order, not entry.batch, so optimistic entries
 // (batch still null right after upload) keep a stable identity too.
@@ -103,7 +104,7 @@ async function loadMore() {
 }
 
 async function doAction(operation: 'cancel' | 'rerun', batchId: string, task: Task) {
-  if (acting.value) return
+  if (disposed || acting.value) return
   actionController = new AbortController()
   acting.value = `${operation}:${task.task_id}`
   try {
@@ -135,7 +136,18 @@ async function runCancel(batchId: string, task: Task) {
   await doAction('cancel', batchId, task)
 }
 
-function runRerun(batchId: string, task: Task) { void doAction('rerun', batchId, task) }
+async function runRerun(batchId: string, task: Task) {
+  if (disposed || acting.value || !canRerun(task)) return
+  const version = { ...task }
+  acting.value = `confirm-rerun:${task.task_id}`
+  try {
+    await ElMessageBox.confirm(`确认重跑「${task.file_name ?? '该文件'}」？重跑会清空当前显示的识别结果和人工修正。需要保留时，请先取消并导出当前结果；本页面暂不支持恢复历史版本。`, '重跑任务', {
+      type: 'warning', confirmButtonText: '确认重跑', cancelButtonText: '取消',
+    })
+  } catch { return }
+  finally { acting.value = '' }
+  await doAction('rerun', batchId, version)
+}
 
 async function deleteBatch(batchId: string) {
   const entry = props.monitor.state.entries[batchId]

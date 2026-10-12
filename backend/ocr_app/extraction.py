@@ -78,7 +78,8 @@ def _field(key, label, candidates, required):
 
 
 _CERT_DATE = r'(?:(?:[0-9Oo〇○零一二三四五六七八九]\s*){4}年\s*[0-9一二三四五六七八九十]{1,3}\s*月(?:\s*[0-9一二三四五六七八九十]{1,3}\s*日)?|[0-9]{4}-[0-9]{1,2}(?:-[0-9]{1,2})?)'
-_CERT_ISSUE_DATE = rf'(?:{_CERT_DATE}|(?:[0-9Oo〇○零一二三四五六七八九]\s*){{4}}年\s*[0-9一二三四五六七八九十]{{1,3}}\s*月\s*[0-9一二三四五六七八九十]{{1,3}})'
+_CERT_FOOTER_DATE = rf'(?:{_CERT_DATE}|(?:[0-9Oo〇○零一二三四五六七八九]\s*){{4}}年\s*[0-9一二三四五六七八九十]{{1,3}}\s*月\s*[0-9一二三四五六七八九十]{{1,3}})'
+_CERT_DATE_PADDING = r'[ \t（）()，,。]*'
 
 
 def _certificate_date(raw, *, allow_missing_day_suffix=False):
@@ -121,8 +122,10 @@ def _certificate_value(key, raw, doc_type=None):
     if not value or len(value) > 100:
         return None
     if key.endswith('_date'):
-        allow_missing_day = key == 'issue_date' and doc_type == 'DIPLOMA'
-        date_pattern = _CERT_ISSUE_DATE if allow_missing_day else _CERT_DATE
+        allow_missing_day = (doc_type, key) in {('DIPLOMA', 'issue_date'), ('DEGREE_CERT', 'award_date')}
+        if allow_missing_day:
+            value = value.strip(' \t\r\n（）()，,。')
+        date_pattern = _CERT_FOOTER_DATE if allow_missing_day else _CERT_DATE
         return _certificate_date(value, allow_missing_day_suffix=allow_missing_day) if re.fullmatch(date_pattern, value) else None
     if key == 'gender':
         return {'男': 'M', '女': 'F', 'M': 'M', 'F': 'F'}.get(value)
@@ -132,7 +135,7 @@ def _certificate_value(key, raw, doc_type=None):
             return None
         remainder = value[token.end():].strip(' \t，,。;；')
         # A second digit group or mask may be part of the identifier, never its tail.
-        date_pattern = _CERT_ISSUE_DATE if doc_type == 'DIPLOMA' else _CERT_DATE
+        date_pattern = rf'{_CERT_DATE_PADDING}{_CERT_FOOTER_DATE}{_CERT_DATE_PADDING}'
         known_tail = rf'(?:{date_pattern}\s*)?(?:查询(?:网址|地址|网站)?|网址)\s*[:：].*'
         if remainder and not re.fullmatch(date_pattern, remainder) and not re.fullmatch(known_tail, remainder):
             return None
@@ -140,6 +143,7 @@ def _certificate_value(key, raw, doc_type=None):
     if key == 'name':
         return value if re.fullmatch(r'[\u4e00-\u9fff·]{2,12}', value) else None
     if key == 'school_name':
+        value = re.sub(r'[ \t]+', '', value)
         if value in {'普通高等学校', '成人高等学校', '高等学校'}:
             return None
         return value if re.fullmatch(r'[\u4e00-\u9fffA-Za-z（）()·]{2,60}(?:大学|学院|学校)', value) else None
@@ -165,10 +169,12 @@ def _extract_certificate_fields(evidence, doc_type):
     def label_pattern(alias):
         return r'[ \t]*'.join(re.escape(c) for c in alias)
 
-    boundaries = {a for _, aliases in dictionary.values() for a in aliases}
+    signing_titles = ('校长', '校长姓名', '校（院）长', '校(院)长', '院长', '学位评定委员会主席')
+    boundaries = {a for _, aliases in dictionary.values() for a in aliases} | set(signing_titles)
     if doc_type == 'DIPLOMA':
-        boundaries.update((*COMMON['study_mode'][1], '校长', '校长姓名', '校（院）长', '校(院)长', '院长'))
+        boundaries.update(COMMON['study_mode'][1])
     boundary = '|'.join(label_pattern(a) for a in sorted(boundaries, key=len, reverse=True))
+    school_token = r'[\u4e00-\u9fff][\u4e00-\u9fff \t]{1,58}?(?:大[ \t]*学|学[ \t]*院|学[ \t]*校)'
     for block in evidence:
         text = _certificate_text(block['text'])
         claimed_dates = []
@@ -188,7 +194,9 @@ def _extract_certificate_fields(evidence, doc_type):
         for key, (_, aliases) in dictionary.items():
             for alias in aliases:
                 endings = r'[\n\r]' if key == 'certificate_no' else r'[\n\r，,。;；\t]'
-                pattern = rf'(?<![\w]){label_pattern(alias)}[ \t]*[:：\t ]+\s*(.+?)(?=\s*(?:{boundary})[ \t]*[:：\t ]|{endings}|$)'
+                # In spaced school names, 学 校 can overlap the beginning of 校 长.
+                value_pattern = r'[\u4e00-\u9fffA-Za-z（）()· \t]{2,120}?(?:大[ \t]*学|学[ \t]*院|学[ \t]*校)' if key == 'school_name' else r'.+?'
+                pattern = rf'(?<![\w]){label_pattern(alias)}[ \t]*[:：\t ]+\s*({value_pattern})(?=\s*(?:{boundary})[ \t]*[:：\t ]|{endings}|$)'
                 for match in re.finditer(pattern, text):
                     add(key, match[1], match[0], school_strength=3)
                     if key.endswith('_date'):
@@ -202,8 +210,13 @@ def _extract_certificate_fields(evidence, doc_type):
                 add(key, value, match[0])
         for match in re.finditer(r'学生\s*([\u4e00-\u9fff·]{2,12})(?=[，,\s])', text):
             add('name', match[1], match[0])
-        for match in re.finditer(r'(?:^|\n)\s*([\u4e00-\u9fff]{2,30}(?:大学|学院|学校))\s*(?=\n|$)', text):
+        for match in re.finditer(rf'(?:^|\n)[ \t]*({school_token})[ \t]*(?=\r?\n|$)', text):
             add('school_name', match[1], match[0], school_strength=1)
+        if doc_type == 'DEGREE_CERT':
+            # Signing context is as authoritative as a school label, never a fuzzy correction.
+            signing = '|'.join(label_pattern(a) for a in sorted(signing_titles, key=len, reverse=True))
+            for match in re.finditer(rf'(?:^|\n)[ \t]*({school_token})[ \t]*(?:\r?\n[ \t]*){{0,2}}(?:{signing})(?=[ \t:：\r\n]|$)', text):
+                add('school_name', match[1], match[0], school_strength=3)
         for match in re.finditer(r'在\s*(?:本校|我校|本学院|本院|我院)\s*([\u4e00-\u9fffA-Za-z（）()\s]{2,50}?)\s*专业', text):
             add('major', match[1], match[0])
         for match in re.finditer(r'在\s*([\u4e00-\u9fff]{2,30}(?:大学|学院|学校))\s*([\u4e00-\u9fffA-Za-z（）()\s]{2,40}?)\s*专业', text):
@@ -230,19 +243,17 @@ def _extract_certificate_fields(evidence, doc_type):
             for match in re.finditer(r'(学士|硕士|博士)\s*学位证书', text):
                 add('degree_category', match[1], match[0])
         # A standalone footer date requires certificate context, not an arbitrary date.
-        number_label = r'(?:证书编号|证书号码)'
-        if doc_type == 'DIPLOMA':
-            number_label = r'(?<!\w)(?:' + '|'.join(label_pattern(a) for a in dictionary['certificate_no'][1]) + ')'
+        number_label = r'(?<!\w)(?:' + '|'.join(label_pattern(a) for a in dictionary['certificate_no'][1]) + ')'
         number_matches = list(re.finditer(rf'{number_label}\s*[:：]?\s*[A-Za-z0-9]+', text))
         if number_matches:
-            footer_date = _CERT_ISSUE_DATE if doc_type == 'DIPLOMA' else _CERT_DATE
+            footer_date = rf'{_CERT_DATE_PADDING}({_CERT_FOOTER_DATE}){_CERT_DATE_PADDING}'
             for number in number_matches:
                 line_end = text.find('\n', number.end())
                 tail = text[number.end():line_end if line_end >= 0 else len(text)]
-                footer = re.match(rf'\s+({footer_date})(?=\s*(?:$|查询|网址))', tail)
+                footer = re.match(rf'[ \t]+{footer_date}(?=\s*(?:$|查询|网址))', tail)
                 if footer:
                     add('issue_date' if doc_type == 'DIPLOMA' else 'award_date', footer[1], number[0] + footer[0])
-            for match in re.finditer(rf'(?:^|\n)\s*({footer_date})\s*(?=\n|$)', text):
+            for match in re.finditer(rf'(?:^|\n){footer_date}(?=\r?\n|$)', text):
                 if any(start < match.end(1) and end > match.start(1) for start, end in claimed_dates):
                     continue
                 add('issue_date' if doc_type == 'DIPLOMA' else 'award_date', match[1], match[0])

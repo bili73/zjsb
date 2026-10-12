@@ -1,11 +1,14 @@
 """Shared policy must agree across historical results, review and atomic export."""
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
+import json
+import threading
 import unittest
 
 from sqlalchemy import text
 import test_business_api as base
 from ocr_app.business import Business
+from ocr_app.auth import csrf_for
 from ocr_app.extraction import extract_result
 from ocr_app.required_fields import save_configuration
 from ocr_app.task_store import TaskError
@@ -70,6 +73,48 @@ class RequiredFieldSettingsTests(unittest.TestCase):
         self.assertEqual(policy['overrides']['MEDICAL_REPORT'], ['name', 'institution'])
         revision = policy['revision']
         self.assertEqual(self.save('DIPLOMA', None).json()['revision'], revision)
+
+    def test_streamed_save_rechecks_revoked_session_even_for_noop(self):
+        accounts = self.business.accounts
+        controller = accounts.set_user('controller', 'synthetic123', '合成管理者', 'admin')
+        controller_token = accounts.login('controller', 'synthetic123', 'synthetic-controller')
+        for name, selected in [('disabled', []), ('logged-out-noop', None)]:
+            with self.subTest(revocation=name):
+                actor = accounts.set_user(name, 'synthetic123', '合成操作者', 'admin')
+                token = accounts.login(name, 'synthetic123', 'synthetic-' + name)
+                self.client.cookies.clear()
+                self.client.cookies.set('ocr_session', token)
+                entered, release = threading.Event(), threading.Event()
+                policy = self.business.store.required_policy()
+                payload = json.dumps(dict(doc_type='DIPLOMA', required_fields=selected,
+                                          expected_revision=policy['revision'])).encode()
+
+                def slow_body():
+                    yield payload[:1]
+                    entered.set()
+                    if not release.wait(10):
+                        raise TimeoutError('synthetic body was not released')
+                    yield payload[1:]
+
+                with ThreadPoolExecutor(max_workers=1) as pool:
+                    future = pool.submit(self.client.put, '/api/v1/admin/required-fields',
+                        headers=dict(self.origin, **{'X-CSRF-Token': csrf_for(token), 'Content-Type': 'application/json'}),
+                        content=slow_body())
+                    try:
+                        self.assertTrue(entered.wait(8), 'request did not reach body reading')
+                        if name == 'disabled':
+                            accounts.update_enabled(controller['user_id'], actor['user_id'], False, controller_token)
+                        else:
+                            accounts.logout(token)
+                        self.assertIsNone(accounts.session(token))
+                    finally:
+                        release.set()
+                    response = future.result(timeout=10)
+                self.assertEqual(response.status_code, 401, response.text)
+                self.assertEqual(self.business.store.required_policy(), policy)
+                with self.business.engine.connect() as connection:
+                    self.assertEqual(connection.execute(text(
+                        "SELECT count(*) FROM audit WHERE event='required_fields_changed'")).scalar_one(), 0)
 
     def test_unknown_duplicate_nonstring_and_derived_fields_are_rejected(self):
         self.admin()
@@ -146,7 +191,8 @@ class RequiredFieldSettingsTests(unittest.TestCase):
     def test_concurrent_administrators_cannot_lose_updates(self):
         def save(kind):
             try:
-                return save_configuration(self.business.store, dict(doc_type=kind, required_fields=['name'], expected_revision=0), 'test')['revision']
+                return save_configuration(self.business.store, dict(doc_type=kind, required_fields=['name'], expected_revision=0),
+                                          'test', authorize=lambda connection: None)['revision']
             except TaskError as error:
                 return error.code
         with ThreadPoolExecutor(max_workers=2) as pool:
@@ -159,7 +205,8 @@ class RequiredFieldSettingsTests(unittest.TestCase):
         original = store.batch
         def concurrent_save(identifier, *, policy=None, user=None):
             if store.required_policy()['revision'] == 0:
-                save_configuration(store, dict(doc_type='DIPLOMA', required_fields=[], expected_revision=0), 'test')
+                save_configuration(store, dict(doc_type='DIPLOMA', required_fields=[], expected_revision=0),
+                                   'test', authorize=lambda connection: None)
             return original(identifier, policy=policy, user=user)
         with patch.object(store, 'batch', side_effect=concurrent_save):
             listed = store.batches()

@@ -28,7 +28,10 @@ const catalogue = ref<DocProfile[]>([])
 const catalogueError = ref('')
 const engine = createEngine()
 const engineSummary = engine.summary
-const monitor = createMonitor(() => api.value, { onUnauthorized: () => handleUnauthorized() })
+const monitor = createMonitor(() => api.value, {
+  onUnauthorized: () => handleUnauthorized(),
+  onBatchRemoved: (batchId, taskIds) => batchDeleted(batchId, taskIds),
+})
 const previews = new LocalPreviewBatch()
 const activeTab = ref('upload')
 const uploadReset = ref(0)

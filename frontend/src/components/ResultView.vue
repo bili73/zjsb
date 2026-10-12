@@ -45,6 +45,9 @@ function locate(source: FieldSource | undefined) { if (isMedical.value && source
 
 <template>
   <div class="result-view">
+    <el-alert v-if="isMedical" type="info" :closable="false" show-icon class="summary-note">
+      按明细自动汇总的“未见异常”仅基于已识别明细，不代表整组检查或整份报告已完整识别；请对照原件核对检查范围与完整性。
+    </el-alert>
     <el-descriptions v-if="certFields.length" :column="2" border :title="isMedical ? '体检台账字段' : '识别字段'">
       <el-descriptions-item v-for="field in certFields" :key="field.key" :label="field.label" :span="isMedical && ['exam_projects','blood_routine','urine_routine','ecg','dr_imaging','abdominal_ultrasound','liver_function'].includes(field.key) ? 2 : 1">
         <span class="field-line">
@@ -196,5 +199,6 @@ function locate(source: FieldSource | undefined) { if (isMedical.value && source
 .mask-icon { vertical-align: -2px; margin-right: 4px; color: var(--el-text-color-secondary); }
 .stat-abnormal { color: var(--el-color-danger); }
 .summary-meta { margin: 8px 0; }
+.summary-note { margin-bottom: 12px; }
 .limitation { margin-top: 12px; }
 </style>

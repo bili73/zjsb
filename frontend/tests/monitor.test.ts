@@ -19,7 +19,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 function makeServer() {
   const db = {
-    batches: [] as Batch[], tasks: {} as Record<string, Task[]>, page2: [] as Batch[], failNextList: 0, lastAbnormalOnly: '', listQueries: [] as string[],
+    batches: [] as Batch[], tasks: {} as Record<string, Task[]>, page2: [] as Batch[], failNextList: 0, lastAbnormalOnly: '', listQueries: [] as string[], missingBatches: new Set<string>(),
   }
   const fetcher: typeof fetch = async (input, init) => {
     const url = String(input)
@@ -38,6 +38,7 @@ function makeServer() {
     }
     if (url.includes('/batches/') && url.includes('/tasks')) {
       const batchId = url.split('/batches/')[1]!.split('/tasks')[0]
+      if (db.missingBatches.has(batchId)) return json({ code: 'INVALID_REQUEST' }, 404)
       return json(db.tasks[batchId] ?? [])
     }
     if (url.includes('/batches/') && method === 'DELETE') {
@@ -85,6 +86,105 @@ function makeMonitorCase() {
   const signal = () => new AbortController().signal
   return { server, monitor, signal }
 }
+
+test('remote batch deletion removes only its cache and continues peer polling', async () => {
+  const server = makeServer()
+  const removed: { id: string; taskIds: string[] }[] = []
+  const client = new BusinessApi(server.fetcher)
+  const monitor = createMonitor(() => client, {
+    intervalMs: 15, isVisible: () => true,
+    onBatchRemoved: (id, taskIds) => removed.push({ id, taskIds }),
+  })
+  const signal = new AbortController().signal
+  const deleted = crypto.randomUUID(), peer = crypto.randomUUID(), older = crypto.randomUUID()
+  const lost = mkTask(crypto.randomUUID(), deleted, 'NEED_REVIEW', 'DIPLOMA')
+  const running = mkTask(crypto.randomUUID(), peer, 'OCR', 'MEDICAL_REPORT')
+  server.db.batches = [mkBatch(deleted), mkBatch(peer)]
+  server.db.page2 = [mkBatch(older, 'COMPLETED')]
+  server.db.tasks[deleted] = [lost]
+  server.db.tasks[peer] = [running]
+  try {
+    await monitor.pollOnce(signal)
+    await monitor.loadMore(signal)
+    monitor.state.pending[lost.task_id] = { operation: 'rerun', task_id: lost.task_id, run_id: lost.run_id }
+    server.db.batches = [mkBatch(peer)]
+    server.db.missingBatches.add(deleted)
+    server.db.tasks[peer] = [{ ...running, status: 'EXTRACTING' }]
+    assert.equal(await monitor.pollOnce(signal), 15)
+    assert.equal(monitor.state.entries[deleted], undefined)
+    assert.ok(!monitor.state.listedIds.includes(deleted))
+    assert.equal(monitor.state.pending[lost.task_id], undefined)
+    assert.equal(monitor.state.entries[peer]!.tasks[0]!.status, 'EXTRACTING')
+    assert.ok(monitor.state.entries[older], 'an older page is not evidence of deletion')
+    assert.deepEqual(removed, [{ id: deleted, taskIds: [lost.task_id] }])
+    assert.equal(monitor.state.failureCount, 0)
+    await monitor.loadMore(signal)
+    assert.equal(new URLSearchParams(server.db.listQueries.at(-1)).get('page'), '2')
+  } finally { monitor.dispose() }
+})
+
+test('a changed batch timestamp refreshes completed task revisions', async () => {
+  const { server, monitor, signal } = makeMonitorCase()
+  const id = crypto.randomUUID()
+  const task = mkTask(crypto.randomUUID(), id, 'COMPLETED', 'DIPLOMA')
+  server.db.batches = [{ ...mkBatch(id, 'COMPLETED'), updated_at: '2026-10-08T10:00:00Z' }]
+  server.db.tasks[id] = [task]
+  try {
+    await monitor.pollOnce(signal())
+    server.db.batches[0]!.updated_at = '2026-10-08T11:00:00Z'
+    server.db.tasks[id] = [{ ...task, result_revision: 2 }]
+    await monitor.pollOnce(signal())
+    assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, 2)
+  } finally { monitor.dispose() }
+})
+
+test('manual refresh rereads completed tasks on older pages and reports stopped polling', async () => {
+  const { server, monitor, signal } = makeMonitorCase()
+  const first = crypto.randomUUID(), older = crypto.randomUUID()
+  server.db.batches = [mkBatch(first, 'COMPLETED')]
+  server.db.page2 = [mkBatch(older, 'COMPLETED')]
+  server.db.tasks[first] = [mkTask(crypto.randomUUID(), first, 'COMPLETED', 'DIPLOMA')]
+  server.db.tasks[older] = [mkTask(crypto.randomUUID(), older, 'COMPLETED', 'DIPLOMA')]
+  try {
+    await monitor.pollOnce(signal())
+    await monitor.loadMore(signal())
+    await monitor.loadTasks(older, signal())
+    for (const id of [first, older]) server.db.tasks[id] = server.db.tasks[id]!.map(task => ({ ...task, result_revision: 2 }))
+    monitor.start()
+    await new Promise<void>(resolve => setImmediate(resolve))
+    assert.equal(monitor.state.entries[first]!.tasks[0]!.result_revision, 2)
+    assert.equal(monitor.state.entries[older]!.tasks[0]!.result_revision, 2)
+    assert.equal(monitor.state.polling, false)
+  } finally { monitor.dispose() }
+})
+
+test('an old session batch 404 cannot remove a newer session cache', async () => {
+  const server = makeServer(), id = crypto.randomUUID()
+  server.db.batches = [mkBatch(id)]
+  server.db.tasks[id] = [mkTask(crypto.randomUUID(), id, 'OCR', 'DIPLOMA')]
+  const entered = Promise.withResolvers<void>(), response = Promise.withResolvers<Response>()
+  let delayed = false
+  const client = new BusinessApi(async (input, init) => {
+    if (delayed && String(input).endsWith('/tasks')) { entered.resolve(); return response.promise }
+    return server.fetcher(input, init)
+  })
+  const removed: string[] = []
+  const monitor = createMonitor(() => client, { onBatchRemoved: id => removed.push(id) })
+  const signal = new AbortController().signal
+  try {
+    await monitor.pollOnce(signal)
+    delayed = true
+    const oldRead = monitor.pollOnce(signal)
+    await entered.promise
+    monitor.clear()
+    monitor.state.entries[id] = { batch: mkBatch(id), tasks: server.db.tasks[id]!, tasksLoaded: true, expanded: false }
+    monitor.state.order = [id]
+    response.resolve(json({ code: 'INVALID_REQUEST' }, 404))
+    await oldRead
+    assert.ok(monitor.state.entries[id])
+    assert.deepEqual(removed, [])
+  } finally { monitor.dispose() }
+})
 
 test('policy changes refresh terminal rows, including previously loaded older pages', async () => {
   const { server, monitor, signal } = makeMonitorCase()

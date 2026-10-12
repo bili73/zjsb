@@ -30,6 +30,8 @@ Infer NOT_ON_DOCUMENT only from a source-backed native-PDF project catalogue wit
 
 ## Consequences
 
+The [cross-session review repairs](2026-10-12-review-repairs.md) preserve this derivation at the user's explicit choice and add the recognized-detail limitation beside medical fields and to Excel comments on normal summaries derived from items alone. Manual/source conclusions and exported values/columns remain unchanged.
+
 All six source-backed groups can summarize normal measured evidence without a printed conclusion. Unknown rows, conflicting evidence, incomplete catalogues and early unclassified history continue to abstain. Derived normal text describes report evidence, not full recognition coverage or clinical fitness. A grades do not calibrate confidence, rewrite measured classifications or clear review. Absence inference intentionally covers only closed numbered native catalogues. Manual values/absence win and historical ciphertext remains immutable. The shared frontend renderer displays existing certificate absence as 未载明/不适用 and medical absence as 报告未载明/不适用.
 
 ## Verification

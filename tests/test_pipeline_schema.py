@@ -65,6 +65,8 @@ class PipelineSchemaTests(unittest.TestCase):
                 self.validate('TaskResult', self.publish_identity(result))
                 for page in result['pages']:
                     self.validate('Page', page)
+                    if doc_type in {'DIPLOMA', 'DEGREE_CERT'}:
+                        self.validate('ImagePreprocessing', page['image_preprocessing'])
                 for item in result.get('items', []):
                     self.validate('MedicalItem', item)
                 for field in result['fields']:

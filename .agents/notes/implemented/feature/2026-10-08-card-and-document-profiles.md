@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend/ocr_app, tests, frontend, scripts, SPEC.md, openapi.yaml, FRONTEND_FIELDS.md, requirements-app.lock.txt
-Last-verified: 2026-10-10
+Last-verified: 2026-10-12
 
 ## Problem
 
@@ -39,6 +39,8 @@ All supported catalogue types have stable field metadata and evidence-bound extr
 
 ## Consequences
 
+The [degree school/award repair](../bug-fix/2026-10-12-degree-school-and-award-mapping.md) extends only certificate signing and award-date mapping. Card identifiers and date roles retain their per-type rules; no global partial-number or permissive-date aliases are added.
+
 No ID, licence, passport or household sample set is available to qualify recognition accuracy. Card-region screening is conservative and not a universal CVV classifier. Unknown layouts and historical numbering remain reviewable rather than guessed.
 
 
@@ -59,3 +61,7 @@ The later [required-fields-only export decision](../simplification/2026-10-08-re
 ## Current input-policy refinement
 
 The [automatic bank-photo recognition](2026-10-09-bank-auto-recognition.md) replaces only mandatory crop/pure-number upload admission and crop-only server sources. The catalogue, offline BIN snapshot, validation, actual-pixel rotation, export policy and all frozen manual-crop timings/denominators remain active. Full-photo recognition has flow coverage, not a new real-bank accuracy measurement.
+
+The [certificate/card orientation helper](2026-10-12-certificate-image-upright.md) adds conservative CPU rotation/deskew before recognition for the nine specified certificate/card photo types. PDF, medical and generic decoding, field profiles and validation remain active. Missing real samples qualify processing flow only; direction scores are not OCR field confidence.
+
+The [bank ROI orientation repair](../bug-fix/2026-10-12-bank-card-roi-orientation.md) adds a card-region direction path at unchanged thresholds; PAN/BIN extraction and the complete-photo input contract remain active. Its direction measurements do not replace frozen card-number recognition results.

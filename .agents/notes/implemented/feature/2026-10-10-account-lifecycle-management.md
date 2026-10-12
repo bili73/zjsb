@@ -36,6 +36,8 @@ The later [embedded-help integration](2026-10-10-embedded-help-integration.md) p
 
 ## Consequences
 
+The [cross-session review repairs](../bug-fix/2026-10-12-review-repairs.md) extend transactional live-session revalidation to required-field settings, including a request whose streamed body completes after account disabling or logout. Account lifecycle and historical-material preservation remain unchanged.
+
 The [account-owned batches](2026-10-10-account-owned-batches.md) refinement adds administrator display-name editing and encrypted batch attribution snapshots on login deletion. It retains UUID-based history and state/password protections, and restricts non-administrators to their own material. Deletion of a login still preserves tasks and results; recreating its username cannot inherit them.
 
 The separate [batch deletion feature](2026-10-10-delete-recognized-batches.md) reuses transactional administrator session checks and permanently removes selected stopped business batches. This does not alter account deletion: deleting a login account still preserves its historical business tasks.

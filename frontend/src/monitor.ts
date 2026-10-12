@@ -25,7 +25,13 @@ export interface MonitorState {
   lastCheckedAt: string | null
   pending: Record<string, PendingOperation>
 }
-export interface MonitorOptions { intervalMs?: number; pageSize?: number; isVisible?: () => boolean; onUnauthorized?: () => void }
+export interface MonitorOptions {
+  intervalMs?: number
+  pageSize?: number
+  isVisible?: () => boolean
+  onUnauthorized?: () => void
+  onBatchRemoved?: (batchId: string, taskIds: string[]) => void
+}
 
 export const entryRunning = (entry: Pick<BatchEntry, 'tasks'>) => entry.tasks.some(task => runningStatuses.has(task.status))
 export const someRunning = (state: Pick<MonitorState, 'entries'>) => Object.values(state.entries).some(entryRunning)
@@ -44,6 +50,7 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
   let sessionGeneration = 0
   let disposed = false
   let unauthorizedNotified = false
+  let refreshRequested = false
 
   // 会话过期（401）必须把用户送回登录页，而不是当普通读取失败静默停轮询；
   // 每次登录会话只上报一次，重新登录（clear）后恢复。
@@ -99,7 +106,15 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     reconcilePending(entry)
   }
 
-  async function pollOnce(signal: AbortSignal): Promise<number | null> {
+  function removeBatch(batchId: string, taskIds: readonly string[]) {
+    delete state.entries[batchId]
+    state.order = state.order.filter(id => id !== batchId)
+    state.listedIds = state.listedIds.filter(id => id !== batchId)
+    for (const id of taskIds) delete state.pending[id]
+    nextPage = 2 // A deletion shifts server pagination.
+  }
+
+  async function pollOnce(signal: AbortSignal, refreshTasks = false): Promise<number | null> {
     const client = getApi()
     if (!client || !isVisible()) return null
     const generation = listGeneration
@@ -108,32 +123,40 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
       if (generation !== listGeneration || signal.aborted || disposed) return null
       state.serverTotal = list.total
       state.listedIds = [...new Set([...list.items.map(batch => batch.batch_id), ...state.listedIds])]
-      // A batch that just left PROCESSING needs one final task fetch,
-      // otherwise its rows would freeze on the last running snapshot.
-      const finalized = new Set<string>()
+      const changed = new Set<string>()
       const policyRevision = list.items.find(batch => batch.required_fields_revision !== undefined)?.required_fields_revision
       for (const batch of list.items) {
-        if (state.entries[batch.batch_id]?.batch?.status === 'PROCESSING' && batch.status !== 'PROCESSING') finalized.add(batch.batch_id)
+        const previous = state.entries[batch.batch_id]?.batch
+        if (previous && (previous.status !== batch.status || previous.updated_at !== batch.updated_at)) changed.add(batch.batch_id)
         upsertBatch(batch)
       }
       sortBatches()
+      let removed = false
       for (const id of [...state.order]) {
         const entry = state.entries[id]
         if (!entry) continue
-        // Refresh task rows for anything that can still change; terminal
-        // batches keep their last known snapshot without extra requests.
-        if (!entry.tasksLoaded || entry.batch?.status === 'PROCESSING' || finalized.has(id) ||
+        // Explicit reconciliation also rereads terminal batches on older pages.
+        if (refreshTasks || !entry.tasksLoaded || entry.batch?.status === 'PROCESSING' || changed.has(id) ||
           policyRevision !== undefined && entry.tasks.some(task => task.required_fields_revision !== policyRevision)) {
-          const tasks = await client.tasks(id, signal)
-          if (generation !== listGeneration || signal.aborted || disposed) return null
-          applyTasks(id, tasks)
+          try {
+            const tasks = await client.tasks(id, signal)
+            if (generation !== listGeneration || signal.aborted || disposed) return null
+            applyTasks(id, tasks)
+          } catch (error) {
+            if (generation !== listGeneration || signal.aborted || disposed) return null
+            if (!(error instanceof ApiFailure) || error.card.http_status !== 404) throw error
+            const taskIds = entry.tasks.map(task => task.task_id)
+            removeBatch(id, taskIds)
+            options.onBatchRemoved?.(id, taskIds)
+            removed = true
+          }
         }
       }
       failures = 0
       state.failureCount = 0
       state.retrying = false
       state.lastCheckedAt = new Date().toISOString()
-      return someRunning(state) ? intervalMs : null
+      return someRunning(state) || removed ? intervalMs : null
     } catch (error) {
       if (isAbort(error) || generation !== listGeneration || disposed) return null
       if (error instanceof ApiFailure && error.card.http_status === 401) { reportUnauthorized(); return null }
@@ -144,11 +167,18 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     }
   }
 
-  const loop = new ReadLoop(pollOnce)
+  const loop = new ReadLoop(async signal => {
+    const refreshTasks = refreshRequested
+    refreshRequested = false
+    const delay = await pollOnce(signal, refreshTasks)
+    if (!signal.aborted && !disposed) state.polling = delay !== null
+    return delay
+  })
 
   function start() {
     if (disposed) return
     state.polling = true
+    refreshRequested = true
     loop.start()
   }
   function stop() {
@@ -249,12 +279,8 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     stop()
     listGeneration++
     const wasListed = state.listedIds.includes(batchId)
-    delete state.entries[batchId]
-    state.order = state.order.filter(id => id !== batchId)
-    state.listedIds = state.listedIds.filter(id => id !== batchId)
+    removeBatch(batchId, result.task_ids)
     if (wasListed) state.serverTotal = Math.max(0, state.serverTotal - 1)
-    for (const id of result.task_ids) delete state.pending[id]
-    nextPage = 2 // Deletion shifts server pages; reread page two rather than skip rows.
     start()
     return result
   }

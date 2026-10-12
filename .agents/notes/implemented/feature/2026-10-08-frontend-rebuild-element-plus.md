@@ -109,4 +109,6 @@ The export hint describes the entire blocked selection as lacking a result or re
 
 ## User manual entry
 
+The [cross-session review repairs](../bug-fix/2026-10-12-review-repairs.md) qualify remote deletion handling, forced terminal-task refresh, stopped-polling display and rerun confirmation. Result-pane resizing passes its width through a CSS custom property so the single-column media rule can override the desktop grid; at1280px the hidden splitter no longer leaves results in a6px column. Desktop drag/reset remain available above the breakpoint.
+
 The [web user manual](2026-10-10-web-user-manual.md) adds the authenticated header's 使用说明 link and generic static documentation under frontend/public/help. Reading in a separate tab preserves this workbench's upload selection, review draft and monitor ownership; no business API or authorization contract is replaced.

@@ -279,7 +279,9 @@ def router(business, runtime):
     async def update_required_fields(request: Request, user=Depends(administrator)):
         from .required_fields import save_configuration
         from starlette.concurrency import run_in_threadpool
-        return await run_in_threadpool(save_configuration, business.store, await bounded_json(request), user['user_id'])
+        return await run_in_threadpool(save_configuration, business.store, await bounded_json(request), user['user_id'],
+            authorize=lambda connection: business.accounts._acting_user(
+                connection, user['user_id'], request.cookies.get(SESSION_COOKIE), administrator=True))
 
     @routes.get('/batches')
     def batches(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),

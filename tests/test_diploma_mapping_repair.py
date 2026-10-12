@@ -161,13 +161,13 @@ class DiplomaMappingRepairTests(unittest.TestCase):
         self.assertIsNone(conflict['value'])
         self.assertEqual(conflict['review_reason'], 'CONFLICT')
 
-    def test_missing_day_glyph_does_not_expand_other_date_fields_or_degree(self):
+    def test_missing_day_glyph_does_not_expand_other_date_roles(self):
         for key, label in (('birth_date', '出生日期'), ('enroll_date', '入学日期'), ('graduate_date', '毕业日期')):
             with self.subTest(key=key):
                 self.assertIsNone(fields(f'{label}：2026年7月2')[key]['value'])
         result = {f['key']: f for f in extract_fields([
             dict(text='证书编号：000123\n2026年7月2', page=1, extraction_method='ocr')], 'DEGREE_CERT')}
-        self.assertIsNone(result['award_date']['value'])
+        self.assertEqual(result['award_date']['value'], '2026-07-02')
 
 if __name__ == '__main__':
     unittest.main()

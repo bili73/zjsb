@@ -88,6 +88,10 @@ Current visual references are provisional and the small hospital cohort overlaps
 
 ## Related verification
 
+The [certificate photo preparation](../feature/2026-10-12-certificate-image-upright.md) adds optional CPU orientation/deskew only for diploma/degree raster uploads, with the same corrected pixels used for preview and OCR. PDF/native medical evidence and these conflict/date-role contracts remain intact.
+
+The [degree school/award repair](2026-10-12-degree-school-and-award-mapping.md) reuses certificate date/signature handling for observed degree mapping misses while retaining these source/conflict contracts and separate date roles.
+
 The [isolated current-pipeline acceptance](../testing/2026-10-08-current-pipeline-acceptance.md) verifies the repaired real API path with the same frozen references and a separate encrypted store. It retains the v1 historical medical timeout and distinguishes single-resident loading from inference; it does not replace these historical measurements or qualify production hardware.
 
 The former frontend portion is retired by the [frontend retirement](../../implemented/simplification/2026-10-08-retire-temporary-frontend.md); current Scope covers surviving code. Old UI checks describe historical acceptance.

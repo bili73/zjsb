@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, backend/ocr_app/business.py, backend/ocr_app/task_store.py, backend/ocr_app/pipeline.py, frontend/src, tests, SPEC.md, openapi.yaml, FRONTEND_FIELDS.md, RUNTIME.md
-Last-verified: 2026-10-09
+Last-verified: 2026-10-12
 
 ## Problem
 
@@ -10,7 +10,7 @@ The mandatory local number-row crop and synchronous GLM admission reject an enti
 
 ## Decision
 
-BANK_CARD accepts decoded single photographs, including full front faces, and cropped rows. Upload does not call a recognizer; encrypted source persistence and independent per-file tasks match the other document families. PDF remains unsupported for this type. Existing successful legacy admission metadata may still be reused by the pipeline, but is no longer required. Mixed OCR text is parsed by existing evidence-bound PAN extraction and offline issuer lookup; unsupported confidence and checks remain unknown.
+BANK_CARD accepts decoded single photographs, including full front faces, and cropped rows. Upload does not call a recognizer; encrypted source persistence and independent per-file tasks match the other document families. PDF remains unsupported for this type. Existing successful legacy admission metadata may still be reused by the pipeline when automatic preparation leaves pixels unchanged, but is no longer required. The [certificate/card orientation helper](2026-10-12-certificate-image-upright.md) requires fresh recognition after any quarter-turn or deskew correction, keeping preview and prediction consistent. Mixed OCR text is parsed by existing evidence-bound PAN extraction and offline issuer lookup; unsupported confidence and checks remain unknown.
 
 A missing, conflicting or invalid PAN offers a single-task crop recovery and the existing manual field editor. Recognition of a PAN with unavailable confidence or an unknown BIN does not force cropping. The result drawer reads its version-bound corrected source page, supports actual pixel rotation and submits only the confirmed crop as a new task. The original task and all other tasks remain available. A failed crop upload retains the confirmed File for retry without cropping again. A successful upload returns to the task list. Account permissions, source authentication, source encryption, task version checks and existing required-field export policy remain unchanged.
 
@@ -28,6 +28,8 @@ The [card profiles](../../implemented/feature/2026-10-08-card-and-document-profi
 - Reopening the batch crop dialog reuses existing UI cheaply, but repeats already completed crops and unrelated cards. Recover only the selected task and retain its generated crop on upload failure.
 
 ## Verified invariants
+
+The [bank ROI orientation repair](../../implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md) adds internal card-region direction evidence without changing upload, PAN extraction or manual crop recovery. The corrected preview and OCR still contain the complete photo; old admission reuse remains conditional on unchanged preparation pixels.
 
 - Upload accepts full-front and row photos without model calls, rejects unsupported PDF and malformed input, and stores authenticated encrypted sources.
 - Background recognition extracts a PAN from mixed card text; missing or ambiguous PAN is reviewable rather than a whole-batch admission failure.

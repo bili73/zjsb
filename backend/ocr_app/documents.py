@@ -1,4 +1,4 @@
-"""CPU-only decoding and conservative layout preparation. No model imports."""
+"""CPU decoding/layout, with optional local certificate-photo orientation."""
 from __future__ import annotations
 
 import io
@@ -33,6 +33,7 @@ class Page:
     ocr_boxes: list[tuple[int, int, int, int]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
+    image_preprocessing: dict | None = None
 
 
 def png_bytes(image: Image.Image) -> bytes:
@@ -213,12 +214,14 @@ def _split_header_continuation(page, table, previous):
     return dict(table, rows=[prior['rows'][0][:-1] + ['风险等级']])
 
 
-def decode_pages(data: bytes, check=lambda: None):
+def decode_pages(data: bytes, check=lambda: None, *, preprocessing=None):
     """Yield corrected full pages; reliable text and uncovered image regions.
 
     A PDF's text heuristic is deliberately conservative, not a probability.
     Raster image boxes with a substantial text overlay are still sent to OCR:
     a small text label never proves the underlying image was transcribed.
+    A supplied preprocessing dictionary enables certificate/card-photo preparation
+    and reuses its first decision on pass two. PDFs never consume that option.
     """
     check()
     mime = validate_document(data, check=check)
@@ -226,7 +229,17 @@ def decode_pages(data: bytes, check=lambda: None):
     if mime != 'application/pdf':
         with Image.open(io.BytesIO(data)) as source:
             image = ImageOps.exif_transpose(source).convert('RGB')
-        yield Page(1, image, ocr_boxes=[(0, 0, *image.size)])
+        decision = None
+        if preprocessing is not None:
+            from .image_preprocessing import prepare_image, apply_correction
+            if 'decision' in preprocessing:
+                decision = preprocessing['decision']
+                image = apply_correction(image, decision)
+            else:
+                image, decision = prepare_image(image, check, doc_type=preprocessing.get('doc_type'))
+                preprocessing['decision'] = decision
+            check()
+        yield Page(1, image, ocr_boxes=[(0, 0, *image.size)], image_preprocessing=decision)
         return
     with _pdf(data) as pdf:
         continuation = None

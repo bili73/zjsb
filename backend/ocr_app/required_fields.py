@@ -28,7 +28,7 @@ def configuration(policy):
                 for kind in PROFILES])
 
 
-def save_configuration(store, body, actor):
+def save_configuration(store, body, actor, *, authorize):
     from .task_store import TaskError
     if (not isinstance(body, dict) or set(body) != {'doc_type', 'required_fields', 'expected_revision'}
             or type(body['expected_revision']) is not int or body['expected_revision'] < 0
@@ -40,6 +40,7 @@ def save_configuration(store, body, actor):
                                  or len(selected) != len(set(selected))):
         raise TaskError('INVALID_REQUEST', '请选择当前材料的可填写字段，派生字段不能设为必填', 422)
     with store.transaction() as connection:
+        authorize(connection)
         policy = load_policy(connection)
         if policy['revision'] != body['expected_revision']:
             raise TaskError('SETTINGS_VERSION_CONFLICT', '必填设置已被修改，请重新读取后再保存', 409)

@@ -20,7 +20,7 @@ export type BatchStatus = keyof typeof batchLabels
 export interface User { user_id: string; display_name: string; role: 'viewer' | 'operator' | 'admin'; permissions: string[]; csrf_token?: string }
 export interface ManagedUser { user_id: string; username: string; display_name: string; role: User['role']; enabled: boolean }
 export interface BatchOwner { user_id: string | null; username: string | null; display_name: string | null; account_exists: boolean }
-export interface Batch { batch_id: string; display_name?: string; status: BatchStatus; file_count?: number; completed_count?: number; need_review_count?: number; failed_count?: number; created_at?: string; required_fields_revision?: number; owner?: BatchOwner }
+export interface Batch { batch_id: string; display_name?: string; status: BatchStatus; file_count?: number; completed_count?: number; need_review_count?: number; failed_count?: number; created_at?: string; updated_at?: string; required_fields_revision?: number; owner?: BatchOwner }
 export interface BatchList { items: Batch[]; total: number; page: number; page_size: number }
 export interface TaskError { code: ErrorCode; error_id: string | null; stage: Stage | null }
 export interface ExportEligibility { export_ready?: boolean; export_blockers?: { field: string; code: string }[]; required_fields_revision?: number; required_field_keys?: string[] }

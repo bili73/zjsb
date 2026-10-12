@@ -13,6 +13,7 @@ from PIL import ImageOps
 
 from .documents import DocumentError, decode_pages, normalized_box, png_bytes, region_task, split_regions
 from .extraction import extract_result, issue
+from .image_preprocessing import UPRIGHT_DOCUMENT_TYPES
 
 
 class _Stop(Exception):
@@ -43,6 +44,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     pending = {}
     planning_complete = False
     stage, stop_code = 'PREPROCESSING', None
+    preprocessing = {'doc_type': doc_type} if doc_type in UPRIGHT_DOCUMENT_TYPES and not content.lstrip().startswith(b'%PDF-') else None
     bank_admission = options.get('bank_admission') if doc_type == 'BANK_CARD' else None
     if not isinstance(bank_admission, dict) or not bank_admission.get('text') or bank_admission.get('termination_reason') != 'eos':
         bank_admission = None
@@ -86,17 +88,27 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
         progress(stage, amount, pages)
         check()
 
+    def decoded_pages():
+        if preprocessing is None:
+            return decode_pages(content, check)
+        return decode_pages(content, check, preprocessing=preprocessing)
+
     try:
         publish('PREPROCESSING')
         # Pass 1: read all reliable native content before spending time on OCR.
         # A slow logo on an early page must not hide later native report tables.
-        for page in decode_pages(content, check):
+        for page in decoded_pages():
             check()
             encoded_page = png_bytes(page.image)
             check()
             page_id = save_page(page.index, encoded_page, page.image.width, page.image.height)
             info = dict(page_id=page_id, page_index=page.index, width=page.image.width,
                         height=page.image.height, extraction_method='pending', regions=[])
+            if page.image_preprocessing is not None:
+                info['image_preprocessing'] = dict(page.image_preprocessing)
+                warning = page.image_preprocessing.get('warning')
+                if warning:
+                    warnings.append(dict(code=warning, message='图片自动摆正未能完全确认，请核对原图方向。'))
             # Field.source IDs must resolve for native text just as they do for OCR.
             # No raw content belongs in page-region metadata.
             info['regions'].extend(
@@ -105,9 +117,11 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 for block in page.evidence)
             pages.append(info)
             evidence.extend(page.evidence)
-            if bank_admission:
+            reuse_bank_admission = bank_admission and not (page.image_preprocessing and any(
+                page.image_preprocessing.get(key) for key in ('rotation_degrees', 'deskew_degrees')))
+            if reuse_bank_admission:
                 # Admission recognized the exact re-encoded crop before storage.
-                # Reuse that result instead of spending a second model request.
+                # Changed preparation pixels require fresh recognition instead.
                 region_id = str(uuid4())
                 info['regions'].append(dict(region_id=region_id, bbox=[0., 0., 1., 1.],
                                              extraction_method='ocr', status='recognized'))
@@ -129,7 +143,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
             if planned:
                 pending[page.index] = planned
             else:
-                info['extraction_method'] = 'ocr' if bank_admission else 'pdf_text'
+                info['extraction_method'] = 'ocr' if reuse_bank_admission else 'pdf_text'
             info['_preparation_complete'] = True
             publish('PREPROCESSING')
         planning_complete = True
@@ -138,7 +152,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
 
         # Pass 2: decode one page at a time again, reusing first-pass IDs and boxes.
         # Native evidence and encrypted page saves are deliberately not repeated.
-        for page in (decode_pages(content, check) if pending else []):
+        for page in (decoded_pages() if pending else []):
             if page.index not in pending:
                 continue
             info = pages[page.index - 1]
@@ -170,6 +184,8 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                                    max_new_tokens=4096, generation_timeout_seconds=generation_timeout,
                                    cache_hit=cached is not None, inference_performed=cached is None,
                                    timeout_seconds=max(0., deadline - started))
+                    if page.image_preprocessing is not None:
+                        attempt['image_preprocessing'] = dict(page.image_preprocessing)
                     fatal_error, timed_out = None, False
                     prediction, termination = {}, None
                     try:

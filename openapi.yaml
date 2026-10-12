@@ -16,6 +16,7 @@ info:
     银行卡支持整张照片自动识别，失败逐张裁图重识别或补录；不接收PDF，不声称通用CVV自动检测可靠。
     护照、身份证、执照与户口本暂无真实样本准确率验收；本地校验PASS不等于官方真实性。
     当前列表支持分页和UTC+8创建日期范围过滤，不支持关键词/状态过滤；重跑只接受run_id及expected_revision并沿用类型/选项。
+    当前批次仅含一种材料类型，不提供同一人员材料包、跨批次身份证配套检查或追加上传；Batch.warnings目前为空，不能作为材料齐全证明。
     未经标定置信度保持null；人工补正后仍须解决必填、冲突和覆盖问题才可COMPLETED。导出单独仅检查已保存结果必填有值，不更改审核或识别状态。
     x-implemented:false路径为后续目标；公开路径保持/api/v1。所有原始执行与证据不可被人工版本覆盖。
 
@@ -513,7 +514,7 @@ paths:
     get:
       tags:
       - batches
-      summary: 批次详情（含完整性告警）
+      summary: 批次详情（Batch级完整性告警尚未实现）
       responses:
         '200':
           description: OK
@@ -959,8 +960,8 @@ paths:
     parameters: [{$ref: '#/components/parameters/TaskId'}]
     post:
       tags: [tasks]
-      summary: 重跑任务（可修改抽取参数）
-      description: 原子校验 run_id 与 expected_revision；运行中不可重跑。创建新的 run_id 并回到 QUEUED，旧执行、结果和复核历史保留，旧 worker 不得写回新执行。
+      summary: 重跑任务（沿用原类型与选项）
+      description: 原子校验 run_id 与 expected_revision；运行中不可重跑。创建新的 run_id 并回到 QUEUED，清空当前结果；旧执行及关联证据保留，但当前不提供历史版本恢复接口。旧 worker 不得写回新执行。
       requestBody:
         required: true
         content:
@@ -1603,6 +1604,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Region'
+        image_preprocessing:
+          $ref: '#/components/schemas/ImagePreprocessing'
+
+    ImagePreprocessing:
+      type: object
+      additionalProperties: false
+      description: '毕业证、学位证、身份证正反面、银行卡、营业执照、学信网备案表、护照及户口本照片的新识别结果返回。银行卡bank-card-upright-v1先检测卡片区域判向，区域仅供分析，校正与OCR保留完整照片。其余使用certificate-upright-v1。EXIF之后的CPU自动方向与小角度校正；预览和OCR使用同一校正决定。分数仅为未标定方向证据，不是字段置信度。原件、历史任务、PDF、体检及通用识别不改。'
+      required: [version, model_sha256, rotation_degrees, deskew_degrees, status, elapsed_seconds]
+      properties:
+        version: {type: string}
+        model_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+        rotation_degrees: {type: integer, enum: [0, 90, 180, 270], description: 'EXIF之后实际采用的逆时针直角旋转量；判断不足时为0'}
+        deskew_degrees: {type: number, minimum: -12, maximum: 12, description: '直角纠正后实际采用的逆时针微调角度；未采用为0'}
+        orientation_score: {type: number, minimum: 0, maximum: 1, nullable: true, description: '被采用判向输入的中心和全图视图一致时两者较高分数；银行卡可采用内部卡片区域/横置/白边视图，不表示整张照片的概率；不一致或均未通过时可为0，未推理为null'}
+        orientation_margin: {type: number, minimum: 0, maximum: 1, nullable: true, description: '两个视图第一与第二名差值中的较小值；不一致时为0，未推理为null'}
+        status: {type: string, enum: [unchanged, unavailable, uncertain, insufficient_text, already_level, skew_uncertain, deskew_applied]}
+        warning: {type: string, nullable: true, enum: [IMAGE_UPRIGHT_UNAVAILABLE, IMAGE_UPRIGHT_UNCERTAIN, IMAGE_DESKEW_UNCERTAIN, null]}
+        elapsed_seconds: {type: number, minimum: 0, description: '第一遍方向检测、倾角估计及像素校正总耗时，包含首次依赖/模型初始化；不含解码EXIF、第二遍按决定重放、PNG保存及OCR'}
 
     TaskList:
       type: object

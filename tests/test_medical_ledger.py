@@ -48,6 +48,25 @@ def normal_groups():
 
 
 class MedicalLedgerTests(unittest.TestCase):
+    def test_excel_qualifies_detail_derived_normal_without_relabeling_other_conclusions(self):
+        result = extract_result(normal_groups(), 'MEDICAL_REPORT')
+        before = copy.deepcopy(result)
+        sheet = load_workbook(io.BytesIO(workbook_bytes([result]))).active
+        self.assertEqual(sheet['K2'].value, '未见异常')
+        self.assertIsNotNone(sheet['K2'].comment)
+        self.assertIn('仅基于已识别明细', sheet['K2'].comment.text)
+        self.assertEqual(result, before)
+
+        manual = copy.deepcopy(result)
+        fields(manual)['blood_routine'].update(value='未见异常', value_origin='manual')
+        manual_sheet = load_workbook(io.BytesIO(workbook_bytes([manual]))).active
+        self.assertEqual(manual_sheet['K2'].value, '未见异常')
+        self.assertIsNone(manual_sheet['K2'].comment)
+        source_conclusion = extract_result(fixture(), 'MEDICAL_REPORT')
+        source_sheet = load_workbook(io.BytesIO(workbook_bytes([source_conclusion]))).active
+        self.assertEqual(source_sheet['M2'].value, '未见异常')
+        self.assertIsNone(source_sheet['M2'].comment)
+
     def test_a_grade_laboratory_rows_need_no_conclusion(self):
         evidence = []
         for page, heading, name, value in [(7, '血常规检验报告单', '白细胞', '5.0'),

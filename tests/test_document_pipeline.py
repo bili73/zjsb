@@ -229,7 +229,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_native_only_mapping_has_no_ocr_percentage_or_model_calls(self):
         checkpoints, mapping_stages = [], []
-        def decoder(data, check):
+        def decoder(data, check, **kwargs):
             yield Page(1, Image.new('RGB', (100, 120), 'white'), evidence=[dict(block(TABLE), extraction_method='pdf_text')])
         def extract(*args, **kwargs):
             mapping_stages.append(checkpoints[-1][0])
@@ -271,7 +271,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_medical_soft_limit_uses_alternate_original_then_continues_next_page(self):
         calls = []
-        def decoder(data, check):
+        def decoder(data, check, **kwargs):
             for index, color in [(1, 'white'), (2, 'gray')]:
                 yield Page(index, Image.new('RGB', (100, 120), color), ocr_boxes=[(0, 0, 100, 120)])
         def recognize(model, image, task, timeout, **kwargs):
@@ -289,7 +289,7 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(all(a['inference_performed'] and not a['cache_hit'] for a in self.attempts))
 
     @staticmethod
-    def repeated_decoder(data, check):
+    def repeated_decoder(data, check, **kwargs):
         yield Page(1, Image.new('RGB', (100, 120), 'white'), ocr_boxes=[(0, 0, 100, 60)])
         yield Page(2, Image.new('RGB', (100, 120), 'white'), ocr_boxes=[(0, 60, 100, 120)])
 
@@ -345,7 +345,7 @@ class PipelineTests(unittest.TestCase):
             with self.subTest(difference=difference):
                 revisions = {'paddleocr_vl': 'p1'}
                 calls, attempts = [], []
-                def decoder(data, check):
+                def decoder(data, check, **kwargs):
                     yield Page(1, Image.new('RGB', (100, 120), 'white'), ocr_boxes=[(0, 0, 100, 120)])
                     color = 'gray' if difference == 'pixels' else 'white'
                     yield Page(2, Image.new('RGB', (100, 120), color), ocr_boxes=[(0, 0, 100, 120)])
@@ -525,7 +525,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_second_pass_never_duplicates_native_table_items_or_saved_pages(self):
         passes = []
-        def decoder(data, check):
+        def decoder(data, check, **kwargs):
             passes.append(True)
             yield Page(1, Image.new('RGB', (100, 120), 'white'), ocr_boxes=[(0, 0, 100, 120)])
             native = {**block(TABLE, page=2), 'extraction_method': 'pdf_text'}
@@ -539,7 +539,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_two_passes_keep_constant_number_of_live_full_page_images(self):
         refs, live_counts = [], []
-        def decoder(data, check):
+        def decoder(data, check, **kwargs):
             for index in range(1, 13):
                 check()
                 image = Image.new('RGB', (100, 120), 'white')
@@ -558,7 +558,7 @@ class PipelineTests(unittest.TestCase):
     def test_native_and_ocr_source_ids_resolve_to_distinct_page_regions(self):
         class Failure(RuntimeError):
             code = 'MODEL_REQUEST_TIMEOUT'
-        def decoder(data, check):
+        def decoder(data, check, **kwargs):
             native = [dict(text=text, page=1, region_id=str(uuid4()),
                            extraction_method='pdf_text', bbox=[0, 0, 1, .8])
                       for text in ['姓名：测试员', TABLE]]

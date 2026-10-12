@@ -221,7 +221,7 @@ async function runExport() {
           {{ errorMessages[task.error.code] }}{{ task.error.error_id ? `（错误编号 ${task.error.error_id}）` : '' }}
         </el-alert>
         <BankCardRecovery v-if="open && api && previewTask && canWrite && needsBankCrop(result)" :key="resultKey(result)" :task="previewTask" :api="api" :monitor="monitor" :disabled="dirty || saving || stale" @submitted="emit('bank-retried')" @preview="(files, tasks) => emit('preview', files, tasks)" @unauthorized="emit('unauthorized')" />
-        <div class="drawer-split" :style="{ gridTemplateColumns: `minmax(280px, ${leftWidth}%) 6px minmax(0, 1fr)` }">
+        <div class="drawer-split" :style="{ '--left-width': `${leftWidth}%` }">
           <aside class="split-left">
             <SourcePreview v-if="previewTask" :key="`${previewTask.task_id}:${previewTask.run_id}:${previewTask.result_revision}`" :task="previewTask" :api="api" :can-write="canWrite" :preview="preview" :source="activeSource" @unauthorized="emit('unauthorized')" />
           </aside>
@@ -270,7 +270,7 @@ async function runExport() {
 .drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-right: 28px; min-width: 0; }
 .drawer-title { font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drawer-actions { display: inline-flex; gap: 8px; flex-shrink: 0; }
-.drawer-split { display: grid; grid-template-columns: minmax(280px, 40%) 6px minmax(0, 1fr); gap: 8px; align-items: start; }
+.drawer-split { display: grid; grid-template-columns: minmax(280px, var(--left-width, 40%)) 6px minmax(0, 1fr); gap: 8px; align-items: start; }
 .split-left { position: sticky; top: 0; max-height: calc(100vh - 120px); overflow: auto; min-width: 0; }
 .splitter { position: sticky; top: 0; height: calc(100vh - 120px); cursor: col-resize; border-radius: 3px; background: transparent; transition: background 0.2s; }
 .splitter:hover, .splitter.dragging { background: var(--el-color-primary-light-7); }

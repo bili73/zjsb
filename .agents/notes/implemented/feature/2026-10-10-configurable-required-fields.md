@@ -14,7 +14,7 @@ An administrator-only settings tab provides authenticated GET/PUT endpoints unde
 
 Current server settings govern task export flags, full result metadata, review field validation and atomic whole-selection export. Read one settings snapshot for each read/export/review operation; changes never rewrite historical ciphertext, OCR outputs, manual fields, task status or result revision. Expose a separate optional required_fields_revision on batch/task/result DTOs. Terminal batch rows refresh when it changes; result cache identities invalidate while dirty drafts retain their existing stale-version protection. The generic body and each existing household member use the same selected requirements.
 
-Settings saves use expected_revision under BEGIN IMMEDIATE, validate field keys/types and preserve other types. Stale administrators receive 409 without a lost update. Existing administrator/CSRF/origin checks protect writes. Audit settings changes using field keys and revisions only. Existing defaults, task version guards, presence-only export and all-or-nothing selection remain.
+Settings saves use expected_revision under BEGIN IMMEDIATE, validate field keys/types and preserve other types. Stale administrators receive 409 without a lost update. Existing administrator/CSRF/origin checks protect writes. A mandatory authorization callback revalidates the live administrator session inside the write transaction, including no-op saves, as qualified by the [cross-session review repairs](../bug-fix/2026-10-12-review-repairs.md). Audit settings changes using field keys and revisions only. Existing defaults, task version guards, presence-only export and all-or-nothing selection remain.
 
 ## Decision audit
 

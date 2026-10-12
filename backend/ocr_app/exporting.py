@@ -48,6 +48,7 @@ def required_export_blockers(result, required_overrides=None):
 def workbook_bytes(results):
     from openpyxl import Workbook
     from openpyxl.cell.cell import Cell
+    from openpyxl.comments import Comment
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
     from .doc_profiles import profile, MEMBER_PROFILE, LABELS
@@ -104,6 +105,17 @@ def workbook_bytes(results):
             current = public_result(result)
             definitions = {f['key']:f for f in fields}
             append('审核记录台账', HEADERS, [medical_sequence] + field_values(current,[definitions[key] for key in LEDGER_KEYS]) + [abnormal_cell(current)])
+            entries = {field['key']: field for field in current['fields']}
+            sheet = sheets['审核记录台账']
+            for column, key in enumerate(LEDGER_KEYS, 2):
+                entry = entries.get(key, {})
+                derivation = entry.get('derivation') or {}
+                if (entry.get('value') == '未见异常' and entry.get('value_origin') == 'derived'
+                        and derivation.get('method') == 'medical_ledger'
+                        and derivation.get('input_field') == 'items' and not derivation.get('conclusions')):
+                    sheet.cell(sheet.max_row, column).comment = Comment(
+                        '仅基于已识别明细，不代表整组检查或整份报告已完整识别；请对照原件核对检查范围与完整性。',
+                        'HRSSC识别工作台')
         elif kind != 'GENERIC':
             append(LABELS[kind], ['来源文件'] + [f['label'] for f in fields], [filename] + field_values(result, fields))
         for index, member in enumerate(result.get('members', [])):
@@ -142,8 +154,8 @@ def workbook_bytes(results):
         for index, row in enumerate(sheet, 1):
             lines = 1
             for column, (cell, width) in enumerate(zip(row, widths),1):
-                cell.alignment = Alignment(vertical='center' if medical else 'top', wrap_text=True,
-                    horizontal='center' if index==1 or medical and column<11 else 'left')
+                cell.alignment = Alignment(vertical='center' if index==1 or medical else 'top', wrap_text=True,
+                    horizontal='center' if medical and (index==1 or column<11 or sheet.cell(1,column).value=='体检项目数量') else 'left')
                 cell.font = Font(name='Microsoft YaHei', size=11, bold=index == 1, color='FFFFFF' if index == 1 else '243746')
                 color = ('FF6C0D' if 11<=column<=16 else '4472C4') if medical else 'EF760E'
                 cell.fill = PatternFill('solid', fgColor=color if index == 1 else 'EEF4F8' if index % 2 == 0 else 'FFFFFF')
