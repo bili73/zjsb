@@ -184,7 +184,7 @@ onBeforeUnmount(() => {
           <UploadPanel :api="api" :catalogue="catalogue" :monitor="monitor" :can-write="canWrite" @submitted="handleSubmitted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane label="任务批次" name="batches">
-          <BatchBoard :api="api" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" :upload-reset="uploadReset" :catalogue="catalogue" @open-result="openResult" @batch-deleted="batchDeleted" @unauthorized="handleUnauthorized" />
+          <BatchBoard :api="api" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" :upload-reset="uploadReset" :catalogue="catalogue" @open-result="openResult" @batch-deleted="batchDeleted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane label="引擎状态" name="engine">
           <EngineStatus :engine="engine" />
@@ -198,7 +198,7 @@ onBeforeUnmount(() => {
       </el-tabs>
     </main>
 
-    <footer class="app-footer">登录会话由服务端 Cookie 保持（最长 12 小时），过期或退出后需重新登录；诊断信息不含密码与识别内容。</footer>
+    <footer class="app-footer">登录有效期为 30 天；同一账号在其他浏览器登录后，当前登录失效。过期或退出后需重新登录。</footer>
 
     <TaskResultDrawer v-model:open="drawerInfo.open" :task="liveTask" :api="api" :monitor="monitor" :previews="previews" :can-write="canWrite" :catalogue="catalogue" @reviewed="reviewed" @bank-retried="drawerInfo.open = false; handleSubmitted()" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
     <PasswordDialog v-if="passwordOpen && api" :api="api" @close="passwordOpen = false" @saved="passwordChanged" @unauthorized="handleUnauthorized" />

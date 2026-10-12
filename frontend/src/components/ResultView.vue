@@ -46,7 +46,7 @@ function locate(source: FieldSource | undefined) { if (isMedical.value && source
 <template>
   <div class="result-view">
     <el-alert v-if="isMedical" type="info" :closable="false" show-icon class="summary-note">
-      按明细自动汇总的“未见异常”仅基于已识别明细，不代表整组检查或整份报告已完整识别；请对照原件核对检查范围与完整性。
+      “已识别明细未见异常”仅基于已识别明细，不代表整组检查或整份报告已完整识别；请对照原件核对检查范围与完整性。
     </el-alert>
     <el-descriptions v-if="certFields.length" :column="2" border :title="isMedical ? '体检台账字段' : '识别字段'">
       <el-descriptions-item v-for="field in certFields" :key="field.key" :label="field.label" :span="isMedical && ['exam_projects','blood_routine','urine_routine','ecg','dr_imaging','abdominal_ultrasound','liver_function'].includes(field.key) ? 2 : 1">

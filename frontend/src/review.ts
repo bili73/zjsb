@@ -85,8 +85,8 @@ export function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-export function spreadsheetName(types: readonly (string | undefined)[], at = new Date()): string {
+export function spreadsheetName(types: readonly (string | undefined)[], at = new Date(), personPackage = false): string {
   const labels = new Set(types.map(type => type && Object.hasOwn(docTypes, type) ? docTypes[type as keyof typeof docTypes] : '识别结果'))
   const stamp = formatTime(at.toISOString()).replace(/\D/g, '')
-  return `${[...labels].join('+') || '识别结果'}_${stamp.slice(0, 8)}_${stamp.slice(8)}.xlsx`
+  return `${personPackage ? '人员材料包' : [...labels].join('+') || '识别结果'}_${stamp.slice(0, 8)}_${stamp.slice(8)}.xlsx`
 }

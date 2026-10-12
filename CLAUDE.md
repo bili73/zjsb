@@ -64,7 +64,7 @@ backend/launch.py → ocr_app/launcher.py（单实例执行锁、业务准备、
 - 乐观并发：`run_id` / `result_revision` 保护发布、取消与重跑；旧执行不能覆盖新结果，版本冲突须重新查询。
 - 预算：Task 领取后共享 180 秒（含模型队列等待与换模）；watchdog 约 181 秒定向停止；医疗生成 20 秒软预算、主备模型各最多一次。
 - 数据：SQLite 在 `.runtime/data/`（WAL、Alembic 迁移位于 `backend/migrations/`）；敏感产物 AES-GCM 加密，部署密钥在 `.runtime/secrets/`（Windows DPAPI，跨用户复制不可恢复）；任务自创建起 7 天到期清理。
-- 前端：旧 Vue 前端已移出，独立重构中（历史副本在本机 `output/frontend-retired-20261008-v1/`，不入库）；`frontend/dist/` 已在 `.gitignore`。
+- 前端：Vue3/Element Plus前端已重构并交付（历史副本在本机 `output/frontend-retired-20261008-v1/`，不入库）；`frontend/dist/` 已在 `.gitignore`。
 - `scripts/` 两类：DDE 笔记工具链（TypeScript/tsx）与离线实验/probe 脚本（Python，按各轮报告组织，串行执行）。
 
 ## 重要改动必须留笔记（DDE）

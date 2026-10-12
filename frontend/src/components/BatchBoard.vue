@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CircleClose, Delete, RefreshRight, View, WarningFilled } from '@element-plus/icons-vue'
+import { CircleClose, Delete, RefreshRight, UploadFilled, User, View, WarningFilled } from '@element-plus/icons-vue'
 import ExportControls from './ExportControls.vue'
+import UploadPanel from './UploadPanel.vue'
+import PersonNameEditor from './PersonNameEditor.vue'
 import type { BusinessApi } from '../api.ts'
 import { ApiFailure, shouldRefreshResult, isAbort } from '../api.ts'
-import { batchLabels, docTypes, hasResult, hasMissingRequiredFields, requiredFieldLabels, runningStatuses, taskLabels } from '../business.ts'
-import type { BatchStatus, DocProfile, Task, TaskStatus } from '../business.ts'
+import { batchLabels, docTypes, pairingLabels, isPersonPackage, hasResult, hasMissingRequiredFields, requiredFieldLabels, runningStatuses, taskLabels } from '../business.ts'
+import type { Batch, BatchStatus, DocProfile, IdCardPairing, Task, TaskStatus } from '../business.ts'
 import { errorMessages } from '../diagnostics.ts'
 import { entryNeedsReview, entryRunning } from '../monitor.ts'
 import type { BatchEntry, Monitor } from '../monitor.ts'
@@ -19,12 +21,14 @@ const emit = defineEmits<{
   (e: 'open-result', task: Task, batchId: string): void
   (e: 'unauthorized'): void
   (e: 'batch-deleted', batchId: string, taskIds: string[]): void
+  (e: 'preview', files: File[], tasks: Task[]): void
 }>()
 
 const selected = reactive<Record<string, Task[]>>({})
 const missingOnly = reactive<Record<string, boolean>>({})
 const loadingMore = ref(false)
 const acting = ref('')
+const appendTarget = ref<Batch | null>(null)
 let moreController: AbortController | undefined
 let actionController: AbortController | undefined
 let disposed = false
@@ -62,6 +66,10 @@ const taskTagTypes: Record<TaskStatus, 'primary' | 'success' | 'warning' | 'dang
 const batchTagTypes: Record<BatchStatus, 'primary' | 'success' | 'warning' | 'danger' | 'info'> = {
   PROCESSING: 'primary', COMPLETED: 'success', PARTIAL: 'warning', FAILED: 'danger', CANCELLED: 'info',
 }
+// 身份证两面配套状态：齐全为成功，缺人像面为警告，未指定/缺国徽面（可选）保持中性。
+const pairingTagTypes: Record<IdCardPairing, 'success' | 'warning' | 'info'> = {
+  unassigned: 'info', not_provided: 'info', missing_front: 'warning', missing_back: 'info', both_present: 'success',
+}
 
 function batchTitle(batchId: string) {
   return props.monitor.state.entries[batchId]?.batch?.display_name || `批次 ${batchId.slice(0, 8)}`
@@ -76,8 +84,8 @@ function batchMeta(batchId: string) {
   if (batch?.failed_count) parts.push(`失败 ${batch.failed_count}`)
   if (entryRunning(entry)) parts.push('执行中')
   parts.push(`创建于 ${formatTime(batch?.created_at)}（UTC+8）`)
-  const expiry = expiryText(batch?.created_at)
-  if (expiry) parts.push(`${expiry} 到期清理`)
+  const expiry = batch?.expires_at ? formatTime(batch.expires_at) : expiryText(batch?.created_at)
+  if (expiry) parts.push(`最近材料 ${expiry} 到期清理`)
   return parts.join(' · ')
 }
 
@@ -249,7 +257,15 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
           </span>
         </template>
 
-        <ExportControls :api="api" :tasks="entry.tasks" :selected="entry.tasks.filter(t => (selected[id] ?? []).some(s => s.task_id === t.task_id))" :batch-id="id" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
+        <ExportControls :api="api" :tasks="entry.tasks" :selected="entry.tasks.filter(t => (selected[id] ?? []).some(s => s.task_id === t.task_id))" :batch-id="id" :batch="entry.batch ?? undefined" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
+        <PersonNameEditor v-if="entry.batch && isPersonPackage(entry.batch)" :batch="entry.batch" :monitor="monitor" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
+        <div v-if="entry.batch && isPersonPackage(entry.batch)" class="package-toolbar" :class="{ 'has-warning': entry.batch.warnings?.length }">
+          <el-icon class="package-icon"><User /></el-icon>
+          <el-tag size="small" :type="pairingTagTypes[entry.batch.id_card_pairing ?? 'not_provided']" effect="light">{{ pairingLabels[entry.batch.id_card_pairing ?? 'not_provided'] }}</el-tag>
+          <span class="poll-hint">配套仅检查两面材料是否存在；请人工核对归属，不影响必填导出条件。</span>
+          <span class="toolbar-spacer" />
+          <el-button v-if="canWrite" type="primary" plain :icon="UploadFilled" @click="appendTarget = { ...entry.batch }">补充上传</el-button>
+        </div>
         <div v-if="isAdmin" class="required-toolbar">
           <el-button type="danger" plain :icon="Delete" :loading="acting === `delete:${id}`" :disabled="!!acting || !entry.tasksLoaded || !entry.tasks.length || entryRunning(entry)" @click="deleteBatch(id)">删除批次</el-button>
           <span class="poll-hint">{{ entryRunning(entry) ? '请等待排队及识别任务停止后再删除。' : '永久删除本批次及关联文件；待人工核对的记录也可删除。' }}</span>
@@ -338,6 +354,9 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
       </el-collapse-item>
       </section>
     </el-collapse>
+    <el-dialog :model-value="!!appendTarget" title="补充人员材料" width="min(1000px, 94vw)" destroy-on-close @close="appendTarget = null" @closed="monitor.start()">
+      <UploadPanel v-if="appendTarget" :target-batch="appendTarget" :api="api" :catalogue="catalogue" :monitor="monitor" :can-write="canWrite" @submitted="appendTarget = null" @preview="(files, tasks) => emit('preview', files, tasks)" @unauthorized="emit('unauthorized')" />
+    </el-dialog>
   </section>
 </template>
 
@@ -355,6 +374,11 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
 .status-cell { display: inline-flex; align-items: center; gap: 6px; }
 .status-warn { color: var(--el-color-danger); }
 .required-toolbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 0 16px 10px; }
+.package-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 16px 10px; padding: 10px 14px; background: var(--el-color-primary-light-9); border: 1px solid var(--el-color-primary-light-8); border-radius: 10px; }
+.package-toolbar.has-warning { background: var(--el-color-warning-light-9); border-color: var(--el-color-warning-light-8); }
+.package-icon { color: var(--el-color-primary); font-size: 16px; flex: none; }
+.package-toolbar.has-warning .package-icon { color: var(--el-color-warning); }
+.package-name { font-weight: 600; }
 .required-fields-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .missing-field-names { font-size: 12px; color: var(--el-color-danger); word-break: break-word; }
 .batch-collapse :deep(.required-missing-row) { --el-table-tr-bg-color: var(--el-color-danger-light-9); }

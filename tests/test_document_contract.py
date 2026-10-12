@@ -168,7 +168,7 @@ class DocumentContractTests(unittest.TestCase):
         with self.assertRaises(jsonschema.ValidationError):self.validate('FieldDerivation',bad)
 
     def test_implemented_methods_and_explicit_future_paths(self):
-        self.assertEqual(self.document['info']['version'],'1.21.0')
+        self.assertEqual(self.document['info']['version'],'1.22.0')
         self.assertIn('post',self.document['paths']['/export'])
         self.assertNotIn('get',self.document['paths']['/export'])
         permissions=self.document['paths']['/auth/me']['get']['responses']['200']['content']['application/json']['schema']['properties']['permissions']['items']['enum']
@@ -180,6 +180,37 @@ class DocumentContractTests(unittest.TestCase):
         self.assertFalse(self.document['components']['schemas']['MedicalItem']['additionalProperties'])
         for code in ['CARD_ADMISSION_FAILED','UNSAFE_CARD_INPUT','EXPORT_BLOCKED','EXPORT_VALUE_TOO_LONG','PREVIEW_MASK_UNAVAILABLE']:
             self.validate('Error',dict(code=code,message='安全提示',details={'tasks':[]}))
+
+    def test_person_package_append_contract_is_implemented_and_versioned(self):
+        operation = self.document['paths']['/batches/{batch_id}/append']['post']
+        self.assertTrue(operation['x-implemented'])
+        request = operation['requestBody']['content']['multipart/form-data']['schema']
+        self.assertEqual(set(request['required']), {'files', 'expected_revision'})
+        self.assertEqual(request['oneOf'], [{'required': ['doc_type_hint']}, {'required': ['file_types']}])
+        self.assertEqual(request['properties']['file_types']['maxLength'], 4096)
+        validator = jsonschema.Draft7Validator(dict(self.document, **request))
+        common = dict(files=['synthetic.png'], expected_revision=0)
+        validator.validate(dict(common, doc_type_hint='DIPLOMA'))
+        validator.validate(dict(common, file_types='["DIPLOMA"]'))
+        for invalid in [common, dict(common, file_types='["DIPLOMA"]', doc_type_hint='DIPLOMA')]:
+            with self.assertRaises(jsonschema.ValidationError): validator.validate(invalid)
+        self.assertNotIn('person_name', request['properties'])
+        for status in ['202', '401', '403', '404', '409', '413', '415', '422']:
+            self.assertIn(status, operation['responses'])
+        self.validate('Batch', dict(batch_id=str(uuid4()), person_name='合成人员', package_revision=0,
+                                   id_card_pairing='missing_back', warnings=[dict(code='MISSING_ID_BACK', message='缺少国徽面')]))
+
+    def test_mixed_creation_and_classification_contracts(self):
+        request = self.document['paths']['/batches']['post']['requestBody']['content']['multipart/form-data']['schema']
+        validator = jsonschema.Draft7Validator(dict(self.document, **request))
+        validator.validate(dict(files=['synthetic.png'], person_name='合成人员', file_types='["DIPLOMA"]'))
+        validator.validate(dict(files=['synthetic.png'], file_types='["DIPLOMA"]'))
+        operation = self.document['paths']['/classify']['post']
+        schema = operation['requestBody']['content']['multipart/form-data']['schema']
+        self.assertEqual(schema['properties']['files']['maxItems'], 1)
+        response = operation['responses']['200']['content']['application/json']['schema']
+        jsonschema.Draft7Validator(dict(self.document, **response)).validate(
+            dict(doc_type=None, basis='unknown', reason='请选择', candidates=[]))
 
     def test_batch_deletion_contract_is_implemented_and_version_bound(self):
         from ocr_app.routes import DeleteBatchBody
@@ -193,6 +224,18 @@ class DocumentContractTests(unittest.TestCase):
         self.assertNotIn('204', operation['responses'])
         for invalid in [dict(versions=[]), dict(versions=[dict(request['versions'][0], extra='x')])]:
             with self.assertRaises(jsonschema.ValidationError): self.validate('BatchDeleteRequest', invalid)
+
+    def test_person_name_confirmation_contract(self):
+        from ocr_app.routes import PersonBody
+        request = dict(person_name='合成姓名', expected_revision=0)
+        self.validate('PersonNameRequest', request)
+        self.assertEqual(PersonBody.model_validate(request).model_dump(), request)
+        self.validate('Batch', dict(batch_id=str(uuid4()), is_person_package=True, person_name=None,
+            package_revision=0, id_card_pairing='not_provided', name_suggestions=[dict(name='合成姓名', sources=[
+                dict(task_id=str(uuid4()), doc_type='DIPLOMA', file_name='synthetic.png')])]))
+        operation = self.document['paths']['/batches/{batch_id}/person']['patch']
+        for code in ['200', '401', '403', '404', '409', '422']:
+            self.assertIn(code, operation['responses'])
 
     def test_human_added_household_member_matches_contract(self):
         result=extract_result([], 'HOUSEHOLD_REGISTER')

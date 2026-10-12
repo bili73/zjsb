@@ -224,7 +224,7 @@ def refresh_ledger(result):
         elif not rows and len(original)==1:
             value = '未见异常' if compact(original[0]) in {'正常', '未见异常', '无异常'} else original[0]
         elif not original and group_items and all(_normal_row(i) for i in group_items):
-            value = '未见异常'
+            value = '已识别明细未见异常'
             source_list = [i['source'] for i in group_items]
         source_list += [s for v,s in conclusions]
         _derived(field,value,source_list,conclusions=conclusions)

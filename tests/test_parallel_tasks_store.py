@@ -210,7 +210,7 @@ class ParallelTaskStoreTests(unittest.TestCase):
         try:
             with upgraded.connect() as connection:
                 after = dict(connection.execute(text('SELECT * FROM tasks WHERE id=:id'), {'id': task_id}).mappings().one())
-                self.assertEqual(connection.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0005')
+                self.assertEqual(connection.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0008')
                 self.assertEqual(connection.execute(text('SELECT count(*) FROM web_users')).scalar_one(), 0)
                 self.assertEqual(connection.execute(text('SELECT count(*) FROM required_field_settings')).scalar_one(), 0)
             self.assertIsNone(after.pop('stop_code'))

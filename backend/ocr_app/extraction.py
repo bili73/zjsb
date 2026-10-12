@@ -174,6 +174,7 @@ def _extract_certificate_fields(evidence, doc_type):
     if doc_type == 'DIPLOMA':
         boundaries.update(COMMON['study_mode'][1])
     boundary = '|'.join(label_pattern(a) for a in sorted(boundaries, key=len, reverse=True))
+    compact_gender = r'性[ \t]*别[ \t]*[:：]?[ \t]*([男女MF])(?=[ \t\r\n，,。;；]|$)'
     school_token = r'[\u4e00-\u9fff][\u4e00-\u9fff \t]{1,58}?(?:大[ \t]*学|学[ \t]*院|学[ \t]*校)'
     for block in evidence:
         text = _certificate_text(block['text'])
@@ -196,9 +197,14 @@ def _extract_certificate_fields(evidence, doc_type):
                 endings = r'[\n\r]' if key == 'certificate_no' else r'[\n\r，,。;；\t]'
                 # In spaced school names, 学 校 can overlap the beginning of 校 长.
                 value_pattern = r'[\u4e00-\u9fffA-Za-z（）()· \t]{2,120}?(?:大[ \t]*学|学[ \t]*院|学[ \t]*校)' if key == 'school_name' else r'.+?'
-                pattern = rf'(?<![\w]){label_pattern(alias)}[ \t]*[:：\t ]+\s*({value_pattern})(?=\s*(?:{boundary})[ \t]*[:：\t ]|{endings}|$)'
+                name_boundary = rf'|[ \t]*(?:{compact_gender})' if key == 'name' else ''
+                pattern = rf'(?<![\w]){label_pattern(alias)}[ \t]*[:：\t ]+\s*({value_pattern})(?=\s*(?:{boundary})[ \t]*[:：\t ]|{endings}{name_boundary}|$)'
                 for match in re.finditer(pattern, text):
                     add(key, match[1], match[0], school_strength=3)
+                    if key == 'name':
+                        adjacent = re.match(r'[ \t]*' + compact_gender, text[match.end():])
+                        if adjacent:
+                            add('gender', adjacent[1], match[0] + adjacent[0])
                     if key.endswith('_date'):
                         claimed_dates.append(match.span(1))
 

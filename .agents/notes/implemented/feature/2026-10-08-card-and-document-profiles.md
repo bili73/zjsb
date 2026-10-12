@@ -65,3 +65,7 @@ The [automatic bank-photo recognition](2026-10-09-bank-auto-recognition.md) repl
 The [certificate/card orientation helper](2026-10-12-certificate-image-upright.md) adds conservative CPU rotation/deskew before recognition for the nine specified certificate/card photo types. PDF, medical and generic decoding, field profiles and validation remain active. Missing real samples qualify processing flow only; direction scores are not OCR field confidence.
 
 The [bank ROI orientation repair](../bug-fix/2026-10-12-bank-card-roi-orientation.md) adds a card-region direction path at unchanged thresholds; PAN/BIN extraction and the complete-photo input contract remain active. Its direction measurements do not replace frozen card-number recognition results.
+
+[Person material packages](2026-10-12-person-material-packages.md) extend batches with explicit encrypted attribution, versioned append and presence-only identity-card pairing. Existing ownership, task versioning, deletion and recognition boundaries remain; old tasks and their expiry are not changed by append.
+
+The [adjacent document field repair](../bug-fix/2026-10-12-adjacent-document-field-boundaries.md) separates explicitly labelled demographics and combined validity ranges, retaining original evidence and conflicts. Catalogue fields, validators, model routing and saved/manual results remain unchanged.

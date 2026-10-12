@@ -58,6 +58,8 @@ The final browser-5 acceptance also checks actual page-nine image decoding and i
 
 ## Consequences
 
+The [complete personnel table](2026-10-12-person-package-full-field-table.md) adds all seventeen medical profile fields, including the auxiliary exam_projects catalogue, plus the existing abnormal summary to the first worksheet of person-package exports. The exact eighteen-column medical ledger itself and ordinary medical exports remain unchanged; this is an additional complete personnel view, not a revised medical template.
+
 Unfamiliar or graphic-only report sections can lack reliable group attribution. Multiple report/exam dates or repeated measurements can genuinely conflict and require manual choice. A single abnormal cell can be long; retain the existing explicit Excel capacity limit rather than truncating it. Read-only derivations must not overwrite human values or mutate historical encrypted data.
 
 The user gets one template-compatible row per report and a clear independent catalogue count. Additional optional fields increase manual review surface; conservative blank cells expose missing evidence rather than creating plausible normal results. Existing task/authentication/model queue behavior and raw historical evidence remain in their established ownership boundaries.

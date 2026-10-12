@@ -1,5 +1,6 @@
 """Authenticated phase-two routes. Upload parsing is explicitly memory-only."""
 import uuid
+import json
 import hmac
 from datetime import date
 from typing import Literal
@@ -11,7 +12,7 @@ from python_multipart import MultipartParser
 from python_multipart.multipart import parse_options_header
 
 from .business import prepare_uploads
-from .task_store import TaskError, SUPPORTED
+from .task_store import TaskError, SUPPORTED, upload_types
 from .auth import SESSION_COOKIE, SESSION_SECONDS, same_origin, csrf_for
 from .upload_limits import MAX_FILES, MAX_FILE_BYTES, MAX_BATCH_BYTES
 
@@ -68,6 +69,12 @@ class ExportBody(BaseModel):
     format: Literal['xlsx'] = 'xlsx'
 
 
+class PersonBody(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    person_name: str = Field(min_length=1, max_length=80)
+    expected_revision: int = Field(ge=0, strict=True)
+
+
 async def bounded_json(request):
     import json
     data = bytearray()
@@ -81,12 +88,15 @@ async def bounded_json(request):
         raise TaskError('INVALID_REQUEST', '请求内容无效', 422)
 
 
-async def memory_form(request):
+async def memory_form(request, *, classification=False):
     media, options = parse_options_header(request.headers.get('content-type', ''))
     boundary = options.get(b'boundary')
     if media != b'multipart/form-data' or not boundary or len(boundary) > 200:
         raise TaskError('INVALID_REQUEST', '请使用文件上传表单', 400)
     files, fields, current, header, ended = [], {}, {}, {}, [False]
+    max_files = 1 if classification else MAX_FILES
+    max_bytes = MAX_FILE_BYTES if classification else MAX_BATCH_BYTES
+    field_limits = {} if classification else dict(doc_type_hint=64, abnormal_only=64, person_name=320, expected_revision=64, file_types=4096)
 
     def part_begin():
         current.clear()
@@ -113,12 +123,12 @@ async def memory_form(request):
         _, values = parse_options_header(current['headers'].get(b'content-disposition', b''))
         name = values.get(b'name', b'').decode('utf-8', errors='strict')
         if name == 'files' and b'filename' in values:
-            if len(files) >= MAX_FILES:
+            if len(files) >= max_files:
                 raise TaskError('FILE_TOO_LARGE', '每批最多100个文件', 413)
-            if sum(len(data) for data, _ in files) + len(current['body']) > MAX_BATCH_BYTES:
+            if sum(len(data) for data, _ in files) + len(current['body']) > max_bytes:
                 raise TaskError('FILE_TOO_LARGE', '单次上传总大小不超过500MB', 413)
             files.append((bytes(current['body']), values[b'filename'].decode('utf-8', errors='strict')))
-        elif name in {'doc_type_hint', 'abnormal_only'} and len(current['body']) <= 64 and name not in fields:
+        elif name in field_limits and len(current['body']) <= field_limits[name] and name not in fields:
             fields[name] = bytes(current['body']).decode('utf-8')
         else:
             raise TaskError('INVALID_REQUEST', '表单字段无效或重复', 400)
@@ -131,7 +141,7 @@ async def memory_form(request):
         async for chunk in request.stream():
             size += len(chunk)
             # Framing is bounded separately from the aggregate file payload.
-            if size > MAX_BATCH_BYTES + (MAX_FILES + 2) * 8192:
+            if size > max_bytes + (max_files + 5) * 8192:
                 raise TaskError('FILE_TOO_LARGE', '单次上传总大小不超过500MB', 413)
             parser.write(chunk)
         parser.finalize()
@@ -141,7 +151,19 @@ async def memory_form(request):
         raise TaskError('INVALID_REQUEST', '上传表单不完整或编码无效', 400) from error
     if not ended[0] or not files:
         raise TaskError('INVALID_REQUEST', '上传表单不完整', 400)
-    if fields.get('doc_type_hint') not in SUPPORTED:
+    if classification:
+        return files, fields
+    if 'file_types' in fields:
+        if 'doc_type_hint' in fields:
+            raise TaskError('INVALID_REQUEST', '不能同时提交统一类型与逐文件类型', 422)
+        try:
+            kinds = json.loads(fields['file_types'])
+        except ValueError as error:
+            raise TaskError('INVALID_REQUEST', '逐文件类型须为JSON数组', 422) from error
+        if not isinstance(kinds, list):
+            raise TaskError('INVALID_REQUEST', '逐文件类型须为JSON数组', 422)
+        fields['file_types'] = upload_types(kinds, len(files))
+    elif fields.get('doc_type_hint') not in SUPPORTED:
         raise TaskError('UNSUPPORTED_DOC_TYPE', '材料类型未受支持，请从材料目录选择', 422)
     if fields.get('abnormal_only', 'false').lower() not in {'true', 'false'}:
         raise TaskError('INVALID_REQUEST', '异常项目开关无效', 400)
@@ -175,6 +197,15 @@ def router(business, runtime):
         if user['role'] != 'admin':
             raise TaskError('FORBIDDEN', '只有管理员可以修改管理设置', 403)
         return user
+
+    def upload_authorization(request, user):
+        def authorize(connection):
+            # The surrounding BEGIN IMMEDIATE prevents account/session changes
+            # between this fresh authorization read and the upload commit.
+            current = operator(principal(request))
+            if current['user_id'] != user['user_id']:
+                raise TaskError('UNAUTHORIZED', '登录状态已变化，请重新登录', 401)
+        return authorize
 
     @routes.get('/auth/me')
     def me(request: Request, user=Depends(principal)):
@@ -288,17 +319,52 @@ def router(business, runtime):
                 date_from: date | None = None, date_to: date | None = None, user=Depends(principal)):
         return business.store.batches(page, page_size, date_from, date_to, user=user)
 
+    @routes.post('/classify')
+    async def classify_upload(request: Request, user=Depends(operator)):
+        from .document_classification import classify_file
+        from starlette.concurrency import run_in_threadpool
+        files, _ = await memory_form(request, classification=True)
+        result = await run_in_threadpool(classify_file, *files[0])
+        operator(principal(request))
+        return result
+
     @routes.post('/batches', status_code=202)
     async def upload(request: Request, user=Depends(operator)):
         if not runtime.is_alive():
             raise TaskError('INTERNAL_ERROR', '处理服务不可用，请检查引擎状态并重新启动程序', 503)
         files, fields = await memory_form(request)
+        if 'expected_revision' in fields:
+            raise TaskError('INVALID_REQUEST', '新建材料包不接受追加版本号', 422)
+        kind = fields.get('file_types', fields.get('doc_type_hint'))
         # Admission stays off the event loop. Cards use the bounded memory-only
         # safety pass before any durable writes; other types only decode here.
         from starlette.concurrency import run_in_threadpool
-        validated = await run_in_threadpool(prepare_uploads, files, fields['doc_type_hint'], runtime)
-        return await run_in_threadpool(business.store.create_batch, validated, fields['doc_type_hint'], user['user_id'],
-                                      {'abnormal_only': fields.get('abnormal_only', 'false').lower() == 'true'})
+        validated = await run_in_threadpool(prepare_uploads, files, kind, runtime)
+        return await run_in_threadpool(business.store.create_batch, validated, kind, user['user_id'],
+                                      {'abnormal_only': fields.get('abnormal_only', 'false').lower() == 'true'},
+                                      person_name=fields.get('person_name'), authorize=upload_authorization(request, user))
+
+    @routes.post('/batches/{batch_id}/append', status_code=202)
+    async def append_upload(batch_id: uuid.UUID, request: Request, user=Depends(operator)):
+        with business.engine.connect() as connection:
+            business.store._batch_row(connection, str(batch_id), user)
+        if not runtime.is_alive():
+            raise TaskError('INTERNAL_ERROR', '处理服务不可用，请检查引擎状态并重新启动程序', 503)
+        files, fields = await memory_form(request)
+        revision = fields.get('expected_revision', '')
+        if 'person_name' in fields or not revision.isascii() or not revision.isdecimal() or len(revision) > 10:
+            raise TaskError('INVALID_REQUEST', '请读取材料包最新版本后追加；人员归属不能在追加时变更', 422)
+        from starlette.concurrency import run_in_threadpool
+        kind = fields.get('file_types', fields.get('doc_type_hint'))
+        validated = await run_in_threadpool(prepare_uploads, files, kind, runtime)
+        return await run_in_threadpool(business.store.append_batch, str(batch_id), validated, kind,
+            int(revision), user['user_id'], {'abnormal_only': fields.get('abnormal_only', 'false').lower() == 'true'},
+            user=user, authorize=upload_authorization(request, user))
+
+    @routes.patch('/batches/{batch_id}/person')
+    def confirm_person(batch_id: uuid.UUID, body: PersonBody, request: Request, user=Depends(operator)):
+        return business.store.confirm_person(str(batch_id), body.person_name, body.expected_revision,
+            user['user_id'], user=user, authorize=upload_authorization(request, user))
 
     @routes.get('/batches/{batch_id}')
     def batch(batch_id: uuid.UUID, user=Depends(principal)):

@@ -1,7 +1,7 @@
 import { recordDiagnostic, safeCode } from './diagnostics.ts'
 import type { DiagnosticCard, Operation } from './diagnostics.ts'
-import { isRecord, parseBatches, parseCatalogue, parseCreated, parseResult, parseTask, parseTasks, parseUser, parseManagedUser, parseManagedUsers } from './business.ts'
-import type { ItemsFilter, Task, UploadDocType, User } from './business.ts'
+import { isRecord, parseBatches, parseCatalogue, parseCreated, parseResult, parseTask, parseTasks, parseUser, parseManagedUser, parseManagedUsers, parseClassification } from './business.ts'
+import type { Batch, ItemsFilter, Task, UploadDocType, User } from './business.ts'
 import type { ReviewBody } from './review.ts'
 import type { BatchDateRange } from './batchCalendar.ts'
 import { parseRequiredFieldSettings } from './requiredFields.ts'
@@ -31,7 +31,7 @@ export class BusinessApi {
     signal.addEventListener('abort', abort, { once: true })
     if (signal.aborted) controller.abort()
     let timedOut = false
-    const timeout = setTimeout(() => { timedOut = true; controller.abort() }, operation === 'upload' ? 180000 : operation === 'export' || operation === 'preview' ? 60000 : 15000)
+    const timeout = setTimeout(() => { timedOut = true; controller.abort() }, operation === 'upload' ? 180000 : operation === 'classify' ? 30000 : operation === 'export' || operation === 'preview' ? 60000 : 15000)
     let status: number | undefined
     let requestId: unknown
     try {
@@ -118,6 +118,13 @@ export class BusinessApi {
     return this.request(`/batches?${query}`, 'batch_list', parseBatches, signal)
   }
   tasks(batchId: string, signal: AbortSignal) { return this.request(`/batches/${encodeURIComponent(batchId)}/tasks`, 'batch_tasks', parseTasks, signal) }
+  batch(batchId: string, signal: AbortSignal) {
+    return this.request(`/batches/${encodeURIComponent(batchId)}`, 'batch_list', body => {
+      const batch = parseBatches({ items: [body], total: 1, page: 1, page_size: 1 }).items[0]!
+      if (batch.batch_id !== batchId) throw new Error('INVALID_RESPONSE')
+      return batch
+    }, signal)
+  }
   deleteBatch(batchId: string, tasks: readonly Task[], signal: AbortSignal) {
     return this.request(`/batches/${encodeURIComponent(batchId)}`, 'batch_delete', body => {
       const created = parseCreated(body)
@@ -132,12 +139,40 @@ export class BusinessApi {
     const query = itemsFilter ? `?items_filter=${itemsFilter}` : ''
     return this.request(`/tasks/${encodeURIComponent(taskId)}/result${query}`, 'result', parseResult, signal)
   }
-  upload(files: readonly File[], docType: UploadDocType, abnormalOnly: boolean, signal: AbortSignal) {
+  classify(file: File, signal: AbortSignal) {
+    const form = new FormData()
+    form.append('files', file)
+    return this.request('/classify', 'classify', parseClassification, signal, { method: 'POST', body: form })
+  }
+  upload(files: readonly File[], docType: UploadDocType, abnormalOnly: boolean, signal: AbortSignal, personName?: string, fileTypes?: readonly UploadDocType[]) {
     const form = new FormData()
     files.forEach(file => form.append('files', file))
-    form.append('doc_type_hint', docType)
-    form.append('abnormal_only', String(docType === 'MEDICAL_REPORT' && abnormalOnly))
+    if (fileTypes) form.append('file_types', JSON.stringify(fileTypes))
+    else form.append('doc_type_hint', docType)
+    form.append('abnormal_only', String((fileTypes?.includes('MEDICAL_REPORT') ?? docType === 'MEDICAL_REPORT') && abnormalOnly))
+    if (personName !== undefined) form.append('person_name', personName)
     return this.request('/batches', 'upload', parseCreated, signal, { method: 'POST', body: form })
+  }
+  confirmPerson(batch: Batch, personName: string, signal: AbortSignal) {
+    return this.request(`/batches/${encodeURIComponent(batch.batch_id)}/person`, 'person_update', body => {
+      const updated = parseBatches({ items: [body], total: 1, page: 1, page_size: 1 }).items[0]!
+      if (updated.batch_id !== batch.batch_id) throw new Error('INVALID_RESPONSE')
+      return updated
+    }, signal, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ person_name: personName, expected_revision: batch.package_revision }) })
+  }
+  append(batch: Batch, files: readonly File[], docType: UploadDocType, abnormalOnly: boolean, signal: AbortSignal, fileTypes?: readonly UploadDocType[]) {
+    const form = new FormData()
+    files.forEach(file => form.append('files', file))
+    if (fileTypes) form.append('file_types', JSON.stringify(fileTypes))
+    else form.append('doc_type_hint', docType)
+    form.append('abnormal_only', String((fileTypes?.includes('MEDICAL_REPORT') ?? docType === 'MEDICAL_REPORT') && abnormalOnly))
+    form.append('expected_revision', String(batch.package_revision))
+    return this.request(`/batches/${encodeURIComponent(batch.batch_id)}/append`, 'upload', body => {
+      const created = parseCreated(body)
+      if (created.batch_id !== batch.batch_id) throw new Error('INVALID_RESPONSE')
+      return created
+    }, signal, { method: 'POST', body: form })
   }
   mutate(task: Task, operation: 'cancel' | 'rerun', signal: AbortSignal) {
     return this.request(`/tasks/${encodeURIComponent(task.task_id)}/${operation}`, operation, parseTask, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_id: task.run_id, expected_revision: task.result_revision }) })

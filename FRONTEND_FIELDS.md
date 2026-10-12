@@ -18,7 +18,7 @@ Batch新增owner={user_id:string|null,username:string|null,display_name:string|n
 
 ## 当前可用入口
 
-使用账号密码与同源Cookie会话。POST auth/login发送username/password，成功返回身份、权限和csrf_token并设置HttpOnly Cookie；GET auth/me刷新恢复身份；POST auth/logout撤销服务端会话。非GET/HEAD/OPTIONS请求附X-CSRF-Token，浏览器自动附同源Origin。csrf_token只留在内存，密码和Cookie不写URL、localStorage、sessionStorage或诊断。12小时绝对过期后401返回登录，任务继续。无默认账号，需管理员本地配置；未配置返回AUTH_NOT_CONFIGURED，五分钟五次尝试后LOGIN_THROTTLED。当前服务仍只绑定loopback，创建任何账号后旧Key认证永久关闭。
+使用账号密码与同源Cookie会话。POST auth/login发送username/password，成功返回身份、权限和csrf_token并设置HttpOnly Cookie；GET auth/me刷新恢复身份；POST auth/logout撤销服务端会话。非GET/HEAD/OPTIONS请求附X-CSRF-Token，浏览器自动附同源Origin。csrf_token只留在内存，密码和Cookie不写URL、localStorage、sessionStorage或诊断。30天绝对过期后401返回登录，任务继续。无默认账号，需管理员本地配置；未配置返回AUTH_NOT_CONFIGURED，五分钟五次尝试后LOGIN_THROTTLED。当前服务仍只绑定loopback，创建任何账号后旧Key认证永久关闭。
 
 | 请求 | 用途 |
 |---|---|
@@ -164,13 +164,13 @@ Task 状态为 `QUEUED / PREPROCESSING / OCR / EXTRACTING / VALIDATING / NEED_RE
 | ecg | 心电图 | string/null，报告结论或异常摘要 | 否 |
 | dr_imaging | DR影像 | string/null，报告结论或异常摘要 | 否 |
 | abdominal_ultrasound | 腹部彩超 | string/null，报告结论或异常摘要 | 否 |
-| liver_function | 肝功五项（生化检测） | string/null，异常指标及结果；所属明细有正常依据时为未见异常，未知留空，人工优先 | 否 |
+| liver_function | 肝功五项（生化检测） | string/null，异常指标及结果；所属明细有正常依据时为已识别明细未见异常，未知留空，人工优先 | 否 |
 | exam_project_count | 体检项目数量 | integer/null，只读 | 否 |
 | exam_projects | 体检项目 | string/null，以中文分号分隔的原名清单 | 否 |
 
 按模板恢复机构/报告日期；婚姻、电话、工作单位退出主要字段，编号/套餐仍不提供。原文与历史密文保留，历史读取按17键投影，不批量写回；旧结果缺少新增值时可补录。仅name/gender/exam_date必填。身高/体重作为台账字段可修正，仍不计异常；血压来源矛盾不自动组合。六类摘要必须有临床标题/表格/明确原名证据，不把复查建议当已检；小结只作所属大项结论来源，不作独立检测项目。
 
-六类均包含肝功，无需小结：所属有效明细全部有来源、有结果且按报告标记/本行参考范围正常，或UNKNOWN行有明确A级且无异常标记、无冲突时，derived汇总为“未见异常”。A级不覆盖阳性或明确异常；sources指向参与明细，置信度null，检测行分类/统计/既有复核不变。异常优先列出具体指标、结果和诊断。缺明细、其他未知或冲突仍显示“未识别”。可靠闭合连续编号原生PDF项目表证明未列出且无实际检测证据时，value=null/absence_reason=NOT_ON_DOCUMENT，来源指向项目表，页面和医疗Excel显示“报告未载明”；未闭合、断页、OCR项目表或已列出但漏提取的检查不能推断缺省。HCG尿检不等于尿常规。人工值/缺省理由优先，历史读取和Excel使用同一投影，原保存密文不变。
+六类均包含肝功，无需小结：所属有效明细全部有来源、有结果且按报告标记/本行参考范围正常，或UNKNOWN行有明确A级且无异常标记、无冲突时，derived汇总为“已识别明细未见异常”。A级不覆盖阳性或明确异常；sources指向参与明细，置信度null，检测行分类/统计/既有复核不变。异常优先列出具体指标、结果和诊断。缺明细、其他未知或冲突仍显示“未识别”。可靠闭合连续编号原生PDF项目表证明未列出且无实际检测证据时，value=null/absence_reason=NOT_ON_DOCUMENT，来源指向项目表，页面和医疗Excel显示“报告未载明”；未闭合、断页、OCR项目表或已列出但漏提取的检查不能推断缺省。HCG尿检不等于尿常规。人工值/缺省理由优先，历史读取和Excel使用同一投影，原保存密文不变。
 
 institution无明确标签来源时，使用已观察报告第1页照片右侧个人信息末行的完整品牌/分店名；仅覆盖普潓/普惠年华已观察版式。保留原文字符和括号内分店，去掉随后独立数字代码，source仍含完整原文和坐标。无可靠位置、分店不完整、相互冲突或其他医院无标签时留空/待核对，由用户补录；字段仍选填，不改变导出门禁。不会重写历史人工值。
 
@@ -277,7 +277,7 @@ POST export要求operator/admin，选择`batch_id`或`task_ids`（二选一）�
 
 Task和TaskResult可选返回export_ready:boolean及export_blockers:[{field:string,code:string}]，由同一后端presence检查在医疗筛选前计算。按钮依据已保存版本的export_ready，旧响应未提供时交由服务端判定；未保存编辑须先保存。导出不确认问题、不改recognition/review状态或revision，识别/审核元数据仍保留在应用及审计，不进入业务Excel列。
 
-Excel证件格式保持每份一行、中文标签和最新保存值。体检导出单个“审核记录台账”，每份报告一行，固定18列：序号、姓名、性别、年龄、体检日期、体检机构、报告日期、身高、体重、血压、血常规、尿常规、心电图、DR影像、腹部彩超、肝功五项（生化检测）、体检项目数量、异常指标。异常单元格为原名+结果/单位+诊断，每项独立换行，排除正常、身高、体重、小结，保留BMI；关联结论不重复，未关联结果明确标注。缺值不默认正常，只有完整且无待判定/异常证据才填“无”。原大项清单留在界面供计数核对，不单独加Excel列。户口/通用表保留；编号和公式样式字符串仍为安全文本，长值不静默截断；冻结、筛选、换行、模板蓝/橙表头及列宽已设置。
+Excel证件格式保持每份一行、中文标签和最新保存值。体检导出单个“审核记录台账”，每份报告一行，固定18列：序号、姓名、性别、年龄、体检日期、体检机构、报告日期、身高、体重、血压、血常规、尿常规、心电图、DR影像、腹部彩超、肝功五项（生化检测）、体检项目数量、异常指标。异常单元格为原名+结果/单位+诊断，每项独立换行，排除正常、身高、体重、小结，保留BMI；关联结论不重复，未关联结果明确标注。缺值不默认正常，只有完整且无待判定/异常证据才填“无”。原大项清单在界面供计数核对，人员包的人员信息总表同时导出项目名称；18列体检台账本身不加列。户口/通用表保留；编号和公式样式字符串仍为安全文本，长值不静默截断；冻结、筛选、换行、模板蓝/橙表头及列宽已设置。
 
 XLSX各类型一文档一行，医疗检测、清单、户成员、通用正文/KV分表；号码保存为文本、公式字符串不执行，长通用正文分块。导出按钮禁用仅是界面提示，服务器门禁始终有效。
 
@@ -300,7 +300,23 @@ XLSX各类型一文档一行，医疗检测、清单、户成员、通用正文/
 
 批次默认只显示今天，日/周/月显示所选日期所在范围，配套date/week/month选择器；固定UTC+8、周一至周日。GET /batches可选date_from/date_to（含首尾当地日期），过滤历史后分页；清空恢复全部日期。切换范围忽略迟到响应，隐藏任务继续监控。
 
-liver_function优先自动填写有来源的异常指标名称、结果/单位和诊断；正常明细可汇总“未见异常”，不依赖小结，未知不默认正常或五项齐全。历史派生字段读取/导出刷新，人工值/缺省理由保留。医疗字段明确未载明时展示“报告未载明”，不适用时展示“不适用”，真正缺值展示“未识别”。异常单元格逐项换行；非医疗表头EF760E，医疗蓝/橙不变。
+liver_function优先自动填写有来源的异常指标名称、结果/单位和诊断；正常明细可汇总“已识别明细未见异常”，不依赖小结，未知不默认正常或五项齐全。历史派生字段读取/导出刷新，人工值/缺省理由保留。医疗字段明确未载明时展示“报告未载明”，不适用时展示“不适用”，真正缺值展示“未识别”。异常单元格逐项换行；非医疗表头EF760E，医疗蓝/橙不变。
 
 
 页面单份、批次全部和勾选 Excel 下载统一命名为“识别类型_YYYYMMDD_HHmmss.xlsx”，时间取点击导出时的UTC+8时间，精确到秒。混合材料去重后以+连接类型，缺失/未知类型使用识别结果；命名目标在请求前固定，不随等待期间选择变化。示例：体检报告_20261009_151530.xlsx。工作表名称和内容不因文件命名改变；直接API下载仍使用既有Content-Disposition回退名称。
+
+## 人员材料包（1.22.0）
+
+POST /batches 可选 person_name（1–80字符），人工指定同一个人的材料；省略时保持普通类型批次。不得按OCR或同名自动合并。Batch 增加 person_name、package_revision、id_card_pairing、warnings、expires_at；Task.expires_at为本文件独立到期时间，Batch.expires_at为当前材料最早到期时间。
+
+上传选择“按人员整理”后，无需预填姓名，一次选择混合材料，逐文件修改类型并确认均属同一人。普通按类型批量仍可用。POST /batches 和 POST /batches/{batch_id}/append 使用 multipart：files 与 doc_type_hint / file_types 二选一。file_types 是JSON数组字符串（最多4096字节），顺序对应每个files条目，不能按文件名绑定，长度不符或未知类型422；创建人员包时person_name可省略。追加必须传expected_revision，不能在追加中改person_name。abnormal_only只对包内体检任务生效。202返回batch_id及仅新建的task_ids（重复文件复用时可为空），界面打开对应包。409须刷新版本，不自动重试；断网须先查询确认结果。仅人员包可追加，包括待确认姓名的包；同包相同内容同类型复用，不同类型422；旧结果、人工修正和到期时间不变。
+
+Batch新增is_person_package:boolean，独立于person_name。name_suggestions为{name,sources:[{task_id,doc_type,file_name}]}数组，从已保存的姓名/持卡人姓名字段推导；不从户主、法人或通用正文猜测。不同姓名保留并提示差异，不自动归属、合并或移动文件。PATCH /batches/{batch_id}/person接受{person_name,expected_revision}，仅包所属operator或admin可写，成功200返回Batch；与追加共享package_revision，冲突409。确认姓名加密保存，后续识别不覆盖。界面可使用建议、手工填写或修改；建议不是身份核验。
+
+人员包Excel第一张为“人员信息总表”，一包一行：人员姓名、姓名状态在前，随后按材料类型列出本次所选材料的全部当前业务字段（包括选填及空值列），最后为类型及数量、份数、姓名候选与来源文件。字段带类型前缀；同类多份材料用编号分组，每组含来源文件，互不覆盖。跨包导出列取本次选择的字段并集，缺少该组的行留空；不读取未选中任务。体检包含全部17个profile字段及异常指标，尤其保留体检项目名称；户口成员编号展开，通用正文分段并保留重复键值。冻结前两列与表头，可横向滚动。后面继续保留分类明细和精确18列体检台账。未确认姓名显示“姓名待确认”，不新增导出门禁；仍只要求已保存必填值齐全。文件名为人员材料包_北京时间.xlsx；普通批次格式和名称规则不变。超过Excel列数或单元格容量明确报错，不静默截断。
+
+POST /classify multipart仅含一个files条目，需operator/admin及会话CSRF；不创建批次或任务、不保存原图，返回 `{doc_type: DocTypeEnum|null, basis: 'content'|'filename'|'unknown', reason: string, candidates: DocTypeEnum[]}`。内容分类优先，文件名提示明确标注；unknown或失败必须允许手动选择，所有建议均可改。客户端顺序分类，不覆盖手动选择；移除文件、切换模式或注销时丢弃过期响应。PDF只检查前两页，不自动拆分混合证件PDF；不据分类结果判断人员归属或显示伪造准确率。
+
+id_card_pairing为unassigned/not_provided/missing_front/missing_back/both_present，只反映本包上传类型的存在性，失败或排队任务也计入；missing_back显示“国徽面未上传（可选，可仅识别人像面）”，无MISSING_ID_BACK告警。人像面独立识别/导出，不要求国徽面任务或字段；如另传国徽面，其独立任务仍应用本类型配置。both_present不保证同一人或真实性。提示不增加导出门槛。已完成批次的任务刷新失败仍保持待刷新标记，成功读取才清除，旧会话响应不能恢复缓存。
+
+同账号只保留一个浏览器登录，新登录成功即撤销该账号旧会话；同一浏览器多标签共用，其他浏览器或配置文件也会替换。旧页面在下一次受保护请求收到401后回登录；接受的任务不中断。登录失败不撤销旧会话，轮询不延长30天绝对有效期。

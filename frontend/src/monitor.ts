@@ -51,6 +51,7 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
   let disposed = false
   let unauthorizedNotified = false
   let refreshRequested = false
+  const taskRefreshNeeded = new Set<string>()
 
   // 会话过期（401）必须把用户送回登录页，而不是当普通读取失败静默停轮询；
   // 每次登录会话只上报一次，重新登录（clear）后恢复。
@@ -64,7 +65,11 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
   function upsertBatch(batch: Batch) {
     if (disposed) return
     const existing = state.entries[batch.batch_id]
-    if (existing) existing.batch = batch
+    if (existing) {
+      if (existing.batch?.status !== batch.status || existing.batch?.updated_at !== batch.updated_at ||
+          existing.batch?.package_revision !== batch.package_revision) taskRefreshNeeded.add(batch.batch_id)
+      existing.batch = batch
+    }
     else {
       state.entries[batch.batch_id] = { batch, tasks: [], tasksLoaded: false, expanded: false }
       state.order.push(batch.batch_id)
@@ -107,6 +112,7 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
   }
 
   function removeBatch(batchId: string, taskIds: readonly string[]) {
+    taskRefreshNeeded.delete(batchId)
     delete state.entries[batchId]
     state.order = state.order.filter(id => id !== batchId)
     state.listedIds = state.listedIds.filter(id => id !== batchId)
@@ -118,30 +124,49 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     const client = getApi()
     if (!client || !isVisible()) return null
     const generation = listGeneration
+    if (refreshTasks) state.order.forEach(id => taskRefreshNeeded.add(id))
     try {
       const list = await client.batches(1, pageSize, signal, state.dateRange)
       if (generation !== listGeneration || signal.aborted || disposed) return null
       state.serverTotal = list.total
       state.listedIds = [...new Set([...list.items.map(batch => batch.batch_id), ...state.listedIds])]
-      const changed = new Set<string>()
       const policyRevision = list.items.find(batch => batch.required_fields_revision !== undefined)?.required_fields_revision
       for (const batch of list.items) {
-        const previous = state.entries[batch.batch_id]?.batch
-        if (previous && (previous.status !== batch.status || previous.updated_at !== batch.updated_at)) changed.add(batch.batch_id)
         upsertBatch(batch)
       }
       sortBatches()
+      const listedBatchIds = new Set(list.items.map(batch => batch.batch_id))
       let removed = false
       for (const id of [...state.order]) {
         const entry = state.entries[id]
         if (!entry) continue
         // Explicit reconciliation also rereads terminal batches on older pages.
-        if (refreshTasks || !entry.tasksLoaded || entry.batch?.status === 'PROCESSING' || changed.has(id) ||
+        if (taskRefreshNeeded.has(id) || !entry.tasksLoaded || entry.batch?.status === 'PROCESSING' ||
           policyRevision !== undefined && entry.tasks.some(task => task.required_fields_revision !== policyRevision)) {
           try {
+            let batchVersion = entry.batch
+            const previous = new Map(entry.tasks.map(task => [task.task_id, task]))
             const tasks = await client.tasks(id, signal)
             if (generation !== listGeneration || signal.aborted || disposed) return null
             applyTasks(id, tasks)
+            let metadataAdvanced = false
+            if (!listedBatchIds.has(id) || previous.size !== tasks.length || tasks.some(task => {
+              const before = previous.get(task.task_id)
+              return !before || before.status !== task.status || before.run_id !== task.run_id || before.result_revision !== task.result_revision
+            })) {
+              // A task may finish after the batch-list snapshot. Older pages
+              // also need current package revisions, pairing and name sources.
+              taskRefreshNeeded.add(id)
+              const fresh = await client.batch(id, signal)
+              if (generation !== listGeneration || signal.aborted || disposed) return null
+              if (entry.batch === batchVersion) {
+                metadataAdvanced = batchVersion?.status !== fresh.status || batchVersion?.updated_at !== fresh.updated_at ||
+                  batchVersion?.package_revision !== fresh.package_revision
+                upsertBatch(fresh)
+                batchVersion = entry.batch
+              }
+            }
+            if (!metadataAdvanced && entry.batch === batchVersion) taskRefreshNeeded.delete(id)
           } catch (error) {
             if (generation !== listGeneration || signal.aborted || disposed) return null
             if (!(error instanceof ApiFailure) || error.card.http_status !== 404) throw error
@@ -156,7 +181,7 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
       state.failureCount = 0
       state.retrying = false
       state.lastCheckedAt = new Date().toISOString()
-      return someRunning(state) || removed ? intervalMs : null
+      return someRunning(state) || removed || taskRefreshNeeded.size > 0 ? intervalMs : null
     } catch (error) {
       if (isAbort(error) || generation !== listGeneration || disposed) return null
       if (error instanceof ApiFailure && error.card.http_status === 401) { reportUnauthorized(); return null }
@@ -195,13 +220,25 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     const client = getApi()
     if (!client) return
     const generation = listGeneration
+    const previous = new Map(state.order.map(id => [id, state.entries[id]?.batch]))
     const list = await client.batches(nextPage, pageSize, signal, state.dateRange)
     if (generation !== listGeneration || signal.aborted || disposed) return
     nextPage += 1
     state.serverTotal = list.total
     state.listedIds = [...new Set([...state.listedIds, ...list.items.map(batch => batch.batch_id)])]
-    for (const batch of list.items) upsertBatch(batch)
+    let reconcile = false
+    for (const batch of list.items) {
+      // Pages can overlap after new uploads shift pagination. Preserve a batch
+      // refreshed while this page was in flight, including completed batches.
+      if (state.entries[batch.batch_id]?.batch !== previous.get(batch.batch_id)) continue
+      upsertBatch(batch)
+      if (!state.entries[batch.batch_id]!.tasksLoaded || taskRefreshNeeded.has(batch.batch_id)) reconcile = true
+    }
     sortBatches()
+    if (reconcile) {
+      state.polling = true
+      loop.start()
+    }
   }
 
   function setDateRange(range: BatchDateRange | null) {
@@ -239,18 +276,37 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     }
   }
 
-  async function submitUpload(files: readonly File[], docType: UploadDocType, abnormalOnly: boolean, signal: AbortSignal): Promise<{ batch_id: string; task_ids: string[] }> {
+  async function submitUpload(files: readonly File[], docType: UploadDocType, abnormalOnly: boolean, signal: AbortSignal,
+    options: { personName?: string; targetBatch?: Batch; fileTypes?: readonly UploadDocType[] } = {}): Promise<{ batch_id: string; task_ids: string[] }> {
     const client = getApi()
     if (!client) throw new Error('NOT_CONNECTED')
     const generation = sessionGeneration
-    const created = await client.upload(files, docType, abnormalOnly, signal)
+    const created = options.targetBatch
+      ? await client.append(options.targetBatch, files, docType, abnormalOnly, signal, options.fileTypes)
+      : await client.upload(files, docType, abnormalOnly, signal, options.personName, options.fileTypes)
     if (disposed || signal.aborted || generation !== sessionGeneration || getApi() !== client) return created
     if (!state.entries[created.batch_id]) {
       state.entries[created.batch_id] = { batch: null, tasks: [], tasksLoaded: false, expanded: true }
       state.order.unshift(created.batch_id)
     }
+    taskRefreshNeeded.add(created.batch_id)
+    setDateRange(null)
+    setExpanded(created.batch_id, true)
     start()
     return created
+  }
+
+  async function confirmPerson(batch: Batch, name: string, signal: AbortSignal) {
+    const client = getApi()
+    if (!client) throw new Error('NOT_CONNECTED')
+    const generation = sessionGeneration
+    const updated = await client.confirmPerson(batch, name, signal)
+    if (disposed || signal.aborted || generation !== sessionGeneration || getApi() !== client) return updated
+    stop()
+    listGeneration++
+    upsertBatch(updated)
+    start()
+    return updated
   }
 
   async function runAction(operation: 'cancel' | 'rerun', batchId: string, task: Task, signal: AbortSignal): Promise<Task> {
@@ -306,11 +362,12 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     state.lastCheckedAt = null
     failures = 0
     nextPage = 2
+    taskRefreshNeeded.clear()
     unauthorizedNotified = false
   }
 
   function dispose() { disposed = true; clear() }
 
-  return { state, pollOnce, start, stop, onVisible, loadMore, loadTasks, setDateRange, setExpanded, submitUpload, runAction, deleteBatch, pendingNotice, entryOf, clear, dispose }
+  return { state, pollOnce, start, stop, onVisible, loadMore, loadTasks, setDateRange, setExpanded, submitUpload, confirmPerson, runAction, deleteBatch, pendingNotice, entryOf, clear, dispose }
 }
 export type Monitor = ReturnType<typeof createMonitor>

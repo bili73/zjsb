@@ -48,11 +48,17 @@ def normal_groups():
 
 
 class MedicalLedgerTests(unittest.TestCase):
+    def test_partial_normal_evidence_is_explicitly_qualified(self):
+        result = extract_result(normal_groups(), 'MEDICAL_REPORT')
+        self.assertEqual(fields(result)['blood_routine']['value'], '已识别明细未见异常')
+        sheet = load_workbook(io.BytesIO(workbook_bytes([result])))['审核记录台账']
+        self.assertEqual(sheet['K2'].value, '已识别明细未见异常')
+
     def test_excel_qualifies_detail_derived_normal_without_relabeling_other_conclusions(self):
         result = extract_result(normal_groups(), 'MEDICAL_REPORT')
         before = copy.deepcopy(result)
         sheet = load_workbook(io.BytesIO(workbook_bytes([result]))).active
-        self.assertEqual(sheet['K2'].value, '未见异常')
+        self.assertEqual(sheet['K2'].value, '已识别明细未见异常')
         self.assertIsNotNone(sheet['K2'].comment)
         self.assertIn('仅基于已识别明细', sheet['K2'].comment.text)
         self.assertEqual(result, before)
@@ -76,7 +82,7 @@ class MedicalLedgerTests(unittest.TestCase):
                 ['检验项目', '检测结果', '风险等级'], [name, value, 'A']]), page, .2)]
         r = extract_result(evidence, 'MEDICAL_REPORT')
         for key in ('blood_routine', 'urine_routine', 'liver_function'):
-            self.assertEqual(fields(r)[key]['value'], '未见异常', key)
+            self.assertEqual(fields(r)[key]['value'], '已识别明细未见异常', key)
         self.assertTrue(all(i['abnormal_flag'] == 'UNKNOWN' and i['need_review'] for i in r['items']))
 
     def test_closed_native_catalogue_distinguishes_absent_from_unrecognized(self):
@@ -117,7 +123,7 @@ class MedicalLedgerTests(unittest.TestCase):
         for key in keys:
             with self.subTest(key=key):
                 field = fields(r)[key]
-                self.assertEqual(field['value'], '未见异常')
+                self.assertEqual(field['value'], '已识别明细未见异常')
                 self.assertEqual(field['value_origin'], 'derived')
                 self.assertEqual(field['sources'], [i['source'] for i in r['items'] if i['category'] == field['label']])
                 self.assertIsNone(field['confidence'])
@@ -125,7 +131,7 @@ class MedicalLedgerTests(unittest.TestCase):
                 self.assertEqual(field['derivation']['conclusions'], [])
         self.assertIsNone(fields(r)['liver_function']['value'])
         sheet = load_workbook(io.BytesIO(workbook_bytes([r]))).active
-        self.assertEqual([sheet.cell(2, n).value for n in range(11, 16)], ['未见异常'] * 5)
+        self.assertEqual([sheet.cell(2, n).value for n in range(11, 16)], ['已识别明细未见异常'] * 5)
         self.assertIsNone(sheet['P2'].value)
 
     def test_normal_fallback_does_not_hide_uncertain_group_rows(self):
@@ -175,11 +181,11 @@ class MedicalLedgerTests(unittest.TestCase):
         fields(r)['blood_routine']['value'] = None
         before = copy.deepcopy(r)
         projected = public_result(r)
-        self.assertEqual(fields(projected)['blood_routine']['value'], '未见异常')
+        self.assertEqual(fields(projected)['blood_routine']['value'], '已识别明细未见异常')
         self.assertEqual(r, before)
         self.assertEqual(projected['stats'], before['stats'])
         sheet = load_workbook(io.BytesIO(workbook_bytes([projected]))).active
-        self.assertEqual(sheet['K2'].value, '未见异常')
+        self.assertEqual(sheet['K2'].value, '已识别明细未见异常')
         self.assertEqual(r, before)
 
     def test_normal_biochemical_liver_measurements_fill_normal_summary(self):
@@ -192,9 +198,9 @@ class MedicalLedgerTests(unittest.TestCase):
             block('肝炎病毒检测检验报告单',page=14,y=.5),
             block(table([['检验项目','检测结果','风险等级'],['乙肝表面抗原','-','A']]),page=14,y=.6)]
         r=extract_result(evidence,'MEDICAL_REPORT');field=fields(r)['liver_function']
-        self.assertEqual(field['value'], '未见异常')
+        self.assertEqual(field['value'], '已识别明细未见异常')
         self.assertEqual(len([i for i in r['items'] if i.get('category')=='肝功五项（生化检测）']),7)
-        self.assertEqual(load_workbook(io.BytesIO(workbook_bytes([r]))).active['P2'].value, '未见异常')
+        self.assertEqual(load_workbook(io.BytesIO(workbook_bytes([r]))).active['P2'].value, '已识别明细未见异常')
         self.assertEqual(sum(confirmed_abnormal(i) for i in r['items']),0)
 
     def test_liver_summary_preserves_manual_value_and_absence(self):
@@ -223,7 +229,7 @@ class MedicalLedgerTests(unittest.TestCase):
             ['检验项目','检测结果','风险等级'],['总胆红素','16.05','A']]),y=.2)],'MEDICAL_REPORT')
         fields(r)['liver_function']['value']='总胆红素 16.05'
         before=copy.deepcopy(r)
-        self.assertEqual(fields(public_result(r))['liver_function']['value'], '未见异常')
+        self.assertEqual(fields(public_result(r))['liver_function']['value'], '已识别明细未见异常')
         self.assertEqual(r,before)
 
     def test_liver_unknown_or_sourceless_rows_do_not_automatically_fill_field(self):

@@ -7,6 +7,14 @@ export const docTypes = {
   HOUSEHOLD_REGISTER: '户口本', BUSINESS_LICENSE: '营业执照', GENERIC: '通用识别', XUEXIN_DIPLOMA_TABLE: '学历证书电子注册备案表',
 } as const
 export type UploadDocType = keyof typeof docTypes
+export interface Classification { doc_type: UploadDocType | null; basis: 'content' | 'filename' | 'unknown'; reason: string; candidates: UploadDocType[] }
+export function parseClassification(value: unknown): Classification {
+  requireValue(isRecord(value) && (value.doc_type === null || typeof value.doc_type === 'string' && Object.hasOwn(docTypes, value.doc_type)) &&
+    ['content', 'filename', 'unknown'].includes(String(value.basis)) && typeof value.reason === 'string' && value.reason.length <= 200 &&
+    Array.isArray(value.candidates) && value.candidates.every(type => typeof type === 'string' && Object.hasOwn(docTypes, type)))
+  requireValue(value.basis === 'unknown' ? value.doc_type === null : value.doc_type !== null && value.candidates.includes(value.doc_type))
+  return value as unknown as Classification
+}
 export interface CatalogueField { key: string; label: string; required?: boolean; editable?: boolean; type?: string; required_when?: unknown }
 export interface DocProfile { doc_type: UploadDocType; label: string; fields: CatalogueField[] }
 export function parseCatalogue(value: unknown): DocProfile[] {
@@ -20,11 +28,20 @@ export type BatchStatus = keyof typeof batchLabels
 export interface User { user_id: string; display_name: string; role: 'viewer' | 'operator' | 'admin'; permissions: string[]; csrf_token?: string }
 export interface ManagedUser { user_id: string; username: string; display_name: string; role: User['role']; enabled: boolean }
 export interface BatchOwner { user_id: string | null; username: string | null; display_name: string | null; account_exists: boolean }
-export interface Batch { batch_id: string; display_name?: string; status: BatchStatus; file_count?: number; completed_count?: number; need_review_count?: number; failed_count?: number; created_at?: string; updated_at?: string; required_fields_revision?: number; owner?: BatchOwner }
+export type IdCardPairing = 'unassigned' | 'not_provided' | 'missing_front' | 'missing_back' | 'both_present'
+export interface PersonNameSuggestion { name: string; sources: { task_id: string; doc_type: UploadDocType; file_name: string }[] }
+export interface Batch { batch_id: string; display_name?: string; status: BatchStatus; file_count?: number; completed_count?: number; need_review_count?: number; failed_count?: number; created_at?: string; updated_at?: string; expires_at?: string | null; required_fields_revision?: number; owner?: BatchOwner; package_revision?: number; person_name?: string | null; is_person_package?: boolean; name_suggestions?: PersonNameSuggestion[]; id_card_pairing?: IdCardPairing; warnings?: { code: string; message: string }[] }
+export const isPersonPackage = (batch: Batch) => batch.is_person_package === true || !!batch.person_name
+export const pairingLabels: Record<IdCardPairing, string> = { unassigned: '未指定人员', not_provided: '尚未上传身份证', missing_front: '缺少身份证人像面', missing_back: '国徽面未上传（可选，可仅识别人像面）', both_present: '身份证两面已上传，仍需核对是否属于同一人' }
+export function sampleQualification(kind: UploadDocType): string {
+  return ['DIPLOMA', 'DEGREE_CERT', 'BANK_CARD', 'XUEXIN_DIPLOMA_TABLE', 'MEDICAL_REPORT'].includes(kind)
+    ? '已有有限真实样本测试，尚不代表所有版式准确率；请对照原件核对。'
+    : '规则已接入，尚缺真实样本验收；请逐项对照原件核对。'
+}
 export interface BatchList { items: Batch[]; total: number; page: number; page_size: number }
 export interface TaskError { code: ErrorCode; error_id: string | null; stage: Stage | null }
 export interface ExportEligibility { export_ready?: boolean; export_blockers?: { field: string; code: string }[]; required_fields_revision?: number; required_field_keys?: string[] }
-export interface Task extends ExportEligibility { task_id: string; batch_id?: string; run_id: string; result_revision: number; cancel_requested: boolean; status: TaskStatus; file_name?: string; doc_type?: string; progress?: number; page_count: number; actual_source_page_count?: number | null; content_hash?: string; pages: { page_id: string; page_index: number; extraction_method: string; regions?: { region_id: string }[] }[]; error?: TaskError | null; extract_options?: { abnormal_only?: boolean }; progress_detail?: ProgressDetail }
+export interface Task extends ExportEligibility { task_id: string; batch_id?: string; run_id: string; result_revision: number; cancel_requested: boolean; status: TaskStatus; file_name?: string; doc_type?: string; progress?: number; page_count: number; actual_source_page_count?: number | null; content_hash?: string; expires_at?: string; pages: { page_id: string; page_index: number; extraction_method: string; regions?: { region_id: string }[] }[]; error?: TaskError | null; extract_options?: { abnormal_only?: boolean }; progress_detail?: ProgressDetail }
 // 进度明细：以已完成的物理 OCR 区域为计量单位。total_* 在区域计划未知（准备中/历史任务）时为 null，
 // 不提供估计分母；processed_regions 表示重试策略结束后到达终态的区域数，不保证识别正确。
 export interface ProgressDetail { stage: TaskStatus; prepared_pages: number; total_pages: number | null; processed_regions: number; recognized_regions: number; incomplete_regions: number; total_regions: number | null }
@@ -92,6 +109,20 @@ export function parseUser(value: unknown): User {
 export function parseBatches(value: unknown): BatchList {
   requireValue(isRecord(value) && Array.isArray(value.items) && integer(value.total) && integer(value.page, 1) && integer(value.page_size, 1))
   requireValue(value.items.every(b => isRecord(b) && uuid(b.batch_id) && typeof b.status === 'string' && Object.hasOwn(batchLabels, b.status) && (b.required_fields_revision === undefined || integer(b.required_fields_revision))))
+  requireValue(value.items.every(b => isRecord(b) &&
+    (b.person_name === undefined || b.person_name === null || typeof b.person_name === 'string' && b.person_name.trim().length > 0 && b.person_name.length <= 80) &&
+    (b.package_revision === undefined || integer(b.package_revision)) &&
+    (b.is_person_package === undefined || typeof b.is_person_package === 'boolean') &&
+    (b.name_suggestions === undefined || Array.isArray(b.name_suggestions) && b.name_suggestions.every(s =>
+      isRecord(s) && typeof s.name === 'string' && s.name.trim().length > 0 && s.name.length <= 80 &&
+      Array.isArray(s.sources) && s.sources.length > 0 && s.sources.every(source => isRecord(source) && uuid(source.task_id) &&
+        typeof source.doc_type === 'string' && Object.hasOwn(docTypes, source.doc_type) && typeof source.file_name === 'string'))) &&
+    (b.expires_at == null || typeof b.expires_at === 'string' && Number.isFinite(Date.parse(b.expires_at))) &&
+    (b.id_card_pairing === undefined || typeof b.id_card_pairing === 'string' && Object.hasOwn(pairingLabels, b.id_card_pairing)) &&
+    (b.warnings === undefined || Array.isArray(b.warnings) && b.warnings.every(w => isRecord(w) && typeof w.code === 'string' && typeof w.message === 'string')) &&
+    (b.is_person_package !== false || !b.person_name) &&
+    (typeof b.person_name !== 'string' && b.is_person_package !== true || integer(b.package_revision) && b.id_card_pairing !== undefined && b.id_card_pairing !== 'unassigned') &&
+    (b.id_card_pairing === undefined || b.id_card_pairing === 'unassigned' || typeof b.person_name === 'string' || b.is_person_package === true)))
   requireValue(value.items.every(b => {
     const owner = (b as Record<string, unknown>).owner
     return owner === undefined || isRecord(owner) &&
@@ -117,6 +148,7 @@ export function parseTask(value: unknown): Task {
   requireValue(isRecord(value) && uuid(value.task_id) && uuid(value.run_id) && integer(value.result_revision) && typeof value.cancel_requested === 'boolean' && typeof value.status === 'string' && Object.hasOwn(taskLabels, value.status) && integer(value.page_count) && Array.isArray(value.pages))
   requireValue(exportEligibilityValid(value))
   requireValue(value.batch_id === undefined || uuid(value.batch_id))
+  requireValue(value.expires_at === undefined || typeof value.expires_at === 'string' && Number.isFinite(Date.parse(value.expires_at)))
   requireValue(value.actual_source_page_count == null || integer(value.actual_source_page_count, 1))
   requireValue(value.content_hash === undefined || typeof value.content_hash === 'string' && /^[0-9a-f]{64}$/.test(value.content_hash))
   requireValue(value.progress === undefined || (integer(value.progress) && Number(value.progress) <= 100))

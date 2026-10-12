@@ -54,16 +54,53 @@ def _normalize(key, value):
 
 
 def _candidates(evidence, metadata):
-    from .extraction import _cell_evidence
+    from .extraction import _cell_evidence, plain
     aliases={}
     for f in metadata:
         for label in (f['label'],*ALIASES.get(f['key'],())):
             aliases[re.sub(r'\s','',label)] = f['key']
     candidates={f['key']:[] for f in metadata}
-    def add(key, value, block, raw=None):
-        normalized=_normalize(key,value)
-        if normalized is not None: candidates[key].append((normalized,block,raw if raw is not None else value))
+    ranges={label:keys for label,keys in {
+        '有效期限':('valid_from','valid_to'),
+        '营业期限':('business_term_start','business_term_end'),
+    }.items() if all(key in candidates for key in keys)}
+    aliases.update({label:label for label in ranges})
+    date_token=r'[0-9]{4}[.年/-][0-9]{1,2}[.月/-][0-9]{1,2}日?'
+    range_pattern=re.compile(r'('+date_token+r')\s*[-—至]\s*('+date_token+r'|长期)')
     label_patterns = ['[ \t]*'.join(re.escape(c) for c in a) for a in sorted(aliases,key=len,reverse=True)]
+    demographics='|'.join('[ \t]*'.join(re.escape(c) for c in a)
+        for a in sorted(aliases,key=len,reverse=True) if aliases[a] in {'ethnicity','birth_date','nationality'})
+    gender_neighbor=re.compile(r'(Male|Female|男|女|M|F)[ \t]*('+demographics+r')[ \t]*[:：]?[ \t]*(.*)') if demographics else None
+    def add(key, value, block, raw=None):
+        original=raw if raw is not None else value
+        if key in ranges:
+            match=range_pattern.fullmatch(value.strip())
+            if match:
+                for target,token in zip(ranges[key],match.groups()):
+                    add(target,token,block,original)
+            return
+        if key=='name' and 'gender' in candidates:
+            holder=re.fullmatch(r'([\u4e00-\u9fff·]{2,12})[ \t]*性[ \t]*别[ \t]*[:：]?[ \t]*([男女MF].*)',value.strip())
+            if holder and (holder[2] in {'男','女','M','F'} or
+                           (gender_neighbor and gender_neighbor.fullmatch(holder[2]))):
+                add('gender',holder[2],block,original)
+                value=holder[1]
+        # A closed gender token followed by a printed label is unambiguous.
+        # Do not globally accept separator-free labels inside ordinary values.
+        match=gender_neighbor.fullmatch(value.strip()) if key=='gender' and gender_neighbor else None
+        if match:
+            neighbor=aliases[re.sub(r'\s','',match[2])]
+            tail=match[3].strip()
+            normalized_tail=_normalize(neighbor,tail)
+            safe=bool(tail) and not re.search('|'.join(label_patterns),tail)
+            if neighbor=='birth_date':
+                safe=safe and bool(re.fullmatch(r'[0-9]{4}-[0-9]{2}(?:-[0-9]{2})?',normalized_tail or ''))
+            elif neighbor=='ethnicity':
+                safe=safe and bool(re.fullmatch(r'[\u4e00-\u9fff]{1,12}',tail))
+            if safe: add(neighbor,tail,block,original)
+            value=match[1]
+        normalized=_normalize(key,value)
+        if normalized is not None: candidates[key].append((normalized,block,original))
     pattern=re.compile(r'(?<![A-Za-z\u4e00-\u9fff])('+'|'.join(label_patterns)+r')(?:[ \t]*[:：][ \t]*|[ \t]*\n|[ \t]+|$)') if aliases else None
     # Table cells preserve rows. Free text requires an explicit label boundary.
     for block in evidence:
@@ -105,13 +142,11 @@ def _candidates(evidence, metadata):
                 if token not in aliases: matches.append(value_block)
         if len(matches)==1:
             add(aliases[label],matches[0]['text'],matches[0],label_block['text']+'：'+matches[0]['text'])
-    if 'valid_from' in candidates and 'valid_to' in candidates:
-        date_token=r'[0-9]{4}[.年/-][0-9]{1,2}[.月/-][0-9]{1,2}日?'
+    for label in ranges:
+        label_pattern='[ \t]*'.join(re.escape(c) for c in label)
         for block in evidence:
-            match=re.search(r'有效期限\s*[:：]?\s*('+date_token+r')\s*[-—至]\s*('+date_token+r'|长期)',block['text'])
-            if match:
-                add('valid_from',match[1],block,match[0])
-                add('valid_to',match[2],block,match[0])
+            for match in re.finditer(r'(?<!\w)'+label_pattern+r'\s*[:：]?\s*('+range_pattern.pattern+r')(?=$|[\s，,。;；])',plain(block['text'])):
+                add(label,match[1],block,match[0])
     return candidates
 
 

@@ -94,9 +94,9 @@ class AccountLifecycleTests(unittest.TestCase):
         for role in ['viewer', 'operator', 'admin']:
             with self.subTest(role=role):
                 self.account(role, role)
+                other_token = self.business.accounts.login(role, self.password, 'synthetic')
                 headers = self.login(role)
                 token = self.client.cookies.get('ocr_session')
-                other_token = self.business.accounts.login(role, self.password, 'synthetic')
                 response = self.client.post('/api/v1/auth/password', headers=headers,
                     json={'current_password': 'incorrect synthetic password', 'new_password': self.new_password})
                 self.assertEqual(response.status_code, 422, response.text)

@@ -31,6 +31,15 @@ class TaskError(Exception):
         self.details = details
 
 
+def upload_types(doc_type, count):
+    kinds = [doc_type] * count if isinstance(doc_type, str) else doc_type
+    if not isinstance(kinds, list) or not kinds or len(kinds) != count:
+        raise TaskError('INVALID_REQUEST', '每个文件必须按顺序指定一种材料类型', 422)
+    if any(not isinstance(kind, str) or kind not in SUPPORTED for kind in kinds):
+        raise TaskError('UNSUPPORTED_DOC_TYPE', '材料类型未受支持，请从材料目录选择', 422)
+    return kinds
+
+
 def _phone_patterns(result):
     """Only recognized mainland mobile values/candidates authorize text masking."""
     numbers = set()
@@ -171,28 +180,52 @@ class TaskStore:
                                 run=task['run_id'] if task else None, event=event, at=now(),
                                 detail=json.dumps(details)))
 
-    def create_batch(self, files, doc_type, actor, options=None):
-        from .doc_profiles import SUPPORTED as supported_profiles
-        if doc_type not in supported_profiles:
-            raise TaskError('UNSUPPORTED_DOC_TYPE', '材料类型未受支持，请从材料目录选择', 422)
-        if doc_type == 'BANK_CARD':
-            for file in files:
+    def create_batch(self, files, doc_type, actor, options=None, *, person_name=None, authorize=None):
+        return self._write_upload(files, doc_type, actor, options, person_name=person_name, authorize=authorize)
+
+    def append_batch(self, batch_id, files, doc_type, expected_revision, actor, options=None, *, user, authorize):
+        return self._write_upload(files, doc_type, actor, options, batch_id=batch_id,
+                                  expected_revision=expected_revision, user=user, authorize=authorize)
+
+    def _write_upload(self, files, doc_type, actor, options=None, *, person_name=None,
+                      batch_id=None, expected_revision=None, user=None, authorize=None):
+        kinds = upload_types(doc_type, len(files))
+        if person_name is not None:
+            if not isinstance(person_name, str) or not 1 <= len(person_name.strip()) <= 80 or not person_name.isprintable():
+                raise TaskError('INVALID_REQUEST', '人员名称需1至80个可打印字符，不能全为空白', 422)
+            person_name = person_name.strip()
+        for file, kind in zip(files, kinds):
+            if kind == 'BANK_CARD':
                 if file.get('mime') not in {'image/png', 'image/jpeg', 'image/heic', 'image/heif'} or file.get('actual_source_page_count') != 1:
                     raise TaskError('UNSUPPORTED_FORMAT', '银行卡请上传已解码的单张照片', 415)
-        batch, created, references, task_ids = identity(), now(), [], []
+        batch, created, references, task_ids = batch_id or identity(), now(), [], []
         try:
             with self.transaction() as connection:
-                account = connection.execute(text('SELECT username,display_name FROM web_users WHERE id=:id'),
+                if authorize:
+                    authorize(connection)
+                if batch_id:
+                    row = self._batch_row(connection, batch_id, user)
+                    if not row['is_person_package']:
+                        raise TaskError('INVALID_REQUEST', '旧批次未指定人员，请新建人员材料包后追加', 422)
+                    if type(expected_revision) is not int or row['package_revision'] != expected_revision:
+                        raise TaskError('RESULT_VERSION_CONFLICT', '材料包已更新，请刷新后重新确认追加', 409)
+                    connection.execute(text('UPDATE batches SET package_revision=package_revision+1 WHERE id=:id'), {'id': batch})
+                else:
+                    account = connection.execute(text('SELECT username,display_name FROM web_users WHERE id=:id'),
                                              {'id': actor}).mappings().first()
-                connection.execute(text('INSERT INTO batches(id,created_at,name_enc,owner_id,owner_snapshot_enc) '
-                                        'VALUES (:id,:at,:name,:owner,:snapshot)'),
-                                   dict(id=batch, at=created, name=self.storage.pack(LABELS[doc_type]),
-                                        owner=actor, snapshot=self.storage.pack(dict(account)) if account else None))
-                hashes = {}
-                for file in files:
+                    connection.execute(text('INSERT INTO batches(id,created_at,name_enc,owner_id,owner_snapshot_enc,person_name_enc,is_person_package) '
+                                        'VALUES (:id,:at,:name,:owner,:snapshot,:person,:package)'),
+                                   dict(id=batch, at=created, name=self.storage.pack(LABELS[kinds[0]]),
+                                        owner=actor, snapshot=self.storage.pack(dict(account)) if account else None,
+                                        person=self.storage.pack(person_name) if person_name else None,
+                                        package=int(isinstance(doc_type, list) or person_name is not None)))
+                hashes = dict(connection.execute(text('SELECT content_hash,id FROM tasks WHERE batch_id=:id'), {'id': batch}).all())
+                for file, kind in zip(files, kinds):
                     digest = file.get('content_hash') or hashlib.sha256(file['data']).hexdigest()
                     if digest in hashes:
                         duplicate = self._row(connection, hashes[digest])
+                        if duplicate['doc_type'] != kind:
+                            raise TaskError('INVALID_REQUEST', '相同文件已按其他材料类型上传，请核对原文件与所选类型', 422)
                         warnings = self.storage.unpack(duplicate['warnings_enc'], [])
                         warnings.append(dict(code='DUPLICATE_FILE', message='同批次重复文件已复用任务'))
                         connection.execute(text('UPDATE tasks SET warnings_enc=:value WHERE id=:id'),
@@ -207,10 +240,11 @@ class TaskStore:
                     warnings = [dict(code='DUPLICATE_FILE', message='其他批次存在相同文件，本批次独立处理')] if duplicate else []
                     params = dict(id=task_id, batch=batch, run=run_id, at=created,
                                   expires=(datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
-                                  hash=digest, doc=doc_type, reference=reference,
+                                  hash=digest, doc=kind, reference=reference,
                                   meta=self.storage.pack(dict(file_name=file['name'], file_size=len(file['data']), mime_type=file['mime'],
                                       actual_source_page_count=file.get('actual_source_page_count'), processed_content_hash=file.get('processed_content_hash'))),
-                                  options=self.storage.pack(dict(options or {}, **({'bank_admission': file['admission']} if file.get('admission') else {}))), warnings=self.storage.pack(warnings))
+                                  options=self.storage.pack(dict(options or {}, abnormal_only=kind == 'MEDICAL_REPORT' and bool((options or {}).get('abnormal_only')),
+                                      **({'bank_admission': file['admission']} if file.get('admission') else {}))), warnings=self.storage.pack(warnings))
                     connection.execute(text('''INSERT INTO tasks
                         (id,batch_id,run_id,status,created_at,updated_at,expires_at,content_hash,doc_type,input_ref,meta_enc,options_enc,warnings_enc)
                         VALUES (:id,:batch,:run,'QUEUED',:at,:at,:expires,:hash,:doc,:reference,:meta,:options,:warnings)'''), params)
@@ -220,11 +254,28 @@ class TaskStore:
                     self._audit(connection, 'task_created', actor, dict(id=task_id, run_id=run_id))
                     task_ids.append(task_id)
                     hashes[digest] = task_id
+                if batch_id:
+                    self._audit(connection, 'package_appended', actor, batch_id=batch, added_tasks=len(task_ids))
             return dict(batch_id=batch, task_ids=task_ids)
         except BaseException:
             for reference in references:
                 self.storage.delete(reference)
             raise
+
+    def confirm_person(self, batch_id, person_name, expected_revision, actor, *, user, authorize):
+        if not isinstance(person_name, str) or not 1 <= len(person_name.strip()) <= 80 or not person_name.isprintable():
+            raise TaskError('INVALID_REQUEST', '人员名称需1至80个可打印字符，不能全为空白', 422)
+        with self.transaction() as connection:
+            authorize(connection)
+            row = self._batch_row(connection, batch_id, user)
+            if not row['is_person_package']:
+                raise TaskError('INVALID_REQUEST', '当前批次不是人员材料包', 422)
+            if type(expected_revision) is not int or row['package_revision'] != expected_revision:
+                raise TaskError('RESULT_VERSION_CONFLICT', '材料包已更新，请刷新后重新确认姓名', 409)
+            connection.execute(text('UPDATE batches SET person_name_enc=:name,package_revision=package_revision+1 WHERE id=:id'),
+                               dict(id=batch_id, name=self.storage.pack(person_name.strip())))
+            self._audit(connection, 'package_person_confirmed', actor, batch_id=batch_id)
+        return self.batch(batch_id, user=user)
 
     def _public(self, row, policy=None):
         from .exporting import required_export_blockers
@@ -249,7 +300,7 @@ class TaskStore:
                            status=row['status'], progress=row['progress'], progress_detail=progress_detail, doc_type=row['doc_type'],
                            doc_type_confidence=None, doc_type_confidence_method='unavailable',
                            page_count=len(pages), pages=pages, content_hash=row['content_hash'],
-                           created_at=row['created_at'], updated_at=row['updated_at'],
+                           created_at=row['created_at'], updated_at=row['updated_at'], expires_at=row['expires_at'],
                            error=json.loads(row['error_json']) if row['error_json'] else None,
                            warnings=self.storage.unpack(row['warnings_enc'], []), summary=None,
                            export_ready=not export_blockers, export_blockers=export_blockers,
@@ -280,9 +331,18 @@ class TaskStore:
         policy = policy if policy is not None else self.required_policy()
         tasks = self.tasks(batch_id, policy=policy, user=user)
         with self.engine.connect() as connection:
-            row = connection.execute(text('SELECT * FROM batches WHERE id=:id'), {'id': batch_id}).mappings().first()
-            if row is None:
-                raise TaskError('INVALID_REQUEST', '批次不存在或已到期清理', 404)
+            row = self._batch_row(connection, batch_id, user)
+            suggestions = []
+            if row['is_person_package']:
+                from .person_packages import name_suggestions
+                results = []
+                for task in connection.execute(text('SELECT id,doc_type,result_enc,meta_enc FROM tasks WHERE batch_id=:id'),
+                                               {'id': batch_id}).mappings():
+                    result = self.storage.unpack(task['result_enc'])
+                    if result:
+                        results.append(dict(result, task_id=task['id'], doc_type=task['doc_type'],
+                                            _source_filename=self.storage.unpack(task['meta_enc']).get('file_name')))
+                suggestions = name_suggestions(results)
             counts = {state: sum(t['status'] == state for t in tasks) for state in TERMINAL | ACTIVE | {'QUEUED', 'NEED_REVIEW'}}
             if any(t['status'] not in TERMINAL for t in tasks) or not tasks:
                 state = 'PROCESSING'
@@ -296,12 +356,27 @@ class TaskStore:
                            key=lambda kind: list(LABELS).index(kind) if kind in LABELS else len(LABELS))
             labels = [LABELS.get(kind, '待确定类型') for kind in kinds]
             display_name = ('混合材料 · ' + ' / '.join(labels)) if len(labels) > 1 else labels[0] if labels else '待确定类型'
+            person_name = self.storage.unpack(row['person_name_enc']) if row['person_name_enc'] is not None else None
+            sides = set(kinds) & {'ID_CARD_FRONT', 'ID_CARD_BACK'}
+            pairing = ('unassigned' if not row['is_person_package'] else 'both_present' if len(sides) == 2
+                       else 'missing_back' if 'ID_CARD_FRONT' in sides else 'missing_front' if sides else 'not_provided')
+            warnings = ([dict(code='MISSING_ID_FRONT', message='缺少身份证人像面，请核对人员归属后补充上传')]
+                        if pairing == 'missing_front' else [])
+            if person_name:
+                display_name = person_name + ' · ' + display_name
+            elif row['is_person_package']:
+                display_name = '人员材料包·姓名待确认 · ' + display_name
+            if len(suggestions) > 1 or person_name and any(s['name'] != person_name for s in suggestions):
+                warnings.append(dict(code='PERSON_NAME_CONFLICT', message='识别姓名存在差异，请对照来源文件核对归属；系统不会自动移动材料'))
             return dict(batch_id=batch_id, name=display_name, display_name=display_name, owner=owner,
+                        person_name=person_name, is_person_package=bool(row['is_person_package']), name_suggestions=suggestions,
+                        package_revision=row['package_revision'], id_card_pairing=pairing,
                         required_fields_revision=policy['revision'],
                         status=state, task_count=len(tasks), file_count=len(tasks), total_count=len(tasks), completed_count=counts['COMPLETED'],
                         failed_count=counts['FAILED'], cancelled_count=counts['CANCELLED'], rejected_count=counts['REJECTED'],
                         need_review_count=counts['NEED_REVIEW'], created_at=row['created_at'],
-                        updated_at=max((t['updated_at'] for t in tasks), default=row['created_at']), warnings=[])
+                        expires_at=min((t['expires_at'] for t in tasks), default=None),
+                        updated_at=max((t['updated_at'] for t in tasks), default=row['created_at']), warnings=warnings)
 
     def batches(self, page=1, page_size=20, date_from=None, date_to=None, *, user=None):
         if date_from and date_to and date_from>date_to:

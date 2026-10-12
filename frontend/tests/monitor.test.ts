@@ -17,9 +17,17 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status, headers: { 'content-type': 'application/json', 'X-Request-ID': 'e_monitor1' },
 })
 
+async function eventually(check: () => boolean) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (check()) return
+    await new Promise(resolve => setTimeout(resolve, 5))
+  }
+  assert.ok(check(), 'automatic reconciliation did not finish')
+}
+
 function makeServer() {
   const db = {
-    batches: [] as Batch[], tasks: {} as Record<string, Task[]>, page2: [] as Batch[], failNextList: 0, lastAbnormalOnly: '', listQueries: [] as string[], missingBatches: new Set<string>(),
+    batches: [] as Batch[], acceptedBatches: {} as Record<string, Batch>, tasks: {} as Record<string, Task[]>, page2: [] as Batch[], failNextList: 0, failNextTasks: 0, lastAbnormalOnly: '', listQueries: [] as string[], missingBatches: new Set<string>(),
   }
   const fetcher: typeof fetch = async (input, init) => {
     const url = String(input)
@@ -37,6 +45,7 @@ function makeServer() {
       return json({ items, total: [...db.batches, ...db.page2].filter(inRange).length, page, page_size: 50 })
     }
     if (url.includes('/batches/') && url.includes('/tasks')) {
+      if (db.failNextTasks > 0) { db.failNextTasks--; throw new TypeError('temporary task-list failure') }
       const batchId = url.split('/batches/')[1]!.split('/tasks')[0]
       if (db.missingBatches.has(batchId)) return json({ code: 'INVALID_REQUEST' }, 404)
       return json(db.tasks[batchId] ?? [])
@@ -49,6 +58,11 @@ function makeServer() {
       delete db.tasks[batchId]
       return json({ batch_id: batchId, task_ids: tasks.map(task => task.task_id), cleanup_pending: false })
     }
+    if (url.includes('/batches/') && method === 'GET') {
+      const batchId = url.split('/batches/')[1]!
+      const batch = [...db.batches, ...db.page2].find(batch => batch.batch_id === batchId) ?? db.acceptedBatches[batchId]
+      return db.missingBatches.has(batchId) || !batch ? json({ code: 'INVALID_REQUEST' }, 404) : json(batch)
+    }
     if (url.includes('/batches') && method === 'POST') {
       const form = init?.body as FormData
       const files = form.getAll('files') as File[]
@@ -56,6 +70,7 @@ function makeServer() {
       db.lastAbnormalOnly = String(form.get('abnormal_only'))
       const batchId = crypto.randomUUID()
       db.batches.unshift(mkBatch(batchId))
+      db.acceptedBatches[batchId] = db.batches[0]!
       db.tasks[batchId] = files.map(file => mkTask(crypto.randomUUID(), batchId, 'QUEUED', docType))
       return json({ batch_id: batchId, task_ids: db.tasks[batchId].map(t => t.task_id) }, 201)
     }
@@ -87,6 +102,42 @@ function makeMonitorCase() {
   return { server, monitor, signal }
 }
 
+test('task reconciliation remains scheduled when batch metadata advances during an older task read', async () => {
+  const server = makeServer()
+  const id = crypto.randomUUID(), task = mkTask(crypto.randomUUID(), id, 'COMPLETED', 'DIPLOMA')
+  const oldBatch = { ...mkBatch(id, 'COMPLETED'), package_revision: 0 }
+  server.db.batches = [oldBatch]
+  server.db.tasks[id] = [task]
+  const entered = Promise.withResolvers<void>(), released = Promise.withResolvers<void>()
+  let pause = false
+  const client = new BusinessApi(async (input, init) => {
+    if (pause && String(input).endsWith('/tasks')) {
+      pause = false
+      entered.resolve()
+      await released.promise
+      return json([task])
+    }
+    return server.fetcher(input, init)
+  })
+  const monitor = createMonitor(() => client, { intervalMs: 15, isVisible: () => true })
+  const signal = new AbortController().signal
+  try {
+    await monitor.pollOnce(signal)
+    pause = true
+    const olderRead = monitor.pollOnce(signal, true)
+    await entered.promise
+    const updated = { ...oldBatch, package_revision: 1 }
+    server.db.batches = [updated]
+    server.db.page2 = [updated]
+    server.db.tasks[id] = [{ ...task, result_revision: 2 }]
+    await monitor.loadMore(signal)
+    released.resolve()
+    assert.equal(await olderRead, 15, 'new pending reconciliation must keep the loop alive')
+    assert.equal(await monitor.pollOnce(signal), null)
+    assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, 2)
+  } finally { released.resolve(); monitor.dispose() }
+})
+
 test('remote batch deletion removes only its cache and continues peer polling', async () => {
   const server = makeServer()
   const removed: { id: string; taskIds: string[] }[] = []
@@ -106,6 +157,7 @@ test('remote batch deletion removes only its cache and continues peer polling', 
   try {
     await monitor.pollOnce(signal)
     await monitor.loadMore(signal)
+    monitor.stop() // The remainder explicitly drives each read.
     monitor.state.pending[lost.task_id] = { operation: 'rerun', task_id: lost.task_id, run_id: lost.run_id }
     server.db.batches = [mkBatch(peer)]
     server.db.missingBatches.add(deleted)
@@ -133,6 +185,38 @@ test('a changed batch timestamp refreshes completed task revisions', async () =>
     await monitor.pollOnce(signal())
     server.db.batches[0]!.updated_at = '2026-10-08T11:00:00Z'
     server.db.tasks[id] = [{ ...task, result_revision: 2 }]
+    await monitor.pollOnce(signal())
+    assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, 2)
+  } finally { monitor.dispose() }
+})
+
+test('completed task refresh remains pending after a transient task-list failure', async () => {
+  const { server, monitor, signal } = makeMonitorCase()
+  const id = crypto.randomUUID()
+  server.db.batches = [{ ...mkBatch(id, 'COMPLETED'), updated_at: '2026-10-08T10:00:00Z' }]
+  server.db.tasks[id] = [mkTask(crypto.randomUUID(), id, 'COMPLETED', 'DIPLOMA')]
+  try {
+    await monitor.pollOnce(signal())
+    server.db.batches[0]!.updated_at = '2026-10-08T11:00:00Z'
+    server.db.tasks[id]![0]!.result_revision = 2
+    server.db.failNextTasks = 1
+    assert.equal(await monitor.pollOnce(signal(), true), 2000)
+    await monitor.pollOnce(signal())
+    assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, 2)
+  } finally { monitor.dispose() }
+})
+
+test('a forced refresh survives list failure for completed tasks on older pages', async () => {
+  const { server, monitor, signal } = makeMonitorCase()
+  const id = crypto.randomUUID()
+  server.db.page2 = [mkBatch(id, 'COMPLETED')]
+  server.db.tasks[id] = [mkTask(crypto.randomUUID(), id, 'COMPLETED', 'DIPLOMA')]
+  try {
+    await monitor.loadMore(signal())
+    await monitor.loadTasks(id, signal())
+    server.db.tasks[id]![0]!.result_revision = 2
+    server.db.failNextList = 1
+    await monitor.pollOnce(signal(), true)
     await monitor.pollOnce(signal())
     assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, 2)
   } finally { monitor.dispose() }
@@ -546,6 +630,121 @@ test('loadMore appends older pages while keeping newest-first order', async () =
   }
 })
 
+test('late overlapping pagination cannot replace refreshed terminal batch metadata', async () => {
+  const id = crypto.randomUUID()
+  const original: Batch = { ...mkBatch(id, 'COMPLETED'), is_person_package: true, person_name: '原姓名',
+    package_revision: 0, id_card_pairing: 'not_provided', updated_at: '2026-10-12T00:00:00Z' }
+  let batch = original
+  let task = mkTask(crypto.randomUUID(), id, 'NEED_REVIEW', 'DIPLOMA')
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>()
+  const client = new BusinessApi(async input => {
+    const url = String(input)
+    if (url.includes('/batches?')) {
+      const page = Number(new URL(url, 'http://localhost').searchParams.get('page'))
+      const snapshot = json({ items: [batch], total: 2, page, page_size: 50 })
+      if (page === 2) { entered.resolve(); await release.promise }
+      return snapshot
+    }
+    if (url.endsWith('/tasks')) return json([task])
+    if (url.endsWith(`/batches/${id}`)) return json(batch)
+    throw new Error('UNEXPECTED_TEST_PATH')
+  })
+  const monitor = createMonitor(() => client, { isVisible: () => true })
+  const signal = new AbortController().signal
+  try {
+    await monitor.pollOnce(signal)
+    const more = monitor.loadMore(signal)
+    await entered.promise
+    batch = { ...original, person_name: '新姓名', package_revision: 1, id_card_pairing: 'missing_back',
+      updated_at: '2026-10-12T00:01:00Z' }
+    task = { ...task, result_revision: task.result_revision + 1 }
+    assert.equal(await monitor.pollOnce(signal, true), null)
+    const refreshed = monitor.state.entries[id]!.batch
+    release.resolve()
+    await more
+    assert.equal(monitor.state.entries[id]!.batch, refreshed)
+    assert.equal(monitor.state.entries[id]!.batch!.person_name, '新姓名')
+    assert.equal(monitor.state.entries[id]!.batch!.package_revision, 1)
+    assert.equal(monitor.state.entries[id]!.batch!.id_card_pairing, 'missing_back')
+    assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, task.result_revision)
+    assert.equal(monitor.state.polling, false)
+    assert.equal(await monitor.pollOnce(signal), null)
+  } finally { release.resolve(); monitor.dispose() }
+})
+
+test('new processing batches from pagination resume task reads after polling stopped', async () => {
+  const server = makeServer(), older = crypto.randomUUID()
+  const current = mkBatch(crypto.randomUUID(), 'COMPLETED')
+  server.db.batches = [current]
+  server.db.tasks[current.batch_id] = [mkTask(crypto.randomUUID(), current.batch_id, 'COMPLETED', 'DIPLOMA')]
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>()
+  const client = new BusinessApi(async (input, init) => {
+    if (String(input).endsWith(`/batches/${older}/tasks`)) {
+      entered.resolve()
+      await release.promise
+    }
+    return server.fetcher(input, init)
+  })
+  const monitor = createMonitor(() => client, { intervalMs: 15, isVisible: () => true })
+  const signal = new AbortController().signal
+  try {
+    assert.equal(await monitor.pollOnce(signal), null)
+    server.db.page2 = [mkBatch(older, 'PROCESSING')]
+    server.db.tasks[older] = [mkTask(crypto.randomUUID(), older, 'OCR', 'DIPLOMA')]
+    await monitor.loadMore(signal)
+    await entered.promise
+    assert.equal(monitor.state.polling, true)
+    assert.equal(monitor.state.entries[older]!.tasksLoaded, false)
+    release.resolve()
+    await eventually(() => monitor.state.entries[older]!.tasksLoaded)
+    assert.equal(monitor.state.entries[older]!.tasks[0]!.status, 'OCR')
+    server.db.page2 = [{ ...server.db.page2[0]!, status: 'COMPLETED' }]
+    server.db.tasks[older] = [{ ...server.db.tasks[older]![0]!, status: 'COMPLETED' }]
+    await eventually(() => !monitor.state.polling)
+    assert.equal(monitor.state.entries[older]!.tasks[0]!.status, 'COMPLETED')
+  } finally { release.resolve(); monitor.dispose() }
+})
+
+test('changed terminal pagination resumes fenced task reconciliation without forcing unchanged peers', async () => {
+  const server = makeServer(), id = crypto.randomUUID(), peer = crypto.randomUUID()
+  const original: Batch = { ...mkBatch(id, 'COMPLETED'), package_revision: 0, updated_at: '2026-10-12T00:00:00Z' }
+  server.db.batches = [original, mkBatch(peer, 'COMPLETED')]
+  server.db.tasks[id] = [mkTask(crypto.randomUUID(), id, 'NEED_REVIEW', 'DIPLOMA')]
+  server.db.tasks[peer] = [mkTask(crypto.randomUUID(), peer, 'COMPLETED', 'DIPLOMA')]
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>()
+  let pause = false, peerReads = 0
+  const client = new BusinessApi(async (input, init) => {
+    const url = String(input)
+    if (url.endsWith(`/batches/${peer}/tasks`)) peerReads++
+    if (pause && url.endsWith(`/batches/${id}/tasks`)) {
+      pause = false
+      entered.resolve()
+      await release.promise
+    }
+    return server.fetcher(input, init)
+  })
+  const monitor = createMonitor(() => client, { isVisible: () => true })
+  const signal = new AbortController().signal
+  try {
+    assert.equal(await monitor.pollOnce(signal), null)
+    const beforePeerReads = peerReads
+    const updated = { ...original, package_revision: 1, updated_at: '2026-10-12T00:01:00Z' }
+    server.db.batches = [updated, server.db.batches[1]!]
+    server.db.page2 = [updated]
+    server.db.tasks[id] = [{ ...server.db.tasks[id]![0]!, result_revision: 2 }]
+    pause = true
+    await monitor.loadMore(signal)
+    await entered.promise
+    assert.equal(monitor.state.polling, true)
+    assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, 1)
+    release.resolve()
+    await eventually(() => !monitor.state.polling)
+    assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, 2)
+    assert.equal(monitor.state.entries[id]!.batch!.package_revision, 1)
+    assert.equal(peerReads, beforePeerReads)
+  } finally { release.resolve(); monitor.dispose() }
+})
+
 test('session expiry reports unauthorized once, stops polling and keeps batches for relogin', async () => {
   let expired = false
   let unauthorizedCount = 0
@@ -557,6 +756,7 @@ test('session expiry reports unauthorized once, stops polling and keeps batches 
       return json({ items: [mkBatch(batchId, 'PROCESSING')], total: 1, page: 1, page_size: 50 })
     }
     if (url.includes('/tasks')) return json([mkTask(crypto.randomUUID(), batchId, 'QUEUED', 'DIPLOMA')])
+    if (url.endsWith(`/batches/${batchId}`)) return json(mkBatch(batchId, 'PROCESSING'))
     throw new TypeError(`unmatched ${init?.method ?? 'GET'} ${url}`)
   }) as typeof fetch
   const client = new BusinessApi(fetcher)

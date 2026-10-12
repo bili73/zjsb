@@ -46,6 +46,8 @@ Three dedicated workbook tests, existing business/review/export tests and all 44
 
 ## Consequences
 
+The user-approved [complete personnel table](2026-10-12-person-package-full-field-table.md) partially extends the grouped-only layout for explicit person packages: their first sheet contains every selected current business field. Ordinary batches and all existing type/member/generic detail sheets remain unchanged, including safe saved values and required-only selection gates.
+
 The workbook layout is an externally visible format change; technical-sheet tests and contracts are explicitly updated. Unlinked findings carry a readable missing-result label without changing the approved required-value export gate. Existing downloaded workbooks are preserved, and the still-running old service must be restarted before it uses the new exporter.
 
 

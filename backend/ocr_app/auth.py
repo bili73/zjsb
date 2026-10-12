@@ -15,7 +15,7 @@ from sqlalchemy import text
 from .task_store import TaskError
 
 SESSION_COOKIE = 'ocr_session'
-SESSION_SECONDS = 12 * 3600
+SESSION_SECONDS = 30 * 24 * 3600
 
 
 def same_origin(request):
@@ -230,6 +230,7 @@ class Accounts:
             if current is None or not current['enabled'] or current['password_hash'] != row['password_hash']:
                 raise TaskError('UNAUTHORIZED', '用户名或密码错误', 401)
             c.execute(text('DELETE FROM web_sessions WHERE expires_at <= :now'),{'now':time()})
+            c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': row['id']})
             if isinstance(previous_token,str):
                 c.execute(text('DELETE FROM web_sessions WHERE token_hash=:hash'),{'hash':hashlib.sha256(previous_token.encode()).hexdigest()})
             c.execute(text('INSERT INTO web_sessions VALUES (:hash,:user,:expires)'),

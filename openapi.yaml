@@ -1,14 +1,14 @@
 openapi: 3.0.3
 info:
   title: 证件关键信息提取系统 API
-  version: 1.21.0
+  version: 1.22.0
   description: |
-    内部证件信息提取系统 API 契约（SPEC v1.27）。
+    内部证件信息提取系统 API 契约（SPEC v1.28）。
     批次按不可变上传账号ID隔离：管理员查看全部，operator/viewer仅能访问自己的批次和所属任务。列表先过滤归属再计算总数和分页，越权ID与不存在ID统一404；结果、原图、复核、取消、重跑、完整字段及导出同样校验。混合账号导出整次拒绝，不输出部分结果。删除批次仍仅管理员可操作。
     Batch.owner返回上传人署名；姓名使用当前账号信息，删除登录前保留加密署名快照。历史创建记录完整且操作者唯一才回填归属，无法关联账号的记录仅管理员可见，同名重建不继承。管理员可编辑显示姓名，不修改账号名、角色、密码、启用状态或会话。
     Task.progress_detail提供真实页/区域处理计数；总计划未知时返回null，不估算推理长度或剩余时间。progress保留兼容但不再作为整体进度依据。
     管理员支持创建、启用/禁用、删除其他账号及重置密码；所有角色可凭原密码修改自己的密码。删除保留历史任务，禁用及改密撤销全部会话；保护当前账号和最后一个启用的管理员。
-    六类检查包含肝功，优先汇总明确异常；无小结时按有来源的检测明细汇总正常，报告A级可作摘要依据，不覆盖阳性、异常或矛盾，也不修改检测行分类/复核。
+    六类检查包含肝功，优先汇总明确异常；无小结时按有来源的正常检测明细汇总为“已识别明细未见异常”，不宣称整组完整。明确原文正常结论和人工值保持不变；报告A级可作摘要依据，不覆盖阳性、异常或矛盾，也不修改检测行分类/复核。
     明细缺失或未知不默认正常；完整有序且已闭合的原生PDF项目意义表可证明未载明，使用value=null/absence_reason=NOT_ON_DOCUMENT、derived和项目来源，页面/医疗Excel显示报告未载明。保留人工优先、历史密文与既有复核要求。
 
     当前实现11种材料目录、受控上传、批次/任务查询、人工补正、完整原件预览、字段reveal及XLSX导出。
@@ -16,7 +16,7 @@ info:
     银行卡支持整张照片自动识别，失败逐张裁图重识别或补录；不接收PDF，不声称通用CVV自动检测可靠。
     护照、身份证、执照与户口本暂无真实样本准确率验收；本地校验PASS不等于官方真实性。
     当前列表支持分页和UTC+8创建日期范围过滤，不支持关键词/状态过滤；重跑只接受run_id及expected_revision并沿用类型/选项。
-    当前批次仅含一种材料类型，不提供同一人员材料包、跨批次身份证配套检查或追加上传；Batch.warnings目前为空，不能作为材料齐全证明。
+    人员材料包支持一次选齐多种材料，以file_types按文件顺序指定类型；普通类型批次仍用doc_type_hint。自动分类仅提供可修改的建议，不判断人员归属。追加绑定package_revision；不按姓名自动合并，不转换历史批次。身份证配套仅检查同包两面材料存在，不证明同一人或真实性，不改变必填导出条件。
     未经标定置信度保持null；人工补正后仍须解决必填、冲突和覆盖问题才可COMPLETED。导出单独仅检查已保存结果必填有值，不更改审核或识别状态。
     x-implemented:false路径为后续目标；公开路径保持/api/v1。所有原始执行与证据不可被人工版本覆盖。
 
@@ -249,7 +249,7 @@ paths:
       tags: [system]
       summary: 账号密码登录
       security: []
-      description: 仅同源Origin接受登录，JSON正文最多8192字节；每个直接客户端地址五分钟内最多五次尝试，下一次返回429。无默认账号，部署时用本地管理命令创建。成功设置host-only、HttpOnly、SameSite=Strict的ocr_session，HTTPS增加Secure，仅当前loopback HTTP开发模式可省略Secure。新登录轮换旧会话；不返回密码或Cookie令牌正文。会话绝对有效期12小时，不因轮询续期。
+      description: 仅同源Origin接受登录，JSON正文最多8192字节；每个直接客户端地址五分钟内最多五次尝试，下一次返回429。无默认账号，部署时用本地管理命令创建。成功设置host-only、HttpOnly、SameSite=Strict的ocr_session，HTTPS增加Secure，仅当前loopback HTTP开发模式可省略Secure。新登录成功后原子撤销同一账号全部旧会话，数据库保证每账号仅一个浏览器会话；同浏览器多标签共享，其他浏览器/配置文件也视为新设备；不返回密码或Cookie令牌正文。会话绝对有效期30天，不因轮询续期。
       requestBody:
         required: true
         content:
@@ -407,7 +407,6 @@ paths:
       tags:
       - batches
       summary: 批次列表
-      description: 按创建时间降序分页；时间存储与传输保留UTC，界面固定Asia/Shanghai（UTC+8）展示。
       description: 任务批次支持按日/周/月分组及对应日期选择器，固定UTC+8，周为周一至周日，组内创建时间降序。首次默认今天，日/周/月显示所选日期所在范围；新上传回到今天所在范围。清空或点击全部日期才跨日期浏览。GET /batches可选date_from/date_to（YYYY-MM-DD，含首尾当地日期），先按UTC+8日期过滤全部历史再统计和分页；错误/倒序范围返回422。不改UTC存储时间。切换范围丢弃迟到列表响应，不清除隐藏批次的在途任务或识别结果；后台任务轮询继续。
       parameters:
       - name: status
@@ -467,7 +466,9 @@ paths:
               type: object
               required:
               - files
-              - doc_type_hint
+              oneOf:
+              - required: [doc_type_hint]
+              - required: [file_types]
               properties:
                 files:
                   type: array
@@ -479,6 +480,15 @@ paths:
                     description: 非空文件，最多50MB（50×1024×1024字节）；整批文件内容最多500MB。
                 doc_type_hint:
                   $ref: '#/components/schemas/DocTypeEnum'
+                file_types:
+                  type: string
+                  maxLength: 4096
+                  description: JSON数组字符串，按files顺序为每份指定一种DocTypeEnum；长度必须相同，不能同时传doc_type_hint。创建人员材料包，无需预填person_name，识别后提供姓名建议。不按文件名绑定，重名文件不会互相覆盖。先校验全部文件，再在一个事务内提交。
+                person_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                  description: 可选，兼容预先人工确认姓名；未提供时识别后通过person接口确认。创建独立人员材料包，不按同名合并；存储加密，不能在追加请求中更改。
                 abnormal_only:
                   type: boolean
                   default: false
@@ -508,13 +518,53 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /classify:
+    post:
+      tags: [batches]
+      summary: 建议单份材料类型（不创建任务）
+      description: operator/admin权限及会话CSRF校验。仅内存读取一个文件；PDF只检查前两页，优先文字层，图片用固定版本RapidOCR的CPU模型。全服务同时最多一份分类，不占GLM/Paddle队列；繁忙、OCR不可用或内容不明确时返回可手动选择的建议。内容优先于文件名提示，不返回识别正文、人员姓名或编号，不持久化原件与分类结果，不判断人员归属。最多50MB、4000万像素；PDF沿用上传解码限制。文件名不明确的身份证不能推定正反面，未知内容不自动分到通用识别。建议总可修改，不是准确率保证。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  minItems: 1
+                  maxItems: 1
+                  items: {type: string, format: binary}
+      responses:
+        '200':
+          description: 分类建议或待选择
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [doc_type, basis, reason, candidates]
+                properties:
+                  doc_type: {type: string, nullable: true, description: 支持的DocTypeEnum或null；null须手动选择}
+                  basis: {type: string, enum: [content, filename, unknown]}
+                  reason: {type: string, maxLength: 200}
+                  candidates:
+                    type: array
+                    items: {$ref: '#/components/schemas/DocTypeEnum'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/ErrorResponse'}
+        '413': {$ref: '#/components/responses/ErrorResponse'}
+        '415': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+
   /batches/{batch_id}:
     parameters:
     - $ref: '#/components/parameters/BatchId'
     get:
       tags:
       - batches
-      summary: 批次详情（Batch级完整性告警尚未实现）
+      summary: 批次详情及人员材料包的身份证配套提示
       responses:
         '200':
           description: OK
@@ -580,13 +630,7 @@ paths:
       tags:
       - batches
       summary: 向已有批次补充上传文件
-      description: '未实现的未来合同；当前服务不提供该操作。
-
-        用于完整性告警的补救（如缺少身份证反面），或后续追加材料。
-
-        追加后重新触发 Batch 级完整性检查，Batch ID 保持不变。
-
-        '
+      description: 向is_person_package为true的材料包追加，姓名待确认也可操作。operator仅自己的包，admin可操作全部，viewer不可写；写事务内再次核验会话与归属。file_types支持一次补交多种材料，按files顺序绑定；doc_type_hint兼容单类型，两者不能同时提交。不按姓名自动关联。expected_revision必须匹配package_revision，否则409 RESULT_VERSION_CONFLICT。新任务独立排队，旧任务/结果/到期时间不变；新任务自追加起七天清理。相同文件同类型复用原任务，返回的新task_ids可为空；相同文件不同类型返回422。整次校验/写入原子失败，容量限制同首次上传。人员名称不可在此更改。
       requestBody:
         required: true
         content:
@@ -595,6 +639,10 @@ paths:
               type: object
               required:
               - files
+              - expected_revision
+              oneOf:
+              - required: [doc_type_hint]
+              - required: [file_types]
               properties:
                 files:
                   type: array
@@ -603,9 +651,17 @@ paths:
                   items:
                     type: string
                     format: binary
-                    description: 非空文件，最多50MB（50×1024×1024字节）；整批文件内容最多500MB。此追加接口尚未实现。
+                    description: 非空文件，最多50MB（50×1024×1024字节）；本次文件内容最多500MB。
                 doc_type_hint:
                   $ref: '#/components/schemas/DocTypeEnum'
+                expected_revision:
+                  type: integer
+                  minimum: 0
+                  description: 当前材料包的package_revision；multipart中为非负十进制文本。
+                file_types:
+                  type: string
+                  maxLength: 4096
+                  description: JSON数组字符串，按files顺序指定每份材料类型；长度须相同。与doc_type_hint二选一。人员归属继承现有材料包。
                 abnormal_only:
                   type: boolean
                   default: false
@@ -617,6 +673,7 @@ paths:
               schema:
                 type: object
                 properties:
+                  batch_id: {type: string, format: uuid}
                   task_ids:
                     type: array
                     items:
@@ -626,8 +683,44 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
-      x-implemented: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ErrorResponse'
+        '415':
+          $ref: '#/components/responses/ErrorResponse'
+      x-implemented: true
 
+  /batches/{batch_id}/person:
+    patch:
+      tags: [batches]
+      summary: 确认或修改人员材料包姓名
+      description: 仅operator自己的包或admin任意包；viewer不可写。姓名去首尾空白后为1至80个可打印字符，加密保存。事务内重新核验会话及归属；expected_revision匹配package_revision后递增，与追加共享版本。只修改包标签，不改识别结果、文件、归属和到期时间；后续识别不会覆盖。不提供自动人员合并。
+      parameters:
+      - name: batch_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PersonNameRequest'}
+      responses:
+        '200':
+          description: 姓名已保存，返回最新材料包
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Batch'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
   /batches/{batch_id}/rename:
     parameters:
     - $ref: '#/components/parameters/BatchId'
@@ -1150,7 +1243,7 @@ paths:
       tags:
       - export
       summary: 所选保存结果必填值齐全后导出XLSX
-      description: batch_id与task_ids二选一，versions须精确覆盖整个选择；任一无保存结果或必填缺值则409 EXPORT_BLOCKED且整次阻止。仅operator/admin可导出，无额外理由；NEED_REVIEW/FAILED已有结果且必填齐全也可导出，格式/置信度/冲突/coverage不增加门禁或改状态。证件输出已保存业务字段；体检为单个18列审核记录台账，每报告一行，大项数量为本次体检项目意义清单count，异常原名/结果/诊断汇总一格；身高/体重记录测量而不计异常，小结不算项目，BMI保留，不默认正常、不自动分级/录取。内部状态、UUID和详情留在应用。
+      description: batch_id与task_ids二选一，versions须精确覆盖整个选择；任一无保存结果或必填缺值则409 EXPORT_BLOCKED且整次阻止。仅operator/admin可导出，无额外理由；NEED_REVIEW/FAILED已有结果且必填齐全也可导出，格式/置信度/冲突/coverage不增加门禁或改状态。人员包第一张人员信息总表一包一行，包含所选材料类型的全部业务字段（含选填与空值），类型前缀区分同名字段，同类多份编号分组并附来源文件；体检总表保留全部17个profile字段及异常指标，户口成员和通用正文/键值完整保留。后附分类明细。普通批次格式不变。证件输出已保存业务字段；体检明细为单个18列审核记录台账，每报告一行，大项数量为本次体检项目意义清单count，异常原名/结果/诊断汇总一格；身高/体重记录测量而不计异常，小结不算项目，BMI保留，不默认正常、不自动分级/录取。内部状态、UUID和详情留在应用。
       requestBody:
         required: true
         content:
@@ -1458,12 +1551,45 @@ components:
         username: {type: string, nullable: true, pattern: '^[a-z0-9_.-]{1,64}$', description: 当前账号名或删除前保留的账号名；无法恢复的历史账号为null}
         display_name: {type: string, nullable: true, minLength: 1, maxLength: 80, description: 当前姓名或删除前保留的姓名；无法恢复时null}
         account_exists: {type: boolean, description: 原账号是否仍存在，禁用账号仍为true；true时ID和账号名及姓名均非null}
+    PersonNameSuggestion:
+      type: object
+      required: [name, sources]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 80}
+        sources:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [task_id, doc_type, file_name]
+            properties:
+              task_id: {type: string, format: uuid}
+              doc_type: {$ref: '#/components/schemas/DocTypeEnum'}
+              file_name: {type: string}
+    PersonNameRequest:
+      type: object
+      additionalProperties: false
+      required: [person_name, expected_revision]
+      properties:
+        person_name: {type: string, minLength: 1, maxLength: 80}
+        expected_revision: {type: integer, minimum: 0}
     Batch:
       type: object
       properties:
         required_fields_revision: {type: integer, minimum: 0, description: 当前共享必填设置版本，与任务结果版本独立}
         batch_id: {type: string, format: uuid}
         owner: {$ref: '#/components/schemas/BatchOwner'}
+        person_name: {type: string, nullable: true, minLength: 1, maxLength: 80, description: 人工确认的材料归属；待确认包及普通批次为null；不会被识别自动覆盖，不按同名合并}
+        is_person_package: {type: boolean, description: 独立于姓名的材料包标记；既有明确命名的包迁移为true，普通批次为false}
+        name_suggestions:
+          type: array
+          description: 最新保存字段中的姓名建议及来源，不增加模型调用，不证明身份；不从户主、法人或通用正文猜测。不同姓名全部保留。
+          items: {$ref: '#/components/schemas/PersonNameSuggestion'}
+        package_revision: {type: integer, minimum: 0, description: 姓名确认与追加共享的乐观版本，每次成功写入递增，包括重复文件复用}
+        id_card_pairing:
+          type: string
+          enum: [unassigned, not_provided, missing_front, missing_back, both_present]
+          description: unassigned为无人员归属的旧批次；其余只反映本包当前上传类型。missing_back表示可选国徽面未上传，不产生MISSING_ID_BACK告警；人像面可独立识别和导出。both_present仍需人工核对同一人和内容，不等于识别成功或真实性。
         status: {$ref: '#/components/schemas/BatchStatus'}
         display_name:
           type: string
@@ -1479,6 +1605,7 @@ components:
           type: array
           items: {$ref: '#/components/schemas/Warning'}
         created_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time, nullable: true, description: 当前剩余材料中最早的到期时间；追加不会延长旧材料期限}
         finished_at: {type: string, format: date-time, nullable: true}
 
     BatchList:
@@ -1553,6 +1680,7 @@ components:
         extract_options: {$ref: '#/components/schemas/ExtractOptions'}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time, description: 本材料独立到期时间，上传或追加后七天}
 
     TaskProgressDetail:
       type: object

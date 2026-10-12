@@ -76,6 +76,34 @@ class DocumentProfileTests(unittest.TestCase):
         generic=extract_document_fields([evidence('项目：测试内容')],'GENERIC')['generic']
         self.assertEqual(generic['key_values'][0]['value'],'测试内容')
 
+    def test_identity_gender_and_ethnicity_in_one_value_stay_separate(self):
+        for text, expected_gender, expected_ethnicity in [
+            ('性别 男 民族汉', 'M', '汉'),
+            ('性别：女 民 族维吾尔', 'F', '维吾尔'),
+            ('性别 男 民族', 'M', None),
+            ('<table><tr><td>性别</td><td>女 民族：汉</td></tr></table>', 'F', '汉'),
+            ('性别：女\n民族：汉', 'F', '汉'),
+        ]:
+            with self.subTest(text=text):
+                block = evidence(text)
+                fields = {f['key']: f for f in extract_document_fields([block], 'ID_CARD_FRONT')['fields']}
+                self.assertEqual(fields['gender']['value'], expected_gender)
+                self.assertEqual(fields['ethnicity']['value'], expected_ethnicity)
+                self.assertEqual(fields['gender']['source']['page'], block['page'])
+                if expected_ethnicity:
+                    self.assertIn('族', fields['ethnicity']['source']['raw_text'])
+
+    def test_identity_demographic_split_keeps_conflicts_and_other_fields(self):
+        blocks = [evidence('性别 男 民族汉\n住址：民族团结路'), evidence('民族：回', 2)]
+        fields = {f['key']: f for f in extract_document_fields(blocks, 'ID_CARD_FRONT')['fields']}
+        self.assertEqual(fields['gender']['value'], 'M')
+        self.assertIsNone(fields['ethnicity']['value'])
+        self.assertEqual({c['value'] for c in fields['ethnicity']['candidates']}, {'汉', '回'})
+        self.assertEqual(fields['address']['value'], '民族团结路')
+        self.assertTrue(any(i['code'] == 'CONFLICT' for i in fields['ethnicity']['review_issues']))
+        passport = extract_document_fields([evidence('性别：男 民族汉')], 'PASSPORT')
+        self.assertEqual(next(f for f in passport['fields'] if f['key'] == 'gender')['value'], '男 民族汉')
+
     def test_td3_no_century_guess(self):
         a='P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<'
         b='L898902C36UTO7408122F1204159ZE184226B<<<<<10'

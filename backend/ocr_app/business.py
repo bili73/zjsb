@@ -8,7 +8,7 @@ from pathlib import Path, PureWindowsPath
 from .auth import Accounts
 from .db import open_database
 from .storage import Storage
-from .task_store import TaskError, TaskStore, SUPPORTED
+from .task_store import TaskError, TaskStore, SUPPORTED, upload_types
 from .runtime import RuntimeFailure
 from .image_admission import ImageAdmissionError, validate_image
 from .upload_limits import MAX_FILES, MAX_FILE_BYTES, MAX_BATCH_BYTES
@@ -60,9 +60,10 @@ def prepare_uploads(files, doc_type, runtime):
     if sum(len(data) for data, _ in files) > MAX_BATCH_BYTES:
         raise TaskError('FILE_TOO_LARGE', '单次上传总大小不超过500MB，请减少文件数量', 413)
     prepared = []
-    for data, name in files:
+    kinds = upload_types(doc_type, len(files))
+    for (data, name), kind in zip(files, kinds):
         file = validate_upload(data, name)
-        if doc_type == 'BANK_CARD' and file['mime'] == 'application/pdf':
+        if kind == 'BANK_CARD' and file['mime'] == 'application/pdf':
             raise TaskError('UNSUPPORTED_FORMAT', '银行卡请上传单张JPG/PNG/HEIC照片；不接收PDF', 415)
         prepared.append(file)
     return prepared

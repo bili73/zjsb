@@ -92,6 +92,8 @@ The [certificate photo preparation](../feature/2026-10-12-certificate-image-upri
 
 The [degree school/award repair](2026-10-12-degree-school-and-award-mapping.md) reuses certificate date/signature handling for observed degree mapping misses while retaining these source/conflict contracts and separate date roles.
 
+The [adjacent document field repair](2026-10-12-adjacent-document-field-boundaries.md) prevents compact gender labels from becoming part of certificate holder names. It preserves the original source and existing date-role/conflict rules.
+
 The [isolated current-pipeline acceptance](../testing/2026-10-08-current-pipeline-acceptance.md) verifies the repaired real API path with the same frozen references and a separate encrypted store. It retains the v1 historical medical timeout and distinguishes single-resident loading from inference; it does not replace these historical measurements or qualify production hardware.
 
 The former frontend portion is retired by the [frontend retirement](../../implemented/simplification/2026-10-08-retire-temporary-frontend.md); current Scope covers surviving code. Old UI checks describe historical acceptance.

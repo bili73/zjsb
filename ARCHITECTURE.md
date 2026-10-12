@@ -113,7 +113,7 @@ Task轮询只读取当前页面需要的批次/任务状态，不每次重新下
 
 `/health`的status仍检查db、worker、storage；worker能响应调度即为ok，不要求模型已加载或全部可用。新增可选runtime包含configured_mode、effective_mode、state、models及reason_code，枚举以OpenAPI为准。runtime缺失表示状态未提供，不能当作ready；models.ready表示已加载预热可调度，不代表空闲。runtime.state与组件健康独立，界面须同时显示启动、自动降级和模型失败，不能以status=ok掩盖OCR不可用。启动阶段继续轮询runtime，即使尚无Task；稳定后停止无必要轮询。公开响应只返回白名单枚举，不输出路径、PID、异常全文、密钥或材料信息；不新增公开模型管理接口。
 
-浏览器改用部署创建的账号密码与12小时绝对有效Cookie会话。SQLite migration0003新增web_users、web_sessions及login_attempts，不重写原任务或密文；Argon2id保存密码哈希，随机256bit会话只保存SHA-256摘要。HttpOnly/SameSite=Strict/host-only Cookie由auth/me恢复，HTTPS加Secure；仅当前loopback HTTP测试省略Secure。unsafe请求同源Origin+会话派生CSRF头，直接客户端五分钟最多五次登录尝试。退出撤销当前会话；本地改密/停用原子撤销全部会话，验证凭据后在会话创建事务内再次确认凭据与启用状态。旧Key仅在没有任何web_users记录时供本机CLI过渡，创建过账号即永久关闭。前端不再输入Key；首个管理员本地设置，之后管理员可通过网页查询/创建账号（默认operator，可选viewer/admin，大小写等价重复名返回409而不覆盖旧账号）；密码最低8字符，重置/停用仍用本地CLI，无公开注册/邮箱恢复；Windows启动器禁用自动代理头信任，网络边界仍为loopback。Mac远程托管、TLS代理、原生推理及数据密钥迁移尚待实机资格验证。
+浏览器改用部署创建的账号密码与30天绝对有效Cookie会话。SQLite migration0003新增web_users、web_sessions及login_attempts，不重写原任务或密文；Argon2id保存密码哈希，随机256bit会话只保存SHA-256摘要。HttpOnly/SameSite=Strict/host-only Cookie由auth/me恢复，HTTPS加Secure；仅当前loopback HTTP测试省略Secure。unsafe请求同源Origin+会话派生CSRF头，直接客户端五分钟最多五次登录尝试。退出撤销当前会话；本地改密/停用原子撤销全部会话，验证凭据后在会话创建事务内再次确认凭据与启用状态。旧Key仅在没有任何web_users记录时供本机CLI过渡，创建过账号即永久关闭。前端不再输入Key；首个管理员本地设置，之后管理员可通过网页查询/创建账号（默认operator，可选viewer/admin，大小写等价重复名返回409而不覆盖旧账号）；密码最低8字符，网页支持重置/停用，CLI保留为恢复工具，无公开注册/邮箱恢复；Windows启动器禁用自动代理头信任，网络边界仍为loopback。Mac远程托管、TLS代理、原生推理及数据密钥迁移尚待实机资格验证。
 
 成功处理当前均发布 NEED_REVIEW；字段/项目置信度为 null，未经过标定。医疗全量覆盖尚未证实，stats 计数为 null，limitations 说明限制。异常列表属于完整整理结果上的显示投影，不能用项目未出现推断正常。人工审核单独保存版本；只有必填齐全、问题全部解决才COMPLETED。人体数据原执行失败/未标定不因人工版本消失。
 
@@ -204,3 +204,5 @@ HR字段版API1.12.0曾按[字段说明](FRONTEND_FIELDS.md)返回：毕业证�
 批次日期范围以UTC+8当地日转换UTC半开区间，存储时间不变；SQL先过滤历史再分页。前端分离可见批次ID与已监控任务，range generation阻止迟到列表写回。新提交回到今天所在的所选日/周/月范围。
 
 银行卡上传与其他材料一样只解码，后台GLM正常文件任务识别。旧bank_admission仍可复用，不能作为新照片必备条件。单张裁剪是新Task，不改旧run/result/source；重试保留File。原整图加密入库，因此旧crop-only来源边界已被用户授权替代。
+
+人员材料包复用现有批次所有权边界，以加密人员标签、共享修改版本和独立包标记扩展，不创建全局人员身份库。schema0007仅回填原明确命名包，待确认包也可追加。一次混合创建/追加及姓名确认在事务内重新核验权限、归属和版本，file_types按顺序绑定文件，旧任务及保存期限不改；兼容doc_type_hint单类型。姓名建议复用最新保存的个人姓名字段，不增加模型调用，不从户主/法人/通用正文猜测，不自动覆盖人工标签或合并材料；Excel总览严格使用所选快照，分类明细和体检台账保留。分类接口只用内存、PDF文字层和固定CPU RapidOCR，一份分类在途，不占GLM/Paddle队列，分类不确定时交人工选择。身份证配套仅为材料存在性。决定见[人员材料包](.agents/notes/implemented/feature/2026-10-12-person-material-packages.md)；医疗摘要与刷新重试见[复核修复](.agents/notes/implemented/bug-fix/2026-10-12-qualified-normal-and-refresh-retry.md)。

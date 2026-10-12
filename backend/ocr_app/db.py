@@ -20,7 +20,14 @@ def open_database(root: Path, migrate=True):
     if migrate:
         config = Config()
         config.set_main_option('script_location', str(Path(__file__).resolve().parents[1] / 'migrations'))
-        with engine.begin() as connection:
-            config.attributes['connection'] = connection
-            command.upgrade(config, 'head')
+        try:
+            with engine.begin() as connection:
+                # SQLite legacy mode does not begin a real transaction for DDL.
+                # Keep schema changes and Alembic revisions in the same commit.
+                connection.exec_driver_sql('BEGIN IMMEDIATE')
+                config.attributes['connection'] = connection
+                command.upgrade(config, 'head')
+        except BaseException:
+            engine.dispose()
+            raise
     return engine

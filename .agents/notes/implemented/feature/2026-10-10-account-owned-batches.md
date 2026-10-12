@@ -43,6 +43,10 @@ Read-only diagnosis finds saved results for the two latest completed medical tas
 
 ## Consequences
 
+The [pre-push isolation repairs](../bug-fix/2026-10-12-prepush-isolation-and-migration.md) also fence browser confirmation before a request exists, preventing old selected files from being submitted through a subsequent login. Backend ownership rules remain unchanged.
+
 The [cross-session review repairs](../bug-fix/2026-10-12-review-repairs.md) preserve ownership checks and session fences while reconciling inaccessible batch404 responses and refreshed terminal task revisions. A missing first-page ID alone never removes a cached batch.
 
 Account isolation prevents colleague material access through both UI and direct API calls while preserving administrator oversight. It adds one indexed owner ID and one encrypted snapshot to batches, plus authorization plumbing at each public boundary; worker operations deliberately retain their internal access. Legacy creation evidence cannot recover missing historical names. Those batches remain visible to administrators with an explicit historical label. Migration is additive and requires a consistent backup before activating the local service. This change does not enable remote access, transfer ownership, edit usernames/roles or change recognition behavior. The user approves this scope on 2026-10-10 before implementation. Local activation is independently verified after the idle backup and restart; recognition accuracy and inference speed are outside this change's qualification.
+
+[Person material packages](2026-10-12-person-material-packages.md) extend batches with explicit encrypted attribution, versioned append and presence-only identity-card pairing. Existing ownership, task versioning, deletion and recognition boundaries remain; old tasks and their expiry are not changed by append.

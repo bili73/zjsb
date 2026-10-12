@@ -20,6 +20,8 @@ Until a deployment-created user exists, the old local key remains available to e
 
 ## Decision audit
 
+The [thirty-day single-session decision](2026-10-12-thirty-day-single-session.md) partially replaces the original twelve-hour/multi-browser policy below. New successful logins expire absolutely after30 days and revoke prior account sessions atomically; the existing cryptographic, CSRF, restoration and network-boundary decisions remain active.
+
 The implemented [administrator creation](2026-10-09-admin-account-creation.md) partially replaces CLI-only administration with admin-only listing/creation and the ten-character floor with eight, preserving sessions, CLI reset/disable and every-request authorization. Excel stays pending the business template with its separately authorized manual-opinion placeholder. The initial credential is supplied directly by the user and never recorded in repository files.
 
 [Hosted authentication](../../proposed/architecture/2026-10-09-hosted-web-session-auth.md) remains partly proposed for Mac container/model qualification, TLS topology and secret migration. [Durable tasks](2026-09-30-durable-document-tasks.md) and [frontend rebuild](2026-10-08-frontend-rebuild-element-plus.md) retain their task/UI contracts, with the browser credential mechanism replaced. [Internal full values](2026-10-08-internal-unmasking-and-review-friction.md) retains every-request authorization. No whole decision is superseded or archived.

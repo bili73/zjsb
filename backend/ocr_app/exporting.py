@@ -45,7 +45,7 @@ def required_export_blockers(result, required_overrides=None):
     return [dict(field=key, code='MISSING') for key in missing]
 
 
-def workbook_bytes(results):
+def workbook_bytes(results, packages=()):
     from openpyxl import Workbook
     from openpyxl.cell.cell import Cell
     from openpyxl.comments import Comment
@@ -59,6 +59,8 @@ def workbook_bytes(results):
 
     def sheet_for(name, headers):
         if name not in sheets:
+            if len(headers) > 16384:
+                raise TaskError('EXPORT_VALUE_TOO_LONG', '导出字段列数超过Excel上限，请减少本次选择的材料', 422)
             sheet = sheets[name] = book.create_sheet(name[:31])
             sheet.append(headers)
         return sheets[name]
@@ -94,6 +96,55 @@ def workbook_bytes(results):
             row.append(value)
         return row
 
+    from .person_packages import name_suggestions
+    package_rows, column_keys, multiplicity = [], {}, {}
+    for package in packages:
+        selected = package['results']
+        data, occurrences = {}, {}
+        for result in selected:
+            kind = result['doc_type']
+            number = occurrences[kind] = occurrences.get(kind, 0) + 1
+            multiplicity[kind] = max(multiplicity.get(kind, 0), number)
+            current = public_result(result) if kind == 'MEDICAL_REPORT' else result
+            fields = profile(kind)
+            pairs = [('来源文件', result.get('_source_filename'))]
+            pairs.extend(zip([f['label'] for f in fields], field_values(current, fields)))
+            if kind == 'MEDICAL_REPORT':
+                pairs.append(('异常指标', abnormal_cell(current)))
+            for index, member in enumerate(current.get('members', []), 1):
+                member_fields = member.get('fields') if isinstance(member.get('fields'), list) else [
+                    value for value in member.values() if isinstance(value, dict) and 'key' in value]
+                pairs.extend(zip([f'成员{index}·{f["label"]}' for f in MEMBER_PROFILE],
+                    field_values(dict(doc_type=kind, fields=member_fields), MEMBER_PROFILE)))
+            if kind == 'GENERIC':
+                generic = _generic(current) or {}
+                body = generic.get('full_text') or ''
+                pairs.extend((f'正文{index // 30000 + 1}', body[index:index + 30000])
+                             for index in range(0, max(1, len(body)), 30000))
+                for index, pair in enumerate(generic.get('key_values', []), 1):
+                    pairs.extend([(f'键值{index}·字段', pair['key']), (f'键值{index}·内容', pair.get('value'))])
+            for label, value in pairs:
+                key = kind, number, label
+                column_keys.setdefault(key, None)
+                data[key] = value
+        candidates = name_suggestions(selected)
+        name = package['person_name']
+        conflict = len(candidates) > 1 or bool(name and any(c['name'] != name for c in candidates))
+        kinds = list(dict.fromkeys(r['doc_type'] for r in selected))
+        metadata = [name or '姓名待确认', ('已确认；识别姓名有差异，需核对' if conflict else '已确认') if name else
+                ('待确认；识别姓名有差异，需核对' if conflict else '待确认'),
+                '\n'.join(f'{LABELS[k]} × {sum(r["doc_type"] == k for r in selected)}' for k in kinds), len(selected),
+                '\n'.join(f'{c["name"]}：' + '；'.join(f'{LABELS[s["doc_type"]]} / {s["file_name"]}' for s in c['sources']) for c in candidates),
+                '\n'.join(r.get('_source_filename') or '未提供文件名' for r in selected)]
+        package_rows.append((metadata, data))
+    kind_order = {kind: index for index, kind in enumerate(LABELS)}
+    columns = sorted(column_keys, key=lambda key: (kind_order[key[0]], key[1]))
+    headers = ['人员姓名', '姓名状态'] + [
+        f'{LABELS[kind]}{number if multiplicity[kind] > 1 else ""}·{label}'
+        for kind, number, label in columns] + ['材料类型及数量', '材料份数', '姓名候选及来源', '来源文件']
+    for metadata, data in package_rows:
+        append('人员信息总表', headers, metadata[:2] + [data.get(key) for key in columns] + metadata[2:])
+
     medical_sequence = 0
     for result in results:
         values = _field_values(result)
@@ -110,7 +161,7 @@ def workbook_bytes(results):
             for column, key in enumerate(LEDGER_KEYS, 2):
                 entry = entries.get(key, {})
                 derivation = entry.get('derivation') or {}
-                if (entry.get('value') == '未见异常' and entry.get('value_origin') == 'derived'
+                if (entry.get('value') == '已识别明细未见异常' and entry.get('value_origin') == 'derived'
                         and derivation.get('method') == 'medical_ledger'
                         and derivation.get('input_field') == 'items' and not derivation.get('conclusions')):
                     sheet.cell(sheet.max_row, column).comment = Comment(
@@ -132,7 +183,7 @@ def workbook_bytes(results):
                 append('通用识别字段', ['来源文件', '字段', '内容'], [filename, pair['key'], pair.get('value')])
     for sheet in sheets.values():
         medical = sheet.title == '审核记录台账'
-        sheet.freeze_panes = 'A2'
+        sheet.freeze_panes = 'C2' if sheet.title == '人员信息总表' else 'A2'
         sheet.auto_filter.ref = sheet.dimensions
         sheet.sheet_view.showGridLines = False
         sheet.sheet_properties.pageSetUpPr.fitToPage = True
@@ -143,10 +194,12 @@ def workbook_bytes(results):
         sheet.print_options.horizontalCentered = True
         widths = []
         for index, cell in enumerate(sheet[1], 1):
-            width = (64 if cell.value == '文本' else 55 if cell.value in {'体检项目', '经营范围'} else
-                     42 if cell.value in {'异常诊断', '检测结果', '内容'} else
-                     34 if cell.value in {'来源文件', '学校名称', '名称', '住址', '住所'} else
-                     27 if any(term in cell.value for term in ('编号', '号码', '卡号', '代码', '验证码', '异常项目')) else 18)
+            label = cell.value.rsplit('·', 1)[-1]
+            width = (64 if label == '文本' or label.startswith('正文') else 55 if label in {'体检项目', '经营范围'} else
+                     42 if label in {'异常诊断', '异常指标', '检测结果', '内容'} else
+                     50 if label in {'材料类型及数量', '姓名候选及来源'} else
+                     34 if label in {'来源文件', '学校名称', '名称', '住址', '住所'} else
+                     27 if any(term in label for term in ('编号', '号码', '卡号', '代码', '验证码', '异常项目')) else 18)
             if medical:
                 width = [8,12,8,8,14,30,14,12,12,20,40,48,40,40,48,40,18,90][index-1]
             sheet.column_dimensions[get_column_letter(index)].width = width
@@ -182,7 +235,7 @@ def export_results(store, request, actor, role, *, user=None):
     if role not in {'operator', 'admin'}:
         raise TaskError('FORBIDDEN_REVEAL', '当前账号无完整导出权限', 403)
     optional_reason(request.get('reason'))
-    snapshots = []
+    snapshots, packages = [], {}
     with store.transaction() as connection:
         policy = store.required_policy(connection)
         if request.get('batch_id'):
@@ -216,6 +269,11 @@ def export_results(store, request, actor, role, *, user=None):
             snapshot = public_result(result, policy['overrides'])
             snapshot['_source_filename'] = store.storage.unpack(row['meta_enc']).get('file_name')
             snapshots.append(snapshot)
+            batch = store._batch_row(connection, row['batch_id'], user)
+            if batch['is_person_package']:
+                package = packages.setdefault(batch['id'], dict(
+                    person_name=store.storage.unpack(batch['person_name_enc']), results=[]))
+                package['results'].append(snapshot)
         if blocked:
             raise TaskError('EXPORT_BLOCKED', '所选任务仍缺必填值，未导出任何任务', 409, {'tasks': blocked})
         for row in rows:
@@ -223,4 +281,4 @@ def export_results(store, request, actor, role, *, user=None):
                          required_fields_revision=policy['revision'],
                          result_revision=row['revision'], legacy_masked=is_masked)
             store._access_history(connection, row, actor, 'export_full', request.get('reason'), legacy_masked=is_masked)
-    return workbook_bytes(snapshots)
+    return workbook_bytes(snapshots, packages.values())

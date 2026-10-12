@@ -95,8 +95,12 @@ Failure-first CPU tests reproduce the old stored upload label and reversed first
 
 ## Current refinement
 
+The [pre-push migration repair](../bug-fix/2026-10-12-prepush-isolation-and-migration.md) explicitly begins the SQLite DDL transaction and disposes a failed startup engine. Interrupted schema/version changes roll back together and restart cleanly; numbered migrations and stored history remain intact.
+
 The [certificate photo preparation](2026-10-12-certificate-image-upright.md) retains immutable originals and stores the first CPU correction decision with encrypted page/attempt evidence. Preview/OCR share corrected pixels, and the second decode reuses the decision within the existing task deadline; saved results are not rewritten.
 
 The [bank ROI orientation repair](../bug-fix/2026-10-12-bank-card-roi-orientation.md) changes only the internal direction-analysis view. The persisted corrected page and actual recognition input retain the complete photo, reuse one decision across decoding, and do not overwrite prior runs.
 
 The [calendar browser](2026-10-09-batch-calendar-browser.md) adds read-only creation-day ranges before pagination without changing identities or UTC storage. The [bank input/recovery refinement](2026-10-09-bank-auto-recognition.md) queues full photos without synchronous OCR and creates a new task for a recovered single crop, retaining original tasks.
+
+[Person material packages](2026-10-12-person-material-packages.md) extend batches with explicit encrypted attribution, versioned append and presence-only identity-card pairing. Existing ownership, task versioning, deletion and recognition boundaries remain; old tasks and their expiry are not changed by append.

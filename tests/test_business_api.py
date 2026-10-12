@@ -53,7 +53,7 @@ class BusinessAPITests(unittest.TestCase):
         self.assertEqual((batch['name'], batch['display_name']), ('毕业证', '毕业证'))
         with self.business.engine.connect() as connection:
             self.assertEqual(connection.execute(text('SELECT name_enc FROM batches WHERE id=:id'), {'id': identifier}).scalar_one(), historical)
-        with patch.object(self.business.store, 'tasks', return_value=[{'doc_type': 'DIPLOMA', 'status': 'COMPLETED', 'updated_at': batch['created_at']}, {'doc_type': 'DEGREE_CERT', 'status': 'COMPLETED', 'updated_at': batch['created_at']} ]):
+        with patch.object(self.business.store, 'tasks', return_value=[{'doc_type': 'DIPLOMA', 'status': 'COMPLETED', 'updated_at': batch['created_at'], 'expires_at': batch['expires_at']}, {'doc_type': 'DEGREE_CERT', 'status': 'COMPLETED', 'updated_at': batch['created_at'], 'expires_at': batch['expires_at']} ]):
             self.assertEqual(self.business.store.batch(identifier)['name'], '混合材料 · 毕业证 / 学位证')
         with patch.object(self.business.store, 'tasks', return_value=[]):
             self.assertEqual(self.business.store.batch(identifier)['name'], '待确定类型')

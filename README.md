@@ -1,17 +1,13 @@
-<p align="center">
-  <img src="frontend/src/assets/joybos-logo.png" alt="佳帮手 Joybos" width="260">
-</p>
-
 <h1 align="center">HRSSC 识别工作台</h1>
 
 <p align="center">
   <strong>本地证件 / 材料 OCR 工作台</strong><br>
-  上传 → 识别 → 人工核对 → 导出 Excel · 数据不出本机
+  上传 / 人员材料包追加 → 识别 → 人工核对 → 导出 Excel · 数据不出本机
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/app-1.21.0-0f9d8f?style=flat-square" alt="app 1.21.0">
-  <img src="https://img.shields.io/badge/SPEC-v1.27-0c7e72?style=flat-square" alt="SPEC v1.27">
+  <img src="https://img.shields.io/badge/app-1.22.0-0f9d8f?style=flat-square" alt="app 1.22.0">
+  <img src="https://img.shields.io/badge/SPEC-v1.28-0c7e72?style=flat-square" alt="SPEC v1.28">
   <img src="https://img.shields.io/badge/platform-Windows%2010%2B-0078d4?style=flat-square" alt="Windows 10+">
   <img src="https://img.shields.io/badge/Python-3.12-3776ab?style=flat-square" alt="Python 3.12">
   <img src="https://img.shields.io/badge/Vue-3.5-35495e?style=flat-square" alt="Vue 3">
@@ -155,7 +151,7 @@ cd ..
 ## 安全与数据边界
 
 - **网络**：服务仅绑定 `127.0.0.1`，不开放 Windows 网络边界；登录校验同源 Origin，403 拒绝跨源
-- **会话**：Argon2id 密码哈希；HttpOnly / SameSite=Strict Cookie 绝对有效 12 小时；CSRF Token 仅存页面内存、随不安全请求以 `X-CSRF-Token` 发送；同客户端 5 分钟内最多 5 次登录尝试
+- **会话**：Argon2id 密码哈希；HttpOnly / SameSite=Strict Cookie 绝对有效 30 天；CSRF Token 仅存页面内存、随不安全请求以 `X-CSRF-Token` 发送；同客户端 5 分钟内最多 5 次登录尝试
 - **账号**：viewer / operator / admin 三级角色；批次按上传账号隔离（管理员可见全部，其余只见自己的），越权与不存在 ID 统一 404；当前登录账号与最后一个启用的管理员不可禁用/删除
 - **存储**：敏感产物 AES-GCM 加密；部署密钥 DPAPI 用户级保护，跨用户/电脑复制不可恢复（不把复制数据目录当作已验证迁移）
 - **留存**：业务文件、结果与含原始信息的运行历史保留 7 天到期清理；批次列表标注「到期清理」日期，需长期保存请及时导出
@@ -186,8 +182,8 @@ cd ..
 ├─ .venvs/             # app / glm-ocr / paddleocr-vl 等多套 Python 环境（另含 chandra、
 │                      # paddleocr-vl-1.6、image-upright 离线对照环境；gitignore）
 ├─ .runtime/           # SQLite 数据、加密密钥、诊断日志（gitignore，运行态）
-├─ SPEC.md             # 业务契约与验收基线（v1.27）
-├─ openapi.yaml        # 接口契约（/api/v1，版本 1.21.0）
+├─ SPEC.md             # 业务契约与验收基线（v1.28）
+├─ openapi.yaml        # 接口契约（/api/v1，版本 1.22.0）
 ├─ ARCHITECTURE.md     # 技术决策与实现边界
 ├─ RUNTIME.md          # 启动/运行方式与各轮验收记录
 ├─ LOCAL_OCR.md        # 模型环境与离线测试方法
@@ -224,3 +220,5 @@ cd ..
 ## 许可说明
 
 内部项目，未附开源许可证。`scripts/DDE-LICENSE.txt`（DDE 笔记工具链）与 `backend/ocr_app/data/bank_bins/LICENSE`（银行卡 BIN 数据）各自附带其许可。
+
+选择“按人员整理”后，一次选齐此人的各种材料，无需先填写姓名；核对逐份分类后整包提交，识别后在批次使用姓名建议或手工确认。建议带来源文件，多姓名需核对，不自动合并；已确认姓名不会被识别覆盖。分类看内容，文件名作后备，全部建议可手动改；未知类型需选择。“按类型批量”保留。从“任务批次 → 补充上传”也可一次补交多种材料，姓名待确认也支持追加。人员包Excel第一张为人员信息总表，一包一行包含所选材料类型的全部字段（含选填与空值），同类多份材料编号分组并各自保留来源；体检项目名称和异常指标也进入总表，后面继续附分类明细，体检18列台账不变；仍仅要求已保存必填值齐全。身份证国徽面可选，人像面可独立识别和导出；两面齐全仅表示文件存在，仍需人工确认属于同一人；普通及历史类型批次保持原样。追加不延长旧材料期限，批次展示剩余材料最近到期时间。操作步骤见网页使用说明第10节。
