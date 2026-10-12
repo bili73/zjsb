@@ -30,6 +30,10 @@ The upload regression passes74 targeted backend tests and73 frontend tests, incl
 
 ## Decision audit
 
+The [measured progress correction](../bug-fix/2026-10-10-measured-task-progress.md) replaces fixed stage percentages with current-run page/region counts and preserves the callback, durable writes, deadline and cancellation fences. Its backend contract is additive; frontend integration and service activation are separate.
+
+The [batch deletion decision](2026-10-10-delete-recognized-batches.md) adds explicit administrator deletion of stopped batches, including NEED_REVIEW, without redefining review completion or replacing seven-day retention. All owned historical artifacts are removed; value-free audit remains.
+
 The implemented [password sessions](2026-10-09-web-password-sessions.md) replace the browser key gate with named Cookie principals after local account provisioning; task persistence, versions and actor audit remain. The [hosted web-session proposal](../../proposed/architecture/2026-10-09-hosted-web-session-auth.md) still requires Mac container/native-inference, secret migration and proxy qualification; it does not replace DPAPI storage or Windows supervision yet.
 
 The [runtime decision](../../implemented/architecture/2026-09-29-local-dual-model-lifecycle.md) partially overlaps in process ownership and is retained. The [layout experiment](../../implemented/testing/2026-09-29-automatic-layout-evaluation.md) supplies failure evidence, not a production coverage guarantee. [Local diagnostics](2026-09-30-local-diagnostics.md) owns error logging and shares task/run identifiers. The DDE tooling note is unrelated.

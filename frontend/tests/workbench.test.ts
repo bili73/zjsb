@@ -54,6 +54,23 @@ test('LocalPreviewBatch refuses mismatched or malformed task lists', () => {
   assert.equal(previews.get('not-uuid'), undefined)
 })
 
+test('deleting task previews revokes only their URLs and fences pending matches', async () => {
+  const revoked: string[] = []
+  const previews = new LocalPreviewBatch(5, file => `blob:${file.name}`, url => revoked.push(url))
+  const a = new File(['a'], 'a.png'), b = new File(['b'], 'b.png')
+  previews.add([a, b], [id, id2])
+  const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await a.arrayBuffer())), n => n.toString(16).padStart(2, '0')).join('')
+  const pending = previews.addMatched([a], [{ task_id: id, content_hash: hash }] as Task[])
+  previews.remove([id])
+  assert.equal(await pending, false)
+  assert.equal(previews.get(id), undefined)
+  assert.equal(previews.get(id2)?.url, 'blob:b.png')
+  assert.deepEqual(revoked, ['blob:a.png'])
+  previews.remove([id])
+  previews.clear()
+  assert.deepEqual(revoked, ['blob:a.png', 'blob:b.png'])
+})
+
 test('sourcePage clamps to the physical page count', () => {
   assert.equal(sourcePage(1, 3, 'image'), 1)
   assert.equal(sourcePage(2, 3, 'image'), null)

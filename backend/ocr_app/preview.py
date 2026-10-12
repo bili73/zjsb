@@ -7,11 +7,11 @@ from .task_store import TaskError
 from .review import reason, optional_reason, invalid
 
 
-def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, masked=True, access_reason=None):
+def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, masked=True, access_reason=None, user=None):
     if type(page) is not int or page < 1:
         invalid()
     with store.transaction() as connection:
-        row = store._row(connection, task_id)
+        row = store._row(connection, task_id, user)
         store._expected(row, run_id, revision)
         if role not in {'operator', 'admin'}:
             raise TaskError('FORBIDDEN_REVEAL', '当前账号无完整预览权限', 403)
@@ -30,7 +30,7 @@ def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, ma
     return target.getvalue()
 
 
-def reveal_fields(store, task_id, body, actor, role):
+def reveal_fields(store, task_id, body, actor, role, *, user=None):
     if role not in {'operator', 'admin'}:
         raise TaskError('FORBIDDEN_REVEAL', '当前账号无完整值查看权限', 403)
     if not isinstance(body, dict) or set(body) != {'run_id', 'expected_revision', 'fields', 'reason'}:
@@ -41,7 +41,7 @@ def reveal_fields(store, task_id, body, actor, role):
     if not isinstance(keys, list) or not keys or any(not isinstance(key, str) or key not in allowed for key in keys) or len(set(keys)) != len(keys):
         invalid('仅允许查看本次明确指定的敏感字段')
     with store.transaction() as connection:
-        row = store._row(connection, task_id)
+        row = store._row(connection, task_id, user)
         store._expected(row, body['run_id'], body['expected_revision'])
         result = store.storage.unpack(row['result_enc'])
         if not result:

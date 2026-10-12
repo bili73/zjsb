@@ -51,4 +51,6 @@ After three idle checks, a consistent SQLite backup and confirmed exit of all12 
 
 ## Current refinement
 
+The [batch deletion feature](2026-10-10-delete-recognized-batches.md) invalidates pre-deletion reads, clears only the deleted batch cache and restarts pagination at page two while retaining the current date filter and other jobs. The descending-order test now supplies distinct explicit timestamps, avoiding an unsupported assumption that successive uploads cannot share a wall-clock tick; production timestamp ordering and ID tie-break remain unchanged.
+
 Initial default and new-upload date clearing are partially superseded by the [selected-period fix](../bug-fix/2026-10-09-selected-calendar-period.md): today is initially selected, and uploads reset to today within the chosen period. The all-date default described above records the preceding release. UTC+8, Monday weeks, server pagination and hidden-task monitoring remain active.

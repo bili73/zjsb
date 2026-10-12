@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import type { Component } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadUserFile } from 'element-plus'
@@ -23,6 +23,8 @@ const abnormalOnly = ref(false)
 const fileList = ref<UploadUserFile[]>([])
 const submitting = ref(false)
 let submitController: AbortController | undefined
+let disposed = false
+onBeforeUnmount(() => { disposed = true; submitController?.abort() })
 
 const typeMeta: Partial<Record<UploadDocType, { icon: Component; desc: string }>> = {
   MEDICAL_REPORT: { icon: FirstAidKit, desc: '检测项目与报告清单分开核对。' },
@@ -77,11 +79,14 @@ async function uploadFiles(files: File[]) {
   submitting.value = true
   try {
     const created = await props.monitor.submitUpload(files, docType.value, abnormalOnly.value, submitController.signal)
+    if (disposed) return
     if (props.api) { try { const tasks = await props.api.tasks(created.batch_id, submitController.signal); emit('preview', files, tasks) } catch { /* Accepted uploads must not be reported as failed when preview binding fails. */ } }
+    if (disposed) return
     emit('submitted')
     fileList.value = []
     ElMessage.success(`已提交 ${created.task_ids.length} 个识别任务，可切换证件类型继续上传。`)
   } catch (error) {
+    if (disposed) return
     if (isAbort(error)) { props.monitor.start(); ElMessage.info('已停止等待上传响应；服务端可能已接收，请先查看任务列表。') }
     else if (error instanceof ApiFailure) {
       if (error.card.http_status === 401) emit('unauthorized')

@@ -61,7 +61,7 @@ class HRHistoricalProjectionTests(unittest.TestCase):
 
     def publish_legacy(self, kind):
         text = '校长：测试乙\n学习形式：函授'
-        created = self.business.store.create_batch([dict(data=b'synthetic original', name='synthetic.png', mime='image/png')], kind, 'test-operator')
+        created = self.business.store.create_batch([dict(data=b'synthetic original', name='synthetic.png', mime='image/png')], kind, self.business.accounts.accounts[0]['user_id'])
         task_id = created['task_ids'][0]
         task = self.business.store.claim_next()
         payload = extract_result([dict(text=text, page=1)], kind)
@@ -109,7 +109,7 @@ class HRHistoricalProjectionTests(unittest.TestCase):
         evidence += HRMedicalProfileTests().summary_evidence([['项目甲', '4↑', 'B']])
         payload = extract_result(evidence, 'MEDICAL_REPORT')
         created = self.business.store.create_batch([dict(data=b'synthetic medical original',
-            name='synthetic-medical.pdf', mime='application/pdf')], 'MEDICAL_REPORT', 'test-operator')
+            name='synthetic-medical.pdf', mime='application/pdf')], 'MEDICAL_REPORT', self.business.accounts.accounts[0]['user_id'])
         self.assertTrue(self.business.store.publish(self.business.store.claim_next(),
             dict(payload, status='NEED_REVIEW', pages=[], warnings=[])))
         response = self.client.get(f"/api/v1/tasks/{created['task_ids'][0]}/result", headers=self.headers)
@@ -165,7 +165,7 @@ class HRHistoricalProjectionTests(unittest.TestCase):
                 payload['generic']['full_text'] = evidence
                 payload['generic']['blocks'][0]['text'] = evidence
                 created = self.business.store.create_batch([dict(data=b'phone synthetic', name='phone.pdf',
-                    mime='application/pdf')], 'MEDICAL_REPORT', 'test-operator')
+                    mime='application/pdf')], 'MEDICAL_REPORT', self.business.accounts.accounts[0]['user_id'])
                 self.assertTrue(self.business.store.publish(self.business.store.claim_next(),
                     dict(payload, status='NEED_REVIEW', pages=[], warnings=[])))
                 before = self.snapshot()
@@ -187,7 +187,7 @@ class HRHistoricalProjectionTests(unittest.TestCase):
         payload = extract_result([dict(page=1, text='检验序列：13123456789')], 'MEDICAL_REPORT')
         payload['basic_info']['phone'] = dict(key='phone',value='日期2026-10-08')
         created = self.business.store.create_batch([dict(data=b'unknown phone', name='unknown.pdf', mime='application/pdf')],
-            'MEDICAL_REPORT', 'test-operator')
+            'MEDICAL_REPORT', self.business.accounts.accounts[0]['user_id'])
         self.assertTrue(self.business.store.publish(self.business.store.claim_next(), dict(payload, status='NEED_REVIEW', pages=[], warnings=[])))
         value = self.client.get(f"/api/v1/tasks/{created['task_ids'][0]}/result", headers=self.headers).json()
         self.assertNotIn('phone', value['basic_info'])

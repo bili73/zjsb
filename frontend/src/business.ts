@@ -19,11 +19,15 @@ export const batchLabels = { PROCESSING: '处理中 / 待核对', COMPLETED: '�
 export type BatchStatus = keyof typeof batchLabels
 export interface User { user_id: string; display_name: string; role: 'viewer' | 'operator' | 'admin'; permissions: string[]; csrf_token?: string }
 export interface ManagedUser { user_id: string; username: string; display_name: string; role: User['role']; enabled: boolean }
-export interface Batch { batch_id: string; display_name?: string; status: BatchStatus; file_count?: number; completed_count?: number; need_review_count?: number; failed_count?: number; created_at?: string; required_fields_revision?: number }
+export interface BatchOwner { user_id: string | null; username: string | null; display_name: string | null; account_exists: boolean }
+export interface Batch { batch_id: string; display_name?: string; status: BatchStatus; file_count?: number; completed_count?: number; need_review_count?: number; failed_count?: number; created_at?: string; required_fields_revision?: number; owner?: BatchOwner }
 export interface BatchList { items: Batch[]; total: number; page: number; page_size: number }
 export interface TaskError { code: ErrorCode; error_id: string | null; stage: Stage | null }
 export interface ExportEligibility { export_ready?: boolean; export_blockers?: { field: string; code: string }[]; required_fields_revision?: number; required_field_keys?: string[] }
-export interface Task extends ExportEligibility { task_id: string; batch_id?: string; run_id: string; result_revision: number; cancel_requested: boolean; status: TaskStatus; file_name?: string; doc_type?: string; progress?: number; page_count: number; actual_source_page_count?: number; content_hash?: string; pages: { page_id: string; page_index: number; extraction_method: string; regions?: { region_id: string }[] }[]; error?: TaskError | null; extract_options?: { abnormal_only?: boolean } }
+export interface Task extends ExportEligibility { task_id: string; batch_id?: string; run_id: string; result_revision: number; cancel_requested: boolean; status: TaskStatus; file_name?: string; doc_type?: string; progress?: number; page_count: number; actual_source_page_count?: number | null; content_hash?: string; pages: { page_id: string; page_index: number; extraction_method: string; regions?: { region_id: string }[] }[]; error?: TaskError | null; extract_options?: { abnormal_only?: boolean }; progress_detail?: ProgressDetail }
+// 进度明细：以已完成的物理 OCR 区域为计量单位。total_* 在区域计划未知（准备中/历史任务）时为 null，
+// 不提供估计分母；processed_regions 表示重试策略结束后到达终态的区域数，不保证识别正确。
+export interface ProgressDetail { stage: TaskStatus; prepared_pages: number; total_pages: number | null; processed_regions: number; recognized_regions: number; incomplete_regions: number; total_regions: number | null }
 export type ItemsFilter = 'all' | 'abnormal' | 'unknown'
 export interface ReviewIssue { issue_id: string; code: string; message: string; can_accept: boolean }
 export interface FieldSource { page?: number; region_id?: string; extraction_method?: 'pdf_text' | 'ocr'; bbox?: [number, number, number, number]; bbox_kind?: 'region' | 'block' | 'row' | 'cell'; raw_text?: string }
@@ -88,15 +92,35 @@ export function parseUser(value: unknown): User {
 export function parseBatches(value: unknown): BatchList {
   requireValue(isRecord(value) && Array.isArray(value.items) && integer(value.total) && integer(value.page, 1) && integer(value.page_size, 1))
   requireValue(value.items.every(b => isRecord(b) && uuid(b.batch_id) && typeof b.status === 'string' && Object.hasOwn(batchLabels, b.status) && (b.required_fields_revision === undefined || integer(b.required_fields_revision))))
+  requireValue(value.items.every(b => {
+    const owner = (b as Record<string, unknown>).owner
+    return owner === undefined || isRecord(owner) &&
+      (owner.user_id === null || typeof owner.user_id === 'string' && owner.user_id.length > 0) &&
+      (owner.username === null || typeof owner.username === 'string' && /^[a-z0-9_.-]{1,64}$/.test(owner.username)) &&
+      (owner.display_name === null || typeof owner.display_name === 'string' && owner.display_name.trim().length > 0 && owner.display_name.length <= 80) &&
+      typeof owner.account_exists === 'boolean' &&
+      (!owner.account_exists || owner.user_id !== null && owner.username !== null && owner.display_name !== null)
+  }))
   return value as unknown as BatchList
+}
+const progressDetailValid = (value: unknown, status: unknown): boolean => {
+  if (!isRecord(value)) return false
+  return value.stage === status && integer(value.prepared_pages) &&
+    (value.total_pages === null || integer(value.total_pages, 1)) && integer(value.processed_regions) &&
+    integer(value.recognized_regions) && integer(value.incomplete_regions) &&
+    (value.total_regions === null || integer(value.total_regions)) &&
+    Number(value.processed_regions) === Number(value.recognized_regions) + Number(value.incomplete_regions) &&
+    (value.total_pages === null || Number(value.prepared_pages) <= Number(value.total_pages)) &&
+    (value.total_regions === null || Number(value.processed_regions) <= Number(value.total_regions))
 }
 export function parseTask(value: unknown): Task {
   requireValue(isRecord(value) && uuid(value.task_id) && uuid(value.run_id) && integer(value.result_revision) && typeof value.cancel_requested === 'boolean' && typeof value.status === 'string' && Object.hasOwn(taskLabels, value.status) && integer(value.page_count) && Array.isArray(value.pages))
   requireValue(exportEligibilityValid(value))
   requireValue(value.batch_id === undefined || uuid(value.batch_id))
-  requireValue(value.actual_source_page_count === undefined || integer(value.actual_source_page_count))
+  requireValue(value.actual_source_page_count == null || integer(value.actual_source_page_count, 1))
   requireValue(value.content_hash === undefined || typeof value.content_hash === 'string' && /^[0-9a-f]{64}$/.test(value.content_hash))
   requireValue(value.progress === undefined || (integer(value.progress) && Number(value.progress) <= 100))
+  requireValue(value.progress_detail === undefined || progressDetailValid(value.progress_detail, value.status))
   requireValue(value.extract_options === undefined || (isRecord(value.extract_options) && (value.extract_options.abnormal_only === undefined || typeof value.extract_options.abnormal_only === 'boolean')))
   const task = { ...value } as unknown as Task
   if (value.error != null) {

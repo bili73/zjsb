@@ -10,6 +10,19 @@ const other = '99999999-8888-4777-8666-555555555555'
 
 const user = { user_id: 'u1', display_name: '操作员', role: 'operator', permissions: ['tasks:write'] }
 
+test('batch owner descriptor accepts explicit historical nulls and rejects malformed attribution', () => {
+  const batch = { batch_id: id, status: 'PROCESSING', owner: { user_id: id, username: 'alice', display_name: '张三', account_exists: true } }
+  const parse = (value: unknown) => parseBatches({ items: [value], total: 1, page: 1, page_size: 50 })
+  assert.equal(parse(batch).items[0]?.owner?.display_name, '张三')
+  assert.equal(parse({ ...batch, owner: { user_id: null, username: null, display_name: null, account_exists: false } }).total, 1)
+  assert.equal(parse({ batch_id: id, status: 'PROCESSING' }).total, 1)
+  for (const owner of [null, {}, { ...batch.owner, account_exists: 'true' }, { ...batch.owner, user_id: 5 },
+    { ...batch.owner, username: 'invalid name' }, { ...batch.owner, display_name: 5 },
+    { ...batch.owner, user_id: null }, { ...batch.owner, username: null }]) {
+    assert.throws(() => parse({ ...batch, owner }), /INVALID_RESPONSE/)
+  }
+})
+
 test('medical field text distinguishes recognized normal, absent and unrecognized results', () => {
   const field = { key: 'liver_function', label: '肝功五项', value: null, confidence: null, confidence_method: 'unavailable' as const, need_review: false, review_issues: [] }
   assert.equal(fieldValueText({ ...field, value: '未见异常' }, true), '未见异常')
@@ -41,6 +54,32 @@ test('parseUser accepts a valid operator and rejects malformed roles', () => {
   assert.deepEqual(parseUser(user).role, 'operator')
   assert.throws(() => parseUser({ ...user, role: 'root' }), /INVALID_RESPONSE/)
   assert.throws(() => parseUser(null), /INVALID_RESPONSE/)
+})
+
+test('progress_detail accepts measured region counts with nullable totals and rejects invented numbers', () => {
+  const task = { task_id: id, run_id: id, result_revision: 1, cancel_requested: false, status: 'OCR', page_count: 2, pages: [] }
+  const detail = { stage: 'OCR', prepared_pages: 2, total_pages: 2, processed_regions: 3, recognized_regions: 2, incomplete_regions: 1, total_regions: 4 }
+  assert.deepEqual(parseTask({ ...task, progress_detail: detail }).progress_detail, detail)
+  const unknown = { ...detail, total_pages: null, total_regions: null }
+  assert.deepEqual(parseTask({ ...task, progress_detail: unknown }).progress_detail, unknown)
+  assert.equal(parseTask({ ...task, actual_source_page_count: null }).actual_source_page_count, null)
+  assert.equal(parseTask(task).progress_detail, undefined)
+  for (const bad of [
+    { total_regions: -1 },
+    { processed_regions: 1.5 },
+    { total_regions: '4' },
+    { recognized_regions: null },
+    { stage: 5 },
+    { ...detail, stage: 'EXTRACTING' },
+    { ...detail, stage: 'GENERATING' },
+    { ...detail, processed_regions: 4 },
+    { ...detail, total_regions: 2 },
+    { ...detail, total_regions: 0 },
+    { ...detail, total_pages: 1 },
+    { ...detail, total_pages: 0 },
+    { total_pages: null, total_regions: null },
+    [],
+  ]) assert.throws(() => parseTask({ ...task, progress_detail: bad }), /INVALID_RESPONSE/)
 })
 
 test('isRecord filters arrays and null', () => {

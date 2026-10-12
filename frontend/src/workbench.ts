@@ -40,6 +40,15 @@ export class LocalPreviewBatch {
     this.entries.clear()
     this.batches = []
   }
+  remove(taskIds: readonly string[]) {
+    this.generation++ // Do not recreate deleted previews from an in-flight hash match.
+    const removed = new Set(taskIds)
+    for (const id of removed) {
+      const entry = this.entries.get(id)
+      if (entry) { this.revoke(entry.url); this.entries.delete(id) }
+    }
+    this.batches = this.batches.map(ids => ids.filter(id => !removed.has(id))).filter(ids => ids.length)
+  }
   add(files: readonly File[], taskIds: readonly string[]): boolean {
     if (validateUpload(files) || taskIds.length !== files.length || new Set(taskIds).size !== taskIds.length ||
       taskIds.some(id => !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(id))) return false

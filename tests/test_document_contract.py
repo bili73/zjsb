@@ -38,6 +38,31 @@ class DocumentContractTests(unittest.TestCase):
         self.assertIn('413', upload['responses'])
         self.assertIn('FILE_TOO_LARGE/413', upload['description'])
 
+    def test_account_owner_and_name_update_contracts(self):
+        owner = dict(user_id=str(uuid4()), username='alice', display_name='合成姓名', account_exists=True)
+        self.validate('BatchOwner', owner)
+        self.validate('BatchOwner', dict(user_id=None, username=None, display_name=None, account_exists=False))
+        for extra in [dict(account_exists='yes'), dict(username='invalid name'), dict(display_name=''), dict(secret='no'), dict(user_id=None), dict(username=None)]:
+            with self.assertRaises(jsonschema.ValidationError):
+                self.validate('BatchOwner', dict(owner, **extra))
+        for body in [dict(display_name='新姓名'), dict(enabled=False)]:
+            self.validate('UpdateUserRequest', body)
+        for body in [{}, dict(display_name=' '), dict(display_name=4), dict(display_name='新姓名', enabled=True), dict(role='admin')]:
+            with self.assertRaises(jsonschema.ValidationError):
+                self.validate('UpdateUserRequest', body)
+
+    def test_measured_progress_allows_unknown_and_zero_totals_without_fake_estimates(self):
+        detail = dict(stage='OCR', prepared_pages=1, total_pages=2, processed_regions=0,
+                      recognized_regions=0, incomplete_regions=0, total_regions=None)
+        self.validate('TaskProgressDetail', detail)
+        self.validate('TaskProgressDetail', dict(detail, total_pages=None))
+        self.validate('TaskProgressDetail', dict(detail, stage='EXTRACTING', total_regions=0))
+        self.assertTrue(self.document['components']['schemas']['Task']['properties']['progress']['deprecated'])
+        for extra in [dict(total_regions=-1), dict(processed_regions=0.5), dict(total_pages=0),
+                      dict(stage='GENERATING'), dict(eta_seconds=42)]:
+            with self.subTest(extra=extra), self.assertRaises(jsonschema.ValidationError):
+                self.validate('TaskProgressDetail', dict(detail, **extra))
+
     def envelope(self,result):
         return dict(result,task_id=str(uuid4()),run_id=str(uuid4()),result_revision=1,status=result.get('status','NEED_REVIEW'))
 
@@ -143,7 +168,7 @@ class DocumentContractTests(unittest.TestCase):
         with self.assertRaises(jsonschema.ValidationError):self.validate('FieldDerivation',bad)
 
     def test_implemented_methods_and_explicit_future_paths(self):
-        self.assertEqual(self.document['info']['version'],'1.18.0')
+        self.assertEqual(self.document['info']['version'],'1.21.0')
         self.assertIn('post',self.document['paths']['/export'])
         self.assertNotIn('get',self.document['paths']['/export'])
         permissions=self.document['paths']['/auth/me']['get']['responses']['200']['content']['application/json']['schema']['properties']['permissions']['items']['enum']
@@ -155,6 +180,19 @@ class DocumentContractTests(unittest.TestCase):
         self.assertFalse(self.document['components']['schemas']['MedicalItem']['additionalProperties'])
         for code in ['CARD_ADMISSION_FAILED','UNSAFE_CARD_INPUT','EXPORT_BLOCKED','EXPORT_VALUE_TOO_LONG','PREVIEW_MASK_UNAVAILABLE']:
             self.validate('Error',dict(code=code,message='安全提示',details={'tasks':[]}))
+
+    def test_batch_deletion_contract_is_implemented_and_version_bound(self):
+        from ocr_app.routes import DeleteBatchBody
+        request = dict(versions=[dict(task_id=str(uuid4()), run_id=str(uuid4()), expected_revision=1)])
+        self.validate('BatchDeleteRequest', request)
+        self.assertEqual(DeleteBatchBody.model_validate(request).model_dump(mode='json'), request)
+        self.validate('BatchDeleteResponse', dict(batch_id=str(uuid4()), task_ids=[request['versions'][0]['task_id']], cleanup_pending=False))
+        operation = self.document['paths']['/batches/{batch_id}']['delete']
+        self.assertNotEqual(operation.get('x-implemented'), False)
+        self.assertIn('200', operation['responses'])
+        self.assertNotIn('204', operation['responses'])
+        for invalid in [dict(versions=[]), dict(versions=[dict(request['versions'][0], extra='x')])]:
+            with self.assertRaises(jsonschema.ValidationError): self.validate('BatchDeleteRequest', invalid)
 
     def test_human_added_household_member_matches_contract(self):
         result=extract_result([], 'HOUSEHOLD_REGISTER')

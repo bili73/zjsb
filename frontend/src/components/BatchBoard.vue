@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CircleClose, RefreshRight, View, WarningFilled } from '@element-plus/icons-vue'
+import { CircleClose, Delete, RefreshRight, View, WarningFilled } from '@element-plus/icons-vue'
 import ExportControls from './ExportControls.vue'
 import type { BusinessApi } from '../api.ts'
 import { ApiFailure, shouldRefreshResult, isAbort } from '../api.ts'
@@ -10,14 +10,15 @@ import type { BatchStatus, DocProfile, Task, TaskStatus } from '../business.ts'
 import { errorMessages } from '../diagnostics.ts'
 import { entryNeedsReview, entryRunning } from '../monitor.ts'
 import type { BatchEntry, Monitor } from '../monitor.ts'
-import { formatTime } from '../presentation.ts'
+import { batchOwnerLabel, expiryText, formatTime, taskProgressView } from '../presentation.ts'
 import { groupBatchEntries, periodBounds } from '../batchCalendar.ts'
 import type { BatchPeriod } from '../batchCalendar.ts'
 
-const props = defineProps<{ monitor: Monitor; canWrite: boolean; api: BusinessApi | null; uploadReset: number; catalogue: DocProfile[] }>()
+const props = defineProps<{ monitor: Monitor; canWrite: boolean; isAdmin: boolean; api: BusinessApi | null; uploadReset: number; catalogue: DocProfile[] }>()
 const emit = defineEmits<{
   (e: 'open-result', task: Task, batchId: string): void
   (e: 'unauthorized'): void
+  (e: 'batch-deleted', batchId: string, taskIds: string[]): void
 }>()
 
 const selected = reactive<Record<string, Task[]>>({})
@@ -74,8 +75,13 @@ function batchMeta(batchId: string) {
   if (batch?.failed_count) parts.push(`失败 ${batch.failed_count}`)
   if (entryRunning(entry)) parts.push('执行中')
   parts.push(`创建于 ${formatTime(batch?.created_at)}（UTC+8）`)
+  const expiry = expiryText(batch?.created_at)
+  if (expiry) parts.push(`${expiry} 到期清理`)
   return parts.join(' · ')
 }
+
+const progressViews = computed(() => Object.fromEntries(entries.value.flatMap(({ entry }) =>
+  entry.tasks.map(task => [task.task_id, taskProgressView(task)]))))
 
 async function loadMore() {
   if (loadingMore.value) return
@@ -130,6 +136,37 @@ async function runCancel(batchId: string, task: Task) {
 }
 
 function runRerun(batchId: string, task: Task) { void doAction('rerun', batchId, task) }
+
+async function deleteBatch(batchId: string) {
+  const entry = props.monitor.state.entries[batchId]
+  if (!props.isAdmin || acting.value || !entry?.tasksLoaded || !entry.tasks.length || entryRunning(entry)) return
+  // Freeze the versions shown when confirmation opens, not the later poll snapshot.
+  const tasks = entry.tasks.map(task => ({ ...task }))
+  acting.value = `delete:${batchId}`
+  try {
+    await ElMessageBox.confirm(`确认永久删除「${batchTitle(batchId)}」及其中 ${tasks.length} 个任务？服务器保存的原文件、识别结果和处理历史会一起删除，无法恢复。电脑上的原始素材不受影响。`, '删除批次', {
+      type: 'warning', confirmButtonText: '永久删除', cancelButtonText: '取消',
+    })
+  } catch { acting.value = ''; return }
+  actionController = new AbortController()
+  try {
+    const result = await props.monitor.deleteBatch(batchId, tasks, actionController.signal)
+    delete selected[batchId]
+    delete missingOnly[batchId]
+    emit('batch-deleted', batchId, result.task_ids)
+    if (result.cleanup_pending) ElMessage.warning('批次记录已删除，但部分文件暂未清理；请联系维护人员重启服务完成清理。')
+    else ElMessage.success('批次及其识别文件、结果已删除。')
+  } catch (error) {
+    if (isAbort(error)) return
+    if (error instanceof ApiFailure) {
+      if (error.card.http_status === 401) emit('unauthorized')
+      else if (shouldRefreshResult(error) || error.card.http_status === 404) {
+        props.monitor.start()
+        ElMessage.warning('批次已变化或不存在，未执行本次删除；请刷新核对后再操作。')
+      } else ElMessage.error(errorMessages[error.card.code])
+    } else ElMessage.error(errorMessages.UNKNOWN_ERROR)
+  } finally { acting.value = '' }
+}
 
 function onRowClick(batchId: string, row: unknown) {
   const task = row as Task
@@ -196,10 +233,15 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
             <el-tag v-if="entry.tasksLoaded && missingTasks[id]?.length" size="small" type="danger" effect="light">{{ missingTasks[id]?.length }} 个任务缺必填</el-tag>
             <el-tag v-else-if="!entry.tasksLoaded" size="small" type="info" effect="plain">必填检查中</el-tag>
             <span class="batch-meta">{{ batchMeta(id) }}</span>
+            <span v-if="entry.batch" class="batch-meta batch-owner">上传人：{{ batchOwnerLabel(entry.batch.owner) }}</span>
           </span>
         </template>
 
         <ExportControls :api="api" :tasks="entry.tasks" :selected="entry.tasks.filter(t => (selected[id] ?? []).some(s => s.task_id === t.task_id))" :batch-id="id" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
+        <div v-if="isAdmin" class="required-toolbar">
+          <el-button type="danger" plain :icon="Delete" :loading="acting === `delete:${id}`" :disabled="!!acting || !entry.tasksLoaded || !entry.tasks.length || entryRunning(entry)" @click="deleteBatch(id)">删除批次</el-button>
+          <span class="poll-hint">{{ entryRunning(entry) ? '请等待排队及识别任务停止后再删除。' : '永久删除本批次及关联文件；待人工核对的记录也可删除。' }}</span>
+        </div>
         <div class="required-toolbar">
           <el-checkbox v-if="entry.tasksLoaded" v-model="missingOnly[id]">只看必填未填（{{ missingTasks[id]?.length ?? 0 }}）</el-checkbox>
           <span v-else class="poll-hint">正在获取任务，检查必填信息…</span>
@@ -241,10 +283,21 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
               <span v-else class="poll-hint">尚未检查</span>
             </template>
           </el-table-column>
-          <el-table-column label="进度" width="170">
+          <el-table-column label="处理进度" width="235">
             <template #default="{ row }">
-              <el-progress v-if="runningStatuses.has(row.status)" :percentage="row.progress ?? 0" :stroke-width="6" />
-              <span v-else class="poll-hint">—</span>
+              <el-tooltip v-if="progressViews[row.task_id]" placement="top" :disabled="!progressViews[row.task_id]!.tooltip" :content="progressViews[row.task_id]!.tooltip">
+                <div class="task-progress">
+                  <div class="task-progress__label">
+                    <span v-if="progressViews[row.task_id]!.active" class="rainbow-spinner task-progress__spin" aria-hidden="true"></span>
+                    <span>{{ progressViews[row.task_id]!.label }}</span>
+                  </div>
+                  <el-progress v-if="progressViews[row.task_id]!.percentage !== null"
+                    :percentage="progressViews[row.task_id]!.percentage!" :show-text="false" :stroke-width="6"
+                    :status="progressViews[row.task_id]!.incomplete > 0 ? 'warning' : undefined" aria-label="图像识别区域处理量" />
+                  <div v-if="progressViews[row.task_id]!.amount" class="task-progress__amount">{{ progressViews[row.task_id]!.amount }}</div>
+                  <div v-if="progressViews[row.task_id]!.incomplete > 0" class="task-progress__warning">{{ progressViews[row.task_id]!.incomplete }} 个区域不完整，请核对</div>
+                </div>
+              </el-tooltip>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="210" align="left">
@@ -293,4 +346,9 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
 .required-fields-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .missing-field-names { font-size: 12px; color: var(--el-color-danger); word-break: break-word; }
 .batch-collapse :deep(.required-missing-row) { --el-table-tr-bg-color: var(--el-color-danger-light-9); }
+.task-progress { width: 100%; display: grid; gap: 5px; padding-block: 3px; font-size: 12px; line-height: 1.5; }
+.task-progress__label { display: flex; align-items: center; gap: 6px; }
+.task-progress__spin { width: 14px; height: 14px; --ring: 2.5px; flex: none; }
+.task-progress__amount { color: var(--el-text-color-secondary); }
+.task-progress__warning { color: var(--el-color-warning-dark-2); }
 </style>

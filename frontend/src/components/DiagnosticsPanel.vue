@@ -11,7 +11,7 @@ const emit = defineEmits<{ (e: 'update:open', value: boolean): void }>()
 const originLabels = { http: '接口请求', task: '任务', vue: '界面', window: '窗口', promise: '异步' } as const
 const operationLabels = {
   health: '健康检查', auth: '身份验证', account_list: '账号列表', account_create: '创建账号', account_update: '账号启用状态', account_delete: '删除账号', password_change: '修改密码', required_settings_read: '读取必填设置', required_settings_save: '保存必填设置', batch_list: '批次列表', batch_tasks: '批次任务',
-  upload: '上传', result: '结果读取', cancel: '取消', rerun: '重跑', interface: '界面', catalogue: '材料目录', review: '人工复核', preview: '受控预览', export: '导出',
+  batch_delete: '删除批次', upload: '上传', result: '结果读取', cancel: '取消', rerun: '重跑', interface: '界面', catalogue: '材料目录', review: '人工复核', preview: '受控预览', export: '导出',
 } as const
 
 async function copy(card: DiagnosticCard) {

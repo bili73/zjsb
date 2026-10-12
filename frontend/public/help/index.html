@@ -25,7 +25,7 @@
       background: var(--bg);
     }
     * { box-sizing: border-box; }
-    html { scroll-padding-top: 92px; }
+    html { scroll-padding-top: 92px; scrollbar-gutter: stable; }
     body { margin: 0; font-size: 16px; line-height: 1.9; }
     a { color: var(--brand-dark); text-underline-offset: 4px; }
     a:hover { color: #05594f; }
@@ -95,6 +95,16 @@
     .shot { display: block; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(15,157,143,.08); transition: .2s; }
     .shot:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15,157,143,.15); }
     .shot img { display: block; width: 100%; height: auto; }
+    .image-viewer { width: calc(100% - 48px); max-width: 1000px; height: 86vh; max-height: 800px; padding: 0; border: 0; border-radius: 12px; overflow: hidden; color: var(--ink); background: white; }
+    .image-viewer[open] { display: flex; flex-direction: column; }
+    .image-viewer::backdrop { background: rgba(15, 25, 24, .72); }
+    .viewer-toolbar { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+    .viewer-title { flex: 1; min-width: 0; line-height: 1.6; }
+    .viewer-close { flex: none; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); font-size: 32px; line-height: 1; cursor: pointer; }
+    .viewer-close:hover { background: var(--brand-soft); }
+    .viewer-close:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+    .viewer-image { flex: 1; min-height: 0; padding: 12px; overflow: hidden; background: var(--bg); }
+    .viewer-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
     figure.small-shot { max-width: 460px; margin-inline: auto; }
     figcaption { margin-top: 10px; text-align: center; }
 
@@ -150,8 +160,9 @@
     </nav>
     <main id="manual">
       <h1>使用说明</h1>
-      <p class="meta"><span>适用版本 v1.18.0</span><span>编写日期 2026年10月10日</span></p>
-      <p class="muted reading-hint">按左侧目录查找操作步骤。工作台保留在原标签页，阅读说明不影响正在填写的内容。</p>
+      <p class="meta"><span>适用版本 v1.21.0</span><span>更新日期 2026年10月10日</span></p>
+      <p class="muted reading-hint">点击工作台右上角“使用说明”，即可在当前页面打开本说明。按左侧目录查找步骤，阅读后关闭说明窗口；工作台中的待上传文件和未保存草稿仍会保留。</p>
+      <p class="muted">点击配图可查看完整图片；点击右上角“×”、按 Esc 或点击大图外侧即可关闭。</p>
 
       <section id="quick-start" aria-label="快速上手">
         <p class="lead">本说明介绍如何将证件照片、学历材料和体检报告整理成可下载的 Excel。系统先识别，人工再核对；认不清的内容可以对照原件补填。体检异常的解释和是否录取，由人工按公司制度处理。</p>
@@ -179,12 +190,23 @@
       <section id="upload"><h2>1 登录和上传材料</h2>
         <p>使用电脑浏览器打开工作台网址。输入账号和密码，点击“进入工作台”。使用完毕后点击右上角的姓名，选择“退出登录”。若提示登录失效，重新登录即可；忘记密码时联系管理员或维护人员。</p>
         <p>需要修改自己的密码时，点击右上角姓名，选择“修改密码”，填写原密码、新密码和确认新密码，再点“保存新密码”。新密码需8至128个字符。修改成功后会返回登录页，所有设备都需用新密码重新登录；原密码输错时，重新填写即可。</p>
+        <h3>登录后能查看和处理哪些材料</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th scope="col">账号角色</th><th scope="col">可以查看的范围</th><th scope="col">可以进行的操作</th></tr></thead>
+          <tbody>
+            <tr><td>操作员</td><td>自己上传的批次和识别结果。</td><td>上传材料、对照原图、补填修正、取消或重跑任务、导出 Excel。</td></tr>
+            <tr><td>只读</td><td>归属于自己的批次和识别结果。</td><td>查阅结果；上传、修正、重跑和导出需要操作员或管理员处理。</td></tr>
+            <tr><td>管理员</td><td>所有账号的批次，包括保留的历史记录。</td><td>处理所有批次，管理账号和必填设置，删除已停止的批次。</td></tr>
+          </tbody>
+        </table></div>
+        <p>请使用分配给自己的账号。批次按上传时的账号归属；操作员看不到同事的批次，直接打开同事的任务链接也无法访问。需要协助处理他人的材料时，请联系管理员。</p>
+        <h3>上传步骤</h3>
         <ol class="steps">
           <li><strong>先选择材料类型</strong>例如毕业证选“毕业证”，学位证选“学位证”。身份证人像面和国徽面分别选择。学信网入口目前对应“学历证书电子注册备案表”。</li>
           <li><strong>添加文件</strong>把文件拖到上传区域，或点击“点击选择”，可一次选择多份。传错时删除对应文件，或用“一键清除”重新选择。</li>
           <li><strong>检查后提交</strong>确认类型和文件都正确，再点击“开始识别”。提交成功后会进入任务批次，可切回上传页继续提交其他类型。</li>
         </ol>
-        <figure><a class="shot" href="images/upload.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/upload.png" alt="" loading="lazy"></a>
+        <figure><a class="shot" href="images/upload.png" aria-label="查看大图，可关闭"><img src="images/upload.png" alt="" loading="lazy"></a>
         <figcaption>图1  文件选择和开始识别入口（点击图片可查看大图）</figcaption></figure>
         <div class="callout warn">上传限制：支持 JPG、JPEG、PNG、HEIC、PDF；单文件不超过 50 MB，每批最多 100 个文件，总大小不超过 500 MB。银行卡入口只接收图片，不接收 PDF。</div>
         <p>一个批次只按一种材料类型处理。切换类型会清空尚未提交的文件；已提交的任务继续在后台处理。体检 PDF 建议上传完整原文件，照片尽量清楚、端正、无遮挡。</p>
@@ -192,7 +214,10 @@
 
       <section id="batches"><h2>2 查找批次和缺失信息</h2>
         <p>打开“任务批次”，点击批次标题展开文件列表。批次按材料类型命名，较新的批次排在前面；时间按北京时间显示。</p>
-        <figure><a class="shot" href="images/batches.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/batches.png" alt="" loading="lazy"></a>
+        <p><strong>看清上传人：</strong>批次标题中的“上传人：姓名（账号）”说明谁提交了这批材料。管理员可以据此区分不同经办人的任务；管理员代为修正、审核或重跑后，上传人仍保持不变。</p>
+        <p>管理员看到“已删除”的上传账号时，表示账号已移除，但批次仍保留；“历史账号（未关联）”或“未知上传人”表示旧记录缺少可恢复的账号资料，这类记录由管理员查看和处理。</p>
+        <p><strong>删除不再需要的批次：</strong>管理员展开批次后点击“删除批次”，核对名称和文件数量，再点击“永久删除”。待人工核对的记录也能删除；有排队或识别中的任务时，需等待任务停止。删除会同时清理服务器上的原文件、识别结果和处理历史，无法在程序中恢复；电脑上的原始素材不受影响。操作员和只读账号没有此入口。若提示“部分文件暂未清理”，记录已移除，请联系维护人员重启服务补清。</p>
+        <figure><a class="shot" href="images/batches.png" aria-label="查看大图，可关闭"><img src="images/batches.png" alt="" loading="lazy"></a>
         <figcaption>图2  批次中的缺失标记和导出入口（点击图片可查看大图）</figcaption></figure>
         <ol class="steps">
           <li><strong>按时间找</strong>用“日／周／月”和日期选择器缩小范围。找不到时清空日期，查看“全部日期”；旧记录可点“加载更早的批次”。</li>
@@ -208,12 +233,25 @@
             <tr><td>处理失败／已拒绝／已取消</td><td>先看提示；有部分结果时可查看。必要时重跑或更换清晰材料。</td></tr>
           </tbody>
         </table></div>
+        <h3>如何看识别进度</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th scope="col">显示内容</th><th scope="col">实际在做什么</th></tr></thead>
+          <tbody>
+            <tr><td>排队等待</td><td>等待相应识别模型空闲，尚未开始处理。</td></tr>
+            <tr><td>准备文件中 · 已准备几页</td><td>读取文件、准备需要识别的页面。</td></tr>
+            <tr><td>文字识别中 · 已处理 20/40 个区域</td><td>已处理40个文字或表格片段中的20个。进度条按实际处理量变化，不是剩余时间估计。</td></tr>
+            <tr><td>整理字段中／校验结果中</td><td>正在把识别文字整理成字段并检查结果，仍需等待。</td></tr>
+            <tr><td>识别结束，待核对</td><td>机器处理已结束，可以打开结果进行人工核对。</td></tr>
+          </tbody>
+        </table></div>
+        <p>某些 PDF 可以直接读取文字，所以会显示“无需图像识别”。出现“几个区域不完整，请核对”时，请重点检查相应内容；已处理完所有区域，也不代表没有漏字、漏项或识别错误。</p>
+        <p><strong>注意保存时间：</strong>批次会标注“到期清理”日期，当前默认从上传日起保留7天。需要长期保存时，请及时导出表格，并保留电脑上的原始材料。</p>
         <div class="callout warn">注意：“只看必填未填”只改变列表显示，不会缩小“本批次全部”的导出范围。只想导出部分文件，必须勾选它们并选择“已勾选”。</div>
       </section>
 
       <section id="review"><h2>3 人工核对和修正</h2>
         <p>点任务的“查看”或“补填”后，会打开结果窗口。左侧是原件，右侧是识别结果及“人工核对与修正”。左右中间的分隔条可以拖动，双击可恢复宽度。</p>
-        <figure class="small-shot"><a class="shot" href="images/review.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/review.png" alt="" loading="lazy"></a>
+        <figure class="small-shot"><a class="shot" href="images/review.png" aria-label="查看大图，可关闭"><img src="images/review.png" alt="" loading="lazy"></a>
         <figcaption>图3  缺失的学校名称可在修正区直接补填（点击图片可查看大图）</figcaption></figure>
         <ol class="steps">
           <li><strong>对照关键内容</strong>先看姓名、学校、证件编号、日期等重要信息。识别结果可能漏字或读错数字；置信度“未标定”表示没有可供参考的可靠分数，仍需对照原件核对。</li>
@@ -228,12 +266,13 @@
 
       <section id="medical"><h2>4 体检报告先看台账信息</h2>
         <p>打开体检报告后，先核对“体检台账字段”，再看检测项目和异常信息。体检字段旁的“定位”“相关来源”“各项目来源”可帮助查看原文；证件当前只提供原图查看，不做字段定位。</p>
+        <p>点击“定位”后，左侧会加载对应页面并滚动到来源位置；首次打开多页报告时，图片可能需要稍等片刻。没有可靠定位框时会显示整页，可直接对照原文。左侧也可输入页码后点“跳页”，或点击原图放大查看；读取失败时先点该页“重试”或上方“重新读取”。</p>
         <h3>个人信息和体检机构</h3>
         <p>先核对姓名、性别、年龄、体检日期、体检机构、报告日期、身高、体重和血压。常用报告的个人信息可在“一、个人信息”下的表格找到；体检机构可检查封面右侧底部的机构名称。不同机构版式可能不同，识别不到时对照原件补录。</p>
         <h3>体检大项目和数量</h3>
         <p>“体检项目”指内科、眼科、血常规等大项目，来源是“八、本次体检项目意义”标题下“项目”这一列。把大项目名称填进“体检项目”清单，建议每行一个；重复项目只保留一次。</p>
         <p>“体检项目数量”由这份大项目清单自动计算，不能直接修改数字。发现数量不对，先修改“体检项目”清单，再保存。</p>
-        <figure><a class="shot" href="images/medical.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/medical.png" alt="" loading="lazy"></a>
+        <figure><a class="shot" href="images/medical.png" aria-label="查看大图，可关闭"><img src="images/medical.png" alt="" loading="lazy"></a>
         <figcaption>图4  体检台账字段示例  可向下滚动查看后续信息（点击图片可查看大图）</figcaption></figure>
         <h3>六类检查从哪里看</h3>
         <p>血常规、尿常规、心电图、DR 影像、腹部彩超、肝功五项（生化检测）应分别查看对应报告页。血常规、尿常规和生化检验往往只有明细，没有“小结”，仍需看结果、参考范围和异常标记；肝功相关内容可在“生化检验报告单”中查找。</p>
@@ -273,7 +312,7 @@
             <tr><td>只导出勾选的几份</td><td>在文件列表左侧勾选任务，再选择“已勾选”，点击“下载 Excel”。</td></tr>
           </tbody>
         </table></div>
-        <figure><a class="shot" href="images/export.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/export.png" alt="" loading="lazy"></a>
+        <figure><a class="shot" href="images/export.png" aria-label="查看大图，可关闭"><img src="images/export.png" alt="" loading="lazy"></a>
         <figcaption>图5  选择导出范围后点击“下载 Excel”（点击图片可查看大图）</figcaption></figure>
         <h3>按钮不能点或导出被阻止时</h3>
         <ol class="steps">
@@ -313,12 +352,20 @@
         <p>先确认文件能在电脑上正常打开，且格式和大小符合要求。不要只修改扩展名把其他文件伪装成 JPG 或 PDF。可重新保存为清晰的 JPG／PNG，或重新导出 PDF 后再试。多份一起失败时，可分小批或逐份提交，查找有问题的文件。银行卡请用图片。</p>
         <h3>处理很久或超时了</h3>
         <p>体检 PDF 页数多，通常比证件慢。先查看任务状态，任务仍在处理时不要重复上传。出现失败或超时后，先打开已有结果检查是否有部分内容，再决定补录、重跑或反馈；重跑前确认没有需要保留的未保存修正。重跑生成的新结果需要重新核对。</p>
+        <h3>体检详情打不开，或左侧原图一直空白</h3>
+        <ol class="steps">
+          <li><strong>先分清哪一部分没出来</strong>右侧有识别结果、左侧图片读取失败时，先点原图的“重试”或“重新读取”，无需为了加载图片重新识别。</li>
+          <li><strong>重新打开结果</strong>先保存修正，再关闭结果窗口并重新打开。服务刚更新时，可在保存后按 Ctrl+F5 刷新网页；刷新会丢失未保存的草稿。</li>
+          <li><strong>看任务是否已停止</strong>“待人工核对”可打开已有结果；“已取消”不会自行继续，需要处理时再点击“重跑”。排队或运行中的任务先等待。</li>
+          <li><strong>仍有问题就反馈</strong>保留错误编号和诊断信息。请管理员检查“引擎状态”；模型启动中需等待，模型不可用时由维护人员处理。不要反复上传同一份报告。</li>
+        </ol>
         <h3>保存后仍然显示待人工核对</h3>
         <p>可能还有低置信度、冲突、覆盖不完整或其他核对问题。先看“待核对”和“核对项”的具体提示。“保存成功”“已完成”和“允许导出”不是同一件事；是否可导出以当前必填检查为准。</p>
         <h3>提示结果或设置已经更新</h3>
         <p>可能有人修改了同一任务，或管理员调整了必填设置。先记下尚未保存的内容，点击“读取最新版本”，重新核对后再保存。不要连续重复点击保存。</p>
         <h3>列表不更新或找不到刚上传的批次</h3>
         <p>点击“刷新”，检查日期范围，必要时切回“全部日期”。如果刚刚取消了等待上传，服务端仍可能已经接收，先查任务列表，避免重复提交。</p>
+        <p>还要确认右上角显示的是上传时使用的账号。操作员只能看到自己的材料，换账号登录不会带走原账号的批次；需要查看同事或历史账号的记录时，请联系管理员。</p>
         <h3>怎样把问题反馈给维护人员</h3>
         <ol class="steps">
           <li><strong>记录发生位置</strong>记下出现问题的时间、材料类型、文件名，以及当时点了哪个按钮。</li>
@@ -329,7 +376,7 @@
       </section>
 
       <section id="admin"><h2>9 管理员设置</h2>
-        <p>普通操作员日常只需要上传、核对和导出。本页仅供具有管理员权限的账号使用；只读账号可查看已有任务和识别结果，不能上传、修正或导出。</p>
+        <p>普通操作员可上传、核对和导出自己的批次；只读账号只能查看自己的批次和结果。管理员可以查看、处理全部批次，并使用本节的账号管理功能。批次标题标注上传人的姓名和账号，管理员帮助核对不会改变上传人。</p>
         <h3>创建其他账号</h3>
         <ol class="steps">
           <li><strong>进入账号管理</strong>点击“账号管理”，查看现有账号，避免重复创建。</li>
@@ -337,15 +384,23 @@
           <li><strong>完成创建</strong>点击页面创建按钮，确认新账号已在列表中出现，再将登录信息单独告知使用人。密码长度按页面要求填写，当前为8至128个字符。</li>
         </ol>
         <h3>管理已有账号</h3>
+        <figure><a class="shot" href="images/accounts.png" aria-label="查看大图，可关闭"><img src="images/accounts.png" alt="合成账号列表中的编辑姓名、禁用、密码管理和删除入口" loading="lazy"></a>
+        <figcaption>图6  账号管理入口（虚构演示账号，点击图片可查看大图）</figcaption></figure>
+        <ol class="steps">
+          <li><strong>找到对应账号</strong>在“已有账号”列表中核对账号和姓名，再点击“编辑姓名”。</li>
+          <li><strong>修改并保存姓名</strong>填写1至80个字符的姓名，点击“保存”。姓名不能为空；登录用的账号保持不变。</li>
+          <li><strong>检查显示</strong>重新查看批次，上传人会显示最新姓名；若未更新可点“刷新”。修改当前管理员自己的姓名时，右上角姓名也会更新。</li>
+        </ol>
+        <p>编辑姓名不会改变密码、角色、启用状态或批次归属，也不需要重新识别材料。当前页面提供的“编辑姓名”只修改显示姓名。</p>
         <ol class="steps">
           <li><strong>禁用或启用</strong>在已有账号列表找到对应账号，点击“禁用”并确认。该账号立即退出，禁用期间不能登录。需要恢复时点击“启用”，再让对方重新登录。</li>
           <li><strong>重置密码</strong>忘记密码时，管理员点击该账号的“重置密码”，填写两次新密码，点“确认重置”。所有旧登录立即失效。已禁用账号仍保持禁用，需要时另行启用。</li>
-          <li><strong>删除账号</strong>账号不再使用时点击“删除”，确认账号无误后点“确认删除”。删除不能撤销，但历史任务和识别记录会保留。同名重新创建是一个新账号。</li>
+          <li><strong>删除账号</strong>账号不再使用时点击“删除”，确认账号无误后点“确认删除”。删除不能撤销，历史任务和识别记录保留给管理员查看，上传人标注“已删除”。同名重新创建是一个新账号，不能查看原账号的材料。</li>
         </ol>
         <p>当前登录账号和最后一个启用的管理员不能禁用或删除。修改自己的密码需使用右上角菜单，填写原密码。不要通过重复创建账号来重置密码。</p>
         <h3>按材料类型调整必填信息</h3>
-        <figure><a class="shot" href="images/settings.png" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看大图"><img src="images/settings.png" alt="" loading="lazy"></a>
-        <figcaption>图6  管理员统一设置必填字段  会影响历史批次（点击图片可查看大图）</figcaption></figure>
+        <figure><a class="shot" href="images/settings.png" aria-label="查看大图，可关闭"><img src="images/settings.png" alt="" loading="lazy"></a>
+        <figcaption>图7  管理员统一设置必填字段  会影响历史批次（点击图片可查看大图）</figcaption></figure>
         <ol class="steps">
           <li><strong>选择材料类型</strong>打开“必填字段设置”，选择毕业证、体检报告等要调整的类型。</li>
           <li><strong>勾选并保存</strong>勾选必须填写的项目，点击“保存设置”。未选中项是选填；自动计算的字段不能设为必填。</li>
@@ -356,9 +411,43 @@
       <footer><a href="#manual">回到顶部</a></footer>
     </main>
   </div>
+  <dialog class="image-viewer" aria-labelledby="viewer-title">
+    <div class="viewer-toolbar">
+      <div class="viewer-title"><strong id="viewer-title">说明配图</strong></div>
+      <button class="viewer-close" type="button" aria-label="关闭大图" title="关闭大图（Esc）" autofocus>×</button>
+    </div>
+    <div class="viewer-image"><img alt=""></div>
+  </dialog>
   <script>
     // 在工作台抽屉中以 iframe 打开时隐藏“返回工作台”，避免 iframe 内套娃跳转。
     if (window.parent !== window) document.documentElement.classList.add('embedded');
+    (function () {
+      var viewer = document.querySelector('.image-viewer');
+      var image = viewer.querySelector('img');
+      var opener;
+      var previousOverflow;
+      var previousScroll;
+      document.querySelectorAll('a.shot').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+          event.preventDefault();
+          opener = link;
+          previousOverflow = document.body.style.overflow;
+          previousScroll = { x: window.scrollX, y: window.scrollY };
+          image.src = link.href;
+          image.alt = link.querySelector('img').alt || link.closest('figure').querySelector('figcaption').textContent;
+          viewer.showModal();
+          document.body.style.overflow = 'hidden';
+        });
+      });
+      viewer.querySelector('.viewer-close').addEventListener('click', function () { viewer.close(); });
+      viewer.addEventListener('click', function (event) { if (event.target === viewer) viewer.close(); });
+      viewer.addEventListener('close', function () {
+        document.body.style.overflow = previousOverflow;
+        image.removeAttribute('src');
+        if (opener) opener.focus({ preventScroll: true });
+        window.scrollTo(previousScroll.x, previousScroll.y);
+      });
+    })();
     // 目录滚动高亮：当前阅读的章节在左侧目录中加亮。
     (function () {
       var links = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));

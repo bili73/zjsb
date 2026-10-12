@@ -29,8 +29,8 @@ class TaskStoreTests(unittest.TestCase):
         self.addCleanup(self.engine.dispose)
         self.store = TaskStore(self.engine, self.storage)
 
-    def create(self, data=b'synthetic document', name='synthetic.png', options=None):
-        value = self.store.create_batch([dict(data=data, name=name, mime='image/png')],
+    def create(self, data=b'synthetic document', name='synthetic.png', options=None, page_count=None):
+        value = self.store.create_batch([dict(data=data, name=name, mime='image/png', actual_source_page_count=page_count)],
                                         'DIPLOMA', 'test-operator', options)
         return self.store.task(value['task_ids'][0])
 
@@ -116,6 +116,70 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(len(claimed), 1)
         self.assertEqual(claimed[0]['id'], task['task_id'])
         self.assertEqual(self.store.task(task['task_id'])['status'], 'PREPROCESSING')
+
+    def test_progress_counts_require_a_complete_plan_and_exclude_native_text(self):
+        task = self.create(page_count=2)
+        self.assertEqual(self.store.task(task['task_id'])['progress_detail'], dict(
+            stage='QUEUED', prepared_pages=0, total_pages=2, processed_regions=0,
+            recognized_regions=0, incomplete_regions=0, total_regions=None))
+        claimed = self.store.claim_next()
+        pages = [dict(page_index=1, _preparation_complete=True, regions=[
+            dict(extraction_method='ocr', status='pending'),
+            dict(extraction_method='pdf_text', status='recognized')])]
+        self.store.progress(claimed, 'PREPROCESSING', 0, pages)
+        detail = self.store.task(task['task_id'])['progress_detail']
+        self.assertEqual((detail['prepared_pages'], detail['total_regions']), (1, None))
+        pages.append(dict(page_index=2, regions=[dict(extraction_method='ocr', status='pending')]))
+        self.store.progress(claimed, 'PREPROCESSING', 0, pages)
+        self.assertIsNone(self.store.task(task['task_id'])['progress_detail']['total_regions'])
+        pages[1]['_preparation_complete'] = True
+        pages[0]['regions'][0]['status'] = 'recognized'
+        pages[1]['regions'][0]['status'] = 'incomplete'
+        self.store.progress(claimed, 'OCR', 99, pages)
+        public = self.store.task(task['task_id'])
+        self.assertEqual(public['progress_detail'], dict(stage='OCR', prepared_pages=2,
+            total_pages=2, processed_regions=2, recognized_regions=1, incomplete_regions=1, total_regions=2))
+        self.assertNotIn('_preparation_complete', json.dumps(public))
+        self.assertEqual(self.store.tasks(task['batch_id'])[0]['progress_detail'], public['progress_detail'])
+
+    def test_legacy_and_unknown_source_pages_do_not_invent_an_ocr_total(self):
+        for page_count, marker in [(None, True), (1, False)]:
+            with self.subTest(page_count=page_count, marker=marker):
+                task = self.create(data=str((page_count, marker)).encode(), page_count=page_count)
+                claimed = self.store.claim_next()
+                pages = [dict(page_index=1, regions=[dict(extraction_method='ocr', status='recognized')])]
+                if marker:
+                    pages[0]['_preparation_complete'] = True
+                self.store.progress(claimed, 'OCR', 99, pages)
+                detail = self.store.task(task['task_id'])['progress_detail']
+                self.assertIsNone(detail['total_regions'])
+                self.assertEqual(detail['processed_regions'], 1)
+                self.store.publish(claimed, dict(self.result(), pages=pages))
+
+    def test_failed_or_cancelled_publication_does_not_manufacture_full_progress(self):
+        for cancel in [False, True]:
+            with self.subTest(cancel=cancel):
+                task = self.create(data=str(cancel).encode(), page_count=1)
+                claimed = self.store.claim_next()
+                pages = [dict(page_index=1, _preparation_complete=True, regions=[
+                    dict(extraction_method='ocr', status='recognized'),
+                    dict(extraction_method='ocr', status='pending')])]
+                self.store.progress(claimed, 'OCR', 50, pages)
+                if cancel:
+                    self.store.cancel(task['task_id'], task['run_id'], task['result_revision'], 'operator')
+                self.store.publish(claimed, dict(self.result('FAILED'), pages=pages))
+                public = self.store.task(task['task_id'])
+                self.assertEqual(public['status'], 'CANCELLED' if cancel else 'FAILED')
+                self.assertEqual(public['progress'], 50)
+                self.assertEqual(public['progress_detail']['processed_regions'], 1)
+                self.assertEqual(public['progress_detail']['total_regions'], 2)
+                rerun = self.store.rerun(public['task_id'], public['run_id'], public['result_revision'], 'operator')
+                self.assertEqual(rerun['progress'], 0)
+                self.assertEqual(rerun['progress_detail']['processed_regions'], 0)
+                self.assertIsNone(rerun['progress_detail']['total_regions'])
+                self.assertFalse(self.store.progress(claimed, 'OCR', 99, pages))
+                self.assertEqual(self.store.task(task['task_id'])['progress_detail'], rerun['progress_detail'])
+                self.store.cancel(rerun['task_id'], rerun['run_id'], rerun['result_revision'], 'operator')
 
     def test_cancel_queued_prevents_claim_and_stale_revision_is_rejected(self):
         task = self.create()

@@ -157,10 +157,10 @@ class RequiredFieldSettingsTests(unittest.TestCase):
         self.ready(); self.ready()
         store = self.business.store
         original = store.batch
-        def concurrent_save(identifier, *, policy=None):
+        def concurrent_save(identifier, *, policy=None, user=None):
             if store.required_policy()['revision'] == 0:
                 save_configuration(store, dict(doc_type='DIPLOMA', required_fields=[], expected_revision=0), 'test')
-            return original(identifier, policy=policy)
+            return original(identifier, policy=policy, user=user)
         with patch.object(store, 'batch', side_effect=concurrent_save):
             listed = store.batches()
         self.assertEqual([batch['required_fields_revision'] for batch in listed['items']], [0, 0])

@@ -154,8 +154,21 @@ class Accounts:
         with self.transaction() as c:
             target = self._admin_target(c, actor_id, target_id, token)
             self._protect_removal(c, actor_id, target)
+            c.execute(text('UPDATE batches SET owner_snapshot_enc=:snapshot WHERE owner_id=:id'),
+                      dict(id=target_id, snapshot=self.storage.pack(dict(username=target['username'], display_name=target['display_name']))))
             c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': target_id})
             c.execute(text('DELETE FROM web_users WHERE id=:id'), {'id': target_id})
+
+    def update_display_name(self, actor_id, target_id, display_name, token):
+        if (not isinstance(display_name, str) or not 1 <= len(display_name.strip()) <= 80
+                or not display_name.isprintable()):
+            raise TaskError('INVALID_REQUEST', '姓名需1至80个可打印字符，不能全为空白', 422)
+        with self.transaction() as c:
+            target = self._admin_target(c, actor_id, target_id, token)
+            c.execute(text('UPDATE web_users SET display_name=:name WHERE id=:id'),
+                      dict(id=target_id, name=display_name.strip()))
+            return dict(user_id=target_id, username=target['username'], display_name=display_name.strip(),
+                        role=target['role'], enabled=bool(target['enabled']))
 
     def reset_password(self, actor_id, target_id, new_password, token):
         password_hash = self._new_password_hash(new_password)

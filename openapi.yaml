@@ -1,14 +1,18 @@
 openapi: 3.0.3
 info:
   title: 证件关键信息提取系统 API
-  version: 1.18.0
+  version: 1.21.0
   description: |
-    内部证件信息提取系统 API 契约（SPEC v1.24）。
+    内部证件信息提取系统 API 契约（SPEC v1.27）。
+    批次按不可变上传账号ID隔离：管理员查看全部，operator/viewer仅能访问自己的批次和所属任务。列表先过滤归属再计算总数和分页，越权ID与不存在ID统一404；结果、原图、复核、取消、重跑、完整字段及导出同样校验。混合账号导出整次拒绝，不输出部分结果。删除批次仍仅管理员可操作。
+    Batch.owner返回上传人署名；姓名使用当前账号信息，删除登录前保留加密署名快照。历史创建记录完整且操作者唯一才回填归属，无法关联账号的记录仅管理员可见，同名重建不继承。管理员可编辑显示姓名，不修改账号名、角色、密码、启用状态或会话。
+    Task.progress_detail提供真实页/区域处理计数；总计划未知时返回null，不估算推理长度或剩余时间。progress保留兼容但不再作为整体进度依据。
     管理员支持创建、启用/禁用、删除其他账号及重置密码；所有角色可凭原密码修改自己的密码。删除保留历史任务，禁用及改密撤销全部会话；保护当前账号和最后一个启用的管理员。
     六类检查包含肝功，优先汇总明确异常；无小结时按有来源的检测明细汇总正常，报告A级可作摘要依据，不覆盖阳性、异常或矛盾，也不修改检测行分类/复核。
     明细缺失或未知不默认正常；完整有序且已闭合的原生PDF项目意义表可证明未载明，使用value=null/absence_reason=NOT_ON_DOCUMENT、derived和项目来源，页面/医疗Excel显示报告未载明。保留人工优先、历史密文与既有复核要求。
 
     当前实现11种材料目录、受控上传、批次/任务查询、人工补正、完整原件预览、字段reveal及XLSX导出。
+    管理员可永久删除全部任务已停止的批次（包括NEED_REVIEW），同时清理关联文件与历史结果并保留审计；排队/运行中禁止删除，需提交完整任务版本快照。
     银行卡支持整张照片自动识别，失败逐张裁图重识别或补录；不接收PDF，不声称通用CVV自动检测可靠。
     护照、身份证、执照与户口本暂无真实样本准确率验收；本地校验PASS不等于官方真实性。
     当前列表支持分页和UTC+8创建日期范围过滤，不支持关键词/状态过滤；重跑只接受run_id及expected_revision并沿用类型/选项。
@@ -158,18 +162,13 @@ paths:
     patch:
       tags: [system]
       security: [{SessionAuth: []}]
-      summary: 管理员启用或禁用其他账号
-      description: 同源Origin；正文最多8192字节，只接受enabled布尔值。禁用和会话撤销同一事务提交，启用不会恢复旧会话。不允许禁用自己或最后一个启用的管理员（409 ACCOUNT_PROTECTED）；目标不存在404。事务内重新核验操作者的有效会话与admin权限。
+      summary: 管理员修改账号姓名或启用状态
+      description: 同源Origin；正文最多8192字节，每次只接受display_name或enabled其中一种。姓名去除首尾空白，需1至80个可打印字符；允许修改自己的姓名，不改变登录账号名、角色、密码、启用状态、会话和批次归属，批次署名在下一次读取时更新。禁用和会话撤销同一事务提交，启用不会恢复旧会话。不允许禁用自己或最后一个启用的管理员（409 ACCOUNT_PROTECTED）；目标不存在404。事务内重新核验操作者的有效会话与admin权限。
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [enabled]
-              properties:
-                enabled: {type: boolean}
+            schema: {$ref: '#/components/schemas/UpdateUserRequest'}
       responses:
         '200':
           description: 更新后的公共账号信息
@@ -528,17 +527,28 @@ paths:
       tags:
       - batches
       summary: 删除批次及其所有任务
-      description: 未实现的未来合同；当前服务不提供删除操作。
+      description: 仅admin且事务内重新核验有效会话与权限。同源Origin/CSRF。仅当所有任务均为NEED_REVIEW/COMPLETED/FAILED/REJECTED/CANCELLED时允许；排队或运行中返回409 INVALID_STATE。versions必须覆盖批次全部任务且run_id/expected_revision匹配，否则409 RESULT_VERSION_CONFLICT；重复版本或无效请求422。事务删除任务、所有运行/尝试/原文件/页面及修正访问历史的元数据，保留不含原始业务值的审计；提交后清理专属加密文件。cleanup_pending=true表示记录已删除但部分文件未清理，已记录诊断，服务下次启动沿用孤立文件清理补清；不自动重试删除。不删除外部原始素材、其他批次、已下载Excel、日志或备份。重复删除返回404。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BatchDeleteRequest'}
       responses:
-        '204':
-          description: 已删除
+        '200':
+          description: 业务记录已删除；检查cleanup_pending确认物理文件清理是否完成
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BatchDeleteResponse'}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/ErrorResponse'
-      x-implemented: false
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /batches/{batch_id}/tasks:
     parameters: [{$ref: '#/components/parameters/BatchId'}]
@@ -553,6 +563,7 @@ paths:
           in: query
           schema: {$ref: '#/components/schemas/DocTypeEnum'}
       responses:
+        '404': {$ref: '#/components/responses/NotFound'}
         '200':
           description: OK
           content:
@@ -884,6 +895,7 @@ paths:
             schema:
               $ref: '#/components/schemas/ReviewRequest'
       responses:
+        '404': {$ref: '#/components/responses/NotFound'}
         '200':
           description: 已提交
           content:
@@ -955,6 +967,7 @@ paths:
           application/json:
             schema: {$ref: '#/components/schemas/RerunRequest'}
       responses:
+        '404': {$ref: '#/components/responses/NotFound'}
         '202':
           description: 已接受，任务回到 QUEUED
           content:
@@ -981,6 +994,7 @@ paths:
           application/json:
             schema: {$ref: '#/components/schemas/TaskMutationVersion'}
       responses:
+        '404': {$ref: '#/components/responses/NotFound'}
         '202':
           description: 已请求取消，返回递增后的版本与cancel_requested=true
           content:
@@ -1106,6 +1120,7 @@ paths:
             schema:
               $ref: '#/components/schemas/RevealRequest'
       responses:
+        '404': {$ref: '#/components/responses/NotFound'}
         '200':
           description: OK
           content:
@@ -1142,6 +1157,7 @@ paths:
             schema:
               $ref: '#/components/schemas/ExportRequest'
       responses:
+        '404': {$ref: '#/components/responses/NotFound'}
         '200':
           description: 整个选择的XLSX，标识符按文本单元格且禁用公式执行。
           content:
@@ -1267,6 +1283,18 @@ components:
         password: {type: string, minLength: 8, maxLength: 128, writeOnly: true, description: 密码不能全为空白；仅保存Argon2id摘要，不返回或记录原值}
         display_name: {type: string, minLength: 1, maxLength: 80, description: 非空且可打印的显示姓名，首尾空白去除}
         role: {type: string, enum: [viewer, operator, admin], default: operator}
+    UpdateUserRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [enabled]
+          properties:
+            enabled: {type: boolean}
+        - type: object
+          additionalProperties: false
+          required: [display_name]
+          properties:
+            display_name: {type: string, minLength: 1, maxLength: 80, pattern: '\S', description: 可打印姓名，首尾空白去除；不能全为空白}
     ResetPasswordRequest:
       type: object
       additionalProperties: false
@@ -1412,11 +1440,29 @@ components:
           type: array
           items: {type: string, format: uuid}
 
+    BatchOwner:
+      type: object
+      additionalProperties: false
+      required: [user_id, username, display_name, account_exists]
+      oneOf:
+        - properties:
+            account_exists: {enum: [true]}
+            user_id: {type: string}
+            username: {type: string}
+            display_name: {type: string}
+        - properties:
+            account_exists: {enum: [false]}
+      properties:
+        user_id: {type: string, nullable: true, minLength: 1, description: 不可变上传账号ID；历史归属无法确认时null}
+        username: {type: string, nullable: true, pattern: '^[a-z0-9_.-]{1,64}$', description: 当前账号名或删除前保留的账号名；无法恢复的历史账号为null}
+        display_name: {type: string, nullable: true, minLength: 1, maxLength: 80, description: 当前姓名或删除前保留的姓名；无法恢复时null}
+        account_exists: {type: boolean, description: 原账号是否仍存在，禁用账号仍为true；true时ID和账号名及姓名均非null}
     Batch:
       type: object
       properties:
         required_fields_revision: {type: integer, minimum: 0, description: 当前共享必填设置版本，与任务结果版本独立}
         batch_id: {type: string, format: uuid}
+        owner: {$ref: '#/components/schemas/BatchOwner'}
         status: {$ref: '#/components/schemas/BatchStatus'}
         display_name:
           type: string
@@ -1467,11 +1513,18 @@ components:
         content_hash: {type: string}
         mime_type: {type: string}
         page_count: {type: integer, minimum: 0, description: 文件页数；尚未解析时为0，解析后等于pages数量}
+        actual_source_page_count: {type: integer, minimum: 1, nullable: true, description: 上传校验确认的原文件总页数；旧记录可能未知，不从已处理前缀推算}
         pages:
           type: array
           items: {$ref: '#/components/schemas/Page'}
         status: {$ref: '#/components/schemas/TaskStatus'}
-        progress: {type: integer, minimum: 0, maximum: 100}
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          deprecated: true
+          description: 兼容旧客户端；新运行准备阶段为0，OCR按已处理区域比例取整且上限99，字段整理阶段不估算百分比。机器正常发布为100，失败/取消保留上次值。历史值可能是固定阶段值，展示优先使用progress_detail；不代表准确率、剩余时间或审核完成。
+        progress_detail: {$ref: '#/components/schemas/TaskProgressDetail'}
         doc_type: {$ref: '#/components/schemas/DocTypeEnum'}
         doc_type_confidence: {$ref: '#/components/schemas/Confidence'}
         doc_type_confidence_method: {$ref: '#/components/schemas/ConfidenceMethod'}
@@ -1499,6 +1552,20 @@ components:
         extract_options: {$ref: '#/components/schemas/ExtractOptions'}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+
+    TaskProgressDetail:
+      type: object
+      additionalProperties: false
+      required: [stage, prepared_pages, total_pages, processed_regions, recognized_regions, incomplete_regions, total_regions]
+      description: 当前run的持久化工作量快照；识别区域耗时不等，区域比例不代表时间进度或识别准确率。原生PDF文字块不计入OCR区域，修复/备用模型不重复计数；精确缓存复用计入目标区域一次。
+      properties:
+        stage: {$ref: '#/components/schemas/TaskStatus'}
+        prepared_pages: {type: integer, minimum: 0, description: 已保存预览及页面元数据的页数，等于page_count；不表示该页文字已全部识别}
+        total_pages: {type: integer, minimum: 1, nullable: true, description: 上传校验确认的原文件总页数；旧任务未知时为null}
+        processed_regions: {type: integer, minimum: 0, description: recognized_regions与incomplete_regions之和；不包含仍pending的区域，不等于检测行数或正确字段数}
+        recognized_regions: {type: integer, minimum: 0, description: 完成识别的OCR区域数；成功响应不证明语义完整或准确}
+        incomplete_regions: {type: integer, minimum: 0, description: 结束处理但结果仍不完整的OCR区域数，需要人工核对}
+        total_regions: {type: integer, minimum: 0, nullable: true, description: 只有原文件全部页完成分区计划且有持久化证明时才返回OCR区域总数；未完成计划或旧记录无证明时为null，纯文字PDF完成计划后为0}
 
     Page:
       type: object
@@ -2593,6 +2660,38 @@ components:
             - NOT_ON_DOCUMENT
             - NOT_APPLICABLE
       description: 项目补正只能修改原始业务值，数值解析、异常判定、来源和置信度均由服务端维护。新增项目禁止item_id。
+
+    BatchDeleteRequest:
+      type: object
+      additionalProperties: false
+      required: [versions]
+      properties:
+        versions:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [task_id, run_id, expected_revision]
+            properties:
+              task_id: {type: string, format: uuid}
+              run_id: {type: string, format: uuid}
+              expected_revision: {type: integer, minimum: 0}
+
+    BatchDeleteResponse:
+      type: object
+      additionalProperties: false
+      required: [batch_id, task_ids, cleanup_pending]
+      properties:
+        batch_id: {type: string, format: uuid}
+        task_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items: {type: string, format: uuid}
+        cleanup_pending: {type: boolean}
 
     TaskMutationVersion:
       type: object

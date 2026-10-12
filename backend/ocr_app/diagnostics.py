@@ -31,7 +31,7 @@ close_started close_completed close_failed process_exited startup_started startu
 runtime_started runtime_failed runtime_stopped cleanup_failed storage_probe_failed
 health_snapshot_failed gpu_lease_failed settings_failed server_stopped task_created task_claimed
 task_stage task_completed task_cancelled task_interrupted task_expired request_completed request_failed
-upload_rejected pipeline_failed watchdog_timeout migration_failed retention_failed'''.split())
+upload_rejected pipeline_failed watchdog_timeout migration_failed retention_failed batch_cleanup_failed'''.split())
 ERROR_CODES = set('''RESOURCE_LIMIT MODEL_LOAD_FAILED MODEL_WARMUP_FAILED MODEL_PROCESS_EXITED
 SUPERVISION_FAILED MODEL_REQUEST_TIMEOUT INPUT_INVALID INVALID_REQUEST RUNTIME_STARTING
 RUNTIME_BUSY CUDA_UNAVAILABLE CONNECTION_FAILED INVALID_HEALTH DIAGNOSTICS_UNAVAILABLE
@@ -49,7 +49,7 @@ ENUMS = {
     'error_code': ERROR_CODES, 'reason_code': ERROR_CODES,
     'stage': {'BOOTSTRAP', 'QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING', 'PUBLISHING', 'CLEANUP'},
 }
-IDS = {'task_id', 'run_id', 'page_id', 'region_id', 'request_id', 'process_instance_id'}
+IDS = {'task_id', 'run_id', 'batch_id', 'page_id', 'region_id', 'request_id', 'process_instance_id'}
 NUMBERS = {'pid', 'child_pid', 'exit_code', 'duration_seconds', 'timeout_seconds', 'output_tokens',
            'stderr_characters', 'stderr_lines', 'page', 'region', 'errno', 'winerror', 'http_status',
            'load_seconds', 'warmup_seconds', 'recognition_seconds', 'elapsed_seconds', 'gpu_peak_allocated_gib',

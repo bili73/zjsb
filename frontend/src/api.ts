@@ -81,6 +81,9 @@ export class BusinessApi {
   deleteUser(userId: string, signal: AbortSignal) {
     return this.request(`/admin/users/${encodeURIComponent(userId)}`, 'account_delete', () => undefined, signal, { method: 'DELETE' })
   }
+  updateUserName(userId: string, display_name: string, signal: AbortSignal) {
+    return this.request(`/admin/users/${encodeURIComponent(userId)}`, 'account_update', parseManagedUser, signal, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ display_name }) })
+  }
   resetUserPassword(userId: string, newPassword: string, signal: AbortSignal) {
     return this.request(`/admin/users/${encodeURIComponent(userId)}/password`, 'password_change', () => undefined, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_password: newPassword }) })
   }
@@ -115,6 +118,16 @@ export class BusinessApi {
     return this.request(`/batches?${query}`, 'batch_list', parseBatches, signal)
   }
   tasks(batchId: string, signal: AbortSignal) { return this.request(`/batches/${encodeURIComponent(batchId)}/tasks`, 'batch_tasks', parseTasks, signal) }
+  deleteBatch(batchId: string, tasks: readonly Task[], signal: AbortSignal) {
+    return this.request(`/batches/${encodeURIComponent(batchId)}`, 'batch_delete', body => {
+      const created = parseCreated(body)
+      if (!isRecord(body) || typeof body.cleanup_pending !== 'boolean' || created.batch_id !== batchId ||
+        created.task_ids.length !== tasks.length || !created.task_ids.every(id => tasks.some(task => task.task_id === id))) throw new Error('INVALID_RESPONSE')
+      return { ...created, cleanup_pending: body.cleanup_pending }
+    }, signal, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      versions: tasks.map(task => ({ task_id: task.task_id, run_id: task.run_id, expected_revision: task.result_revision })),
+    }) })
+  }
   result(taskId: string, itemsFilter: ItemsFilter | undefined, signal: AbortSignal) {
     const query = itemsFilter ? `?items_filter=${itemsFilter}` : ''
     return this.request(`/tasks/${encodeURIComponent(taskId)}/result${query}`, 'result', parseResult, signal)

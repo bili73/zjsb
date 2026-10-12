@@ -136,11 +136,34 @@ class TaskStore:
             connection.exec_driver_sql('BEGIN IMMEDIATE')
             yield connection
 
-    def _row(self, connection, task_id):
+    def _batch_row(self, connection, batch_id, user=None):
+        row = connection.execute(text('SELECT * FROM batches WHERE id=:id'), {'id': batch_id}).mappings().first()
+        if row is None or (user is not None and user['role'] != 'admin'
+                           and (row['owner_id'] is None or row['owner_id'] != user['user_id'])):
+            raise TaskError('INVALID_REQUEST', '任务或批次不存在或无权访问', 404)
+        return row
+
+    def _row(self, connection, task_id, user=None):
         row = connection.execute(text('SELECT * FROM tasks WHERE id=:id'), {'id': task_id}).mappings().first()
         if row is None:
-            raise TaskError('INVALID_REQUEST', '任务不存在或已经到期清理', 404)
+            raise TaskError('INVALID_REQUEST', '任务或批次不存在或无权访问', 404)
+        if user is not None:
+            self._batch_row(connection, row['batch_id'], user)
         return dict(row)
+
+    @staticmethod
+    def _owner_filter(user):
+        # None is reserved for trusted internal workers, never HTTP callers.
+        return dict(unrestricted=user is None or user['role'] == 'admin',
+                    owner=user['user_id'] if user else None)
+
+    def _owner(self, connection, batch):
+        account = connection.execute(text('SELECT username,display_name FROM web_users WHERE id=:id'),
+                                     {'id': batch['owner_id']}).mappings().first()
+        saved = self.storage.unpack(batch['owner_snapshot_enc'], {})
+        return dict(user_id=batch['owner_id'], username=account['username'] if account else saved.get('username'),
+                    display_name=account['display_name'] if account else saved.get('display_name'),
+                    account_exists=account is not None)
 
     def _audit(self, connection, event, actor='worker', task=None, **details):
         connection.execute(text('INSERT INTO audit VALUES (:id,:actor,:task,:run,:event,:at,:detail)'),
@@ -159,8 +182,12 @@ class TaskStore:
         batch, created, references, task_ids = identity(), now(), [], []
         try:
             with self.transaction() as connection:
-                connection.execute(text('INSERT INTO batches VALUES (:id,:at,:name)'),
-                                   dict(id=batch, at=created, name=self.storage.pack(LABELS[doc_type])))
+                account = connection.execute(text('SELECT username,display_name FROM web_users WHERE id=:id'),
+                                             {'id': actor}).mappings().first()
+                connection.execute(text('INSERT INTO batches(id,created_at,name_enc,owner_id,owner_snapshot_enc) '
+                                        'VALUES (:id,:at,:name,:owner,:snapshot)'),
+                                   dict(id=batch, at=created, name=self.storage.pack(LABELS[doc_type]),
+                                        owner=actor, snapshot=self.storage.pack(dict(account)) if account else None))
                 hashes = {}
                 for file in files:
                     digest = file.get('content_hash') or hashlib.sha256(file['data']).hexdigest()
@@ -174,8 +201,9 @@ class TaskStore:
                     task_id, run_id = identity(), identity()
                     reference = self.storage.put(file['data'])
                     references.append(reference)
-                    duplicate = connection.execute(text('SELECT id FROM tasks WHERE content_hash=:hash LIMIT 1'),
-                                                   {'hash': digest}).first()
+                    duplicate = connection.execute(text('SELECT t.id FROM tasks t JOIN batches b ON b.id=t.batch_id '
+                                                        'WHERE t.content_hash=:hash AND b.owner_id=:owner LIMIT 1'),
+                                                   {'hash': digest, 'owner': actor}).first()
                     warnings = [dict(code='DUPLICATE_FILE', message='其他批次存在相同文件，本批次独立处理')] if duplicate else []
                     params = dict(id=task_id, batch=batch, run=run_id, at=created,
                                   expires=(datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
@@ -202,10 +230,23 @@ class TaskStore:
         from .exporting import required_export_blockers
         policy = policy if policy is not None else self.required_policy()
         pages = self.storage.unpack(row['pages_enc'], [])
+        meta = self.storage.unpack(row['meta_enc'])
+        total_pages = meta.get('actual_source_page_count')
+        if type(total_pages) is not int or total_pages <= 0:
+            total_pages = None
+        regions = [region for page in pages for region in page.get('regions', [])
+                   if region.get('extraction_method') == 'ocr']
+        recognized = sum(region.get('status') == 'recognized' for region in regions)
+        incomplete = sum(region.get('status') == 'incomplete' for region in regions)
+        plan_known = (total_pages is not None and len(pages) == total_pages
+                      and all(page.get('_preparation_complete') is True for page in pages))
+        progress_detail = dict(stage=row['status'], prepared_pages=len(pages), total_pages=total_pages,
+                               processed_regions=recognized + incomplete, recognized_regions=recognized,
+                               incomplete_regions=incomplete, total_regions=len(regions) if plan_known else None)
         export_blockers = required_export_blockers(self.storage.unpack(row['result_enc']), policy['overrides'])
         return public_result(dict(task_id=row['id'], batch_id=row['batch_id'], run_id=row['run_id'],
                            result_revision=row['revision'], cancel_requested=bool(row['cancel_requested']),
-                           status=row['status'], progress=row['progress'], doc_type=row['doc_type'],
+                           status=row['status'], progress=row['progress'], progress_detail=progress_detail, doc_type=row['doc_type'],
                            doc_type_confidence=None, doc_type_confidence_method='unavailable',
                            page_count=len(pages), pages=pages, content_hash=row['content_hash'],
                            created_at=row['created_at'], updated_at=row['updated_at'],
@@ -214,23 +255,30 @@ class TaskStore:
                            export_ready=not export_blockers, export_blockers=export_blockers,
                            required_fields_revision=policy['revision'],
                            need_review_fields=[], extract_options={k: v for k, v in self.storage.unpack(row['options_enc'], {}).items() if k != 'bank_admission'},
-                           **self.storage.unpack(row['meta_enc'])))
+                           **meta))
 
-    def task(self, task_id):
+    def task(self, task_id, *, user=None):
         with self.engine.connect() as connection:
-            return self._public(self._row(connection, task_id), self.required_policy(connection))
+            return self._public(self._row(connection, task_id, user), self.required_policy(connection))
 
-    def tasks(self, batch_id=None, status=None, *, policy=None):
+    def tasks(self, batch_id=None, status=None, *, policy=None, user=None):
         with self.engine.connect() as connection:
+            if batch_id is not None and user is not None:
+                self._batch_row(connection, batch_id, user)
             policy = policy if policy is not None else self.required_policy(connection)
-            rows = connection.execute(text('SELECT * FROM tasks WHERE (:batch IS NULL OR batch_id=:batch) '
-                                           'AND (:status IS NULL OR status=:status) ORDER BY created_at,id'),
-                                      dict(batch=batch_id, status=status)).mappings()
+            rows = connection.execute(text('SELECT t.* FROM tasks t JOIN batches b ON b.id=t.batch_id '
+                                           'WHERE (:batch IS NULL OR t.batch_id=:batch) '
+                                           'AND (:status IS NULL OR t.status=:status) '
+                                           'AND (:unrestricted=1 OR b.owner_id=:owner) ORDER BY t.created_at,t.id'),
+                                      dict(batch=batch_id, status=status, **self._owner_filter(user))).mappings()
             return [self._public(row, policy) for row in rows]
 
-    def batch(self, batch_id, *, policy=None):
+    def batch(self, batch_id, *, policy=None, user=None):
+        with self.engine.connect() as connection:
+            row = dict(self._batch_row(connection, batch_id, user))
+            owner = self._owner(connection, row)
         policy = policy if policy is not None else self.required_policy()
-        tasks = self.tasks(batch_id, policy=policy)
+        tasks = self.tasks(batch_id, policy=policy, user=user)
         with self.engine.connect() as connection:
             row = connection.execute(text('SELECT * FROM batches WHERE id=:id'), {'id': batch_id}).mappings().first()
             if row is None:
@@ -248,14 +296,14 @@ class TaskStore:
                            key=lambda kind: list(LABELS).index(kind) if kind in LABELS else len(LABELS))
             labels = [LABELS.get(kind, '待确定类型') for kind in kinds]
             display_name = ('混合材料 · ' + ' / '.join(labels)) if len(labels) > 1 else labels[0] if labels else '待确定类型'
-            return dict(batch_id=batch_id, name=display_name, display_name=display_name,
+            return dict(batch_id=batch_id, name=display_name, display_name=display_name, owner=owner,
                         required_fields_revision=policy['revision'],
                         status=state, task_count=len(tasks), file_count=len(tasks), total_count=len(tasks), completed_count=counts['COMPLETED'],
                         failed_count=counts['FAILED'], cancelled_count=counts['CANCELLED'], rejected_count=counts['REJECTED'],
                         need_review_count=counts['NEED_REVIEW'], created_at=row['created_at'],
                         updated_at=max((t['updated_at'] for t in tasks), default=row['created_at']), warnings=[])
 
-    def batches(self, page=1, page_size=20, date_from=None, date_to=None):
+    def batches(self, page=1, page_size=20, date_from=None, date_to=None, *, user=None):
         if date_from and date_to and date_from>date_to:
             raise TaskError('INVALID_REQUEST', '开始日期不能晚于结束日期', 422)
         zone = timezone(timedelta(hours=8))
@@ -267,15 +315,16 @@ class TaskStore:
         with self.engine.connect() as connection:
             policy = self.required_policy(connection)
             ids = connection.execute(text('SELECT id FROM batches WHERE (:start IS NULL OR created_at>=:start) '
-                'AND (:end IS NULL OR created_at<:end) ORDER BY created_at DESC,id'),dict(start=start,end=end)).scalars().all()
-        return dict(items=[self.batch(i, policy=policy) for i in ids[(page-1)*page_size:page*page_size]],
+                'AND (:end IS NULL OR created_at<:end) AND (:unrestricted=1 OR owner_id=:owner) '
+                'ORDER BY created_at DESC,id'),dict(start=start,end=end,**self._owner_filter(user))).scalars().all()
+        return dict(items=[self.batch(i, policy=policy, user=user) for i in ids[(page-1)*page_size:page*page_size]],
                     total=len(ids), page=page, page_size=page_size)
 
-    def result(self, task_id, items_filter=None, include_normal_summary=True):
+    def result(self, task_id, items_filter=None, include_normal_summary=True, *, user=None):
         from .exporting import required_export_blockers
         with self.engine.connect() as connection:
             policy = self.required_policy(connection)
-            row = self._row(connection, task_id)
+            row = self._row(connection, task_id, user)
             result = self.storage.unpack(row['result_enc'])
             if result is None:
                 raise TaskError('INVALID_STATE', '当前任务尚无可用识别结果')
@@ -393,9 +442,10 @@ class TaskStore:
             current_pages = row['pages_enc'] if row['cancel_requested'] else self.storage.pack(result.get('pages', []))
             connection.execute(text('UPDATE runs SET status=:status,ended_at=:at,result_enc=:result,error_json=:error WHERE id=:id'),
                                dict(status=status, at=now(), result=payload, error=error_json, id=task['run_id']))
-            connection.execute(text('''UPDATE tasks SET status=:status,progress=100,result_enc=:result,pages_enc=:pages,
+            connection.execute(text('''UPDATE tasks SET status=:status,progress=:progress,result_enc=:result,pages_enc=:pages,
                 error_json=:error,warnings_enc=:warnings,revision=revision+1,updated_at=:at WHERE id=:id'''),
-                               dict(status=status, result=current_payload, pages=current_pages,
+                               dict(status=status, progress=100 if status in {'NEED_REVIEW', 'COMPLETED'} else row['progress'],
+                                    result=current_payload, pages=current_pages,
                                     error=error_json, warnings=self.storage.pack(self.storage.unpack(row['warnings_enc'], []) + result.get('warnings', [])),
                                     at=now(), id=task['id']))
             self._audit(connection, 'task_' + status.lower(), task=row)
@@ -417,12 +467,12 @@ class TaskStore:
             self.storage.delete(reference)
             raise
 
-    def review(self, task_id, body, actor):
+    def review(self, task_id, body, actor, *, user=None):
         from .review import apply_review, invalid, reason
         reference = None
         try:
             with self.transaction() as connection:
-                row = self._row(connection, task_id)
+                row = self._row(connection, task_id, user)
                 self._expected(row, body.get('run_id'), body.get('expected_revision'))
                 if row['status'] not in {'FAILED', 'NEED_REVIEW', 'COMPLETED'}:
                     raise TaskError('INVALID_STATE', '当前任务不能进行人工复核')
@@ -531,9 +581,9 @@ class TaskStore:
                 self.storage.delete(reference)
             raise
 
-    def cancel(self, task_id, run_id, revision, actor):
+    def cancel(self, task_id, run_id, revision, actor, *, user=None):
         with self.transaction() as connection:
-            row = self._row(connection, task_id)
+            row = self._row(connection, task_id, user)
             self._expected(row, run_id, revision)
             if row['status'] not in ACTIVE | {'QUEUED'}:
                 raise TaskError('INVALID_STATE', '当前任务状态不能取消')
@@ -545,9 +595,9 @@ class TaskStore:
             self._audit(connection, 'cancel_requested', actor, row)
         return self.task(task_id)
 
-    def rerun(self, task_id, run_id, revision, actor):
+    def rerun(self, task_id, run_id, revision, actor, *, user=None):
         with self.transaction() as connection:
-            row = self._row(connection, task_id)
+            row = self._row(connection, task_id, user)
             self._expected(row, run_id, revision)
             if row['status'] not in TERMINAL | {'NEED_REVIEW'}:
                 raise TaskError('INVALID_STATE', '当前任务仍在运行')
@@ -640,6 +690,39 @@ class TaskStore:
     def active(self):
         with self.engine.connect() as connection:
             return [dict(row) for row in connection.execute(text("SELECT * FROM tasks WHERE status IN ('PREPROCESSING','OCR','EXTRACTING','VALIDATING')")).mappings()]
+
+    def delete_batch(self, batch_id, versions, actor, *, authorize):
+        references = []
+        with self.transaction() as connection:
+            authorize(connection)
+            if connection.execute(text('SELECT 1 FROM batches WHERE id=:id'), {'id': batch_id}).first() is None:
+                raise TaskError('NOT_FOUND', '批次不存在或已经删除', 404)
+            rows = connection.execute(text('SELECT * FROM tasks WHERE batch_id=:id'), {'id': batch_id}).mappings().all()
+            expected = {v['task_id']: v for v in versions}
+            if len(expected) != len(versions):
+                raise TaskError('INVALID_REQUEST', '任务版本不能重复', 422)
+            if set(expected) != {row['id'] for row in rows}:
+                raise TaskError('RESULT_VERSION_CONFLICT', '批次任务已变化，请刷新后重新确认')
+            if any(row['status'] not in TERMINAL | {'NEED_REVIEW'} for row in rows):
+                raise TaskError('INVALID_STATE', '批次仍有排队或识别中的任务，请等待停止后再删除')
+            for row in rows:
+                version = expected[row['id']]
+                self._expected(row, version['run_id'], version['expected_revision'])
+            for row in rows:
+                references.extend(connection.execute(text('SELECT reference FROM artifacts WHERE task_id=:id'), {'id': row['id']}).scalars())
+                self._audit(connection, 'task_deleted', actor, row, batch_id=batch_id, result_revision=row['revision'])
+            connection.execute(text('DELETE FROM tasks WHERE batch_id=:id'), {'id': batch_id})
+            connection.execute(text('DELETE FROM batches WHERE id=:id'), {'id': batch_id})
+            self._audit(connection, 'batch_deleted', actor, batch_id=batch_id, task_count=len(rows))
+        cleanup_pending = False
+        for reference in set(references):
+            try:
+                self.storage.delete(reference)
+            except OSError as error:
+                cleanup_pending = True
+                if self.logger:
+                    self.logger.exception('batch_cleanup_failed', error, batch_id=batch_id)
+        return dict(batch_id=batch_id, task_ids=[row['id'] for row in rows], cleanup_pending=cleanup_pending)
 
     def cleanup(self, at=None):
         references = []

@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import uuid
 
 from fastapi.testclient import TestClient
@@ -59,8 +59,11 @@ class BusinessAPITests(unittest.TestCase):
             self.assertEqual(self.business.store.batch(identifier)['name'], '待确定类型')
 
     def test_batches_are_descending_and_timestamps_remain_utc(self):
-        first = self.upload().json()['batch_id']
-        second = self.upload('DEGREE_CERT').json()['batch_id']
+        # Equal wall-clock ticks use the documented ID tie-break, not upload order.
+        with patch('ocr_app.task_store.now', return_value='2026-10-09T00:00:00+00:00'):
+            first = self.upload().json()['batch_id']
+        with patch('ocr_app.task_store.now', return_value='2026-10-10T00:00:00+00:00'):
+            second = self.upload('DEGREE_CERT').json()['batch_id']
         listed = self.business.store.batches()['items']
         self.assertEqual([item['batch_id'] for item in listed], [second, first])
         self.assertTrue(all(item['created_at'].endswith('+00:00') for item in listed))
@@ -117,6 +120,49 @@ class BusinessAPITests(unittest.TestCase):
         response = self.client.get(f'/api/v1/tasks/{task_id}', headers=self.headers)
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()
+
+    def test_real_worker_progress_is_queryable_with_retries_and_valid_schema(self):
+        import jsonschema
+        import yaml
+        import runtime_worker
+        from test_pipeline_schema import json_schema
+        document = json_schema(yaml.safe_load((Path(__file__).resolve().parents[1] / 'openapi.yaml').read_text(encoding='utf-8')))
+        validator = jsonschema.Draft7Validator(dict(document, **{'$ref': '#/components/schemas/TaskProgressDetail'}),
+                                              format_checker=jsonschema.FormatChecker())
+        created = self.upload().json()
+        task_id = created['task_ids'][0]
+        initial = self.task(task_id)
+        claimed = self.business.store.claim_next()
+        snapshots = []
+        def recognize(*args, **kwargs):
+            snapshots.append(self.task(task_id))
+            return dict(text='姓名：合成姓名', termination_reason='token_limit' if len(snapshots) < 3 else 'eos')
+        manager = Mock(metrics=[], recognize=Mock(side_effect=recognize))
+        logger = Mock()
+        with patch('ocr_app.pipeline.split_regions', return_value=[(0, 0, 8, 12), (8, 0, 16, 12)]):
+            runtime_worker.process_task(self.business.store, manager, claimed, logger)
+        logger.exception.assert_not_called()
+        self.assertEqual([row['progress_detail']['processed_regions'] for row in snapshots], [0, 0, 0, 1])
+        for current in snapshots:
+            validator.validate(current['progress_detail'])
+            self.assert_task_contract(current)
+            self.assertEqual(current['run_id'], initial['run_id'])
+            self.assertEqual(current['result_revision'], initial['result_revision'])
+            detail = current['progress_detail']
+            self.assertEqual((detail['stage'], detail['prepared_pages'], detail['total_pages'], detail['total_regions']),
+                             ('OCR', 1, 1, 2))
+        finished = self.task(task_id)
+        validator.validate(finished['progress_detail'])
+        self.assert_task_contract(finished)
+        self.assertEqual(finished['status'], 'NEED_REVIEW')
+        self.assertEqual(finished['progress'], 100)
+        self.assertEqual(finished['progress_detail']['processed_regions'], 2)
+        self.assertEqual(finished['progress_detail']['incomplete_regions'], 0)
+        self.assertNotIn('_preparation_complete', json.dumps(finished))
+        listed = self.client.get(f"/api/v1/batches/{created['batch_id']}/tasks", headers=self.headers).json()
+        self.assertEqual(listed[0]['progress_detail'], finished['progress_detail'])
+        self.assertEqual(self.client.get('/api/v1/tasks', headers=self.headers).json()['items'][0]['progress_detail'],
+                         finished['progress_detail'])
 
     def assert_error(self, response, status):
         self.assertEqual(response.status_code, status, response.text)

@@ -142,7 +142,7 @@ class InvalidPanHTTPTests(unittest.TestCase):
         store=self.business.store
         for number in ['not-a-number', '123456789', '1' * 20]:
             with self.subTest(number=number):
-                identifier=store.create_batch([safe], 'BANK_CARD', 'synthetic')['task_ids'][0]
+                identifier=store.create_batch([safe], 'BANK_CARD', self.business.accounts.accounts[0]['user_id'])['task_ids'][0]
                 worker=store.claim_next()
                 self.assertTrue(store.publish(worker, extract_result([], 'BANK_CARD')))
                 url=f'/api/v1/tasks/{identifier}'

@@ -41,6 +41,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     evidence, pages, warnings, limitations = [], [], [], []
     # Only coordinates and small metadata survive a page iteration, never PIL images.
     pending = {}
+    planning_complete = False
     stage, stop_code = 'PREPROCESSING', None
     bank_admission = options.get('bank_admission') if doc_type == 'BANK_CARD' else None
     if not isinstance(bank_admission, dict) or not bank_admission.get('text') or bank_admission.get('termination_reason') != 'eos':
@@ -73,15 +74,20 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
         if time.monotonic() >= deadline:
             raise _Stop('EXTRACT_TIMEOUT')
 
-    def publish(next_stage, amount):
+    def publish(next_stage):
         nonlocal stage
         stage = next_stage
         check()
+        regions = [region for page_info in pages for region in page_info['regions']
+                   if region['extraction_method'] == 'ocr']
+        processed = sum(region['status'] in {'recognized', 'incomplete'} for region in regions)
+        # Compatibility only: region work units, never elapsed-time/token estimates.
+        amount = min(99, processed * 100 // len(regions)) if planning_complete and regions else 0
         progress(stage, amount, pages)
         check()
 
     try:
-        publish('PREPROCESSING', 5)
+        publish('PREPROCESSING')
         # Pass 1: read all reliable native content before spending time on OCR.
         # A slow logo on an early page must not hide later native report tables.
         for page in decode_pages(content, check):
@@ -124,7 +130,9 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 pending[page.index] = planned
             else:
                 info['extraction_method'] = 'ocr' if bank_admission else 'pdf_text'
-            publish('PREPROCESSING', 10)
+            info['_preparation_complete'] = True
+            publish('PREPROCESSING')
+        planning_complete = True
         page = None  # Do not retain the final full-page image while the second pass starts.
         encoded_page = None
 
@@ -135,7 +143,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 continue
             info = pages[page.index - 1]
             for box, region, task in pending[page.index]:
-                publish('OCR', 20)
+                publish('OCR')
                 region_id, location = region['region_id'], region['bbox']
                 selected = None
                 successful = False
@@ -230,14 +238,14 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                         break
                 if not successful:
                     limitations.append(f'有识别区域在{len(attempt_models)}次尝试后仍不完整，保留最后一次可用原文。')
+                publish('OCR')
             info['extraction_method'] = 'mixed' if page.evidence else 'ocr'
             # Coordinate coverage is known; semantic OCR coverage remains unverified.
             limitations.append('自动分区保留整页像素覆盖；文字与表格行是否全部识别仍需原页复核。')
             del pending[page.index]
-            publish('EXTRACTING', 70)
             if not pending:
                 break
-        publish('VALIDATING', 90)
+        publish('EXTRACTING')
     except _Stop as exc:
         stop_code = exc.code
     except DocumentError as exc:
@@ -251,7 +259,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     result['limitations'] = list(dict.fromkeys(result['limitations'] + limitations))
     if not stop_code:
         try:
-            check()
+            publish('VALIDATING')
         except _Stop as exc:
             stop_code = exc.code
     if limitations:

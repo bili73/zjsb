@@ -2,7 +2,7 @@
 // drop or freeze the batches already uploaded.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { BusinessApi } from '../src/api.ts'
+import { ApiFailure, BusinessApi } from '../src/api.ts'
 import { createMonitor, someRunning } from '../src/monitor.ts'
 import type { Batch, Task } from '../src/business.ts'
 import { formatTime } from '../src/presentation.ts'
@@ -40,6 +40,14 @@ function makeServer() {
       const batchId = url.split('/batches/')[1]!.split('/tasks')[0]
       return json(db.tasks[batchId] ?? [])
     }
+    if (url.includes('/batches/') && method === 'DELETE') {
+      const batchId = url.split('/batches/')[1]!
+      const tasks = db.tasks[batchId] ?? []
+      db.batches = db.batches.filter(batch => batch.batch_id !== batchId)
+      db.page2 = db.page2.filter(batch => batch.batch_id !== batchId)
+      delete db.tasks[batchId]
+      return json({ batch_id: batchId, task_ids: tasks.map(task => task.task_id), cleanup_pending: false })
+    }
     if (url.includes('/batches') && method === 'POST') {
       const form = init?.body as FormData
       const files = form.getAll('files') as File[]
@@ -58,7 +66,8 @@ function makeServer() {
           const current = list[index]!
           const updated = url.endsWith('/cancel')
             ? { ...current, cancel_requested: true }
-            : { ...current, run_id: crypto.randomUUID(), status: 'QUEUED', result_revision: current.result_revision + 1 }
+            : { ...current, run_id: crypto.randomUUID(), status: 'QUEUED', result_revision: current.result_revision + 1,
+              progress: 0, progress_detail: undefined }
           list[index] = updated
           return json(updated)
         }
@@ -99,6 +108,134 @@ test('policy changes refresh terminal rows, including previously loaded older pa
 })
 
 const pdf = (name: string) => new File(['%PDF-1.4 fake'], name, { type: 'application/pdf' })
+
+test('same-version polling refreshes measured counts and a rerun clears the previous plan', async () => {
+  const { server, monitor, signal } = makeMonitorCase()
+  try {
+    const batchId = crypto.randomUUID()
+    const task = mkTask(crypto.randomUUID(), batchId, 'OCR', 'MEDICAL_REPORT')
+    task.progress_detail = { stage: 'OCR', prepared_pages: 1, total_pages: 1,
+      processed_regions: 1, recognized_regions: 1, incomplete_regions: 0, total_regions: 4 }
+    server.db.batches = [mkBatch(batchId)]
+    server.db.tasks[batchId] = [task]
+    await monitor.pollOnce(signal())
+    assert.equal(monitor.state.entries[batchId]!.tasks[0]!.progress_detail!.processed_regions, 1)
+    server.db.tasks[batchId] = [{ ...task, progress_detail: { ...task.progress_detail, processed_regions: 2, recognized_regions: 2 } }]
+    await monitor.pollOnce(signal())
+    const current = monitor.state.entries[batchId]!.tasks[0]!
+    assert.equal(current.result_revision, task.result_revision)
+    assert.equal(current.run_id, task.run_id)
+    assert.equal(current.progress_detail!.processed_regions, 2)
+    await monitor.runAction('rerun', batchId, current, signal())
+    const rerun = monitor.state.entries[batchId]!.tasks[0]!
+    assert.notEqual(rerun.run_id, task.run_id)
+    assert.equal(rerun.progress_detail, undefined)
+    assert.equal(rerun.progress, 0)
+    assert.equal(rerun.status, 'QUEUED')
+  } finally { monitor.dispose() }
+})
+
+test('batch deletion clears rows/pending entries and preserves filters and other jobs', async () => {
+  const { server, monitor, signal } = makeMonitorCase()
+  try {
+    const deleted = crypto.randomUUID(), running = crypto.randomUUID()
+    server.db.batches = [mkBatch(deleted), mkBatch(running)]
+    server.db.tasks[deleted] = [mkTask(crypto.randomUUID(), deleted, 'NEED_REVIEW', 'DIPLOMA')]
+    server.db.tasks[running] = [mkTask(crypto.randomUUID(), running, 'OCR', 'MEDICAL_REPORT')]
+    const task = server.db.tasks[deleted]![0]!
+    await monitor.pollOnce(signal())
+    monitor.state.pending[task.task_id] = { operation: 'cancel', task_id: task.task_id, run_id: task.run_id }
+    monitor.state.dateRange = { date_from: '2026-10-08', date_to: '2026-10-08' }
+    await monitor.deleteBatch(deleted, [task], signal())
+    monitor.stop()
+    assert.equal(monitor.state.entries[deleted], undefined)
+    assert.ok(!monitor.state.order.includes(deleted))
+    assert.ok(!monitor.state.listedIds.includes(deleted))
+    assert.equal(monitor.state.pending[task.task_id], undefined)
+    assert.equal(monitor.state.dateRange.date_from, '2026-10-08')
+    assert.equal(monitor.state.entries[running]?.tasks[0]?.status, 'OCR')
+    await monitor.loadMore(signal())
+    assert.equal(new URLSearchParams(server.db.listQueries.at(-1)).get('page'), '2')
+  } finally { monitor.dispose() }
+})
+
+test('pre-deletion list responses cannot resurrect a deleted batch', async () => {
+  const server = makeServer()
+  const id = crypto.randomUUID()
+  server.db.batches = [mkBatch(id)]
+  server.db.tasks[id] = [mkTask(crypto.randomUUID(), id, 'NEED_REVIEW', 'DIPLOMA')]
+  let release: (() => void) | undefined
+  let delay = false
+  const client = new BusinessApi(async (input, init) => {
+    const response = await server.fetcher(input, init)
+    if (delay && String(input).includes('/batches?')) {
+      delay = false
+      await new Promise<void>(resolve => { release = resolve })
+    }
+    return response
+  })
+  const monitor = createMonitor(() => client, { isVisible: () => true })
+  const signal = new AbortController().signal
+  try {
+    await monitor.pollOnce(signal)
+    const tasks = monitor.state.entries[id]!.tasks
+    delay = true
+    const late = monitor.pollOnce(signal)
+    while (!release) await new Promise(resolve => setTimeout(resolve, 0))
+    await monitor.deleteBatch(id, tasks, signal)
+    monitor.stop()
+    release()
+    await late
+    assert.equal(monitor.state.entries[id], undefined)
+    assert.equal(monitor.state.order.length, 0)
+  } finally { release?.(); monitor.dispose() }
+})
+
+test('failed deletion keeps cached results and sends an exact immutable version snapshot', async () => {
+  const batch = crypto.randomUUID(), task = mkTask(crypto.randomUUID(), batch, 'NEED_REVIEW', 'DIPLOMA')
+  let submitted: unknown
+  const client = new BusinessApi(async (_input, init) => {
+    submitted = JSON.parse(String(init?.body))
+    return json({ code: 'RESULT_VERSION_CONFLICT' }, 409)
+  })
+  const monitor = createMonitor(() => client)
+  monitor.state.entries[batch] = { batch: mkBatch(batch), tasks: [task], tasksLoaded: true, expanded: true }
+  monitor.state.order = [batch]
+  try {
+    await assert.rejects(monitor.deleteBatch(batch, [task], new AbortController().signal), ApiFailure)
+    assert.deepEqual(submitted, { versions: [{ task_id: task.task_id, run_id: task.run_id, expected_revision: task.result_revision }] })
+    assert.equal(monitor.state.entries[batch]?.tasks[0]?.task_id, task.task_id)
+  } finally { monitor.dispose() }
+})
+
+test('pre-deletion task reads cannot repopulate removed rows', async () => {
+  const server = makeServer(), id = crypto.randomUUID()
+  server.db.batches = [mkBatch(id)]
+  server.db.tasks[id] = [mkTask(crypto.randomUUID(), id, 'NEED_REVIEW', 'DIPLOMA')]
+  let release: (() => void) | undefined, delay = false
+  const client = new BusinessApi(async (input, init) => {
+    const response = await server.fetcher(input, init)
+    if (delay && String(input).endsWith('/tasks')) {
+      delay = false
+      await new Promise<void>(resolve => { release = resolve })
+    }
+    return response
+  })
+  const monitor = createMonitor(() => client), signal = new AbortController().signal
+  try {
+    await monitor.pollOnce(signal)
+    const tasks = monitor.state.entries[id]!.tasks
+    delay = true
+    const late = monitor.pollOnce(signal)
+    while (!release) await new Promise(resolve => setTimeout(resolve, 0))
+    await monitor.deleteBatch(id, tasks, signal)
+    monitor.stop()
+    release()
+    await late
+    assert.equal(monitor.state.entries[id], undefined)
+    assert.equal(monitor.state.order.length, 0)
+  } finally { release?.(); monitor.dispose() }
+})
 
 test('first refresh and merged pages remain descending without losing optimistic uploads', async () => {
   const { server, monitor, signal } = makeMonitorCase()
@@ -391,5 +528,35 @@ test('clear resets everything for the next session', async () => {
     assert.equal(monitor.state.order.length, 0)
   } finally {
     monitor.dispose()
+  }
+})
+
+test('late uploads, mutations and deletions never repopulate a different account session', async () => {
+  for (const operation of ['upload', 'rerun', 'delete'] as const) {
+    let release!: (response: Response) => void
+    let requested!: () => void
+    const started = new Promise<void>(resolve => { requested = resolve })
+    const oldApi = new BusinessApi(async () => { requested(); return new Promise<Response>(resolve => { release = resolve }) })
+    const newApi = new BusinessApi(async () => json({ items: [], total: 0, page: 1, page_size: 50 }))
+    let current = oldApi
+    const monitor = createMonitor(() => current, { isVisible: () => false })
+    const batch = crypto.randomUUID(), task = mkTask(crypto.randomUUID(), batch, 'NEED_REVIEW', 'DIPLOMA')
+    try {
+      monitor.state.entries[batch] = { batch: mkBatch(batch), tasks: [task], tasksLoaded: true, expanded: true }
+      monitor.state.order = [batch]
+      const signal = new AbortController().signal
+      const pending = operation === 'upload' ? monitor.submitUpload([pdf('old.pdf')], 'DIPLOMA', false, signal)
+        : operation === 'rerun' ? monitor.runAction('rerun', batch, task, signal) : monitor.deleteBatch(batch, [task], signal)
+      await started
+      monitor.clear()
+      current = newApi
+      release(json(operation === 'upload' ? { batch_id: batch, task_ids: [task.task_id] }
+        : operation === 'rerun' ? { ...task, status: 'QUEUED' } : { batch_id: batch, task_ids: [task.task_id], cleanup_pending: false }))
+      await pending
+      assert.deepEqual(monitor.state.entries, {})
+      assert.deepEqual(monitor.state.pending, {})
+      assert.deepEqual(monitor.state.order, [])
+      assert.equal(monitor.state.polling, false)
+    } finally { monitor.dispose() }
   }
 })

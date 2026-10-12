@@ -157,7 +157,7 @@ def workbook_bytes(results):
     return target.getvalue()
 
 
-def export_results(store, request, actor, role):
+def export_results(store, request, actor, role, *, user=None):
     from sqlalchemy import text
     from .review import optional_reason, invalid
     if not isinstance(request, dict) or set(request) - {'batch_id', 'task_ids', 'versions', 'masked', 'reason', 'format'}:
@@ -174,12 +174,13 @@ def export_results(store, request, actor, role):
     with store.transaction() as connection:
         policy = store.required_policy(connection)
         if request.get('batch_id'):
+            store._batch_row(connection, request['batch_id'], user)
             rows = connection.execute(text('SELECT * FROM tasks WHERE batch_id=:id ORDER BY created_at,id'), {'id': request['batch_id']}).mappings().all()
         else:
             ids = request['task_ids']
             if not isinstance(ids, list) or not ids or len(ids) > 1000 or len(set(ids)) != len(ids):
                 invalid()
-            rows = [store._row(connection, identifier) for identifier in ids]
+            rows = [store._row(connection, identifier, user) for identifier in ids]
         if not rows:
             invalid('导出选择为空')
         versions = request.get('versions')

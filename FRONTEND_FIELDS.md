@@ -1,10 +1,16 @@
 # 前端字段与当前 API 说明
 
-对应 SPEC v1.24、OpenAPI / 应用 1.18.0。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入，HRSSC管理员已配置；各版本验收及切换见运行记录。
+对应 SPEC v1.27、OpenAPI / 应用源码 1.21.0。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入；账号批次隔离、上传人署名和管理员姓名编辑已实现，各版本验收及实际服务切换见运行记录。
+
+批次按上传账号的不可变ID隔离：管理员看全部，操作员/只读仅看自己的。列表先限制归属再计算total和分页，日期筛选不改变隔离；全部Task结果/原图/复核/取消/重跑/完整字段/导出接口独立校验，越权与不存在ID统一404，混合账号导出整次拒绝。批次删除仍仅管理员；材料目录及必填设置仍共享。账号切换清空任务、结果及预览，旧会话的迟到读取和写响应不得回填新会话。
+
+Batch新增owner={user_id:string|null,username:string|null,display_name:string|null,account_exists:boolean}，列表与详情同源。account_exists=true时三个身份字段均非空；显示“上传人：姓名（账号）”。删除账号后保留原ID及删除前加密署名，显示“姓名（账号，已删除）”；无法恢复姓名的历史ID显示“历史账号（未关联）”，归属不明显示“未知上传人”，两者仅管理员可见。旧服务缺owner时前端兼容显示未知，不推测归属。修改姓名按下一次读取更新批次，管理员修改自己时即时更新顶部姓名。
+
+管理员在展开的批次中可“删除批次”，需二次确认，待人工核对也可删除；未加载完整任务或包含排队/运行任务时禁用。DELETE /batches/{batch_id}提交{versions:[{task_id,run_id,expected_revision}]}，使用确认框打开时冻结的完整快照。成功200返回{batch_id,task_ids,cleanup_pending}，移除列表、选择和原图缓存，关闭对应详情，作废迟到读取并保留日期范围；409刷新核对后重新确认，不盲重试。cleanup_pending=true须明确提示记录已删除但文件待维护清理。操作员/只读不显示删除入口，后端仍独立校验管理员权限。
 
 管理员登录后显示“账号管理”，调用`GET /api/v1/admin/users`查询账号公共信息，`POST /api/v1/admin/users`提交username/password/display_name及可选role（默认operator，可选viewer/admin），Cookie写请求沿用同源Origin及X-CSRF-Token。密码8至128字符且不能全空白，账号名大小写等价；201返回新账号公共信息，409 USERNAME_EXISTS表示重复且没有修改原账号。只有admin可使用，operator/viewer返回403；请求体最多8192字节。公共账号信息为user_id、username、display_name、role、enabled，不含密码摘要。
 
-已有账号行提供“禁用／启用”“重置密码”“删除”；禁用/删除先确认，取消不请求后端。`PATCH /api/v1/admin/users/{user_id}`只接受`{enabled:boolean}`，200返回公共账号；`DELETE`同一路径无请求体，成功204；`POST /api/v1/admin/users/{user_id}/password`只接受`{new_password:string}`，成功204。删除保留历史任务、结果与审计UUID，同名重建使用新UUID；禁用、删除和重置均撤销目标全部登录，重置不会启用禁用账号，启用不会恢复旧登录。当前账号及最后一个启用的管理员不能禁用/删除；自己的密码按钮打开自助入口，管理员重置自己返回409 ACCOUNT_PROTECTED。目标不存在404，权限变化或会话撤销按401/403处理，操作成功刷新列表，不自动重放写请求。
+已有账号行提供“编辑姓名”“禁用／启用”“重置密码”“删除”；禁用/删除先确认，取消不请求后端。`PATCH /api/v1/admin/users/{user_id}`每次接受`{display_name:string}`或`{enabled:boolean}`其中一种，不能混传。姓名去首尾空白，需1至80个可打印字符；可改自己姓名，不改登录账号、角色、密码、启用状态、会话或归属。200返回公共账号；`DELETE`同一路径无请求体，成功204；`POST /api/v1/admin/users/{user_id}/password`只接受`{new_password:string}`，成功204。删除保留历史任务、结果与审计UUID，同名重建使用新UUID且不能继承历史批次；禁用、删除和重置均撤销目标全部登录，重置不会启用禁用账号，启用不会恢复旧登录。当前账号及最后一个启用的管理员不能禁用/删除；自己的密码按钮打开自助入口，管理员重置自己返回409 ACCOUNT_PROTECTED。目标不存在404，权限变化或会话撤销按401/403处理，操作成功刷新列表，不自动重放写请求。
 
 所有角色从右上角姓名菜单“修改密码”进入；`POST /api/v1/auth/password`只接受`{current_password:string,new_password:string}`。原密码1至128字符，新密码与创建相同；前端还要求确认新密码一致。原密码不正确为422 CURRENT_PASSWORD_INCORRECT，保留登录并允许重输；成功204清除Cookie并撤销全部会话，前端回登录页。密码输入在提交结束、关闭和卸载时清空，不进入诊断。请求未结束时不允许关闭密码弹窗；CLI仅作为本地恢复工具。
 
@@ -21,7 +27,7 @@
 | `GET /api/v1/auth/me` | 当前身份、权限、Cookie会话csrf_token；刷新恢复 |
 | `POST /api/v1/auth/password` | 所有角色凭原密码修改自己密码，成功后重新登录 |
 | `GET/POST /api/v1/admin/users` | 管理员查询／创建账号 |
-| `PATCH/DELETE /api/v1/admin/users/{user_id}` | 管理员启用／禁用／删除其他账号 |
+| `PATCH/DELETE /api/v1/admin/users/{user_id}` | 管理员编辑姓名／启用／禁用／删除账号，禁用/删除仍保护当前账号和最后管理员 |
 | `POST /api/v1/admin/users/{user_id}/password` | 管理员重置其他账号密码 |
 | `GET /api/v1/doc-types` | 11种材料目录；返回数组，每项doc_type/label/fields |
 | `POST /api/v1/batches` | multipart 上传，返回202及显式 task_ids；必须指定 doc_type_hint |
@@ -74,6 +80,30 @@ Batch、Task及TaskResult可选携带`required_fields_revision`，独立于`resu
 “业务必填”不等于识别响应里 value 必须非null：缺失必填保留空值并给 MISSING，前端应突出显示。可选字段为空通常不形成必填缺失，但也不能编造值。任务、字段和医疗行的 review_issues 分层显示，不能只看任务级问题数组。
 
 Task 状态为 `QUEUED / PREPROCESSING / OCR / EXTRACTING / VALIDATING / NEED_REVIEW / COMPLETED / FAILED / REJECTED / CANCELLED`。当前成功识别进入 NEED_REVIEW。运行中串行轮询，进入待核对或终态停止无必要轮询；过期请求不能覆盖新 run/revision。取消请求成功不代表运行任务已经停止，继续查询直到服务确认终态。失败/超时可能仍有已发布部分结果，显示限制和错误，不能当完整成功。
+
+### 真实识别进度
+
+`GET /api/v1/tasks/{task_id}`与`GET /api/v1/batches/{batch_id}/tasks`返回的Task新增可选`progress_detail`；沿用现有串行轮询，不新增接口或事件流。数据只属于返回的`task_id/run_id`，换run后清空旧计数；不要合并不同run的最大值。`result_revision`仍是结果/操作版本，进度更新不会递增它；轮询须接收同run同revision的新进度快照。旧服务没有此对象时只展示status，不用旧progress推算真实完成量。
+
+```json
+{"stage":"OCR","prepared_pages":8,"total_pages":8,"processed_regions":12,"recognized_regions":11,"incomplete_regions":1,"total_regions":30}
+```
+
+这是接口示例，不是实测结果；可显示“文字识别中 · 已处理12/30个区域，其中1个不完整”。字段含义：
+
+| progress_detail字段 | 含义 |
+|---|---|
+| stage | 与Task.status相同，包含排队、运行、待核对和终态 |
+| prepared_pages / total_pages | 已保存页面数／原文件总页数；total_pages为null表示历史原页数未知，不能拿当前前缀充当总页数 |
+| processed_regions | recognized_regions + incomplete_regions；每个OCR区域最多计一次，重试和备用模型不增加分母；缓存复用也完成目标区域一次 |
+| recognized_regions / incomplete_regions | 完成识别／结束处理但仍不完整；均不代表字段正确率或医疗覆盖已证实 |
+| total_regions | 全部原页完成分区计划后才有值；null表示计划尚未完成或历史无证明，0表示已知不需要OCR；原生文字块不计入OCR区域 |
+
+排队显示“排队等待”且无运行动画；准备阶段显示已准备页数；**只有OCR阶段且区域总数已知并大于0时**使用ElProgress显示区域完成比例并附实际数量。所有运行阶段均以Loading图标表示仍在工作；准备、字段整理、最终校验或未知分母不显示数字进度条，不按时间自行涨百分比。区域耗时不等，比例不能标为时间进度或预计剩余时长。`EXTRACTING`只在全部OCR区域处理后进入一次，`VALIDATING`在字段整理后进入；纯文字PDF跳过OCR并显示“无需图像识别”。已处理完所有OCR区域仍不代表整理/校验已结束。
+
+前端允许旧服务不含progress_detail，但不会从旧progress猜计数。若对象存在，必须包含全部必需键，stage与Task.status一致，计数为非负整数、processed=recognized+incomplete且不超过已知total_regions，已准备页数不超过已知total_pages；畸形数据走现有INVALID_RESPONSE诊断，不夹到上限或默认填0。原文件页数未知的actual_source_page_count=null也能解析。
+
+`NEED_REVIEW`表示机器处理结束、仍待人工核对；`FAILED/CANCELLED`保留最后持久化的处理量，不显示成功100%。不完整区域应保留提示。旧`progress`整数保留兼容并在OpenAPI标为deprecated：新运行准备阶段0、OCR取区域比例（最终发布前上限99）、正常机器发布100，失败/取消保留上次值；它不估算准备/生成/字段整理耗时，也不表示审核完成。历史密文和旧progress不重写，前端不要回退到其固定阶段百分比。
 
 批次标题显示已加载任务中“X个任务缺必填”；任务表增加“必填信息”列，依据已保存的 `export_ready=false` 和 `export_blockers` 标红并列出字段名称，名称来自材料目录。户口成员显示序号与字段，通用正文显示“正文”。运行中的任务显示尚未检查，缺少结果或材料类型的任务显示暂无识别结果，未知历史标志不推断完整。每批可勾选“只看必填未填”，仅筛选任务表；完整批次和已勾选导出的范围不因此缩减，隐藏行的勾选按task_id保留。点击“补填”打开现有结果编辑器，补齐并保存后根据服务器新版本自动更新标记；未保存草稿不清除标记。
 

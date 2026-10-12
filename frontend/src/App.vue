@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 import { Reading, SwitchButton, Tools, User as UserIcon } from '@element-plus/icons-vue'
 import { ApiFailure, BusinessApi } from './api.ts'
 import { resultKey } from './business.ts'
-import type { DocProfile, Task, User } from './business.ts'
+import type { DocProfile, ManagedUser, Task, User } from './business.ts'
 import { createEngine } from './engine.ts'
 import { createMonitor } from './monitor.ts'
 import { LocalPreviewBatch } from './workbench.ts'
@@ -51,7 +51,19 @@ async function handleAuthenticated(client: BusinessApi, verified: User) {
   user.value = verified
   monitor.start()
   catalogueError.value = ''
-  try { catalogue.value = await client.catalogue(new AbortController().signal) } catch(error) { if(error instanceof ApiFailure && error.card.http_status === 401){handleUnauthorized();return} catalogueError.value='材料目录读取失败，请重新验证连接后再上传。' }
+  try {
+    const items = await client.catalogue(new AbortController().signal)
+    if (api.value === client) catalogue.value = items
+  } catch(error) {
+    if (api.value !== client) return
+    if(error instanceof ApiFailure && error.card.http_status === 401){handleUnauthorized();return}
+    catalogueError.value='材料目录读取失败，请重新验证连接后再上传。'
+  }
+}
+
+function profileChanged(updated: ManagedUser) {
+  if (user.value?.user_id === updated.user_id) user.value = { ...user.value, display_name: updated.display_name }
+  monitor.start()
 }
 
 function endSession(message?: string) {
@@ -77,6 +89,10 @@ function openResult(task: Task, batchId: string) {
 }
 
 function handleSubmitted() { uploadReset.value++; activeTab.value = 'batches' }
+function batchDeleted(batchId: string, taskIds: string[]) {
+  previews.remove(taskIds)
+  if (drawerInfo.batchId === batchId) drawerInfo.open = false
+}
 async function onHeaderCommand(command: string | number | object) {
   if (command === 'password') { passwordOpen.value = true; return }
   if (command !== 'logout' || !api.value) return
@@ -165,13 +181,13 @@ onBeforeUnmount(() => {
           <UploadPanel :api="api" :catalogue="catalogue" :monitor="monitor" :can-write="canWrite" @submitted="handleSubmitted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane label="任务批次" name="batches">
-          <BatchBoard :api="api" :monitor="monitor" :can-write="canWrite" :upload-reset="uploadReset" :catalogue="catalogue" @open-result="openResult" @unauthorized="handleUnauthorized" />
+          <BatchBoard :api="api" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" :upload-reset="uploadReset" :catalogue="catalogue" @open-result="openResult" @batch-deleted="batchDeleted" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane label="引擎状态" name="engine">
           <EngineStatus :engine="engine" />
         </el-tab-pane>
         <el-tab-pane v-if="user.role === 'admin'" label="账号管理" name="accounts" lazy>
-          <AccountManagement v-if="api" :api="api" :current-user="user" @change-password="passwordOpen = true" @unauthorized="handleUnauthorized" />
+          <AccountManagement v-if="api" :api="api" :current-user="user" @change-password="passwordOpen = true" @unauthorized="handleUnauthorized" @profile-changed="profileChanged" />
         </el-tab-pane>
         <el-tab-pane v-if="user.role === 'admin'" label="必填字段设置" name="required" lazy>
           <RequiredFieldSettings v-if="api" :api="api" @saved="requiredFieldsSaved" @unauthorized="handleUnauthorized" />

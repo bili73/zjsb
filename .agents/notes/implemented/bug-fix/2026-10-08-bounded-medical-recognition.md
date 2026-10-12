@@ -22,6 +22,8 @@ The isolated real-API probe supports explicit dual mode and all three frozen med
 
 ## Decision audit
 
+The [measured progress correction](2026-10-10-measured-task-progress.md) counts each physical region once after retries and counts a cached destination region without duplicating inference. The revision-cache regression now changes revision after the first recognized-region checkpoint rather than an inter-page EXTRACTING stage; cache keys, budgets and fallback ordering stay unchanged.
+
 The [durable task decision](../feature/2026-09-30-durable-document-tasks.md) partially overlaps: Task budgets, serial ownership and partial publication remain; medical retry ordering is changed. The [runtime lifecycle](../architecture/2026-09-29-local-dual-model-lifecycle.md) retains dual startup and hard cleanup. The [diagnostics decision](../feature/2026-09-30-local-diagnostics.md) gains one bounded termination enum. The [current acceptance](../testing/2026-10-08-current-pipeline-acceptance.md) retains the v1 failure and supplies isolated storage and scoring for v2. [Whole-corpus references](../testing/2026-09-30-whole-medical-corpus.md) remain frozen. Nothing is wholly superseded or archived. The separate [Mac migration proposal](../../proposed/architecture/2026-10-08-mac-studio-inference-service.md) remains unimplemented.
 
 ## Alternatives considered

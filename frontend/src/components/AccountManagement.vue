@@ -7,14 +7,18 @@ import { errorMessages } from '../diagnostics.ts'
 import PasswordDialog from './PasswordDialog.vue'
 
 const props = defineProps<{ api: BusinessApi; currentUser: User }>()
-const emit = defineEmits<{ unauthorized: []; changePassword: [] }>()
+const emit = defineEmits<{ unauthorized: []; changePassword: []; profileChanged: [user: ManagedUser] }>()
 const controller = new AbortController()
 const users = ref<ManagedUser[]>([])
 const loading = ref(false)
 const creating = ref(false)
 const changing = ref('')
 const passwordTarget = ref<ManagedUser | undefined>()
-const busy = computed(() => loading.value || creating.value || !!changing.value || !!passwordTarget.value)
+const editing = ref<ManagedUser | undefined>()
+const editedName = ref('')
+const savingName = ref(false)
+const editError = ref('')
+const busy = computed(() => loading.value || creating.value || !!changing.value || !!passwordTarget.value || !!editing.value)
 const adminCount = computed(() => users.value.filter(user => user.enabled && user.role === 'admin').length)
 const error = ref('')
 const success = ref('')
@@ -80,12 +84,38 @@ async function change(user: ManagedUser, action: 'enabled' | 'delete') {
     if (controller.signal.aborted) return
     if (action === 'delete') await props.api.deleteUser(user.user_id, controller.signal)
     else await props.api.updateUserEnabled(user.user_id, !user.enabled, controller.signal)
+    emit('profileChanged', user)
     success.value = `账号 ${user.username} 已${action === 'delete' ? '删除，历史记录保留' : user.enabled ? '禁用' : '启用，请重新登录'}。`
     await refresh()
   } catch (failure) {
     failed(failure)
     if (failure instanceof ApiFailure && [404, 409].includes(failure.card.http_status ?? 0)) await refresh()
   } finally { changing.value = '' }
+}
+function editName(user: ManagedUser) {
+  if (busy.value) return
+  editing.value = user
+  editedName.value = user.display_name
+  editError.value = ''
+}
+async function saveName() {
+  if (!editing.value || savingName.value) return
+  const name = editedName.value.trim()
+  if (!name || name.length > 80) { editError.value = '姓名需1至80个字符，不能全为空白。'; return }
+  savingName.value = true
+  editError.value = ''
+  try {
+    const updated = await props.api.updateUserName(editing.value.user_id, name, controller.signal)
+    users.value = users.value.map(user => user.user_id === updated.user_id ? updated : user)
+    emit('profileChanged', updated)
+    editing.value = undefined
+    error.value = ''; success.value = `账号 ${updated.username} 的姓名已更新。`
+  } catch (failure) {
+    if (!controller.signal.aborted) {
+      if (failure instanceof ApiFailure && failure.card.http_status === 401) emit('unauthorized')
+      else editError.value = failure instanceof ApiFailure ? errorMessages[failure.card.code] : '保存失败，请重试。'
+    }
+  } finally { savingName.value = false }
 }
 onMounted(refresh)
 onBeforeUnmount(() => { controller.abort(); form.password = ''; form.confirmation = '' })
@@ -115,7 +145,8 @@ onBeforeUnmount(() => { controller.abort(); form.password = ''; form.confirmatio
         <el-table-column prop="display_name" label="姓名" min-width="160" />
         <el-table-column label="角色" width="120"><template #default="{ row }">{{ roles[row.role as User['role']] }}</template></el-table-column>
         <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '禁用' }}</el-tag></template></el-table-column>
-        <el-table-column label="操作" width="290" fixed="right"><template #default="{ row }">
+        <el-table-column label="操作" width="370" fixed="right"><template #default="{ row }">
+          <el-button link type="primary" :disabled="busy" @click="editName(row as ManagedUser)">编辑姓名</el-button>
           <el-button link :type="row.enabled ? 'warning' : 'success'" :disabled="busy || (row.enabled && protectedAccount(row as ManagedUser))" @click="change(row as ManagedUser, 'enabled')">{{ row.enabled ? '禁用' : '启用' }}</el-button>
           <el-button link type="primary" :disabled="busy" @click="password(row as ManagedUser)">{{ row.user_id === currentUser.user_id ? '修改密码' : '重置密码' }}</el-button>
           <el-button link type="danger" :disabled="busy || protectedAccount(row as ManagedUser)" @click="change(row as ManagedUser, 'delete')">删除</el-button>
@@ -124,6 +155,16 @@ onBeforeUnmount(() => { controller.abort(); form.password = ''; form.confirmatio
       <p class="account-hint">当前登录账号和最后一个启用的管理员不能禁用或删除。删除账号会保留历史识别记录。</p>
     </el-card>
     <PasswordDialog v-if="passwordTarget" :api="api" :target="passwordTarget" @close="passwordTarget = undefined" @saved="passwordSaved" @unauthorized="emit('unauthorized')" />
+    <el-dialog :model-value="!!editing" title="编辑账号姓名" width="420px" :close-on-click-modal="false" :close-on-press-escape="!savingName" :show-close="!savingName" @close="editing = undefined">
+      <el-alert v-if="editError" :title="editError" type="error" :closable="false" />
+      <el-form label-position="top" @submit.prevent="saveName">
+        <el-form-item label="账号"><el-input :model-value="editing?.username" disabled /></el-form-item>
+        <el-form-item label="姓名"><el-input v-model="editedName" maxlength="80" :disabled="savingName" autocomplete="off" /></el-form-item>
+        <p class="account-hint">修改姓名不会改变登录账号、密码和批次归属。</p>
+        <el-button :disabled="savingName" @click="editing = undefined">取消</el-button>
+        <el-button type="primary" native-type="submit" :loading="savingName">保存</el-button>
+      </el-form>
+    </el-dialog>
   </div>
 </template>
 

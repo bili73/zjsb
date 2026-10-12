@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: frontend/src, frontend/tests, backend/ocr_app/routes.py, requirements-app.lock.txt, SPEC.md, FRONTEND_FIELDS.md, RUNTIME.md
-Last-verified: 2026-10-09
+Last-verified: 2026-10-10
 
 ## Problem
 
@@ -11,6 +11,8 @@ The user cancels certificate positioning and only needs medical source navigatio
 ## Decision
 
 The application has no experimental certificate helper, endpoint or added positioning dependencies. Field-level positioning/source controls appear only for medical reports; all document types retain whole-page image preview and manual editing. Medical primary, related, item, diagnosis and report-finding source controls remain. Each selection creates a fresh source object and independent bbox. SourcePreview responds to selection identity and actual image-load completion, waits for DOM layout, then scrolls to the current highlight or whole-page fallback. A selection counter prevents an older page load from scrolling after a newer click. Selection clears on result-version changes and drawer close. One full-width, margin-free corrected-image wrapper supplies the overlay reference area. Existing sources keep their declared granularity; no coordinates are manufactured. Recognition, review, exports and original sources remain unchanged. No API or database schema addition remains. The frontend-only activation preserves old assets and atomically replaces the index after new resources are copied; the existing backend/models keep running.
+
+The [lazy-page layout correction](2026-10-10-medical-navigation-layout-race.md) extends navigation with cancellable alignment across page reflow. Waiting for the selected image alone is insufficient when preceding pages expand during smooth scrolling. Medical-only controls, source identity, trusted overlays and whole-page certificate previews remain governed here.
 
 ## Decision audit
 
@@ -26,7 +28,7 @@ The [human-review contract](../../implemented/feature/2026-10-08-human-review-an
 
 72 frontend tests, vue-tsc/Vite and53 focused backend tests pass. CUA passes8 checks with synthetic diploma/household/medical materials and0 browser errors: same-page switching, reselecting after jumping away, missing-box fallback, latest selection after delayed image loading, editable certificate preview without source controls, household-member controls and medical item-row positioning. The isolated server makes0 business-model requests and is stopped.
 
-The local service serves the verified frontend asset hashes. Its API stays1.17.2 and both models remain ready without restart.64 tasks,1 account, all task columns/account rows and protected key-file hashes match before/after the frontend change. Evidence: output/medical-source-navigation-20261009-v1/REPORT.md. The rejected helper replay remains preserved separately and is never described as current recognition accuracy.
+The original 2026-10-09 activation serves the then-verified frontend asset hashes: API1.17.2 and both models ready without restart.64 tasks,1 account, all task columns/account rows and protected key-file hashes match around that frontend change. Evidence: output/medical-source-navigation-20261009-v1/REPORT.md. Current layout-race activation evidence is owned by the linked correction. The rejected helper replay remains preserved separately and is never described as current recognition accuracy.
 
 ## Consequences
 

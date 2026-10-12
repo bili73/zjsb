@@ -5,6 +5,7 @@ import threading
 import time
 import unittest
 import queue
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -192,8 +193,16 @@ class ParallelTaskStoreTests(unittest.TestCase):
             config.attributes['connection'] = connection
             command.upgrade(config, '0001')
         storage = Storage(old_root, key=b'M' * 32)
-        old = TaskStore(engine, storage)
-        task_id = old.create_batch([dict(data=b'unchanged', name='fixture.png', mime='image/png')], 'DIPLOMA', 'test')['task_ids'][0]
+        # Build the actual v0001 shape; current writers require the latest schema.
+        task_id, batch_id, run_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+        reference = storage.put(b'unchanged')
+        with engine.begin() as connection:
+            connection.execute(text("INSERT INTO batches VALUES (:id,'2026-10-10',:name)"), dict(id=batch_id, name=storage.pack('毕业证')))
+            connection.execute(text("""INSERT INTO tasks(id,batch_id,run_id,status,created_at,updated_at,expires_at,
+                content_hash,doc_type,input_ref,meta_enc,options_enc) VALUES (:id,:batch,:run,'QUEUED',
+                '2026-10-10','2026-10-10','2026-10-17','synthetic-hash','DIPLOMA',:ref,:meta,:options)"""),
+                dict(id=task_id, batch=batch_id, run=run_id, ref=reference,
+                     meta=storage.pack(dict(file_name='fixture.png',mime_type='image/png')), options=storage.pack({})))
         with engine.connect() as connection:
             before = dict(connection.execute(text('SELECT * FROM tasks WHERE id=:id'), {'id': task_id}).mappings().one())
         engine.dispose()
@@ -201,7 +210,7 @@ class ParallelTaskStoreTests(unittest.TestCase):
         try:
             with upgraded.connect() as connection:
                 after = dict(connection.execute(text('SELECT * FROM tasks WHERE id=:id'), {'id': task_id}).mappings().one())
-                self.assertEqual(connection.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0004')
+                self.assertEqual(connection.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0005')
                 self.assertEqual(connection.execute(text('SELECT count(*) FROM web_users')).scalar_one(), 0)
                 self.assertEqual(connection.execute(text('SELECT count(*) FROM required_field_settings')).scalar_one(), 0)
             self.assertIsNone(after.pop('stop_code'))

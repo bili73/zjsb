@@ -23,6 +23,8 @@ POST /export accepts a batch or explicit task IDs and optional expected versions
 
 ## Decision audit
 
+The [administrator batch deletion feature](2026-10-10-delete-recognized-batches.md) deletes the selected stopped batch and its complete encrypted review/access/run history while preserving value-free audit. This is distinct from review revisions, reruns and account removal, which continue to retain history.
+
 The implemented [business Excel layout](2026-10-09-business-xlsx-layout.md) replaces technical worksheet/metadata dumps with saved Chinese business fields and focused medical data. Selection, snapshot/version checks, authorization, audit and string/formula protection remain.
 
 The [durable tasks](../../implemented/feature/2026-09-30-durable-document-tasks.md), [HR fields](../../implemented/feature/2026-10-08-hr-document-field-profile.md), [field mapping](../../implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md), [diagnostics](../../implemented/feature/2026-09-30-local-diagnostics.md) and [frontend rebuild](../../implemented/feature/2026-10-08-frontend-rebuild-element-plus.md) partially overlap and remain active. Their earlier unavailable-review boundaries are extended, not their lifecycle or frozen measurements. No archive is warranted. The [document profiles](2026-10-08-card-and-document-profiles.md) own rules and type admission.

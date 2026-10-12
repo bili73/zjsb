@@ -69,7 +69,7 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
             if business:
                 business.close()
 
-    app = FastAPI(version='1.18.0', lifespan=lifespan, docs_url=None,
+    app = FastAPI(version='1.21.0', lifespan=lifespan, docs_url=None,
                   redoc_url=None, openapi_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost', '127.0.0.1'],
                        www_redirect=False)
@@ -122,7 +122,7 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
             except Exception:
                 # Invalid/internal state must not become a public exception or path leak.
                 snapshot = None
-        response = {'status': 'degraded', 'version': '1.18.0', 'queue_depth': None,
+        response = {'status': 'degraded', 'version': '1.21.0', 'queue_depth': None,
                     'components': {'db': 'down', 'worker': 'ok' if worker_ready else 'down',
                                    'storage': 'ok' if storage_ready else 'down'}}
         if snapshot is not None:

@@ -39,6 +39,15 @@ class ReviewBody(Version):
     note: str | None = Field(default=None, max_length=1000)
 
 
+class DeleteTaskVersion(Version):
+    task_id: uuid.UUID
+
+
+class DeleteBatchBody(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    versions: list[DeleteTaskVersion] = Field(min_length=1, max_length=100)
+
+
 class FullPreview(Version):
     page: int = Field(default=1, ge=1)
     reason: str | None = Field(default=None, max_length=1000)
@@ -219,9 +228,12 @@ def router(business, runtime):
     @routes.patch('/admin/users/{user_id}')
     async def update_user(user_id: uuid.UUID, request: Request, user=Depends(administrator)):
         body = await bounded_json(request)
-        if not isinstance(body, dict) or set(body) != {'enabled'} or type(body['enabled']) is not bool:
-            raise TaskError('INVALID_REQUEST', '只能提交布尔类型的启用状态', 422)
         from starlette.concurrency import run_in_threadpool
+        if isinstance(body, dict) and set(body) == {'display_name'}:
+            return await run_in_threadpool(business.accounts.update_display_name, user['user_id'], str(user_id),
+                                          body['display_name'], request.cookies.get(SESSION_COOKIE))
+        if not isinstance(body, dict) or set(body) != {'enabled'} or type(body['enabled']) is not bool:
+            raise TaskError('INVALID_REQUEST', '请单独提交姓名或布尔类型的启用状态', 422)
         return await run_in_threadpool(business.accounts.update_enabled, user['user_id'], str(user_id),
                                       body['enabled'], request.cookies.get(SESSION_COOKIE))
 
@@ -272,7 +284,7 @@ def router(business, runtime):
     @routes.get('/batches')
     def batches(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
                 date_from: date | None = None, date_to: date | None = None, user=Depends(principal)):
-        return business.store.batches(page, page_size, date_from, date_to)
+        return business.store.batches(page, page_size, date_from, date_to, user=user)
 
     @routes.post('/batches', status_code=202)
     async def upload(request: Request, user=Depends(operator)):
@@ -288,30 +300,35 @@ def router(business, runtime):
 
     @routes.get('/batches/{batch_id}')
     def batch(batch_id: uuid.UUID, user=Depends(principal)):
-        return business.store.batch(str(batch_id))
+        return business.store.batch(str(batch_id), user=user)
+
+    @routes.delete('/batches/{batch_id}')
+    def delete_batch(batch_id: uuid.UUID, body: DeleteBatchBody, request: Request, user=Depends(administrator)):
+        return business.store.delete_batch(str(batch_id), body.model_dump(mode='json')['versions'], user['user_id'],
+            authorize=lambda connection: business.accounts._acting_user(
+                connection, user['user_id'], request.cookies.get(SESSION_COOKIE), administrator=True))
 
     @routes.get('/batches/{batch_id}/tasks')
     def batch_tasks(batch_id: uuid.UUID, user=Depends(principal)):
-        business.store.batch(str(batch_id))
-        return business.store.tasks(str(batch_id))
+        return business.store.tasks(str(batch_id), user=user)
 
     @routes.get('/tasks')
     def tasks(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), user=Depends(principal)):
-        rows = business.store.tasks()
+        rows = business.store.tasks(user=user)
         return dict(items=rows[(page-1)*page_size:page*page_size], total=len(rows), page=page, page_size=page_size)
 
     @routes.get('/tasks/{task_id}')
     def task(task_id: uuid.UUID, user=Depends(principal)):
-        return business.store.task(str(task_id))
+        return business.store.task(str(task_id), user=user)
 
     @routes.get('/tasks/{task_id}/result')
     def result(task_id: uuid.UUID, items_filter: Literal['all', 'abnormal', 'unknown'] | None = None,
                include_normal_summary: bool = True, user=Depends(principal)):
-        return business.store.result(str(task_id), items_filter, include_normal_summary)
+        return business.store.result(str(task_id), items_filter, include_normal_summary, user=user)
 
     @routes.post('/tasks/{task_id}/review')
     def review(task_id: uuid.UUID, body: ReviewBody, user=Depends(operator)):
-        return business.store.review(str(task_id), body.model_dump(mode='json', exclude_unset=True), user['user_id'])
+        return business.store.review(str(task_id), body.model_dump(mode='json', exclude_unset=True), user['user_id'], user=user)
 
     @routes.get('/tasks/{task_id}/preview')
     def preview(task_id: uuid.UUID, run_id: uuid.UUID, result_revision: int = Query(ge=0),
@@ -319,36 +336,36 @@ def router(business, runtime):
                 masked: bool = True, user=Depends(principal)):
         from .preview import corrected_preview
         data = corrected_preview(business.store, str(task_id), str(run_id), result_revision, page,
-                                 actor=user['user_id'], role=user['role'])
+                                 actor=user['user_id'], role=user['role'], user=user)
         return Response(data, media_type='image/png', headers={'X-Preview-Stage': 'corrected', 'X-Result-Revision': str(result_revision)})
 
     @routes.post('/tasks/{task_id}/preview')
     def full_preview(task_id: uuid.UUID, body: FullPreview, user=Depends(operator)):
         from .preview import corrected_preview
         data = corrected_preview(business.store, str(task_id), str(body.run_id), body.expected_revision, body.page,
-                                 actor=user['user_id'], role=user['role'], masked=False, access_reason=body.reason)
+                                 actor=user['user_id'], role=user['role'], masked=False, access_reason=body.reason, user=user)
         return Response(data, media_type='image/png', headers={'X-Preview-Stage': 'corrected', 'X-Result-Revision': str(body.expected_revision)})
 
     @routes.post('/tasks/{task_id}/reveal')
     def reveal(task_id: uuid.UUID, body: RevealBody, user=Depends(operator)):
         from .preview import reveal_fields
-        return reveal_fields(business.store, str(task_id), body.model_dump(mode='json'), user['user_id'], user['role'])
+        return reveal_fields(business.store, str(task_id), body.model_dump(mode='json'), user['user_id'], user['role'], user=user)
 
     @routes.post('/export')
     def export(body: ExportBody, user=Depends(principal)):
         from .exporting import export_results
-        data = export_results(business.store, body.model_dump(mode='json', exclude_none=True), user['user_id'], user['role'])
+        data = export_results(business.store, body.model_dump(mode='json', exclude_none=True), user['user_id'], user['role'], user=user)
         return Response(data, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         headers={'Content-Disposition': 'attachment; filename="reviewed-results.xlsx"'})
 
     @routes.post('/tasks/{task_id}/cancel', status_code=202)
     def cancel(task_id: uuid.UUID, version: Version, user=Depends(operator)):
-        return business.store.cancel(str(task_id), str(version.run_id), version.expected_revision, user['user_id'])
+        return business.store.cancel(str(task_id), str(version.run_id), version.expected_revision, user['user_id'], user=user)
 
     @routes.post('/tasks/{task_id}/rerun', status_code=202)
     def rerun(task_id: uuid.UUID, version: Version, user=Depends(operator)):
         if not runtime.is_alive():
             raise TaskError('INTERNAL_ERROR', '处理服务不可用，请先重新启动程序', 503)
-        return business.store.rerun(str(task_id), str(version.run_id), version.expected_revision, user['user_id'])
+        return business.store.rerun(str(task_id), str(version.run_id), version.expected_revision, user['user_id'], user=user)
 
     return routes

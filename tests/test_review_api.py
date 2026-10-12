@@ -108,7 +108,7 @@ class ReviewAPITests(unittest.TestCase):
             self.assertEqual(preview.headers['X-Preview-Stage'], 'corrected')
         viewer_key = 'preview-synthetic-viewer-key-000000000'
         self.business.accounts.accounts.append(dict(user_id=str(uuid4()), display_name='viewer', role='viewer', key=viewer_key))
-        self.assertEqual(self.client.get(url, headers={'X-API-Key': viewer_key}, params=query).status_code, 403)
+        self.assertEqual(self.client.get(url, headers={'X-API-Key': viewer_key}, params=query).status_code, 404)
         body = dict(run_id=task['run_id'], expected_revision=task['result_revision'], page=1, reason='核对原件')
         response = self.client.post(url, headers=self.headers, json=body)
         self.assertEqual(response.status_code, 200, response.text[:100])
@@ -201,7 +201,7 @@ class ReviewAPITests(unittest.TestCase):
         self.assertFalse(self.business.store.tasks())
         self.assertFalse(list(self.business.storage.blobs.iterdir()))
         safe = unsafe
-        result = self.business.store.create_batch([safe], 'BANK_CARD', 'synthetic')
+        result = self.business.store.create_batch([safe], 'BANK_CARD', self.business.accounts.accounts[0]['user_id'])
         public = self.task(result['task_ids'][0])
         self.assertNotIn('bank_admission', public['extract_options'])
 

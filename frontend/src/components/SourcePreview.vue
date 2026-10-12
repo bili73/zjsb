@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ApiFailure, isAbort } from '../api.ts'
 import type { BusinessApi } from '../api.ts'
 import type { FieldSource, Task } from '../business.ts'
@@ -18,8 +18,38 @@ const loading = ref(false)
 const controllers = new Map<number, AbortController>()
 const pageEls = new Map<number, HTMLElement>()
 const visiblePages = new Set<number>()
+const previewEl = ref<HTMLElement>()
+const pageListEl = ref<HTMLElement>()
 let observer: IntersectionObserver | undefined
+let layoutObserver: ResizeObserver | undefined
+let previewViewport: HTMLElement | null = null
 let selection = 0
+let navigating = false
+let alignmentFrame = 0
+const browsingEvents = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const
+
+function cancelNavigation() {
+  selection++
+  navigating = false
+  if (alignmentFrame) cancelAnimationFrame(alignmentFrame)
+  alignmentFrame = 0
+}
+
+function alignSource() {
+  if (!navigating || alignmentFrame) return
+  const current = selection
+  alignmentFrame = requestAnimationFrame(() => {
+    alignmentFrame = 0
+    if (!navigating || current !== selection || !props.source) return
+    const page = Math.min(Math.max(1, props.source.page ?? 1), maxPage.value)
+    const entry = entries[page - 1]
+    if (!entry || entry.status === 'loading' || (entry.url && !entry.loaded)) return
+    const pageEl = pageEls.get(page)
+    const target = pageEl?.querySelector('.bbox-overlay') ?? pageEl
+    // Retarget smoothly when lazy pages change the destination during movement.
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
+}
 
 function setPageRef(el: unknown, page: number) {
   if (el instanceof HTMLElement) {
@@ -71,6 +101,7 @@ function onIntersect(records: IntersectionObserverEntry[]) {
 }
 
 function goTo(page: number) {
+  cancelNavigation()
   const target = Math.min(Math.max(1, Math.floor(page || 1)), maxPage.value)
   jumpPage.value = target
   pageEls.get(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -78,6 +109,7 @@ function goTo(page: number) {
 }
 
 function reloadAll() {
+  cancelNavigation()
   resetAll()
   for (const page of visiblePages) void loadPage(page)
 }
@@ -88,27 +120,37 @@ function overlayFor(page: number) {
   return { left: `${x1 * 100}%`, top: `${y1 * 100}%`, width: `${(x2 - x1) * 100}%`, height: `${(y2 - y1) * 100}%` }
 }
 
-watch(() => [props.source, entries[(props.source?.page ?? 1) - 1]?.status, entries[(props.source?.page ?? 1) - 1]?.loaded] as const, async ([source]) => {
-  const current = ++selection
+watch(() => props.source, source => {
+  cancelNavigation()
   if (!source) return
+  navigating = true
   const page = Math.min(Math.max(1, source.page ?? 1), maxPage.value)
   jumpPage.value = page
-  await loadPage(page)
-  await nextTick()
-  const entry = entries[page - 1]
-  if (current !== selection || entry?.status === 'loading' || (entry?.url && !entry.loaded)) return
-  const pageEl = pageEls.get(page)
-  const target = pageEl?.querySelector('.bbox-overlay') ?? pageEl
-  target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-}, { flush: 'post' })
+  void loadPage(page)
+  alignSource()
+}, { flush: 'post', immediate: true })
+watch(() => entries.map(entry => [entry.status, entry.loaded]), alignSource, { flush: 'post' })
 watch(() => `${props.task.task_id}:${props.task.run_id}:${props.task.result_revision}`, () => {
+  cancelNavigation()
   resetAll()
   failure.value = ''
   for (const page of visiblePages) void loadPage(page)
 })
 observer = new IntersectionObserver(onIntersect, { root: null, rootMargin: '150% 0px' })
+onMounted(() => {
+  layoutObserver = new ResizeObserver(alignSource)
+  if (pageListEl.value) layoutObserver.observe(pageListEl.value)
+  if (previewEl.value) layoutObserver.observe(previewEl.value)
+  previewViewport = previewEl.value?.parentElement ?? null
+  while (previewViewport?.parentElement && !/(auto|scroll)/.test(getComputedStyle(previewViewport).overflowY)) {
+    previewViewport = previewViewport.parentElement
+  }
+  for (const event of browsingEvents) previewViewport?.addEventListener(event, cancelNavigation, { passive: true })
+})
 onBeforeUnmount(() => {
-  selection++
+  cancelNavigation()
+  layoutObserver?.disconnect()
+  for (const event of browsingEvents) previewViewport?.removeEventListener(event, cancelNavigation)
   observer?.disconnect()
   resetAll()
 })
@@ -119,7 +161,7 @@ void (async () => {
 })()
 </script>
 <template>
-  <section v-loading="loading" class="source-preview">
+  <section ref="previewEl" v-loading="loading" class="source-preview">
     <h3>原件对照 · 服务端校正页</h3>
     <div class="page-tools">
       <span>共 {{ maxPage }} 页 · 上下滚动连续浏览，点击页面全屏缩放</span>
@@ -130,7 +172,7 @@ void (async () => {
     <p v-if="task.doc_type === 'MEDICAL_REPORT'" class="conf">无可靠定位框时显示整页。来源框仅叠加在版本一致的校正页，不能证明模型已读完整页。</p>
     <p v-else class="conf">证件提供整页原图对照，可点击图片放大查看。</p>
     <el-alert v-if="failure" type="warning" :closable="false">{{ failure }}</el-alert>
-    <ol class="page-list">
+    <ol ref="pageListEl" class="page-list">
       <li v-for="n in maxPage" :key="n" :ref="el => setPageRef(el, n)" :data-page="n" class="page-item">
         <span class="page-no">第 {{ n }} 页</span>
         <div v-if="entries[n - 1]?.status === 'error'" class="page-error">该页读取失败。<el-button link type="primary" @click="entries[n - 1]!.status = 'idle'; loadPage(n)">重试</el-button></div>

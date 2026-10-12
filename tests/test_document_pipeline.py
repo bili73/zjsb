@@ -1,4 +1,5 @@
 import base64
+from copy import deepcopy
 import gc
 import io
 import sys
@@ -7,7 +8,7 @@ import unittest
 import weakref
 from pathlib import Path
 from unittest.mock import patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import fitz
 from PIL import Image, ImageDraw
@@ -196,6 +197,66 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result['pages'][0]['extraction_method'], 'ocr')
         self.assertEqual(result['items'][0]['source']['bbox'], [0, 0, 1, 1])
 
+    def test_multi_page_progress_counts_regions_without_stage_or_percentage_regression(self):
+        checkpoints = []
+        with patch('ocr_app.pipeline.decode_pages', side_effect=self.repeated_decoder):
+            self.run_pipeline(progress=lambda stage, value, pages: checkpoints.append((stage, value, deepcopy(pages))))
+        stages = [stage for stage, _, _ in checkpoints]
+        self.assertEqual(stages.count('EXTRACTING'), 1)
+        self.assertEqual(stages[-2:], ['EXTRACTING', 'VALIDATING'])
+        values = [value for _, value, _ in checkpoints]
+        self.assertEqual(values, sorted(values))
+        self.assertEqual(set(values), {0, 50, 99})
+        completed = [sum(r['status'] in {'recognized', 'incomplete'}
+                         for page in pages for r in page['regions'] if r['extraction_method'] == 'ocr')
+                     for stage, _, pages in checkpoints if stage == 'OCR']
+        self.assertEqual(sorted(set(completed)), [0, 1, 2])
+        self.assertTrue(all(page['_preparation_complete'] for page in checkpoints[-1][2]))
+
+    def test_region_checkpoint_waits_for_retry_policy_to_finish(self):
+        for final_termination in ['eos', 'token_limit']:
+            with self.subTest(final_termination=final_termination):
+                attempts, checkpoints = [], []
+                def recognize(*args, **kwargs):
+                    attempts.append(len(attempts) + 1)
+                    return dict(text=TABLE, termination_reason=final_termination if len(attempts) == 3 else 'token_limit')
+                self.run_pipeline(recognize, doc_type='DIPLOMA',
+                                  progress=lambda stage, value, pages: checkpoints.append((stage, value, deepcopy(pages))))
+                self.assertEqual(attempts, [1, 2, 3])
+                snapshots = [pages[0]['regions'][0]['status'] for stage, _, pages in checkpoints if stage == 'OCR']
+                expected = 'recognized' if final_termination == 'eos' else 'incomplete'
+                self.assertEqual(snapshots, ['pending', expected])
+
+    def test_native_only_mapping_has_no_ocr_percentage_or_model_calls(self):
+        checkpoints, mapping_stages = [], []
+        def decoder(data, check):
+            yield Page(1, Image.new('RGB', (100, 120), 'white'), evidence=[dict(block(TABLE), extraction_method='pdf_text')])
+        def extract(*args, **kwargs):
+            mapping_stages.append(checkpoints[-1][0])
+            return extract_result(*args, **kwargs)
+        with patch('ocr_app.pipeline.decode_pages', side_effect=decoder), patch('ocr_app.pipeline.extract_result', side_effect=extract):
+            self.run_pipeline(progress=lambda stage, value, pages: checkpoints.append((stage, value)))
+        self.assertEqual(self.calls, [])
+        self.assertEqual(mapping_stages, ['EXTRACTING'])
+        self.assertNotIn('OCR', [stage for stage, _ in checkpoints])
+        self.assertEqual({value for _, value in checkpoints}, {0})
+        self.assertEqual(checkpoints[-1][0], 'VALIDATING')
+
+    def test_hard_timeout_retains_last_completed_region_progress(self):
+        checkpoints, calls = [], []
+        class Timeout(RuntimeError):
+            code = 'MODEL_REQUEST_TIMEOUT'
+        def recognize(*args, **kwargs):
+            calls.append(1)
+            if len(calls) == 2:
+                raise Timeout()
+            return dict(text=TABLE, termination_reason='eos')
+        with patch('ocr_app.pipeline.decode_pages', side_effect=self.repeated_decoder):
+            result = self.run_pipeline(recognize, progress=lambda stage, value, pages: checkpoints.append((stage, value)))
+        self.assertEqual(result['error']['code'], 'EXTRACT_TIMEOUT')
+        self.assertEqual(checkpoints[-1], ('OCR', 50))
+        self.assertEqual([page['regions'][0]['status'] for page in result['pages']], ['recognized', 'pending'])
+
     def test_certificate_truncated_attempts_keep_repair_then_fallback_policy(self):
         calls = []
         def recognize(model, image, task, timeout):
@@ -234,15 +295,17 @@ class PipelineTests(unittest.TestCase):
 
     def test_cache_rebinds_source_and_does_not_copy_inference_metrics(self):
         revisions = {}  # Worker fills this same object during the first call.
-        calls = []
+        calls, progress_values = [], []
         def recognize(model, *args, **kwargs):
             calls.append(model)
             revisions[model] = 'frozen-revision'
             return dict(text=TABLE, termination_reason='eos', recognition_seconds=2.5,
                         gpu_peak_allocated_gib=3, output_tokens=100)
         with patch('ocr_app.pipeline.decode_pages', side_effect=self.repeated_decoder):
-            result = self.run_pipeline(recognize, model_revisions=revisions)
+            result = self.run_pipeline(recognize, model_revisions=revisions,
+                                      progress=lambda stage, value, pages: progress_values.append(value))
         self.assertEqual(calls, ['paddleocr_vl'])
+        self.assertEqual(set(progress_values), {0, 50, 99})
         first, reused = self.attempts
         self.assertFalse(first['cache_hit'])
         self.assertTrue(reused['cache_hit'])
@@ -295,7 +358,8 @@ class PipelineTests(unittest.TestCase):
                         prediction['max_new_tokens'] = 512
                     return prediction
                 def progress(stage, value, pages):
-                    if difference == 'revision' and stage == 'EXTRACTING':
+                    if (difference == 'revision' and stage == 'OCR' and pages
+                            and pages[0]['regions'][0]['status'] == 'recognized'):
                         revisions['paddleocr_vl'] = 'p2'
                 tasks = ['ocr', 'table'] if difference == 'task' else ['ocr', 'ocr']
                 with patch('ocr_app.pipeline.decode_pages', side_effect=decoder), patch('ocr_app.pipeline.region_task', side_effect=tasks):
@@ -409,8 +473,24 @@ class PipelineTests(unittest.TestCase):
             return dict(text='CVV: 123', termination_reason='eos')
         result = self.run_pipeline(recognize)
         self.assertEqual(result['error']['code'], 'UNSUPPORTED_DOC_TYPE')
-        self.assertNotIn('123', str(result))
-        self.assertNotIn('123', str(self.attempts))
+        def business_text(value):
+            if isinstance(value, dict):
+                for key, child in value.items():
+                    # Random structural UUIDs can coincidentally contain 123.
+                    if key.endswith('_id') and isinstance(child, str):
+                        try:
+                            UUID(child)
+                            continue
+                        except ValueError:
+                            pass
+                    yield from business_text(child)
+            elif isinstance(value, list):
+                for child in value:
+                    yield from business_text(child)
+            elif isinstance(value, str):
+                yield value
+        self.assertNotIn('123', '\n'.join(business_text(result)))
+        self.assertNotIn('123', '\n'.join(business_text(self.attempts)))
 
     def test_parse_time_counts_against_task_budget(self):
         original = extract_result

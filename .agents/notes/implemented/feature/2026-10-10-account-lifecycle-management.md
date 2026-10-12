@@ -36,4 +36,8 @@ The later [embedded-help integration](2026-10-10-embedded-help-integration.md) p
 
 ## Consequences
 
+The [account-owned batches](2026-10-10-account-owned-batches.md) refinement adds administrator display-name editing and encrypted batch attribution snapshots on login deletion. It retains UUID-based history and state/password protections, and restricts non-administrators to their own material. Deletion of a login still preserves tasks and results; recreating its username cannot inherit them.
+
+The separate [batch deletion feature](2026-10-10-delete-recognized-batches.md) reuses transactional administrator session checks and permanently removes selected stopped business batches. This does not alter account deletion: deleting a login account still preserves its historical business tasks.
+
 Account deletion is irreversible through the browser; historical material remains and an explicit confirmation is required. Recreated names have new identities. A password reset does not reveal or recover the old password. Password hashing is performed outside the SQLite write lock with a final state/hash check before committing, so concurrent resets cannot silently apply an obsolete self-change. The user approves this complete plan on 2026-10-10; implementation and isolated verification follow that authorization. The CLI remains a deliberate local recovery tool; network/Mac deployment qualification is separate.

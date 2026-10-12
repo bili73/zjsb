@@ -117,11 +117,12 @@ class WebSessionTests(unittest.TestCase):
         from test_review_api import ReviewAPITests,CERT
         self.upload=base.BusinessAPITests.upload.__get__(self)
         self.task=base.BusinessAPITests.task.__get__(self)
+        self.provision();self.assertEqual(self.login().status_code,200)
+        me=self.client.get('/api/v1/auth/me').json()
+        self.headers=dict(self.origin,**{'X-CSRF-Token':me['csrf_token']})
         task,_=ReviewAPITests.ready(self)
         with self.business.engine.connect() as c:
             run=dict(c.execute(text('SELECT * FROM runs WHERE id=:id'),{'id':task['run_id']}).mappings().one())
-        self.provision();self.assertEqual(self.login().status_code,200)
-        me=self.client.get('/api/v1/auth/me').json()
         headers=dict(self.origin,**{'X-CSRF-Token':me['csrf_token']})
         response=self.client.post('/api/v1/tasks/'+task['task_id']+'/review',headers=headers,
                                  json=dict(run_id=task['run_id'],expected_revision=task['result_revision'],fields=CERT))

@@ -7,6 +7,23 @@ import { diagnosticCards } from '../src/diagnostics.ts'
 const user = { user_id: '11111111-2222-4333-8444-555555555555', username: 'tester', display_name: '合成用户', role: 'operator', enabled: true }
 const csrf = 'a'.repeat(64)
 
+test('editing account name sends only display_name with session CSRF and validates returned account', async () => {
+  let sent: RequestInit | undefined
+  const api = new BusinessApi(async (path, init) => {
+    if (String(path).endsWith('/auth/me')) return Response.json({ user_id: user.user_id, display_name: '管理员', role: 'admin', permissions: [], csrf_token: csrf })
+    assert.equal(String(path), '/api/v1/admin/users/' + user.user_id)
+    sent = init
+    return Response.json({ ...user, display_name: '修改姓名' })
+  })
+  const signal = new AbortController().signal
+  await api.auth(signal)
+  assert.equal((await api.updateUserName(user.user_id, '修改姓名', signal)).display_name, '修改姓名')
+  assert.equal(sent?.method, 'PATCH')
+  assert.deepEqual(JSON.parse(String(sent?.body)), { display_name: '修改姓名' })
+  assert.equal(new Headers(sent?.headers).get('X-CSRF-Token'), csrf)
+  assert.equal(sent?.credentials, 'same-origin')
+})
+
 test('administrator creation keeps Cookie CSRF and returns only public account fields', async () => {
   const calls: { path: string; init: RequestInit }[] = []
   const api = new BusinessApi((async (path, init) => {

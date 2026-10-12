@@ -12,6 +12,8 @@ During the approved account-lifecycle implementation, a concurrent frontend owne
 
 Preserve the concurrent HelpDrawer integration and qualify the current build with fresh synthetic real-HTTP account acceptance. The drawer embeds the same generic static manual in an iframe and unmounts its frame when closed; opening/closing it keeps the underlying workbench mounted. Reading help does not submit pending upload files or open a new browser tab. The embedded manual hides the redundant return-to-workbench link. The separate /help/index.html URL remains readable directly. This change partially replaces only the header-navigation choice in the [web manual decision](2026-10-10-web-user-manual.md); neutral wording, generic public contents and screenshots remain active. The [account lifecycle decision](2026-10-10-account-lifecycle-management.md) remains unchanged. No note is wholly absorbed or archived.
 
+The later [closable manual-image viewer](../bug-fix/2026-10-10-help-image-viewer-close.md) operates locally inside this iframe and preserves its reading position. It does not change the outer drawer or workbench draft ownership.
+
 ## Alternatives considered
 
 - Restore the separate-tab entry: its earlier qualification proves state preservation and it needs no drawer state, but restoration would overwrite the concurrent frontend owner's working changes even though the current request only requires an accessible manual button. Preserve and verify the compatible integration instead.

@@ -41,6 +41,7 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
   let failures = 0
   let nextPage = 2
   let listGeneration = 0
+  let sessionGeneration = 0
   let disposed = false
   let unauthorizedNotified = false
 
@@ -123,9 +124,9 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
         // batches keep their last known snapshot without extra requests.
         if (!entry.tasksLoaded || entry.batch?.status === 'PROCESSING' || finalized.has(id) ||
           policyRevision !== undefined && entry.tasks.some(task => task.required_fields_revision !== policyRevision)) {
-          entry.tasks = await client.tasks(id, signal)
-          entry.tasksLoaded = true
-          reconcilePending(entry)
+          const tasks = await client.tasks(id, signal)
+          if (generation !== listGeneration || signal.aborted || disposed) return null
+          applyTasks(id, tasks)
         }
       }
       failures = 0
@@ -187,7 +188,9 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
   async function loadTasks(batchId: string, signal: AbortSignal): Promise<void> {
     const client = getApi()
     if (!client) return
-    applyTasks(batchId, await client.tasks(batchId, signal))
+    const generation = listGeneration
+    const tasks = await client.tasks(batchId, signal)
+    if (generation === listGeneration && !signal.aborted) applyTasks(batchId, tasks)
   }
 
   function setExpanded(batchId: string, expanded: boolean) {
@@ -195,8 +198,10 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     if (!entry) return
     entry.expanded = expanded
     if (expanded && !entry.tasksLoaded) {
+      const generation = sessionGeneration
       const controller = new AbortController()
       void loadTasks(batchId, controller.signal).catch(error => {
+        if (generation !== sessionGeneration || disposed) return
         entry.tasksLoaded = false
         // 该读取路径不在轮询循环内；会话过期同样必须把用户送回登录页。
         if (error instanceof ApiFailure && error.card.http_status === 401) reportUnauthorized()
@@ -207,8 +212,9 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
   async function submitUpload(files: readonly File[], docType: UploadDocType, abnormalOnly: boolean, signal: AbortSignal): Promise<{ batch_id: string; task_ids: string[] }> {
     const client = getApi()
     if (!client) throw new Error('NOT_CONNECTED')
+    const generation = sessionGeneration
     const created = await client.upload(files, docType, abnormalOnly, signal)
-    if (disposed) return created
+    if (disposed || signal.aborted || generation !== sessionGeneration || getApi() !== client) return created
     if (!state.entries[created.batch_id]) {
       state.entries[created.batch_id] = { batch: null, tasks: [], tasksLoaded: false, expanded: true }
       state.order.unshift(created.batch_id)
@@ -220,8 +226,9 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
   async function runAction(operation: 'cancel' | 'rerun', batchId: string, task: Task, signal: AbortSignal): Promise<Task> {
     const client = getApi()
     if (!client) throw new Error('NOT_CONNECTED')
+    const generation = sessionGeneration
     const updated = await client.mutate(task, operation, signal)
-    if (disposed) return updated
+    if (disposed || signal.aborted || generation !== sessionGeneration || getApi() !== client) return updated
     const entry = state.entries[batchId]
     if (entry) {
       entry.tasks = entry.tasks.map(item => item.task_id === updated.task_id ? updated : item)
@@ -232,6 +239,26 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     return updated
   }
 
+  async function deleteBatch(batchId: string, tasks: readonly Task[], signal: AbortSignal) {
+    const client = getApi()
+    if (!client) throw new Error('NOT_CONNECTED')
+    const generation = sessionGeneration
+    const result = await client.deleteBatch(batchId, tasks, signal)
+    if (disposed || signal.aborted || generation !== sessionGeneration || getApi() !== client) return result
+    // Invalidate pre-deletion list/task reads before removing cached entries.
+    stop()
+    listGeneration++
+    const wasListed = state.listedIds.includes(batchId)
+    delete state.entries[batchId]
+    state.order = state.order.filter(id => id !== batchId)
+    state.listedIds = state.listedIds.filter(id => id !== batchId)
+    if (wasListed) state.serverTotal = Math.max(0, state.serverTotal - 1)
+    for (const id of result.task_ids) delete state.pending[id]
+    nextPage = 2 // Deletion shifts server pages; reread page two rather than skip rows.
+    start()
+    return result
+  }
+
   function pendingNotice(taskId: string): string {
     const pending = state.pending[taskId]
     if (!pending) return ''
@@ -240,6 +267,7 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
 
   function clear() {
     stop()
+    sessionGeneration++
     state.entries = {}
     state.order = []
     state.serverTotal = 0
@@ -257,6 +285,6 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
 
   function dispose() { disposed = true; clear() }
 
-  return { state, pollOnce, start, stop, onVisible, loadMore, loadTasks, setDateRange, setExpanded, submitUpload, runAction, pendingNotice, entryOf, clear, dispose }
+  return { state, pollOnce, start, stop, onVisible, loadMore, loadTasks, setDateRange, setExpanded, submitUpload, runAction, deleteBatch, pendingNotice, entryOf, clear, dispose }
 }
 export type Monitor = ReturnType<typeof createMonitor>
