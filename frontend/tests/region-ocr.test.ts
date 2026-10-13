@@ -47,7 +47,7 @@ const require = createRequire(import.meta.url)
 const { parse, compileScript } = require('@vue/compiler-sfc'), ts = require('typescript')
 const vue = await import(pathToFileURL(require.resolve('vue')).href)
 const sourcePath = fileURLToPath(new URL('../src/components/RegionOcrDialog.vue', import.meta.url))
-const source = (await readFile(sourcePath, 'utf8')).replace('</script>', 'defineExpose({recognize,copyResult,page,text,bbox,image,ready,error,textInput,copying})\n</script>')
+const source = (await readFile(sourcePath, 'utf8')).replace('</script>', 'defineExpose({recognize,copyResult,page,text,bbox,image,ready,error,textInput,copying,copyDone,dateSuggestions,dateInputs})\n</script>')
 const compiled = compileScript(parse(source, { filename: sourcePath }).descriptor, { id: 'source-region-test' })
 const code = ts.transpileModule(compiled.content, { compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext } }).outputText
   .replace(/from ['"]([^'"]+)['"]/g, (_: string, specifier: string) => {
@@ -134,4 +134,73 @@ test('copy reentry is blocked and late completion cannot disturb a closed dialog
     // 关闭触发 invalidate（generation 递增、text 清空），迟到的复制完成不得再产生任何副作用。
     assert.equal(closes, 0); assert.equal(h.exposed.copying.value, false)
   } finally { h.app.unmount() }
+})
+
+test('date suggestions react to text edits and copy independently without changing OCR or field drafts', async () => {
+  const copied: string[] = []
+  clipboard(async value => { copied.push(value) })
+  const raw = '入学2018年9月，毕业二〇二二年六月三十日'
+  const h = mount({ api: { preview: async () => ({ blob: new Blob(['synthetic']), corrected: true }),
+    ocrRegion: async () => ({ text: raw, confidence: .4 }) } })
+  try {
+    await vue.nextTick(); await Promise.resolve()
+    h.exposed.image.value = { naturalWidth: 1000, naturalHeight: 600 }; h.exposed.ready.value = true; h.exposed.bbox.value = [0, 0, 1, 1]
+    await h.exposed.recognize()
+    assert.deepEqual(h.exposed.dateSuggestions.value.map((d: { value: string }) => d.value), ['2018-09', '2022-06-30'])
+    await h.exposed.copyResult('2022-06-30')
+    assert.equal(h.exposed.copyDone.value, '2022-06-30')
+    assert.equal(h.exposed.text.value, raw)
+    assert.equal(h.app._instance.setupState.confidence, .4)
+    await h.exposed.copyResult()
+    assert.deepEqual(copied, ['2022-06-30', raw])
+    h.exposed.text.value = '2024年2月30日'
+    assert.deepEqual(h.exposed.dateSuggestions.value, [])
+    h.exposed.text.value = '2024年2月29日'
+    assert.equal(h.exposed.dateSuggestions.value[0].value, '2024-02-29')
+    assert.equal(h.app._instance.emitted?.apply, undefined)
+  } finally { h.app.unmount() }
+})
+
+test('date copy failure selects the suggested value rather than the OCR text', async () => {
+  for (const unavailable of [false, true]) {
+    clipboard(unavailable ? undefined : async () => { throw new Error('denied') })
+    let originalSelects = 0, dateSelects = 0
+    const h = mount()
+    try {
+      await vue.nextTick(); await Promise.resolve()
+      h.exposed.text.value = '二〇二四年六月'
+      h.exposed.textInput.value = { focus() {}, select() { originalSelects++ } }
+      const input = { focus() {}, select() { dateSelects++ } }
+      await h.exposed.copyResult('2024-06', input)
+      assert.equal(dateSelects, 1); assert.equal(originalSelects, 0)
+      assert.equal(h.exposed.text.value, '二〇二四年六月')
+      assert.equal(h.exposed.copyDone.value, null)
+      assert.match(h.exposed.error.value, /Ctrl\+C/)
+    } finally { h.app.unmount() }
+  }
+})
+
+test('late date clipboard success or rejection cannot revive results or select stale inputs', async () => {
+  for (const reject of [false, true]) for (const change of ['close', 'client', 'page', 'task', 'revision', 'permission', 'unmount']) {
+    const release = Promise.withResolvers<void>(); let selects = 0
+    clipboard(async () => release.promise)
+    const h = mount()
+    try {
+      await vue.nextTick(); await Promise.resolve(); h.exposed.text.value = '2024年6月'
+      const pending = h.exposed.copyResult('2024-06', { focus() {}, select() { selects++ } })
+      if (change === 'close') h.props.open = false
+      if (change === 'client') h.props.api = { ...h.props.api }
+      if (change === 'page') h.exposed.page.value = 2
+      if (change === 'task') h.props.task = { ...task, task_id: crypto.randomUUID() }
+      if (change === 'revision') h.props.task = { ...task, result_revision: 4 }
+      if (change === 'permission') h.props.canWrite = false
+      if (change === 'unmount') h.app.unmount()
+      if (reject) release.reject(new Error('denied')); else release.resolve()
+      await pending
+      assert.equal(h.exposed.copyDone.value, null, change)
+      assert.deepEqual(h.exposed.dateSuggestions.value, [], change)
+      assert.equal(h.exposed.error.value, '', change)
+      assert.equal(selects, 0, change)
+    } finally { if (change !== 'unmount') h.app.unmount() }
+  }
 })

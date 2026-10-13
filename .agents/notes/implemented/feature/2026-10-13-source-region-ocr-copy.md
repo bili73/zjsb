@@ -40,3 +40,5 @@ The initial page-two test exposed an immediate-watcher registration bug; registe
 Clipboard APIs can be blocked or absent on nonsecure sites; leave selectable text and a manual-copy message. Recognition remains transcription, not semantic interpretation or field validation. Source pages must be uniquely stored corrected evidence. Preserve all previous test outputs and failed probes; report new synthetic tests separately from material accuracy.
 
 [API authorization boundaries](../bug-fix/2026-10-13-api-authorization-boundaries.md) extend the live transaction session check to material operations, add default route authentication and protect full health/slow responses; this note retains its remaining decisions.
+
+[Date clipboard suggestions](2026-10-13-region-date-copy-suggestions.md) extend the current result card with separate selectable date formats, preserve the editable OCR text and the current non-closing copy controls, and retain its existing request/permission/version fences. The earlier copy-and-close label does not describe the current result card.

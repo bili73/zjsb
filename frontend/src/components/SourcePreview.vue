@@ -25,7 +25,7 @@ const visiblePages = new Set<number>()
 const previewEl = ref<HTMLElement>()
 const pageListEl = ref<HTMLElement>()
 const pageToolsEl = ref<HTMLElement>()
-const ocrOpen = ref(false), ocrPage = ref(1)
+const ocrOpen = ref(false), ocrPage = ref(1), ocrCinema = ref(false)
 let observer: IntersectionObserver | undefined
 let layoutObserver: ResizeObserver | undefined
 let previewViewport: HTMLElement | null = null
@@ -128,12 +128,26 @@ function openOcr() {
   const bottom = Math.min(window.innerHeight, viewport?.bottom ?? window.innerHeight)
   const pages = [...pageEls].map(([page, el]) => { const rect = el.getBoundingClientRect(); return { page, top: rect.top, bottom: rect.bottom } })
   ocrPage.value = mostVisiblePage(pages, top, bottom, jumpPage.value)
+  ocrCinema.value = false
   ocrOpen.value = true
 }
 // 入口提示随可用性变化：不可用时说明原因，而不是让按钮沉默失效。
 const ocrTip = computed(() => props.ocrEnabled
   ? '在原图上拖动框选任意文字区域，立即识别、可复制粘贴，适合补录遗漏或识别不准的字段'
   : '当前材料暂无服务端校正页，暂不支持框选识别')
+
+function openOcrAt(page: number) {
+  if (!props.api || !props.canWrite || !props.active || !props.ocrEnabled) return
+  cancelNavigation()
+  ocrPage.value = page
+  // 点击页面图 = 沿用“查看原图”的全屏大图观感，在其中做二次识别。
+  ocrCinema.value = true
+  ocrOpen.value = true
+}
+// 点击页面图：支持框选识别的材料直接进入原图识别对话框；否则保留原全屏缩放查看器。
+function onPageClick(page: number) {
+  if (props.ocrEnabled) openOcrAt(page)
+}
 watch([() => props.active, () => props.api, () => props.canWrite, () => props.ocrEnabled, () => resultKey(props.task)], () => { ocrOpen.value = false }, { flush: 'sync' })
 
 function overlayFor(page: number) {
@@ -186,7 +200,7 @@ void (async () => {
   <section ref="previewEl" v-loading="loading" class="source-preview">
     <h3>原件对照 · 服务端校正页</h3>
     <div ref="pageToolsEl" class="page-tools">
-      <span>共 {{ maxPage }} 页 · 上下滚动连续浏览，点击页面全屏缩放</span>
+      <span>共 {{ maxPage }} 页 · 上下滚动连续浏览，{{ ocrEnabled ? '点击页面查看原图并框选识别' : '点击页面全屏缩放' }}</span>
       <el-input-number v-model="jumpPage" :min="1" :max="maxPage" :precision="0" size="small" controls-position="right" />
       <el-button size="small" @click="goTo(jumpPage)">跳页</el-button>
       <span class="tools-spacer" />
@@ -196,15 +210,16 @@ void (async () => {
       </el-tooltip>
     </div>
     <p v-if="task.doc_type === 'MEDICAL_REPORT'" class="conf">无可靠定位框时显示整页。来源框仅叠加在版本一致的校正页，不能证明模型已读完整页。</p>
-    <p v-else class="conf">证件提供整页原图对照，可点击图片放大查看。</p>
+    <p v-else class="conf">证件提供整页原图对照，点击图片查看原图、框选识别。</p>
     <el-alert v-if="failure" type="warning" :closable="false">{{ failure }}</el-alert>
     <ol ref="pageListEl" class="page-list">
       <li v-for="n in maxPage" :key="n" :ref="el => setPageRef(el, n)" :data-page="n" class="page-item">
         <span class="page-no">第 {{ n }} 页</span>
         <div v-if="entries[n - 1]?.status === 'error'" class="page-error">该页读取失败。<el-button link type="primary" @click="entries[n - 1]!.status = 'idle'; loadPage(n)">重试</el-button></div>
         <el-skeleton v-else-if="entries[n - 1]?.status === 'loading'" animated class="page-skeleton" />
-        <figure v-if="entries[n - 1]?.url" class="img-wrap">
-          <el-image :src="entries[n - 1]!.url" :preview-src-list="[entries[n - 1]!.url]" preview-teleported hide-on-click-modal fit="scale-down" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
+        <figure v-if="entries[n - 1]?.url" class="img-wrap" :class="{ 'ocr-ready': ocrEnabled }" :title="ocrEnabled ? '点击查看原图并框选识别' : undefined" @click="onPageClick(n)">
+          <el-image v-if="ocrEnabled" :src="entries[n - 1]!.url" fit="scale-down" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
+          <el-image v-else :src="entries[n - 1]!.url" :preview-src-list="[entries[n - 1]!.url]" preview-teleported hide-on-click-modal fit="scale-down" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
           <span v-if="overlayFor(n)" class="bbox-overlay" :style="overlayFor(n)!" />
         </figure>
         <div v-else-if="entries[n - 1]?.status !== 'error' && entries[n - 1]?.status !== 'loading'" class="page-holder">滚动到此处时加载本页</div>
@@ -216,7 +231,7 @@ void (async () => {
       <el-image v-else-if="preview.kind === 'image'" :src="preview.url" :preview-src-list="[preview.url]" preview-teleported hide-on-click-modal fit="scale-down" class="local-image" alt="本地上传材料" />
       <el-alert v-else type="info" :closable="false">本浏览器可能无法直接渲染 HEIC，请在全屏查看器中确认或换用图像格式。</el-alert>
     </details>
-    <RegionOcrDialog :open="ocrOpen && active && ocrEnabled" :api="api" :task="task" :initial-page="ocrPage" :can-write="canWrite" @cancel="ocrOpen = false" @unauthorized="emit('unauthorized')" />
+    <RegionOcrDialog :open="ocrOpen && active && ocrEnabled" :cinema="ocrCinema" :api="api" :task="task" :initial-page="ocrPage" :can-write="canWrite" @cancel="ocrOpen = false" @unauthorized="emit('unauthorized')" />
   </section>
 </template>
 <style scoped>
@@ -227,6 +242,7 @@ void (async () => {
 .page-item { scroll-margin-top: 8px; }
 .page-no { display: block; font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 4px; }
 .page-image { width: 100%; display: block; }
+.img-wrap.ocr-ready { cursor: zoom-in; }
 .img-wrap { display: block; width: 100%; margin: 0; }
 .page-holder { border: 1px dashed var(--el-border-color); border-radius: 6px; min-height: 160px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--el-text-color-secondary); }
 .page-skeleton { min-height: 160px; }
