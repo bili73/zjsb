@@ -20,6 +20,8 @@ The launcher owns lifetime. Closing a browser tab does not exit the application.
 
 ## Implementation boundary
 
+The [process/package repairs](../../implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md) reuse JobProcess for transient CPU region OCR. The resident model workers and their queue/switching behavior are unchanged; region cleanup failure disables only subsequent region workers until restart.
+
 This note owns the launcher, independent worker, model adapters, Windows supervision and health snapshot. The [durable-task decision](../feature/2026-09-30-durable-document-tasks.md) adds SQLite, authenticated uploads, PDF/region routing, seven-day artifact cleanup and persisted recovery. Health reports actual database and queue state. Full review editing, export and broader document families remain later work.
 
 Each model load/warmup uses a bounded 120-second window. Private recognition caps calls at 180 seconds; business calls receive the remaining shared whole-task deadline, including required model switches. Independent supervision bounds native/GPU hangs. Closing callers share a bounded termination confirmation; failed cleanup never authorizes task recovery. The model adapter returns termination_reason and keeps allocator peaks separate from host-process measurements. [Local diagnostics](../feature/2026-09-30-local-diagnostics.md) adds persistent safe error locations and offline export.

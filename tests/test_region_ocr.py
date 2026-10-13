@@ -1,6 +1,7 @@
 """Synthetic corrected sources and isolated HTTP stores; no production/model calls."""
 from io import BytesIO
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -188,21 +189,97 @@ class RegionOCRTests(unittest.TestCase):
         self.assertEqual(response.status_code, 401, response.text)
         self.assertNotIn('PRIVATE_OLD_SESSION_VALUE', response.text)
 
-    def test_real_timed_out_child_is_reaped(self):
-        import psutil
-        popen = subprocess.Popen; children = []
-        def sleeping_child(*args, **kwargs):
-            child = popen([sys.executable, '-c', 'import time; time.sleep(60)'], **kwargs)
-            children.append(child); return child
-        started = time.monotonic()
-        with patch.object(region_ocr.subprocess, 'Popen', side_effect=sleeping_child), patch.object(region_ocr, 'TIMEOUT_SECONDS', .2):
-            with self.assertRaises(TaskError) as error: region_ocr.recognize_crop(b'crop')
-        self.assertEqual(error.exception.code, 'REGION_OCR_TIMEOUT')
-        self.assertLess(time.monotonic() - started, 5)
-        self.assertEqual(len(children), 1)
-        self.assertIsNotNone(children[0].returncode)
-        self.assertFalse(psutil.pid_exists(children[0].pid))
+    @unittest.skipUnless(os.name == 'nt', 'native Windows worker transport')
+    def test_binary_transport_drains_stderr_and_bounds_fragmented_output(self):
+        worker = self.root / 'region_ocr_worker.py'
+        data = bytes(range(256)) * 512
+        worker.write_text('''import json, sys, time
+assert sys.stdin.buffer.read() == bytes(range(256)) * 512
+sys.stderr.buffer.write(b'x' * 131072); sys.stderr.buffer.flush()
+result = json.dumps(dict(text='00123\\n合成文字', confidence=.9)).encode('ascii')
+sys.stdout.buffer.write(result[:12]); sys.stdout.buffer.flush()
+time.sleep(.03)
+sys.stdout.buffer.write(result[12:]); sys.stdout.buffer.flush()
+''', encoding='utf-8')
+        with patch.object(region_ocr, '__file__', str(self.root / 'region_ocr.py')):
+            self.assertEqual(region_ocr.recognize_crop(data), dict(text='00123\n合成文字', confidence=.9))
+            worker.write_text("import sys; sys.stdin.buffer.read(); sys.stdout.buffer.write(b'x' * 40000)", encoding='utf-8')
+            with self.assertRaises(TaskError) as error:
+                region_ocr.recognize_crop(data)
+            self.assertEqual(error.exception.code, 'REGION_OCR_UNAVAILABLE')
         self.assertTrue(region_ocr._slot.acquire(blocking=False)); region_ocr._slot.release()
+
+    @unittest.skipUnless(os.name == 'nt', 'native Windows worker cleanup')
+    def test_cleanup_failure_blocks_future_workers_until_restart(self):
+        worker = self.root / 'region_ocr_worker.py'
+        worker.write_text('import sys; sys.stdin.buffer.read(); print(\'{"text":"00123","confidence":0.9}\')', encoding='utf-8')
+        factory = region_ocr.JobProcess
+        def cleanup_failure(*args, **kwargs):
+            process = factory(*args, **kwargs)
+            close = process.close
+            def fail_close():
+                close()  # Actually reclaim every synthetic process before injecting failure.
+                raise TimeoutError('synthetic exit confirmation failure')
+            process.close = fail_close
+            return process
+        with patch.object(region_ocr, '__file__', str(self.root / 'region_ocr.py')), \
+                patch.object(region_ocr, '_cleanup_failed', False), \
+                patch.object(region_ocr, 'JobProcess', side_effect=cleanup_failure) as spawn:
+            for _ in range(2):
+                with self.assertRaises(TaskError) as error:
+                    region_ocr.recognize_crop(b'crop')
+                self.assertEqual(error.exception.code, 'REGION_OCR_UNAVAILABLE')
+                self.assertIn('重启后端', error.exception.message)
+            self.assertEqual(spawn.call_count, 1)
+            self.assertTrue(region_ocr._slot.acquire(blocking=False)); region_ocr._slot.release()
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows virtualenv redirector regression')
+    def test_timeout_reaps_actual_worker_and_descendants_before_releasing_slot(self):
+        import psutil
+        identities = self.root / 'owned-processes.json'
+        worker = self.root / 'region_ocr_worker.py'
+        worker.write_text('''import json, os, subprocess, sys, time
+from pathlib import Path
+import psutil
+child = subprocess.Popen([sys._base_executable, '-c', 'import time; time.sleep(60)'], creationflags=subprocess.CREATE_NO_WINDOW)
+me = psutil.Process()
+root = me.parent() if sys.argv[0] in me.parent().cmdline() else me
+owned = [root, *root.children(recursive=True)]
+Path(sys.argv[0]).with_name('owned-processes.json').write_text(json.dumps([
+    dict(pid=p.pid, created=p.create_time()) for p in owned]))
+time.sleep(60)
+''', encoding='utf-8')
+        def owned_processes():
+            processes = []
+            for identity in json.loads(identities.read_text()):
+                try:
+                    process = psutil.Process(identity['pid'])
+                    if process.create_time() == identity['created']:
+                        processes.append(process)
+                except psutil.NoSuchProcess:
+                    pass
+            return processes
+        try:
+            started = time.monotonic()
+            with patch.object(region_ocr, '__file__', str(self.root / 'region_ocr.py')), patch.object(region_ocr, 'TIMEOUT_SECONDS', 1.5):
+                with self.assertRaises(TaskError) as error:
+                    region_ocr.recognize_crop(b'synthetic crop')
+            self.assertEqual(error.exception.code, 'REGION_OCR_TIMEOUT')
+            self.assertLess(time.monotonic() - started, 7)
+            self.assertTrue(identities.exists(), 'synthetic worker must start before timing out')
+            self.assertGreaterEqual(len(json.loads(identities.read_text())), 2)
+            # Job accounting reaches zero before every terminated process object
+            # becomes signaled; PID visibility alone is not an exit-state check.
+            _, alive = psutil.wait_procs(owned_processes(), timeout=5)
+            self.assertEqual([p.pid for p in alive], [])
+            self.assertTrue(region_ocr._slot.acquire(blocking=False)); region_ocr._slot.release()
+        finally:
+            if identities.exists():
+                processes = owned_processes()
+                for process in reversed(processes):
+                    try: process.kill()
+                    except psutil.NoSuchProcess: pass
+                psutil.wait_procs(processes, timeout=3)
 
     def test_busy_timeout_empty_and_failure_release_single_slot(self):
         region_ocr._slot.acquire()
@@ -210,16 +287,15 @@ class RegionOCRTests(unittest.TestCase):
             with self.assertRaises(TaskError) as error: region_ocr.recognize_crop(b'crop')
             self.assertEqual(error.exception.code, 'REGION_OCR_BUSY')
         finally: region_ocr._slot.release()
-        for outcome, code in [(subprocess.TimeoutExpired('synthetic', 10), 'REGION_OCR_TIMEOUT'),
+        for outcome, code in [(TimeoutError('synthetic timeout'), 'REGION_OCR_TIMEOUT'),
             (subprocess.CompletedProcess([], 1, b''), 'REGION_OCR_UNAVAILABLE'),
             (subprocess.CompletedProcess([], 0, b'bad json'), 'REGION_OCR_UNAVAILABLE'),
             (subprocess.CompletedProcess([], 0, b'{"text":"","confidence":0}'), 'REGION_OCR_EMPTY')]:
-            with self.subTest(code=code), patch.object(region_ocr.subprocess, 'run', **({'side_effect': outcome} if isinstance(outcome, Exception) else {'return_value': outcome})) as run:
+            with self.subTest(code=code), patch.object(region_ocr, '_run_crop', **({'side_effect': outcome} if isinstance(outcome, Exception) else {'return_value': outcome})):
                 with self.assertRaises(TaskError) as error: region_ocr.recognize_crop(b'crop')
                 self.assertEqual(error.exception.code, code)
-                self.assertEqual(run.call_args.kwargs['timeout'], 10)
                 self.assertTrue(region_ocr._slot.acquire(blocking=False)); region_ocr._slot.release()
-        with patch.object(region_ocr.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'{"text":"00123","confidence":0.9}')):
+        with patch.object(region_ocr, '_run_crop', return_value=subprocess.CompletedProcess([], 0, b'{"text":"00123","confidence":0.9}')):
             self.assertEqual(region_ocr.recognize_crop(b'crop')['text'], '00123')
 
 

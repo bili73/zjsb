@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend/migrations, backend/ocr_app/person_packages.py, backend/ocr_app/task_store.py, backend/ocr_app/routes.py, backend/ocr_app/exporting.py, frontend/src/components/UploadPanel.vue, frontend/src/components/PersonNameEditor.vue, frontend/src/components/BatchBoard.vue, frontend/src/components/ExportControls.vue, frontend/src/api.ts, frontend/src/business.ts, frontend/src/monitor.ts, frontend/src/review.ts, frontend/tests, tests, openapi.yaml, SPEC.md, FRONTEND_FIELDS.md, RUNTIME.md, IMPLEMENTATION_PLAN.md, README.md, ARCHITECTURE.md, frontend/public/help/index.html
-Last-verified: 2026-10-12
+Last-verified: 2026-10-13
 
 ## Problem
 
@@ -23,6 +23,8 @@ Choice B, one wide person row integrating all document fields, is rejected in fa
 Preserve the existing required-saved-values-only export gate: no new confidence, optional-field, pairing or name-confirmation block. Show uncertain attribution explicitly if exported before confirmation. Preserve full internal values, string identifiers, formula safety, overflow failures, snapshot/version checks, selection atomicity and export audit. Continue the existing medical and orange nonmedical header formatting, frozen headers, filters and wrapped text. Package downloads use 人员材料包_YYYYMMDD_HHMMSS.xlsx in Shanghai time; ordinary filenames stay unchanged.
 
 ## Decision audit
+
+The [process/package repairs](../../implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md) capture the package revision when name editing begins. Reactive metadata refresh does not rebase an old draft;409 retains it and requests cancel/reopen with current information.
 
 The [pre-push isolation repairs](../bug-fix/2026-10-12-prepush-isolation-and-migration.md) prevent delayed overlapping pagination from reversing reconciled name/pairing/package metadata and ensure accepted page changes wake pending task reconciliation. This extends the same generation/reference fences.
 

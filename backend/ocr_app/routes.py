@@ -45,7 +45,7 @@ class DeleteTaskVersion(Version):
 
 class DeleteBatchBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    versions: list[DeleteTaskVersion] = Field(min_length=1, max_length=100)
+    versions: list[DeleteTaskVersion] = Field(min_length=1)
 
 
 class FullPreview(Version):

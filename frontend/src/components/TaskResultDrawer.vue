@@ -180,7 +180,7 @@ async function runExport() {
   <el-drawer
     :model-value="open"
     size="90%"
-    :close-on-click-modal="false"
+    :close-on-click-modal="true"
     destroy-on-close
     append-to-body
     :before-close="beforeClose"

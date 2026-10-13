@@ -11,19 +11,23 @@ const emit = defineEmits<{ (e: 'unauthorized'): void }>()
 const editing = ref(false), name = ref(''), busy = ref(false), message = ref('')
 const suggestions = computed(() => props.batch.name_suggestions ?? [])
 let controller: AbortController | undefined
+let editVersion: Batch | undefined
 onBeforeUnmount(() => controller?.abort())
-function edit(value = props.batch.person_name ?? '') { name.value = value; editing.value = true; message.value = '' }
+function edit(value = props.batch.person_name ?? '') {
+  editVersion = { ...props.batch }
+  name.value = value; editing.value = true; message.value = ''
+}
 async function save() {
-  if (!name.value.trim() || busy.value || !props.canWrite) return
+  if (!editVersion || !name.value.trim() || busy.value || !props.canWrite) return
   busy.value = true; message.value = ''; controller = new AbortController()
   try {
-    await props.monitor.confirmPerson(props.batch, name.value.trim(), controller.signal)
+    await props.monitor.confirmPerson(editVersion, name.value.trim(), controller.signal)
     if (controller.signal.aborted) return
     editing.value = false; ElMessage.success('人员姓名已保存。')
   } catch (error) {
     if (isAbort(error)) return
     if (error instanceof ApiFailure) {
-      message.value = error.card.http_status === 409 ? '材料包已更新，请刷新后重新核对姓名。' : errorMessages[error.card.code]
+      message.value = error.card.http_status === 409 ? '材料包已更新，当前草稿已保留；请取消编辑，再按最新信息重新核对。' : errorMessages[error.card.code]
       if (error.card.http_status === 401) emit('unauthorized')
       if (error.card.http_status === 409) props.monitor.start()
     } else message.value = '姓名保存失败，请重试。'

@@ -16,6 +16,7 @@ The request's field_key becomes optional: omitted/null means general transcripti
 
 ## Decision audit
 
+- The [process/package repairs](../../implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md) preserve this interaction and add whole-Job timeout cleanup, fail-closed handling and the matching twenty-second client budget.
 - [Field-region OCR](2026-10-13-field-region-ocr.md): partial replacement of entry placement and automatic field binding only. CPU execution, corrected coordinates, permission/version fences and bounded failure behavior remain.
 - [Medical navigation](../bug-fix/2026-10-09-medical-only-source-navigation.md): partial overlap; preserve navigation and source overlays. Manual selection does not restore rejected automatic certificate localization.
 - [Human review](2026-10-08-human-review-and-xlsx-export.md): partial overlap; drafts and save remain independent of temporary OCR text. No current note is wholly absorbed or archived.

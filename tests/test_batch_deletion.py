@@ -1,11 +1,13 @@
 """Permanent batch deletion uses isolated SQLite and synthetic documents only."""
 import concurrent.futures
+from io import BytesIO
 import threading
 import unittest
 import uuid
 from unittest.mock import patch
 
 from sqlalchemy import event, text
+from PIL import Image
 import test_business_api as base
 from ocr_app.task_store import TaskError
 
@@ -70,6 +72,38 @@ class BatchDeletionTests(unittest.TestCase):
             audit = c.execute(text("SELECT * FROM audit WHERE event IN ('task_deleted','batch_deleted')")).mappings().all()
         self.assertEqual(len(audit), 6)
         self.assertNotIn('private-synthetic', str(audit))
+
+    def test_legal_upload_and_append_can_delete_all_101_tasks_atomically(self):
+        headers = self.admin()
+        def image(index):
+            data = BytesIO()
+            Image.new('RGB', (32, 24), (index, 0, 0)).save(data, format='PNG')
+            return ('files', (f'synthetic-{index}.png', data.getvalue(), 'image/png'))
+        created = self.client.post('/api/v1/batches', headers=headers,
+            data=dict(doc_type_hint='DIPLOMA', person_name='Synthetic'), files=[image(i) for i in range(100)])
+        self.assertEqual(created.status_code, 202, created.text)
+        batch = created.json()['batch_id']
+        appended = self.client.post(f'/api/v1/batches/{batch}/append', headers=headers,
+            data=dict(doc_type_hint='DIPLOMA', expected_revision='0'), files=[image(100)])
+        self.assertEqual(appended.status_code, 202, appended.text)
+        with self.business.store.transaction() as c:
+            c.execute(text("UPDATE tasks SET status='CANCELLED' WHERE batch_id=:id"), dict(id=batch))
+        versions = self.versions(batch)
+        self.assertEqual(len(versions), 101)
+        blobs = set(self.business.storage.blobs.iterdir())
+        for snapshot in [versions[:100], [dict(versions[0], expected_revision=99), *versions[1:]]]:
+            response = self.delete(batch, headers, snapshot)
+            self.assertEqual(response.status_code, 409, response.text)
+            self.assertEqual(self.versions(batch), versions)
+            self.assertEqual(set(self.business.storage.blobs.iterdir()), blobs)
+        from test_document_contract import DocumentContractTests
+        DocumentContractTests.setUpClass()
+        DocumentContractTests().validate('BatchDeleteRequest', dict(versions=versions))
+        response = self.delete(batch, headers, versions)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(set(response.json()['task_ids']), {v['task_id'] for v in versions})
+        self.assertEqual(self.business.store.batches()['total'], 0)
+        self.assertEqual(list(self.business.storage.blobs.iterdir()), [])
 
     def test_one_running_or_queued_task_blocks_entire_batch(self):
         headers = self.admin()

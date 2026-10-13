@@ -33,7 +33,7 @@ export class BusinessApi {
     signal.addEventListener('abort', abort, { once: true })
     if (signal.aborted) controller.abort()
     let timedOut = false
-    const timeout = setTimeout(() => { timedOut = true; controller.abort() }, operation === 'upload' ? 180000 : operation === 'classify' ? 30000 : operation === 'export' || operation === 'preview' ? 60000 : 15000)
+    const timeout = setTimeout(() => { timedOut = true; controller.abort() }, operation === 'upload' ? 180000 : operation === 'classify' ? 30000 : operation === 'region_ocr' ? 20000 : operation === 'export' || operation === 'preview' ? 60000 : 15000)
     let status: number | undefined
     let requestId: unknown
     try {

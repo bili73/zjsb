@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend/migrations, backend/ocr_app/task_store.py, backend/ocr_app/routes.py, frontend/src, frontend/tests, tests, SPEC.md, openapi.yaml, IMPLEMENTATION_PLAN.md, FRONTEND_FIELDS.md, RUNTIME.md, README.md, ARCHITECTURE.md, frontend/public/help/index.html
-Last-verified: 2026-10-12
+Last-verified: 2026-10-13
 
 ## Problem
 
@@ -17,6 +17,8 @@ Append prevalidates all files, rechecks live authorization and ownership in a sh
 Pairing describes material presence, not recognized identity equality or authenticity. A named package with only the back receives a missing-front warning immediately, including while tasks are queued or failed. The later approved [optional-back decision](2026-10-12-optional-id-card-back.md) retains the missing_back presence state but replaces the front-only warning with optional-material information; front recognition and export are independent. Both sides are marked present but still require original comparison. No sides means not supplied, never paired. Legacy batches do not receive person-pair claims. Warnings do not change required-field export eligibility. Existing batch ownership, owner attribution, deletion and expiry continue to apply.
 
 ## Decision audit
+
+The [process/package repairs](../../implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md) preserve the 100-file per-request upload limit while allowing deletion snapshots for packages whose cumulative task count exceeds100. Complete membership/version checks and atomic deletion remain required.
 
 The [review repairs](../../implemented/bug-fix/2026-10-12-review-repairs.md) deliberately left append/pairing unimplemented; this later user approval implements that subset without altering history recovery or clinical decisions. [Batch ownership](../../implemented/feature/2026-10-10-account-owned-batches.md), [durable tasks](../../implemented/feature/2026-09-30-durable-document-tasks.md), [deletion](../../implemented/feature/2026-10-10-delete-recognized-batches.md) and [card profiles](../../implemented/feature/2026-10-08-card-and-document-profiles.md) partially overlap and retain their boundaries. Hosted/Mac plans are unrelated. Nothing is fully absorbed or archived.
 

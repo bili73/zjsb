@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-13T03:57:37.021Z",
+  "generatedAt": "2026-10-13T07:08:41.517Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 76,
+    "activeNotes": 77,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 467,
+    "relations": 479,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 72,
+      "implemented": 73,
       "rejected": 2
     },
     "staleNotes": []
@@ -219,6 +219,7 @@
       "supersededBy": [],
       "cites": [
         "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
@@ -235,6 +236,7 @@
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-10-measured-task-progress.md",
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
@@ -250,7 +252,7 @@
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The launcher exposes the lightweight local UI/service first and starts an independent runtime worker. It sequentially loads and warms GLM-OCR then PaddleOCR-VL in their existing isolated environments. Both remain resident in default dual_re",
-      "bodySha256": "5a9647aa9bdbdaf5",
+      "bodySha256": "2bfeb04bddb2fd1d",
       "lines": {
         "title": 1,
         "status": 3,
@@ -275,23 +277,23 @@
           },
           {
             "title": "Decision audit",
-            "line": 29
+            "line": 31
           },
           {
             "title": "Alternatives considered",
-            "line": 37
+            "line": 39
           },
           {
             "title": "Consequences",
-            "line": 44
+            "line": 46
           },
           {
             "title": "Testing",
-            "line": 50
+            "line": 52
           },
           {
             "title": "Future deployment",
-            "line": 62
+            "line": 64
           }
         ]
       },
@@ -2691,6 +2693,98 @@
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-13-api-authorization-boundaries.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
+      "title": "Fence OCR process cleanup and preserve package edit/delete contracts",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-13",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "frontend/tests",
+        "tests",
+        "openapi.yaml",
+        "SPEC.md",
+        "RUNTIME.md",
+        "README.md",
+        "frontend/public/help/index.html"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-13-field-region-ocr.md",
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md",
+        "implemented/feature/2026-10-12-person-material-packages.md",
+        "implemented/feature/2026-10-10-delete-recognized-batches.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/feature/2026-10-10-delete-recognized-batches.md",
+        "implemented/feature/2026-10-12-person-material-packages.md",
+        "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md",
+        "implemented/feature/2026-10-13-field-region-ocr.md",
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md"
+      ],
+      "lastVerified": "2026-10-13",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-13"
+      },
+      "summary": "Region OCR reuses the native JobProcess supervisor for the short-lived binary protocol. The ten-second execution budget, bounded output and one in-flight request remain; whole-job cleanup precedes slot release. Job cleanup has its existing ",
+      "bodySha256": "5d1c049d026e99c8",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Validation",
+            "line": 31
+          },
+          {
+            "title": "Consequences",
+            "line": 39
+          },
+          {
+            "title": "Activation",
+            "line": 46
+          },
+          {
+            "title": "Release 1.22.3",
+            "line": 53
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "path": ".agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -4581,6 +4675,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
         "implemented/feature/2026-10-10-account-lifecycle-management.md",
@@ -4590,6 +4685,7 @@
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-review-repairs.md",
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
@@ -4597,15 +4693,15 @@
         "implemented/feature/2026-10-10-account-owned-batches.md",
         "implemented/feature/2026-10-12-person-material-packages.md"
       ],
-      "lastVerified": "2026-10-10",
+      "lastVerified": "2026-10-13",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
-        "rule": "最近复核 2026-10-10"
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-13"
       },
       "summary": "DELETE /batches/{batch_id} accepts a complete task/run/revision snapshot. Within the same BEGIN IMMEDIATE transaction, recheck the current administrator session, batch membership, allowed states and each version. Only NEED_REVIEW, COMPLETED",
-      "bodySha256": "923f41ba520b050a",
+      "bodySha256": "c9d73e498ce95a31",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4630,15 +4726,15 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 27
+            "line": 28
           },
           {
             "title": "Verification",
-            "line": 33
+            "line": 34
           },
           {
             "title": "Consequences",
-            "line": 41
+            "line": 42
           }
         ]
       },
@@ -5048,6 +5144,7 @@
       "cites": [
         "implemented/feature/2026-10-12-person-package-single-submit.md",
         "implemented/feature/2026-10-12-optional-id-card-back.md",
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -5057,6 +5154,7 @@
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-review-repairs.md",
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
@@ -5065,15 +5163,15 @@
         "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md",
         "implemented/feature/2026-10-12-person-package-single-submit.md"
       ],
-      "lastVerified": "2026-10-12",
+      "lastVerified": "2026-10-13",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
         "monthsSinceVerify": 0,
-        "rule": "最近复核 2026-10-12"
+        "rule": "最近复核 2026-10-13"
       },
       "summary": "Reuse a batch as an explicitly named person package when its first upload supplies a manually entered person name. Store the person label encrypted and append revision as additive batch columns. Legacy batches remain unassigned and retain t",
-      "bodySha256": "94cf551ef4cfa897",
+      "bodySha256": "0ec0881123bfa074",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5098,19 +5196,19 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 23
+            "line": 25
           },
           {
             "title": "Verification",
-            "line": 30
+            "line": 32
           },
           {
             "title": "Consequences",
-            "line": 38
+            "line": 40
           },
           {
             "title": "Local activation",
-            "line": 46
+            "line": 48
           }
         ]
       },
@@ -5235,6 +5333,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
         "implemented/feature/2026-10-12-person-package-single-submit.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
@@ -5247,19 +5346,20 @@
       "citedBy": [
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
         "implemented/bug-fix/2026-10-12-qualified-normal-and-refresh-retry.md",
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
         "implemented/feature/2026-10-12-person-package-full-field-table.md",
         "implemented/feature/2026-10-12-person-package-single-submit.md"
       ],
-      "lastVerified": "2026-10-12",
+      "lastVerified": "2026-10-13",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
         "monthsSinceVerify": 0,
-        "rule": "最近复核 2026-10-12"
+        "rule": "最近复核 2026-10-13"
       },
       "summary": "Represent package intent independently of the confirmed person name using an additive batch flag. Backfill existing explicitly named packages only; leave ordinary and historical unassigned batches unchanged. Mixed file_types creation means ",
-      "bodySha256": "ffa6bb805cb4b2d3",
+      "bodySha256": "2ede9ea9b4f297aa",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5284,15 +5384,15 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 31
+            "line": 33
           },
           {
             "title": "Verification",
-            "line": 39
+            "line": 41
           },
           {
             "title": "Consequences",
-            "line": 49
+            "line": 51
           }
         ]
       },
@@ -5507,6 +5607,7 @@
       "supersededBy": [],
       "cites": [
         "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
         "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
         "rejected/feature/2026-10-09-certificate-field-localization.md",
@@ -5514,6 +5615,7 @@
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
         "implemented/feature/2026-10-12-person-package-single-submit.md",
         "implemented/feature/2026-10-13-source-region-ocr-copy.md"
@@ -5526,7 +5628,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "The field-button placement and automatic draft application described below are the original decision, partially replaced by source-region text copying. The current component is RegionOcrDialog.vue; the source toolbar opens general transcrip",
-      "bodySha256": "869c44bc6012be83",
+      "bodySha256": "ac835da245b6f46c",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5730,6 +5832,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-10-13-field-region-ocr.md",
         "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
@@ -5738,6 +5841,7 @@
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-10-13-field-region-ocr.md",
         "implemented/feature/2026-10-13-region-date-copy-suggestions.md",
         "implemented/feature/2026-10-13-source-preview-click-ocr-entry.md"
@@ -5750,7 +5854,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Put a labelled camera button in SourcePreview's toolbar. It opens the existing bounded page/rectangle dialog at the most visible corrected page, with manual page selection. OCR text appears in the same dialog as an editable textarea. Copy a",
-      "bodySha256": "7844f0d50957cb34",
+      "bodySha256": "bf67e296505247cf",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5775,15 +5879,15 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 24
+            "line": 25
           },
           {
             "title": "Verification",
-            "line": 30
+            "line": 31
           },
           {
             "title": "Consequences",
-            "line": 38
+            "line": 39
           }
         ]
       },
@@ -6833,6 +6937,11 @@
     {
       "type": "cite",
       "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
       "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
     },
     {
@@ -7579,6 +7688,36 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
       "to": "implemented/feature/2026-10-13-source-region-ocr-copy.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
+      "to": "implemented/feature/2026-10-13-field-region-ocr.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
+      "to": "implemented/feature/2026-10-13-source-region-ocr-copy.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
+      "to": "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
+      "to": "implemented/feature/2026-10-12-person-material-packages.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
+      "to": "implemented/feature/2026-10-10-delete-recognized-batches.md"
     },
     {
       "type": "cite",
@@ -8483,6 +8622,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-10-delete-recognized-batches.md",
+      "to": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-10-delete-recognized-batches.md",
       "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
     },
     {
@@ -8628,6 +8772,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-12-person-material-packages.md",
+      "to": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-12-person-material-packages.md",
       "to": "implemented/bug-fix/2026-10-12-review-repairs.md"
     },
     {
@@ -8674,6 +8823,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-12-person-package-full-field-table.md",
       "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md",
+      "to": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md"
     },
     {
       "type": "cite",
@@ -8768,6 +8922,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-13-field-region-ocr.md",
+      "to": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-field-region-ocr.md",
       "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
     },
     {
@@ -8804,6 +8963,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-13-source-preview-click-ocr-entry.md",
       "to": "implemented/feature/2026-10-13-region-date-copy-suggestions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+      "to": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md"
     },
     {
       "type": "cite",

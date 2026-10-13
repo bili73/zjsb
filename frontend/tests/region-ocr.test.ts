@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { BusinessApi } from '../src/api.ts'
+import { ApiFailure, BusinessApi } from '../src/api.ts'
 import { mostVisiblePage, pointInImage, regionBox } from '../src/regionOcr.ts'
 import type { Task } from '../src/business.ts'
 
@@ -25,6 +25,24 @@ test('actual visible page wins over old jump page, with toolbar clipping and tie
   assert.equal(mostVisiblePage([{ page: 1, top: 0, bottom: 100 }, { page: 2, top: 100, bottom: 200 }], 0, 200, 2), 2)
 })
 const task = { task_id: crypto.randomUUID(), run_id: crypto.randomUUID(), result_revision: 3, page_count: 2, doc_type: 'DIPLOMA' } as Task
+test('region OCR request waits for server execution and process cleanup, then times out without retry', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let calls = 0, aborted = false
+  const client = new BusinessApi(async (_input, init) => {
+    calls++
+    return new Promise<Response>((_resolve, reject) => init!.signal!.addEventListener('abort', () => {
+      aborted = true; reject(new DOMException('Aborted', 'AbortError'))
+    }))
+  })
+  const pending = client.ocrRegion(task, null, 1, [0, 0, 1, 1], new AbortController().signal)
+  const rejected = assert.rejects(pending, error => (error as Error).message === 'REQUEST_TIMEOUT')
+  t.mock.timers.tick(15000)
+  assert.equal(aborted, false)
+  t.mock.timers.tick(5000)
+  await rejected
+  assert.equal(aborted, true)
+  assert.equal(calls, 1)
+})
 test('general OCR omits field binding and checks echoed selection, retaining legacy requests', async () => {
   const box: [number, number, number, number] = [.1, .2, .8, .5]
   let mismatch = false
@@ -70,6 +88,21 @@ function mount(extra: object = {}) {
 function clipboard(writeText?: (text: string) => Promise<void>) {
   Object.defineProperty(globalThis, 'navigator', { value: { clipboard: writeText ? { writeText } : undefined }, configurable: true })
 }
+test('unavailable region worker shows manual fallback and administrator restart guidance', async () => {
+  const h = mount({ api: {
+    preview: async () => ({ blob: new Blob(['synthetic']), corrected: true }),
+    ocrRegion: async () => { throw new ApiFailure({ http_status: 503, code: 'REGION_OCR_UNAVAILABLE' } as ApiFailure['card']) },
+  } })
+  try {
+    await vue.nextTick(); await Promise.resolve()
+    h.exposed.image.value = { naturalWidth: 1000, naturalHeight: 600 }
+    h.exposed.ready.value = true; h.exposed.bbox.value = [0, 0, 1, 1]
+    await h.exposed.recognize()
+    assert.match(h.exposed.error.value, /手工填写/)
+    assert.match(h.exposed.error.value, /管理员.*重启后端/)
+    assert.equal(h.exposed.text.value, '')
+  } finally { h.app.unmount() }
+})
 test('late OCR text is discarded on close, account, page, task, revision, permission or unmount', async () => {
   for (const change of ['close', 'client', 'page', 'task', 'revision', 'permission', 'unmount']) {
     const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<{ text: string; confidence: number }>()

@@ -6,14 +6,17 @@ from pathlib import Path
 import subprocess
 import sys
 import threading
+import time
 
 from PIL import Image
 
 from .doc_profiles import profile
 from .preview import corrected_preview
 from .task_store import TaskError
+from .winjob import JobProcess
 
 _slot = threading.Lock()
+_cleanup_failed = False
 MAX_PIXELS = 2_000_000
 TIMEOUT_SECONDS = 10
 
@@ -34,16 +37,76 @@ def crop_region(data, bbox):
         return target.getvalue()
 
 
+def _run_crop(data):
+    """Exchange bounded binary data; supervise the virtualenv redirector and its tree."""
+    global _cleanup_failed
+    deadline = time.monotonic() + TIMEOUT_SECONDS
+    args = [sys.executable, str(Path(__file__).with_name('region_ocr_worker.py'))]
+    process = JobProcess(args)
+    finished = threading.Event()
+    output = bytearray()
+    errors = []
+
+    def exchange():
+        try:
+            pending = memoryview(data)
+            while pending:
+                written = process.stdin.buffer.write(pending)
+                if not written:
+                    raise OSError('worker stdin closed')
+                pending = pending[written:]
+            process.stdin.close()
+            while len(output) <= 32768:
+                chunk = process.stdout.buffer.read(min(4096, 32769 - len(output)))
+                if not chunk:
+                    break
+                output.extend(chunk)
+        except Exception as error:
+            errors.append(error)
+        finally:
+            finished.set()
+
+    def discard_stderr():
+        try:
+            while process.stderr.buffer.read(4096):
+                pass
+        except (OSError, ValueError):
+            pass
+
+    io_thread = threading.Thread(target=exchange, daemon=True)
+    err_thread = threading.Thread(target=discard_stderr, daemon=True)
+    try:
+        err_thread.start()
+        io_thread.start()
+        if not finished.wait(max(0, deadline - time.monotonic())):
+            raise TimeoutError('region worker exceeded execution budget')
+        if errors:
+            raise errors[0]
+        if len(output) > 32768:
+            raise ValueError('oversized worker output')
+        code = process.wait(max(0, deadline - time.monotonic()))
+        return subprocess.CompletedProcess(args, code, bytes(output))
+    finally:
+        try:
+            process.close()  # Includes whole-Job exit confirmation, even after normal root exit.
+        except Exception:
+            _cleanup_failed = True
+            raise TaskError('REGION_OCR_UNAVAILABLE', '框选识别进程回收未确认，请重启后端后再试；当前可手工填写', 503) from None
+        finally:
+            for thread in (io_thread, err_thread):
+                if thread.ident is not None:
+                    thread.join(timeout=.2)
+
+
 def recognize_crop(data):
     if not _slot.acquire(blocking=False):
         raise TaskError('REGION_OCR_BUSY', '框选识别正在处理中，请稍后再试', 429)
     try:
+        if _cleanup_failed:
+            raise TaskError('REGION_OCR_UNAVAILABLE', '框选识别进程回收未确认，请重启后端后再试；当前可手工填写', 503)
         try:
-            completed = subprocess.run(
-                [sys.executable, str(Path(__file__).with_name('region_ocr_worker.py'))],
-                input=data, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=TIMEOUT_SECONDS,
-                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-        except subprocess.TimeoutExpired:
+            completed = _run_crop(data)
+        except TimeoutError:
             raise TaskError('REGION_OCR_TIMEOUT', '框选识别超时，请缩小选区重试或手工填写', 504) from None
         if completed.returncode != 0 or len(completed.stdout) > 32768:
             raise ValueError('invalid worker output')

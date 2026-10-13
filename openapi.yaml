@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: 证件关键信息提取系统 API
-  version: 1.22.0
+  version: 1.22.3
   description: |
     内部证件信息提取系统 API 契约（SPEC v1.28）。
     批次按不可变上传账号ID隔离：管理员查看全部，operator/viewer仅能访问自己的批次和所属任务。列表先过滤归属再计算总数和分页，越权ID与不存在ID统一404；结果、原图、复核、取消、重跑、完整字段及导出同样校验。混合账号导出整次拒绝，不输出部分结果。删除批次仍仅管理员可操作。
@@ -981,7 +981,7 @@ paths:
     post:
       tags: [tasks]
       summary: 框选当前版本原件，临时提取可复制文字
-      description: operator仅可访问自己的任务，admin可访问全部任务；Cookie登录须同源Origin和CSRF。选区基于指定页的corrected图，坐标为归一化xyxy，边长至少8像素、面积最多200万像素。CPU普通OCR单次执行预算10秒（含子进程启动），全进程只允许一个在途请求，忙时不排队。返回前再次核验会话、归属与结果版本，失效不返回识别文字。不修改结果、任务状态、版本或字段置信度。新界面不指定字段，文字可编辑、复制后由用户自行粘贴；保存仍走review。可选field_key只供旧客户端兼容。
+      description: operator仅可访问自己的任务，admin可访问全部任务；Cookie登录须同源Origin和CSRF。选区基于指定页的corrected图，坐标为归一化xyxy，边长至少8像素、面积最多200万像素。CPU普通OCR单次执行预算10秒（含子进程启动），Windows Job监督整个进程树，另有最多5秒的终止确认预算；清理完成后才释放单请求槽位，清理未确认则拒绝后续框选请求并提示重启后端。前端请求预算20秒，不自动重试，全进程只允许一个在途请求，忙时不排队。返回前再次核验会话、归属与结果版本，失效不返回识别文字。不修改结果、任务状态、版本或字段置信度。新界面不指定字段，文字可编辑、复制后由用户自行粘贴；保存仍走review。可选field_key只供旧客户端兼容。
       requestBody:
         required: true
         content:
@@ -2852,7 +2852,7 @@ components:
         versions:
           type: array
           minItems: 1
-          maxItems: 100
+          description: 必须覆盖当前整包全部任务；每次上传的100份限制不限制整包累计任务数。
           items:
             type: object
             additionalProperties: false

@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend/ocr_app/task_store.py, backend/ocr_app/routes.py, backend/ocr_app/api.py, backend/ocr_app/diagnostics.py, frontend/src, frontend/tests, tests, SPEC.md, openapi.yaml, FRONTEND_FIELDS.md, frontend/public/help/index.html, RUNTIME.md
-Last-verified: 2026-10-10
+Last-verified: 2026-10-13
 
 ## Problem
 
@@ -18,6 +18,7 @@ The administrator sees a batch deletion button and an irreversible confirmation 
 
 ## Decision audit
 
+- The [process/package repairs](../../implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md) remove the request's 100-version-entry ceiling because appendable packages can exceed100 tasks. Whole-package membership, transaction authorization and every task version remain mandatory.
 - [Durable tasks](../../implemented/feature/2026-09-30-durable-document-tasks.md): partial overlap; retain transaction, retention, audit and artifact ownership rules, add explicit user deletion.
 - [Calendar browsing](../../implemented/feature/2026-10-09-batch-calendar-browser.md): partial overlap; retain date filtering and hidden running jobs while removing deleted cache entries.
 - [Account lifecycle](../../implemented/feature/2026-10-10-account-lifecycle-management.md): partial overlap in transactional session revalidation, but account deletion continues to preserve business tasks.

@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/app-1.22.0-0f9d8f?style=flat-square" alt="app 1.22.0">
+  <img src="https://img.shields.io/badge/app-1.22.3-0f9d8f?style=flat-square" alt="app 1.22.3">
   <img src="https://img.shields.io/badge/SPEC-v1.28-0c7e72?style=flat-square" alt="SPEC v1.28">
   <img src="https://img.shields.io/badge/platform-Windows%2010%2B-0078d4?style=flat-square" alt="Windows 10+">
   <img src="https://img.shields.io/badge/Python-3.12-3776ab?style=flat-square" alt="Python 3.12">
@@ -183,7 +183,7 @@ cd ..
 │                      # paddleocr-vl-1.6、image-upright 离线对照环境；gitignore）
 ├─ .runtime/           # SQLite 数据、加密密钥、诊断日志（gitignore，运行态）
 ├─ SPEC.md             # 业务契约与验收基线（v1.28）
-├─ openapi.yaml        # 接口契约（/api/v1，版本 1.22.0）
+├─ openapi.yaml        # 接口契约（/api/v1，版本 1.22.3）
 ├─ ARCHITECTURE.md     # 技术决策与实现边界
 ├─ RUNTIME.md          # 启动/运行方式与各轮验收记录
 ├─ LOCAL_OCR.md        # 模型环境与离线测试方法
