@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { Crop } from '@element-plus/icons-vue'
+import RegionOcrDialog from './RegionOcrDialog.vue'
+import { mostVisiblePage } from '../regionOcr.ts'
+import { resultKey } from '../business.ts'
 import { ApiFailure, isAbort } from '../api.ts'
 import type { BusinessApi } from '../api.ts'
 import type { FieldSource, Task } from '../business.ts'
 import type { LocalPreview } from '../workbench.ts'
 import { errorMessages } from '../diagnostics.ts'
-const props = defineProps<{ task: Task; api: BusinessApi | null; preview?: LocalPreview; source: FieldSource | null; canWrite: boolean }>()
+const props = withDefaults(defineProps<{ task: Task; api: BusinessApi | null; preview?: LocalPreview; source: FieldSource | null; canWrite: boolean; active?: boolean; ocrEnabled?: boolean }>(), { active: true, ocrEnabled: true })
 const emit = defineEmits<{ (e: 'unauthorized'): void }>()
 
 // 每页独立状态：懒加载（IntersectionObserver 滚动到附近才请求），点击进全屏缩放查看器。
@@ -20,6 +24,8 @@ const pageEls = new Map<number, HTMLElement>()
 const visiblePages = new Set<number>()
 const previewEl = ref<HTMLElement>()
 const pageListEl = ref<HTMLElement>()
+const pageToolsEl = ref<HTMLElement>()
+const ocrOpen = ref(false), ocrPage = ref(1)
 let observer: IntersectionObserver | undefined
 let layoutObserver: ResizeObserver | undefined
 let previewViewport: HTMLElement | null = null
@@ -114,6 +120,22 @@ function reloadAll() {
   for (const page of visiblePages) void loadPage(page)
 }
 
+function openOcr() {
+  if (!props.api || !props.canWrite || !props.active || !props.ocrEnabled) return
+  cancelNavigation()
+  const viewport = previewViewport?.getBoundingClientRect()
+  const top = Math.max(0, viewport?.top ?? 0, pageToolsEl.value?.getBoundingClientRect().bottom ?? 0)
+  const bottom = Math.min(window.innerHeight, viewport?.bottom ?? window.innerHeight)
+  const pages = [...pageEls].map(([page, el]) => { const rect = el.getBoundingClientRect(); return { page, top: rect.top, bottom: rect.bottom } })
+  ocrPage.value = mostVisiblePage(pages, top, bottom, jumpPage.value)
+  ocrOpen.value = true
+}
+// 入口提示随可用性变化：不可用时说明原因，而不是让按钮沉默失效。
+const ocrTip = computed(() => props.ocrEnabled
+  ? '在原图上拖动框选任意文字区域，立即识别、可复制粘贴，适合补录遗漏或识别不准的字段'
+  : '当前材料暂无服务端校正页，暂不支持框选识别')
+watch([() => props.active, () => props.api, () => props.canWrite, () => props.ocrEnabled, () => resultKey(props.task)], () => { ocrOpen.value = false }, { flush: 'sync' })
+
 function overlayFor(page: number) {
   if (props.task.doc_type !== 'MEDICAL_REPORT' || !entries[page - 1]?.corrected || !entries[page - 1]?.loaded || !props.source?.bbox || props.source.page !== page) return null
   const [x1, y1, x2, y2] = props.source.bbox
@@ -163,11 +185,15 @@ void (async () => {
 <template>
   <section ref="previewEl" v-loading="loading" class="source-preview">
     <h3>原件对照 · 服务端校正页</h3>
-    <div class="page-tools">
+    <div ref="pageToolsEl" class="page-tools">
       <span>共 {{ maxPage }} 页 · 上下滚动连续浏览，点击页面全屏缩放</span>
       <el-input-number v-model="jumpPage" :min="1" :max="maxPage" :precision="0" size="small" controls-position="right" />
       <el-button size="small" @click="goTo(jumpPage)">跳页</el-button>
+      <span class="tools-spacer" />
       <el-button size="small" :disabled="!canWrite" @click="reloadAll()">重新读取</el-button>
+      <el-tooltip :content="ocrTip" placement="left" effect="dark">
+        <span class="ocr-entry"><el-button size="small" type="primary" :icon="Crop" :disabled="!api || !canWrite || !active || !ocrEnabled" @click="openOcr">框选识别文字</el-button></span>
+      </el-tooltip>
     </div>
     <p v-if="task.doc_type === 'MEDICAL_REPORT'" class="conf">无可靠定位框时显示整页。来源框仅叠加在版本一致的校正页，不能证明模型已读完整页。</p>
     <p v-else class="conf">证件提供整页原图对照，可点击图片放大查看。</p>
@@ -190,10 +216,13 @@ void (async () => {
       <el-image v-else-if="preview.kind === 'image'" :src="preview.url" :preview-src-list="[preview.url]" preview-teleported hide-on-click-modal fit="scale-down" class="local-image" alt="本地上传材料" />
       <el-alert v-else type="info" :closable="false">本浏览器可能无法直接渲染 HEIC，请在全屏查看器中确认或换用图像格式。</el-alert>
     </details>
+    <RegionOcrDialog :open="ocrOpen && active && ocrEnabled" :api="api" :task="task" :initial-page="ocrPage" :can-write="canWrite" @cancel="ocrOpen = false" @unauthorized="emit('unauthorized')" />
   </section>
 </template>
 <style scoped>
-.page-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.page-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; padding: 8px 0; position: sticky; top: 0; z-index: 2; background: var(--el-bg-color); }
+.ocr-entry { display: inline-flex; }
+.tools-spacer { flex: 1; }
 .page-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
 .page-item { scroll-margin-top: 8px; }
 .page-no { display: block; font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 4px; }

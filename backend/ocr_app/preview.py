@@ -7,10 +7,12 @@ from .task_store import TaskError
 from .review import reason, optional_reason, invalid
 
 
-def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, masked=True, access_reason=None, user=None):
+def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, masked=True, access_reason=None, user=None, authorize=None):
     if type(page) is not int or page < 1:
         invalid()
     with store.transaction() as connection:
+        if authorize:
+            authorize(connection)
         row = store._row(connection, task_id, user)
         store._expected(row, run_id, revision)
         if role not in {'operator', 'admin'}:
@@ -27,10 +29,13 @@ def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, ma
     target = BytesIO()
     with Image.open(BytesIO(data)) as image:
         image.convert('RGB').save(target, format='PNG')
+    if authorize:
+        with store.engine.connect() as connection:
+            authorize(connection)
     return target.getvalue()
 
 
-def reveal_fields(store, task_id, body, actor, role, *, user=None):
+def reveal_fields(store, task_id, body, actor, role, *, user=None, authorize=None):
     if role not in {'operator', 'admin'}:
         raise TaskError('FORBIDDEN_REVEAL', '当前账号无完整值查看权限', 403)
     if not isinstance(body, dict) or set(body) != {'run_id', 'expected_revision', 'fields', 'reason'}:
@@ -41,6 +46,8 @@ def reveal_fields(store, task_id, body, actor, role, *, user=None):
     if not isinstance(keys, list) or not keys or any(not isinstance(key, str) or key not in allowed for key in keys) or len(set(keys)) != len(keys):
         invalid('仅允许查看本次明确指定的敏感字段')
     with store.transaction() as connection:
+        if authorize:
+            authorize(connection)
         row = store._row(connection, task_id, user)
         store._expected(row, body['run_id'], body['expected_revision'])
         result = store.storage.unpack(row['result_enc'])

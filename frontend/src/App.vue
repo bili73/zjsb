@@ -52,6 +52,8 @@ const liveTask = computed<Task | null>(() => {
 async function handleAuthenticated(client: BusinessApi, verified: User) {
   api.value = client
   user.value = verified
+  engine.setAuthenticated(true)
+  void engine.refresh()
   monitor.start()
   catalogueError.value = ''
   try {
@@ -75,6 +77,8 @@ function endSession(message?: string) {
   catalogue.value = []
   api.value = null
   user.value = null
+  engine.setAuthenticated(false)
+  void engine.refresh()
   activeTab.value = 'upload'
   drawerInfo.open = false
   passwordOpen.value = false

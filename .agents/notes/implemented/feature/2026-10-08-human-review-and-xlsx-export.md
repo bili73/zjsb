@@ -75,3 +75,5 @@ The [bank automatic recovery](2026-10-09-bank-auto-recognition.md) offers per-fi
 ## Medical-only source navigation
 
 The user cancels certificate positioning. The [medical navigation decision](../bug-fix/2026-10-09-medical-only-source-navigation.md) limits field/row source controls to medical reports, fixes same-page reselection and waits for corrected images to load before highlighting. Whole-page preview and manual entry remain for every material type. Existing source/version, recognition, review and export contracts here remain active.
+
+The [selected-region transcription](2026-10-13-field-region-ocr.md) fills operator drafts from bounded CPU OCR and retains the existing versioned save and evidence boundaries.

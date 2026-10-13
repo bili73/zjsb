@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-12T10:00:14.684Z",
+  "generatedAt": "2026-10-13T02:25:30.719Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 71,
+    "activeNotes": 74,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 441,
+    "relations": 462,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 67,
+      "implemented": 70,
       "rejected": 2
     },
     "staleNotes": []
@@ -246,7 +246,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The launcher exposes the lightweight local UI/service first and starts an independent runtime worker. It sequentially loads and warms GLM-OCR then PaddleOCR-VL in their existing isolated environments. Both remain resident in default dual_re",
@@ -420,7 +420,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "When both models complete serial startup successfully, use two bounded document lanes: one certificate lane (DIPLOMA and DEGREE_CERT) and one medical lane, each with at most one supervised CPU task process. Single-resident or startup-degrad",
@@ -684,7 +684,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Dual-resident startup remains the default and loads serially. The later independent queues decision permits cross-model inference and targeted stop while retaining180-second Task and181-second supervision. Medical generation uses20 seconds;",
@@ -760,7 +760,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Upload and worker validation share backend/ocr_app/image_admission.py. The policy keeps JPEG/PNG/HEIF/HEIC single-image support and allows exactly two-image MPO only when the first MP entry is a baseline primary JPEG and the second is expli",
@@ -843,7 +843,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The same server-derived exact-name eligibility governs abnormal/statistical and medical item review scopes. abnormal_exclusion_reason includes SECTION_SUMMARY for exact 小结 (whitespace/trailing colon normalization only); HEIGHT_WEIGHT covers",
@@ -1448,13 +1448,16 @@
         "rejected/feature/2026-10-09-certificate-field-localization.md",
         "implemented/bug-fix/2026-10-10-medical-navigation-layout-race.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
-        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md"
+        "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
+        "implemented/feature/2026-10-13-field-region-ocr.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-10-medical-navigation-layout-race.md",
         "implemented/bug-fix/2026-10-10-smooth-medical-source-navigation.md",
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-13-field-region-ocr.md",
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md",
         "rejected/feature/2026-10-09-certificate-field-localization.md"
       ],
       "lastVerified": "2026-10-10",
@@ -1465,7 +1468,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The application has no experimental certificate helper, endpoint or added positioning dependencies. Field-level positioning/source controls appear only for medical reports; all document types retain whole-page image preview and manual editi",
-      "bodySha256": "660421f4efd954a4",
+      "bodySha256": "e2f96968a3ec0334",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2528,11 +2531,13 @@
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
         "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
         "implemented/bug-fix/2026-10-12-qualified-normal-and-refresh-retry.md",
-        "implemented/feature/2026-10-12-person-material-packages.md"
+        "implemented/feature/2026-10-12-person-material-packages.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
         "implemented/bug-fix/2026-10-12-qualified-normal-and-refresh-retry.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
         "implemented/feature/2026-10-10-account-lifecycle-management.md",
@@ -2549,7 +2554,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Require an authorization callback for save_configuration and execute it inside BEGIN IMMEDIATE before reading or changing policy, including no-op saves. The HTTP route supplies the existing live administrator-session check; trusted internal",
-      "bodySha256": "a72352cacc9ad77f",
+      "bodySha256": "a8ef5503aa403820",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2591,6 +2596,99 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-12-review-repairs.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+      "title": "Guard every business route and revalidate authorization at operation boundaries",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-13",
+      "scope": [
+        "backend/ocr_app/auth.py",
+        "backend/ocr_app/routes.py",
+        "backend/ocr_app/api.py",
+        "backend/ocr_app/task_store.py",
+        "backend/ocr_app/preview.py",
+        "backend/ocr_app/exporting.py",
+        "backend/ocr_app/region_ocr.py",
+        "frontend/src/App.vue",
+        "frontend/src/engine.ts",
+        "frontend/tests",
+        "tests",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-web-password-sessions.md",
+        "implemented/feature/2026-10-12-thirty-day-single-session.md",
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/bug-fix/2026-10-12-review-repairs.md",
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-12-review-repairs.md",
+        "implemented/feature/2026-10-09-web-password-sessions.md",
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/feature/2026-10-12-thirty-day-single-session.md",
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md"
+      ],
+      "lastVerified": "2026-10-13",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-13"
+      },
+      "summary": "Business endpoints inherit a protected APIRouter default principal dependency, separate from the explicitly public login route. Keep administrator/operator/viewer and immutable batch ownership semantics. Reuse the existing session/legacy-ke",
+      "bodySha256": "e576983325360e9c",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Verification",
+            "line": 33
+          },
+          {
+            "title": "Risks",
+            "line": 41
+          },
+          {
+            "title": "Consequences",
+            "line": 45
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-13-api-authorization-boundaries.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -2789,7 +2887,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Diagnostics initialize before launcher configuration and business imports. One structured JSONL writer per process instance rotates at 10 MiB across five files; startup/export enforce seven-day retention. Records associate session, request,",
@@ -3137,7 +3235,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "DIPLOMA returns11 structured fields instead of13, retaining six required keys and removing only principal/study_mode. DEGREE_CERT keeps study_mode. Deprecated diploma labels remain parsing boundaries so neighboring school, major and certifi",
@@ -3229,7 +3327,8 @@
         "implemented/bug-fix/2026-10-08-medical-review-scope.md",
         "implemented/feature/2026-10-09-bank-auto-recognition.md",
         "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
-        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md"
+        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+        "implemented/feature/2026-10-13-field-region-ocr.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-08-medical-review-scope.md",
@@ -3244,6 +3343,8 @@
         "implemented/feature/2026-10-09-business-xlsx-layout.md",
         "implemented/feature/2026-10-10-configurable-required-fields.md",
         "implemented/feature/2026-10-10-delete-recognized-batches.md",
+        "implemented/feature/2026-10-13-field-region-ocr.md",
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md",
         "implemented/simplification/2026-10-08-required-fields-only-export.md",
         "rejected/feature/2026-10-09-certificate-field-localization.md"
       ],
@@ -3255,7 +3356,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Review binds task_id, run_id and expected_revision in a short atomic transaction. Patches accept only editable business fields, current item/finding/member IDs and explicit acceptance of currently acceptable issues. Keep raw OCR/source and ",
-      "bodySha256": "5d724825a7bdbe04",
+      "bodySha256": "cd4a9953c518feaa",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3367,7 +3468,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Authenticated structured business results return complete stored values and original evidence; remove the masked projection and inherited value_masked display values. New bank profiles omit the redundant card_number_masked field. The public",
@@ -3465,7 +3566,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "exam_projects is an editable optional string Field containing ordered project names separated by the Chinese semicolon. Extraction preserves printed names such as 内科检查 and 心电图 without inventing a fixed department vocabulary. It accepts only",
@@ -4123,10 +4224,12 @@
         "implemented/feature/2026-10-09-admin-account-creation.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
-        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
       ],
       "citedBy": [
         "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
         "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
@@ -4144,7 +4247,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Add an additive SQLite migration for named users, hashed opaque sessions and login throttling. Deployment operators create/change/disable accounts with a masked-password CLI; no default password, registration or browser account administrati",
-      "bodySha256": "5bfe707ce2a1599a",
+      "bodySha256": "c4a012be4a064205",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4305,11 +4408,13 @@
         "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
-        "implemented/feature/2026-10-12-person-material-packages.md"
+        "implemented/feature/2026-10-12-person-material-packages.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
         "implemented/feature/2026-10-10-account-lifecycle-management.md",
         "implemented/feature/2026-10-10-web-user-manual.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
@@ -4323,7 +4428,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Persist an immutable owner ID on each batch, inherited by every task. New ownership comes only from the authenticated uploader. Backfill existing batches only when every surviving task has creation audit evidence with one shared actor; ambi",
-      "bodySha256": "afd57df8dacb938b",
+      "bodySha256": "dda869117ed6e44b",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5233,12 +5338,14 @@
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
         "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
-        "implemented/feature/2026-10-12-optional-id-card-back.md"
+        "implemented/feature/2026-10-12-optional-id-card-back.md",
+        "implemented/feature/2026-10-13-field-region-ocr.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
-        "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md"
+        "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md",
+        "implemented/feature/2026-10-13-field-region-ocr.md"
       ],
       "lastVerified": "2026-10-12",
       "archivedDate": null,
@@ -5248,7 +5355,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Offer explicit 按人员整理 and 按类型批量 modes; the chosen primary workflow is the person mode, while preserving existing type-batch uploads. A person enters the name once, chooses mixed files together, reviews a list containing thumbnail/file name a",
-      "bodySha256": "dbf2b773007f0a64",
+      "bodySha256": "07cce6b041a0dbd2",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5322,9 +5429,11 @@
       "cites": [
         "implemented/feature/2026-10-09-web-password-sessions.md",
         "implemented/feature/2026-10-10-account-lifecycle-management.md",
-        "implemented/feature/2026-10-10-account-owned-batches.md"
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
         "implemented/feature/2026-10-09-web-password-sessions.md",
         "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md"
       ],
@@ -5336,7 +5445,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "New successful logins issue a random token with thirty-day absolute validity (30243600 seconds), with matching Cookie Max-Age. Polling/restoration does not extend expiry. Keep hashed server-side tokens, HttpOnly/SameSite/CSRF, secure HTTPS ",
-      "bodySha256": "d1b5ea08f870e1f3",
+      "bodySha256": "ffe27aff990dd107",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5376,6 +5485,166 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-12-thirty-day-single-session.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-13-field-region-ocr.md",
+      "path": ".agents/notes/implemented/feature/2026-10-13-field-region-ocr.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-13-field-region-ocr.md",
+      "title": "Fill field drafts from operator-selected OCR regions",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-13",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "frontend/tests",
+        "tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "frontend/public/help/index.html"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+        "rejected/feature/2026-10-09-certificate-field-localization.md",
+        "implemented/feature/2026-10-12-person-package-single-submit.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/feature/2026-10-12-person-package-single-submit.md",
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md"
+      ],
+      "lastVerified": "2026-10-13",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-13"
+      },
+      "summary": "The field-button placement and automatic draft application described below are the original decision, partially replaced by source-region text copying. The current component is RegionOcrDialog.vue; the source toolbar opens general transcrip",
+      "bodySha256": "869c44bc6012be83",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 23
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 30
+          },
+          {
+            "title": "Verification",
+            "line": 37
+          },
+          {
+            "title": "Consequences",
+            "line": 45
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-13-field-region-ocr.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+      "path": ".agents/notes/implemented/feature/2026-10-13-source-region-ocr-copy.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-13-source-region-ocr-copy.md",
+      "title": "Copy selected-source OCR text from the original preview",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-13",
+      "scope": [
+        "backend/ocr_app/region_ocr.py",
+        "backend/ocr_app/routes.py",
+        "frontend/src",
+        "frontend/tests",
+        "tests/test_region_ocr.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "frontend/public/help/index.html"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-13-field-region-ocr.md",
+        "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+        "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/feature/2026-10-13-field-region-ocr.md"
+      ],
+      "lastVerified": "2026-10-13",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-13"
+      },
+      "summary": "Put a labelled camera button in SourcePreview's toolbar. It opens the existing bounded page/rectangle dialog at the most visible corrected page, with manual page selection. OCR text appears in the same dialog as an editable textarea. Copy a",
+      "bodySha256": "e5ba08971c66a1b6",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 24
+          },
+          {
+            "title": "Verification",
+            "line": 30
+          },
+          {
+            "title": "Consequences",
+            "line": 38
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-13-source-region-ocr-copy.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/process/2026-09-29-dde-project-workflow.md",
       "path": ".agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
       "anchor": "// Note: .agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
@@ -5403,7 +5672,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "NianLog/DDE is installed locally for Codex and Claude Code. The project copies the upstream scripts unchanged into scripts/ and retains their license in scripts/DDE-LICENSE.txt. A private package declares Node = 18, no runtime or developmen",
@@ -5577,7 +5846,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The complete old frontend tree is moved inside this workspace to output/frontend-retired-20261008-v1/frontend. Absolute paths and absence of reparse points are checked; all1287 file SHA256 values match before and after. The active frontend ",
@@ -5656,7 +5925,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.4,
+        "monthsSinceVerify": 0.5,
         "rule": "最近复核 2026-09-29"
       },
       "summary": "The diagnostic benchmark uses PP-DocLayoutV3 on CPU to detect regions in full-resolution source images. It preserves detected tables as separate regions and combines nearby text without crossing tables. Coordinates, omitted image regions an",
@@ -5889,7 +6158,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The frozen corpus contains all four source hashes and encrypted copies, every page's existing decoder evidence, blank-page records and conservative raster regions. Native text/table evidence remains independent of OCR. Twelve table pages ar",
@@ -5971,7 +6240,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The already approved real-file acceptance uses a probe that starts the existing API, Business and RuntimeClient components with a new encrypted data root. A supervised child serves loopback HTTP, and its parent owns the existing GPU byte lo",
@@ -6126,7 +6395,8 @@
       "citedBy": [
         "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
         "implemented/bug-fix/2026-10-12-degree-school-and-award-mapping.md",
-        "implemented/feature/2026-10-12-certificate-image-upright.md"
+        "implemented/feature/2026-10-12-certificate-image-upright.md",
+        "implemented/feature/2026-10-13-field-region-ocr.md"
       ],
       "lastVerified": "2026-10-09",
       "archivedDate": null,
@@ -6852,6 +7122,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
+      "to": "implemented/feature/2026-10-13-field-region-ocr.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
       "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
     },
@@ -7129,6 +7404,36 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-12-review-repairs.md",
       "to": "implemented/feature/2026-10-12-person-material-packages.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-12-review-repairs.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+      "to": "implemented/feature/2026-10-09-web-password-sessions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+      "to": "implemented/feature/2026-10-12-thirty-day-single-session.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+      "to": "implemented/feature/2026-10-10-account-owned-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+      "to": "implemented/bug-fix/2026-10-12-review-repairs.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+      "to": "implemented/feature/2026-10-13-source-region-ocr-copy.md"
     },
     {
       "type": "cite",
@@ -7577,6 +7882,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
+      "to": "implemented/feature/2026-10-13-field-region-ocr.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
       "to": "implemented/feature/2026-10-09-web-password-sessions.md"
     },
@@ -7912,6 +8222,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-09-web-password-sessions.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-10-account-lifecycle-management.md",
       "to": "implemented/feature/2026-10-09-admin-account-creation.md"
     },
@@ -7984,6 +8299,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-10-account-owned-batches.md",
       "to": "implemented/feature/2026-10-12-person-material-packages.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-10-account-owned-batches.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
     },
     {
       "type": "cite",
@@ -8272,6 +8592,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-12-person-package-single-submit.md",
+      "to": "implemented/feature/2026-10-13-field-region-ocr.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-12-thirty-day-single-session.md",
       "to": "implemented/feature/2026-10-09-web-password-sessions.md"
     },
@@ -8284,6 +8609,56 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-12-thirty-day-single-session.md",
       "to": "implemented/feature/2026-10-10-account-owned-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-12-thirty-day-single-session.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-field-region-ocr.md",
+      "to": "implemented/feature/2026-10-13-source-region-ocr-copy.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-field-region-ocr.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-field-region-ocr.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-field-region-ocr.md",
+      "to": "rejected/feature/2026-10-09-certificate-field-localization.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-field-region-ocr.md",
+      "to": "implemented/feature/2026-10-12-person-package-single-submit.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+      "to": "implemented/feature/2026-10-13-field-region-ocr.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+      "to": "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+      "to": "implemented/feature/2026-10-08-human-review-and-xlsx-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
     },
     {
       "type": "cite",

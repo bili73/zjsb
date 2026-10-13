@@ -44,3 +44,5 @@ Eight real-HTTP auth tests pass, covering sessions, Cookie attributes, origin/CS
 ## Consequences
 
 First-account creation uses the user's explicitly supplied password through hidden local input; do not invent or commit one. The later administrator decision qualifies actual HRSSC provisioning and version1.15.0 activation; the earlier447-test/isolated-build measurement above remains historical. Production HTTP/tunnel exposure is not enabled by this change. Account/session data persist in SQLite but Windows encryption key portability remains the separate migration proposal. A long open workbench still requires login again after absolute expiration; accepted server tasks continue independently.
+
+[API authorization boundaries](../bug-fix/2026-10-13-api-authorization-boundaries.md) extend the live transaction session check to material operations, add default route authentication and protect full health/slow responses; this note retains its remaining decisions.

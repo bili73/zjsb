@@ -6,6 +6,8 @@ import type { ReviewBody } from './review.ts'
 import type { BatchDateRange } from './batchCalendar.ts'
 import { parseRequiredFieldSettings } from './requiredFields.ts'
 import type { RequiredFieldSave } from './requiredFields.ts'
+import { parseRegionText } from './regionOcr.ts'
+import type { RegionBox } from './regionOcr.ts'
 
 export class ApiFailure extends Error {
   readonly card: DiagnosticCard
@@ -143,6 +145,13 @@ export class BusinessApi {
     const form = new FormData()
     form.append('files', file)
     return this.request('/classify', 'classify', parseClassification, signal, { method: 'POST', body: form })
+  }
+  ocrRegion(task: Task, field: string | null, page: number, bbox: RegionBox, signal: AbortSignal) {
+    return this.request(`/tasks/${encodeURIComponent(task.task_id)}/ocr-region`, 'region_ocr',
+      body => parseRegionText(body, task, field, page, bbox), signal,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+          run_id: task.run_id, expected_revision: task.result_revision, ...(field === null ? {} : { field_key: field }), page, bbox,
+      }) })
   }
   upload(files: readonly File[], docType: UploadDocType, abnormalOnly: boolean, signal: AbortSignal, personName?: string, fileTypes?: readonly UploadDocType[]) {
     const form = new FormData()

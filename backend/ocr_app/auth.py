@@ -28,6 +28,23 @@ def csrf_for(token):
     return hmac.new(token.encode(), b'ocr-session-csrf-v1', hashlib.sha256).hexdigest()
 
 
+def request_user(accounts, request, *, connection=None):
+    """Read live HTTP credentials, optionally within the protected write transaction."""
+    token = request.cookies.get(SESSION_COOKIE)
+    user = accounts.session(token, connection=connection)
+    request.state.csrf_token = csrf_for(token) if user else None
+    if user and request.method not in {'GET', 'HEAD', 'OPTIONS'}:
+        same_origin(request)
+        provided = request.headers.get('X-CSRF-Token', '')
+        if not provided.isascii() or not hmac.compare_digest(provided, request.state.csrf_token):
+            raise TaskError('FORBIDDEN', '登录校验已变化，请刷新工作台后再试', 403)
+    if not user:
+        user = accounts.authenticate(request.headers.get('X-API-Key'), connection=connection)
+    if not user:
+        raise TaskError('UNAUTHORIZED', '请登录工作台', 401)
+    return user
+
+
 class Accounts:
     def __init__(self, storage, engine=None):
         self.storage, self.engine = storage, engine
@@ -44,8 +61,8 @@ class Accounts:
                 os.fsync(stream.fileno())
         self.accounts = storage.unpack(self.path.read_bytes())
 
-    def authenticate(self, key):
-        if self.configured():
+    def authenticate(self, key, *, connection=None):
+        if self.configured(connection=connection):
             return None
         if not isinstance(key, str) or not 20 <= len(key) <= 128:
             return None
@@ -58,11 +75,13 @@ class Accounts:
     def current_key(self):
         return self.accounts[0]['key']
 
-    def configured(self):
+    def configured(self, *, connection=None):
         if self.engine is None:
             return False
-        with self.engine.connect() as connection:
-            return bool(connection.execute(text('SELECT 1 FROM web_users LIMIT 1')).first())
+        if connection is None:
+            with self.engine.connect() as current:
+                return self.configured(connection=current)
+        return bool(connection.execute(text('SELECT 1 FROM web_users LIMIT 1')).first())
 
     @contextmanager
     def transaction(self):
@@ -238,13 +257,15 @@ class Accounts:
             c.execute(text('DELETE FROM login_attempts WHERE client_hash=:key'),{'key':client_key})
         return token
 
-    def session(self, token):
+    def session(self, token, *, connection=None):
         if not isinstance(token,str) or not re.fullmatch(r'[A-Za-z0-9_-]{43}',token):
             return None
-        with self.engine.connect() as c:
-            row=c.execute(text('''SELECT u.id,u.display_name,u.role FROM web_sessions s JOIN web_users u ON u.id=s.user_id
-                WHERE s.token_hash=:hash AND s.expires_at>:now AND u.enabled=1'''),
-                dict(hash=hashlib.sha256(token.encode()).hexdigest(),now=time())).mappings().first()
+        if connection is None:
+            with self.engine.connect() as current:
+                return self.session(token, connection=current)
+        row=connection.execute(text('''SELECT u.id,u.display_name,u.role FROM web_sessions s JOIN web_users u ON u.id=s.user_id
+            WHERE s.token_hash=:hash AND s.expires_at>:now AND u.enabled=1'''),
+            dict(hash=hashlib.sha256(token.encode()).hexdigest(),now=time())).mappings().first()
         return dict(user_id=row['id'],display_name=row['display_name'],role=row['role']) if row else None
 
     def logout(self, token):

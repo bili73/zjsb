@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
 from ocr_app.api import create_app
+from ocr_app.business import Business
 
 
 class FakeRuntime:
@@ -41,27 +42,30 @@ class RuntimeAPITests(unittest.TestCase):
         self.runtime = FakeRuntime()
         self.static = self.root / 'dist'
         self.storage = self.root / 'session'
+        self.business = Business(self.root / 'data', key=b'H' * 32)
+        self.addCleanup(self.business.close)
 
     def client(self, peer='127.0.0.1', static=None, storage=None):
-        return TestClient(create_app(self.runtime, static or self.static, storage or self.storage),
-                          base_url='http://127.0.0.1', client=(peer, 12345))
+        return TestClient(create_app(self.runtime, static or self.static, storage or self.storage, self.business),
+                          base_url='http://127.0.0.1', client=(peer, 12345),
+                          headers={'X-API-Key': self.business.accounts.current_key()})
 
     def test_lifecycle_and_health_during_starting_and_ready(self):
         with self.client() as client:
             self.assertEqual(self.runtime.started, 1)
-            data = client.get('/health').json()
+            data = client.get('/api/v1/health').json()
             self.assertEqual(data['version'], '1.22.0')
-            self.assertEqual(data['status'], 'degraded')
-            self.assertIsNone(data['queue_depth'])
-            self.assertEqual(data['components'], {'db': 'down', 'worker': 'ok', 'storage': 'ok'})
+            self.assertEqual(data['status'], 'ok')
+            self.assertEqual(data['queue_depth'], 0)
+            self.assertEqual(data['components'], {'db': 'ok', 'worker': 'ok', 'storage': 'ok'})
             self.assertEqual(data['runtime']['state'], 'starting')
             self.runtime.view.update(state='ready', effective_mode='dual_resident')
             self.runtime.view['models'] = dict(glm_ocr='ready', paddleocr_vl='ready')
-            data = client.get('/health').json()
+            data = client.get('/api/v1/health').json()
             self.assertEqual(data['runtime']['state'], 'ready')
-            self.assertEqual(data['status'], 'degraded')
+            self.assertEqual(data['status'], 'ok')
             self.runtime.alive = False
-            self.assertEqual(client.get('/health').json()['components']['worker'], 'down')
+            self.assertEqual(client.get('/api/v1/health').json()['components']['worker'], 'down')
         self.assertEqual(self.runtime.closed, 1)
 
     def test_storage_probe_once_and_failure_is_reported(self):
@@ -73,7 +77,7 @@ class RuntimeAPITests(unittest.TestCase):
         blocked = self.root / 'file-not-directory'
         blocked.write_text('occupied')
         with self.client(storage=blocked) as client:
-            data = client.get('/health').json()
+            data = client.get('/api/v1/health').json()
             self.assertEqual(data['components']['storage'], 'down')
             self.assertNotIn(str(blocked), client.get('/health').text)
 
@@ -87,18 +91,18 @@ class RuntimeAPITests(unittest.TestCase):
             for values in invalid:
                 with self.subTest(values=values):
                     self.runtime.view = {**original, **values}
-                    response = client.get('/health')
+                    response = client.get('/api/v1/health')
                     self.assertEqual(response.status_code, 200)
                     self.assertNotIn('runtime', response.json())
                     self.assertEqual(response.json()['components']['worker'], 'down')
                     self.assertNotIn('secret', response.text)
             self.runtime.snapshot = lambda: (_ for _ in ()).throw(RuntimeError('secret-path'))
-            self.assertNotIn('secret-path', client.get('/health').text)
+            self.assertNotIn('secret-path', client.get('/api/v1/health').text)
 
     def test_start_failure_still_closes_and_has_no_exception_leak(self):
         self.runtime.start = lambda: (_ for _ in ()).throw(RuntimeError('secret-path'))
         with self.client() as client:
-            response = client.get('/health')
+            response = client.get('/api/v1/health')
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()['components']['worker'], 'down')
             self.assertNotIn('secret-path', response.text)
@@ -115,6 +119,12 @@ class RuntimeAPITests(unittest.TestCase):
                 self.assertEqual(client.get('/health', headers={'Host': host}).status_code, 200)
             response = client.get('/health', headers={'Origin': 'https://evil.example'})
             self.assertNotIn('access-control-allow-origin', response.headers)
+
+    def test_no_business_service_never_exposes_full_health(self):
+        with TestClient(create_app(self.runtime, self.static, self.storage),
+                        base_url='http://127.0.0.1', client=('127.0.0.1', 12345)) as client:
+            self.assertEqual(client.get('/health').json(), {'status': 'degraded'})
+            self.assertEqual(client.get('/api/v1/health').status_code, 401)
 
     def test_unbuilt_and_unimplemented_routes(self):
         with self.client() as client:

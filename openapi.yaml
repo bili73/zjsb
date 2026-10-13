@@ -8,6 +8,7 @@ info:
     Batch.owner返回上传人署名；姓名使用当前账号信息，删除登录前保留加密署名快照。历史创建记录完整且操作者唯一才回填归属，无法关联账号的记录仅管理员可见，同名重建不继承。管理员可编辑显示姓名，不修改账号名、角色、密码、启用状态或会话。
     Task.progress_detail提供真实页/区域处理计数；总计划未知时返回null，不估算推理长度或剩余时间。progress保留兼容但不再作为整体进度依据。
     管理员支持创建、启用/禁用、删除其他账号及重置密码；所有角色可凭原密码修改自己的密码。删除保留历史任务，禁用及改密撤销全部会话；保护当前账号和最后一个启用的管理员。
+    业务路由默认要求登录，并独立校验角色及批次归属。写入在同一数据库事务内复验有效会话及权限；预览、Excel和自动分类等耗时处理完成后再复验，不向已撤销会话返回内容。撤销不回滚此前已合法提交的操作或召回已发送的数据。登录和静态网页公开；根路径GET /health仅返回status，完整引擎状态在本API的GET /health且要求登录。
     六类检查包含肝功，优先汇总明确异常；无小结时按有来源的正常检测明细汇总为“已识别明细未见异常”，不宣称整组完整。明确原文正常结论和人工值保持不变；报告A级可作摘要依据，不覆盖阳性、异常或矛盾，也不修改检测行分类/复核。
     明细缺失或未知不默认正常；完整有序且已闭合的原生PDF项目意义表可证明未载明，使用value=null/absence_reason=NOT_ON_DOCUMENT、derived和项目来源，页面/医疗Excel显示报告未载明。保留人工优先、历史密文与既有复核要求。
 
@@ -286,10 +287,10 @@ paths:
   /health:
     get:
       tags: [system]
-      summary: 健康检查
-      description: 检查数据库、独立worker与存储可用性；任一不可用时status=degraded。worker可响应调度但模型尚未加载不等于down；status=ok不代表所有OCR模型可用。可选runtime独立展示启动及驻留能力，缺失表示未提供该状态而非默认ready。此公开响应仅提供受控状态，不得泄露路径、PID、异常全文、密钥或文件信息。
-      security: []
+      summary: 登录后完整健康检查
+      description: 此路径相对于/api/v1，要求有效登录。检查数据库、独立worker与存储可用性；任一不可用时status=degraded。worker可响应调度但模型尚未加载不等于down；status=ok不代表所有OCR模型可用。可选runtime独立展示启动及驻留能力，缺失不默认ready。不得泄露路径、PID、异常全文、密钥或文件信息。另有根路径GET /health公开仅返回status。
       responses:
+        '401': {$ref: '#/components/responses/Unauthorized'}
         '200':
           description: OK
           content:
@@ -974,6 +975,37 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /tasks/{task_id}/ocr-region:
+    parameters:
+    - $ref: '#/components/parameters/TaskId'
+    post:
+      tags: [tasks]
+      summary: 框选当前版本原件，临时提取可复制文字
+      description: operator仅可访问自己的任务，admin可访问全部任务；Cookie登录须同源Origin和CSRF。选区基于指定页的corrected图，坐标为归一化xyxy，边长至少8像素、面积最多200万像素。CPU普通OCR单次执行预算10秒（含子进程启动），全进程只允许一个在途请求，忙时不排队。返回前再次核验会话、归属与结果版本，失效不返回识别文字。不修改结果、任务状态、版本或字段置信度。新界面不指定字段，文字可编辑、复制后由用户自行粘贴；保存仍走review。可选field_key只供旧客户端兼容。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegionOCRRequest'}
+      responses:
+        '200':
+          description: 临时识别文字；confidence仅为局部OCR参考分数，不代表字段已审核
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RegionOCRResult'}
+        '401': {$ref: '#/components/responses/ErrorResponse'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/ErrorResponse'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+        '429':
+          description: REGION_OCR_BUSY，稍后由用户重试
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '503': {$ref: '#/components/responses/ErrorResponse'}
+        '504': {$ref: '#/components/responses/ErrorResponse'}
+
   /tasks/{task_id}/review:
     parameters:
     - $ref: '#/components/parameters/TaskId'
@@ -1446,6 +1478,10 @@ components:
             - XUEXIN_CODE_INVALID
             - MISSING_REQUIRED_FIELD
             - EXTRACT_TIMEOUT
+            - REGION_OCR_BUSY
+            - REGION_OCR_TIMEOUT
+            - REGION_OCR_EMPTY
+            - REGION_OCR_UNAVAILABLE
             - WORKER_INTERRUPTED
             - RESULT_VERSION_CONFLICT
             - SETTINGS_VERSION_CONFLICT
@@ -3164,6 +3200,45 @@ components:
                   nullable: true
                 - type: number
                 - type: boolean
+
+    RegionOCRRequest:
+      type: object
+      additionalProperties: false
+      required: [run_id, expected_revision, page, bbox]
+      properties:
+        run_id: {type: string, format: uuid}
+        expected_revision: {type: integer, minimum: 0}
+        page: {type: integer, minimum: 1}
+        field_key:
+          type: string
+          nullable: true
+          pattern: '^[a-z_]+$'
+          maxLength: 64
+          description: 旧客户端兼容字段，省略/null为通用文字提取；传入时仍须为当前类型可编辑顶层文本/数值字段，性别/布尔及派生字段拒绝。新界面省略，提取文字可人工粘贴到字段、明细或通用正文。
+        bbox:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items: {type: number, minimum: 0, maximum: 1}
+          description: 相对于该页corrected图的[x0,y0,x1,y1]；x0<x1且y0<y1。
+
+    RegionOCRResult:
+      type: object
+      additionalProperties: false
+      required: [task_id, run_id, result_revision, page, field_key, bbox, text, confidence]
+      properties:
+        task_id: {type: string, format: uuid}
+        run_id: {type: string, format: uuid}
+        result_revision: {type: integer, minimum: 0}
+        page: {type: integer, minimum: 1}
+        field_key: {type: string, nullable: true, description: 通用提取为null，旧客户端调用回显其字段键。}
+        bbox:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items: {type: number, minimum: 0, maximum: 1}
+        text: {type: string, minLength: 1, maxLength: 4096}
+        confidence: {type: number, minimum: 0, maximum: 1}
 
     FullPreviewRequest:
       type: object

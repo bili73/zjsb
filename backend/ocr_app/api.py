@@ -111,7 +111,6 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
                          http_status=response.status_code, duration_seconds=time.monotonic()-begin)
         return response
 
-    @app.get('/health')
     def health():
         snapshot = None
         worker_ready = False
@@ -138,10 +137,17 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
                 response['status'] = 'ok'
         return response
 
-    app.add_api_route('/api/v1/health', health, methods=['GET'])
+    @app.get('/health')
+    def public_health():
+        return {'status': health()['status']}
+
     if business:
         from .routes import router
-        app.include_router(router(business, runtime))
+        app.include_router(router(business, runtime, health))
+    else:
+        @app.get('/api/v1/health')
+        def unavailable_health():
+            raise TaskError('UNAUTHORIZED', '请登录工作台', 401)
 
     if (static_dir / 'index.html').is_file():
         app.mount('/', StaticFiles(directory=static_dir, html=True), name='frontend')

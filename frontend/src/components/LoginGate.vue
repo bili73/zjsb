@@ -97,7 +97,6 @@ function onEnterKey(event: Event | KeyboardEvent) {
       </el-button>
 
       <div class="gate-foot">
-        <span>登录状态保留12小时，退出后立即失效。</span>
         <el-button link type="primary" size="small" @click="emit('diagnostics')">诊断信息</el-button>
       </div>
     </el-card>
@@ -113,5 +112,5 @@ function onEnterKey(event: Event | KeyboardEvent) {
 .gate-error { margin-top: 10px; font-size: 12px; color: var(--el-color-danger); }
 .gate-submit { width: 100%; margin-top: 16px; }
 .el-input + .el-input { margin-top: 12px; }
-.gate-foot { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--el-text-color-secondary); }
+.gate-foot { margin-top: 14px; display: flex; align-items: center; justify-content: flex-end; font-size: 12px; color: var(--el-text-color-secondary); }
 </style>

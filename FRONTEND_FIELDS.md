@@ -22,7 +22,8 @@ Batch新增owner={user_id:string|null,username:string|null,display_name:string|n
 
 | 请求 | 用途 |
 |---|---|
-| `GET /health`、`GET /api/v1/health` | 组件、模型状态与队列；无须登录 |
+| `GET /health` | 公开存活检查，仅返回 `{status:"ok"\|"degraded"}` |
+| `GET /api/v1/health` | 登录后读取组件、模型状态与队列；无有效登录返回401 |
 | `POST /api/v1/auth/login`、`POST /api/v1/auth/logout` | 账号密码登录／撤销会话 |
 | `GET /api/v1/auth/me` | 当前身份、权限、Cookie会话csrf_token；刷新恢复 |
 | `POST /api/v1/auth/password` | 所有角色凭原密码修改自己密码，成功后重新登录 |
@@ -257,6 +258,10 @@ source 可含 `page`（从1起）、`region_id`、`extraction_method=pdf_text/oc
 
 ## 人工补录与确认
 
+“原件对照”工具栏提供摄像头“框选识别”，表单字段旁不放按钮。弹窗按当前task/run/result_revision读取corrected页，默认选择实际可见面积最大的页，多页可手动换页。框选多行文字，坐标按实际图片显示尺寸换算成0..1的xyxy。`POST /tasks/{task_id}/ocr-region`提交`{run_id,expected_revision,page,bbox}`，省略field_key；响应field_key为null，回显身份/选区及`text/confidence`。旧客户端传字段键时保留原字段校验及回显。CPU局部OCR只有一个在途请求，子进程预算10秒；429忙、504超时、422空文字、503不可用均保留草稿，由用户重新框选或手工填。
+
+识别结果在同一弹窗的文本框中编辑，点“复制并关闭”后粘贴到需要的字段、医疗明细、成员或通用正文中。复制成功才关闭；浏览器不支持或拒绝复制时保留文字并选中，提示Ctrl+C/Mac ⌘C手工复制。此动作不自动填字段，也不改变现有草稿。切换账号、任务、版本、页码、失去权限或关闭弹窗时取消/忽略旧响应；迟到的复制结果不能关闭新弹窗。号码保留前导零，日期不补精度，数值须有效。局部OCR参考分数不覆盖业务字段置信度，不确认问题、不保存结果；粘贴后仍需“保存修正并重新校验”。保存后才参与导出。服务端返回前重新校验会话、权限、归属与版本。
+
 Review body必须包含当前`run_id`、`expected_revision`；只提交变更字段。`fields`是key->完整值，`absence_reasons`是key->缺省枚举。号码直接显示；人工更正应对照原图输入完整值，仍拒绝把历史掩码作为号码写入。未改变值要确认时提交`accepted_issues:[{issue_id,reason?}]`（reason选填，可一键提交当前允许问题），只接受can_accept=true，MISSING/CONFLICT/INCOMPLETE_OUTPUT/MULTI_CANDIDATES必须补正。空提交或note不清问题。
 
 医疗按item_id改items，added_items新增，removed_item_ids删除；后端重算异常/数值/范围。findings按finding_id更正文本/等级/诊断，以result_item_id关联实际检测项；原件无等级/诊断/结果时明确absence_reasons，不编造检测值。report_summary可补源页、作用域、标题、数量以及新增/删除清单，原识别声明另保留。新增ID由服务端分配。
@@ -320,3 +325,7 @@ POST /classify multipart仅含一个files条目，需operator/admin及会话CSRF
 id_card_pairing为unassigned/not_provided/missing_front/missing_back/both_present，只反映本包上传类型的存在性，失败或排队任务也计入；missing_back显示“国徽面未上传（可选，可仅识别人像面）”，无MISSING_ID_BACK告警。人像面独立识别/导出，不要求国徽面任务或字段；如另传国徽面，其独立任务仍应用本类型配置。both_present不保证同一人或真实性。提示不增加导出门槛。已完成批次的任务刷新失败仍保持待刷新标记，成功读取才清除，旧会话响应不能恢复缓存。
 
 同账号只保留一个浏览器登录，新登录成功即撤销该账号旧会话；同一浏览器多标签共用，其他浏览器或配置文件也会替换。旧页面在下一次受保护请求收到401后回登录；接受的任务不中断。登录失败不撤销旧会话，轮询不延长30天绝对有效期。
+
+接口授权边界：业务路由默认要求登录，再按角色和不可变批次归属校验；写入事务及预览/Excel/自动分类等耗时响应前复验会话。前端隐藏按钮不代替后端权限。401结束登录；403提示权限变化，不自动重放操作。退出和切换登录清除引擎详情并废弃旧健康请求，未登录只读取根路径status。
+
+接口权限加固及验收见[授权边界记录](.agents/notes/implemented/bug-fix/2026-10-13-api-authorization-boundaries.md)。

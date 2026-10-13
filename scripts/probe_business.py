@@ -67,7 +67,16 @@ def main():
             if process.poll() is not None:
                 raise RuntimeError('LAUNCHER_EXITED')
             try:
-                health = client.get('/health').json()
+                client.get('/health').raise_for_status()
+                if 'X-API-Key' not in client.headers:
+                    storage = Storage(ROOT / '.runtime/data')
+                    key = Accounts(storage).current_key()
+                    client.headers['X-API-Key'] = key
+                response = client.get('/api/v1/health')
+                if response.status_code == 401:
+                    raise RuntimeError('AUTH_FAILED')
+                response.raise_for_status()
+                health = response.json()
                 if 'http_ready_seconds' not in report:
                     report['http_ready_seconds'] = time.monotonic() - began
                 if health.get('runtime', {}).get('state') == 'ready':
@@ -81,9 +90,6 @@ def main():
         owned.remember(psutil.Process(process.pid), 'launcher')
         for child in psutil.Process(process.pid).children(recursive=True):
             owned.remember(child)
-        storage = Storage(ROOT / '.runtime/data')
-        key = Accounts(storage).current_key()
-        client.headers['X-API-Key'] = key
         assert client.get('/api/v1/auth/me').status_code == 200
         engine = open_database(ROOT / '.runtime/data', migrate=False)
         if args.browser:

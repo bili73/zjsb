@@ -1,6 +1,8 @@
 import { ref } from 'vue'
 
 export const errorMessages = {
+  REGION_OCR_BUSY: '框选识别正在处理中，请稍后再试。', REGION_OCR_TIMEOUT: '框选识别超时，请缩小选区重试或手工填写。',
+  REGION_OCR_EMPTY: '选区没有读出文字，请重新框选或手工填写。', REGION_OCR_UNAVAILABLE: '框选识别暂不可用，请手工填写或稍后再试。',
   EXPORT_BLOCKED: '选择中有任务的必填字段未填写完整，整份导出已阻止；请补齐并保存。', EXPORT_VALUE_TOO_LONG: '导出内容超过 Excel 的单元格或列数上限，请拆分过长字段或减少本次选择的材料。', PREVIEW_MASK_UNAVAILABLE: '当前服务的预览合同已变化，请刷新或确认服务版本。', BANK_CROP_REQUIRED: '请裁选完整卡号一行，去除其他内容。', BANK_UNSAFE_CONTENT: '卡号区域含其他内容，请重新紧裁剪。',
   UNSAFE_CARD_INPUT: '请仅裁选完整卡号一行，去除姓名、有效期和安全码。', CARD_ADMISSION_FAILED: '卡号区域未可靠读出，请等待引擎就绪或重新裁紧卡号后再试。',
   INVALID_REQUEST: '请求内容不符合要求。', FILE_TOO_LARGE: '文件、图片像素或批次超过限制：单文件 50 MB，图片 4000 万像素，每批 100 个文件、共 500 MB。',
@@ -27,12 +29,12 @@ export const errorMessages = {
   CLIENT_ERROR: '界面发生错误，请复制诊断信息交给维护人员。', UNKNOWN_ERROR: '操作未完成，请查看错误编号。',
 } as const
 export type ErrorCode = keyof typeof errorMessages
-export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'required_settings_read' | 'required_settings_save' | 'batch_list' | 'batch_tasks' | 'batch_delete' | 'person_update' | 'upload' | 'classify' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export'
+export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'required_settings_read' | 'required_settings_save' | 'batch_list' | 'batch_tasks' | 'batch_delete' | 'person_update' | 'upload' | 'classify' | 'region_ocr' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export'
 export type Stage = 'BOOTSTRAP' | 'QUEUED' | 'PREPROCESSING' | 'OCR' | 'EXTRACTING' | 'VALIDATING' | 'PUBLISHING' | 'CLEANUP'
 export type DiagnosticOrigin = 'http' | 'task' | 'vue' | 'window' | 'promise'
 const stages = new Set(['BOOTSTRAP', 'QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING', 'PUBLISHING', 'CLEANUP'])
 const origins = new Set(['http', 'task', 'vue', 'window', 'promise'])
-const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'required_settings_read', 'required_settings_save', 'batch_list', 'batch_tasks', 'batch_delete', 'person_update', 'upload', 'classify', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export'])
+const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'required_settings_read', 'required_settings_save', 'batch_list', 'batch_tasks', 'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export'])
 const exceptionNames = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'URIError', 'EvalError', 'DOMException'])
 export function safeId(value: unknown): string | null {
   return typeof value === 'string' && (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) || /^e_[A-Za-z0-9]{1,80}$/.test(value)) ? value : null

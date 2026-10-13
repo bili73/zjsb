@@ -116,7 +116,7 @@ class HRHistoricalProjectionTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         result = response.json()
         schema = json_schema(yaml.safe_load((ROOT / 'openapi.yaml').read_text(encoding='utf-8')))
-        self.assertEqual(self.client.get('/health').json()['version'], schema['info']['version'])
+        self.assertEqual(self.client.get('/api/v1/health', headers=self.headers).json()['version'], schema['info']['version'])
         jsonschema.Draft7Validator(dict(schema, **{'$ref': '#/components/schemas/TaskResult'}),
             format_checker=jsonschema.FormatChecker()).validate(result)
         from ocr_app.doc_profiles import profile

@@ -33,3 +33,5 @@ The original 2026-10-09 activation serves the then-verified frontend asset hashe
 ## Consequences
 
 Certificate positioning no longer adds latency or deployment dependencies, at the cost of whole-page-only comparison for those fields. Medical navigation retains existing row/cell/region/block granularity; this change improves navigation, not medical recognition accuracy or coordinate extraction. Missing/whole-page sources remain coarse. Real Mac behavior remains unqualified.
+
+The [field-region OCR](../feature/2026-10-13-field-region-ocr.md) adds manually selected transcription for editable scalar fields across document types, without restoring automatic certificate localization.

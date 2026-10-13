@@ -15,27 +15,55 @@ export function createEngine(fetcher: typeof fetch = fetch) {
     refreshing: false,
     lastCheckedAt: null as string | null,
     auto: false,
+    publicStatus: null as 'ok' | 'degraded' | null,
   })
   let timer: ReturnType<typeof setTimeout> | undefined
   let controller: AbortController | undefined
   let disposed = false
+  let authenticated = false
+  let generation = 0
+
+  function setAuthenticated(value: boolean) {
+    authenticated = value
+    generation++
+    clearTimeout(timer)
+    controller?.abort()
+    state.health = null
+    state.publicStatus = null
+    state.auto = false
+    state.refreshing = false
+    state.lastCheckedAt = null
+    state.connection = 'connecting'
+  }
 
   async function refresh() {
     if (state.refreshing || disposed) return
     clearTimeout(timer)
-    controller = new AbortController()
+    const current = new AbortController()
+    controller = current
+    const revision = generation
+    const privateHealth = authenticated
+    const stale = () => disposed || revision !== generation
     state.refreshing = true
-    const timeout = setTimeout(() => controller?.abort(), 5000)
+    const timeout = setTimeout(() => current.abort(), 5000)
     let responseStatus: number | undefined
     let requestId: string | null = null
     try {
-      const response = await fetcher.call(globalThis, '/health', { signal: controller.signal, cache: 'no-store', credentials: 'same-origin' })
+      const response = await fetcher.call(globalThis, privateHealth ? '/api/v1/health' : '/health', { signal: current.signal, cache: 'no-store', credentials: 'same-origin' })
       responseStatus = response.status
       requestId = response.headers.get('X-Request-ID')
       if (!response.ok) throw new Error('CONNECTION_FAILED')
       const body: unknown = await response.json().catch(() => { throw new Error('INVALID_HEALTH') })
+      if (stale()) return
+      if (!privateHealth) {
+        if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 1 ||
+            !('status' in body) || (body.status !== 'ok' && body.status !== 'degraded')) throw new Error('INVALID_HEALTH')
+        state.publicStatus = (body as { status: 'ok' | 'degraded' }).status
+        state.connection = 'connected'
+        state.lastCheckedAt = new Date().toISOString()
+        return
+      }
       const health = parseHealth(body)
-      if (disposed) return
       state.health = health
       state.connection = 'connected'
       state.lastCheckedAt = new Date().toISOString()
@@ -43,14 +71,14 @@ export function createEngine(fetcher: typeof fetch = fetch) {
       state.auto = needsStartupRefresh(health)
       if (state.auto) timer = setTimeout(refresh, 1000)
     } catch (error) {
-      if (disposed) return
+      if (stale()) return
       state.health = null
       state.auto = false
       state.connection = error instanceof Error && error.message === 'INVALID_HEALTH' ? 'invalid' : 'disconnected'
       recordDiagnostic({ origin: 'http', operation: 'health', code: state.connection === 'invalid' ? 'INVALID_RESPONSE' : 'NETWORK_ERROR', status: responseStatus, request_id: requestId })
     } finally {
       clearTimeout(timeout)
-      state.refreshing = false
+      if (!stale()) state.refreshing = false
     }
   }
 
@@ -60,7 +88,8 @@ export function createEngine(fetcher: typeof fetch = fetch) {
     if (state.connection === 'invalid') return { tone: 'warning', label: '状态解析异常' }
     const health = state.health
     const runtime = health?.runtime
-    if (!health) return { tone: 'info', label: '状态未知' }
+    if (!health) return state.publicStatus === 'ok' ? { tone: 'success', label: '服务已连接' }
+      : { tone: 'warning', label: '服务状态受限' }
     if (runtime?.state === 'starting') return { tone: 'info', label: '引擎启动中' }
     if (runtime?.state === 'stopping') return { tone: 'info', label: '引擎停止中' }
     if (runtime?.effective_mode === 'ocr_unavailable') return { tone: 'danger', label: 'OCR 不可用' }
@@ -72,10 +101,7 @@ export function createEngine(fetcher: typeof fetch = fetch) {
 
   function refreshWhenVisible() { if (typeof document === 'undefined' || !document.hidden) void refresh() }
   function wentOffline() {
-    clearTimeout(timer)
-    controller?.abort()
-    state.health = null
-    state.auto = false
+    setAuthenticated(authenticated)
     state.connection = 'disconnected'
   }
 
@@ -95,6 +121,6 @@ export function createEngine(fetcher: typeof fetch = fetch) {
     window.removeEventListener('offline', wentOffline)
   }
 
-  return { state, summary, refresh, install, dispose }
+  return { state, summary, refresh, install, dispose, setAuthenticated }
 }
 export type Engine = ReturnType<typeof createEngine>

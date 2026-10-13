@@ -223,7 +223,7 @@ async function runExport() {
         <BankCardRecovery v-if="open && api && previewTask && canWrite && needsBankCrop(result)" :key="resultKey(result)" :task="previewTask" :api="api" :monitor="monitor" :disabled="dirty || saving || stale" @submitted="emit('bank-retried')" @preview="(files, tasks) => emit('preview', files, tasks)" @unauthorized="emit('unauthorized')" />
         <div class="drawer-split" :style="{ '--left-width': `${leftWidth}%` }">
           <aside class="split-left">
-            <SourcePreview v-if="previewTask" :key="`${previewTask.task_id}:${previewTask.run_id}:${previewTask.result_revision}`" :task="previewTask" :api="api" :can-write="canWrite" :preview="preview" :source="activeSource" @unauthorized="emit('unauthorized')" />
+            <SourcePreview v-if="previewTask" :key="`${previewTask.task_id}:${previewTask.run_id}:${previewTask.result_revision}`" :task="previewTask" :api="api" :can-write="canWrite" :active="open" :ocr-enabled="!stale && !saving" :preview="preview" :source="activeSource" @unauthorized="emit('unauthorized')" />
           </aside>
           <div class="splitter" :class="{ dragging }" role="separator" aria-orientation="vertical" title="拖动调整左右宽度，双击复位" @pointerdown="onSplitterDown" @pointermove="onSplitterMove" @pointerup="onSplitterUp" @pointercancel="onSplitterUp" @dblclick="resetSplit"></div>
           <div class="split-right">

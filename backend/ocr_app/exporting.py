@@ -222,7 +222,7 @@ def workbook_bytes(results, packages=()):
     return target.getvalue()
 
 
-def export_results(store, request, actor, role, *, user=None):
+def export_results(store, request, actor, role, *, user=None, authorize=None):
     from sqlalchemy import text
     from .review import optional_reason, invalid
     if not isinstance(request, dict) or set(request) - {'batch_id', 'task_ids', 'versions', 'masked', 'reason', 'format'}:
@@ -237,6 +237,8 @@ def export_results(store, request, actor, role, *, user=None):
     optional_reason(request.get('reason'))
     snapshots, packages = [], {}
     with store.transaction() as connection:
+        if authorize:
+            authorize(connection)
         policy = store.required_policy(connection)
         if request.get('batch_id'):
             store._batch_row(connection, request['batch_id'], user)
@@ -281,4 +283,8 @@ def export_results(store, request, actor, role, *, user=None):
                          required_fields_revision=policy['revision'],
                          result_revision=row['revision'], legacy_masked=is_masked)
             store._access_history(connection, row, actor, 'export_full', request.get('reason'), legacy_masked=is_masked)
-    return workbook_bytes(snapshots, packages.values())
+    data = workbook_bytes(snapshots, packages.values())
+    if authorize:
+        with store.engine.connect() as connection:
+            authorize(connection)
+    return data

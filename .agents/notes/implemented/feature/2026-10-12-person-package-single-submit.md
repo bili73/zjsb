@@ -55,3 +55,5 @@ The read-only CPU probe uses15 distinct originals from five directory groups and
 Idle activation preserves all250 tasks,2 accounts and2,442 encrypted/key files after a verified SQLite backup. Schema0006 and application1.22.0 remain unchanged; GLM/Paddle are dual_resident/ready, queue empty, built frontend assets match served bytes, and anonymous batch/append/classification requests receive401. No original preview reads or business changes occur during this activation. Evidence: output/person-package-activation-20261012-v1/activation.json.
 
 The final timing probe uses perf_counter/QueryPerformanceCounter (100ns reported clock resolution). Earlier v1-v3 monotonic/GetTickCount64 timings have15.625ms granularity and remain preserved; use v4 JSON/CSV for plots, not zero-rounded native-PDF timings.
+
+The [field-region OCR](2026-10-13-field-region-ocr.md) reuses the pinned CPU asset loader in a bounded helper; upload classification behavior remains unchanged.

@@ -1,9 +1,8 @@
 """Authenticated phase-two routes. Upload parsing is explicitly memory-only."""
 import uuid
 import json
-import hmac
 from datetime import date
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Request, Query
 from fastapi.responses import JSONResponse, Response
@@ -13,7 +12,7 @@ from python_multipart.multipart import parse_options_header
 
 from .business import prepare_uploads
 from .task_store import TaskError, SUPPORTED, upload_types
-from .auth import SESSION_COOKIE, SESSION_SECONDS, same_origin, csrf_for
+from .auth import SESSION_COOKIE, SESSION_SECONDS, same_origin, csrf_for, request_user
 from .upload_limits import MAX_FILES, MAX_FILE_BYTES, MAX_BATCH_BYTES
 
 
@@ -52,6 +51,12 @@ class DeleteBatchBody(BaseModel):
 class FullPreview(Version):
     page: int = Field(default=1, ge=1)
     reason: str | None = Field(default=None, max_length=1000)
+
+
+class RegionOCRBody(Version):
+    page: int = Field(ge=1, strict=True)
+    field_key: str | None = Field(default=None, min_length=1, max_length=64, pattern=r'^[a-z_]+$')
+    bbox: list[Annotated[float, Field(ge=0, le=1, strict=True, allow_inf_nan=False)]] = Field(min_length=4, max_length=4)
 
 
 class RevealBody(Version):
@@ -170,23 +175,9 @@ async def memory_form(request, *, classification=False):
     return files, fields
 
 
-def router(business, runtime):
-    routes = APIRouter(prefix='/api/v1')
-
+def router(business, runtime, health):
     def principal(request: Request):
-        token = request.cookies.get(SESSION_COOKIE)
-        user = business.accounts.session(token)
-        request.state.csrf_token = csrf_for(token) if user else None
-        if user and request.method not in {'GET', 'HEAD', 'OPTIONS'}:
-            same_origin(request)
-            provided = request.headers.get('X-CSRF-Token', '')
-            if not provided.isascii() or not hmac.compare_digest(provided, request.state.csrf_token):
-                raise TaskError('FORBIDDEN', '登录校验已变化，请刷新工作台后再试', 403)
-        if not user:
-            user = business.accounts.authenticate(request.headers.get('X-API-Key'))
-        if not user:
-            raise TaskError('UNAUTHORIZED', '请登录工作台', 401)
-        return user
+        return request_user(business.accounts, request)
 
     def operator(user=Depends(principal)):
         if user['role'] not in {'operator', 'admin'}:
@@ -198,14 +189,23 @@ def router(business, runtime):
             raise TaskError('FORBIDDEN', '只有管理员可以修改管理设置', 403)
         return user
 
-    def upload_authorization(request, user):
+    # New business routes inherit authentication even without an endpoint dependency.
+    routes = APIRouter(dependencies=[Depends(principal)])
+    public = APIRouter(prefix='/api/v1')
+
+    def authorization(request, user):
         def authorize(connection):
-            # The surrounding BEGIN IMMEDIATE prevents account/session changes
-            # between this fresh authorization read and the upload commit.
-            current = operator(principal(request))
+            current = request_user(business.accounts, request, connection=connection)
             if current['user_id'] != user['user_id']:
                 raise TaskError('UNAUTHORIZED', '登录状态已变化，请重新登录', 401)
+            if current['role'] != user['role']:
+                raise TaskError('FORBIDDEN', '账号权限已变化，请刷新工作台后再试', 403)
+            operator(current)
         return authorize
+
+    @routes.get('/health')
+    def full_health():
+        return health()
 
     @routes.get('/auth/me')
     def me(request: Request, user=Depends(principal)):
@@ -214,7 +214,7 @@ def router(business, runtime):
             payload['csrf_token']=request.state.csrf_token
         return payload
 
-    @routes.post('/auth/login')
+    @public.post('/auth/login')
     async def login(request: Request):
         same_origin(request)
         body=await bounded_json(request)
@@ -325,7 +325,8 @@ def router(business, runtime):
         from starlette.concurrency import run_in_threadpool
         files, _ = await memory_form(request, classification=True)
         result = await run_in_threadpool(classify_file, *files[0])
-        operator(principal(request))
+        with business.engine.connect() as connection:
+            authorization(request, user)(connection)
         return result
 
     @routes.post('/batches', status_code=202)
@@ -342,7 +343,7 @@ def router(business, runtime):
         validated = await run_in_threadpool(prepare_uploads, files, kind, runtime)
         return await run_in_threadpool(business.store.create_batch, validated, kind, user['user_id'],
                                       {'abnormal_only': fields.get('abnormal_only', 'false').lower() == 'true'},
-                                      person_name=fields.get('person_name'), authorize=upload_authorization(request, user))
+                                      person_name=fields.get('person_name'), authorize=authorization(request, user))
 
     @routes.post('/batches/{batch_id}/append', status_code=202)
     async def append_upload(batch_id: uuid.UUID, request: Request, user=Depends(operator)):
@@ -359,12 +360,12 @@ def router(business, runtime):
         validated = await run_in_threadpool(prepare_uploads, files, kind, runtime)
         return await run_in_threadpool(business.store.append_batch, str(batch_id), validated, kind,
             int(revision), user['user_id'], {'abnormal_only': fields.get('abnormal_only', 'false').lower() == 'true'},
-            user=user, authorize=upload_authorization(request, user))
+            user=user, authorize=authorization(request, user))
 
     @routes.patch('/batches/{batch_id}/person')
     def confirm_person(batch_id: uuid.UUID, body: PersonBody, request: Request, user=Depends(operator)):
         return business.store.confirm_person(str(batch_id), body.person_name, body.expected_revision,
-            user['user_id'], user=user, authorize=upload_authorization(request, user))
+            user['user_id'], user=user, authorize=authorization(request, user))
 
     @routes.get('/batches/{batch_id}')
     def batch(batch_id: uuid.UUID, user=Depends(principal)):
@@ -395,45 +396,58 @@ def router(business, runtime):
         return business.store.result(str(task_id), items_filter, include_normal_summary, user=user)
 
     @routes.post('/tasks/{task_id}/review')
-    def review(task_id: uuid.UUID, body: ReviewBody, user=Depends(operator)):
-        return business.store.review(str(task_id), body.model_dump(mode='json', exclude_unset=True), user['user_id'], user=user)
+    def review(task_id: uuid.UUID, body: ReviewBody, request: Request, user=Depends(operator)):
+        return business.store.review(str(task_id), body.model_dump(mode='json', exclude_unset=True), user['user_id'],
+                                     user=user, authorize=authorization(request, user))
+
+    @routes.post('/tasks/{task_id}/ocr-region')
+    def region_ocr(task_id: uuid.UUID, body: RegionOCRBody, request: Request, user=Depends(operator)):
+        from .region_ocr import transcribe_region
+        return transcribe_region(business.store, str(task_id), body.model_dump(mode='json'), user,
+                                 authorization(request, user))
 
     @routes.get('/tasks/{task_id}/preview')
-    def preview(task_id: uuid.UUID, run_id: uuid.UUID, result_revision: int = Query(ge=0),
+    def preview(task_id: uuid.UUID, run_id: uuid.UUID, request: Request, result_revision: int = Query(ge=0),
                 page: int = Query(1, ge=1), stage: Literal['corrected'] = 'corrected',
-                masked: bool = True, user=Depends(principal)):
+                masked: bool = True, user=Depends(operator)):
         from .preview import corrected_preview
         data = corrected_preview(business.store, str(task_id), str(run_id), result_revision, page,
-                                 actor=user['user_id'], role=user['role'], user=user)
+                                 actor=user['user_id'], role=user['role'], user=user, authorize=authorization(request, user))
         return Response(data, media_type='image/png', headers={'X-Preview-Stage': 'corrected', 'X-Result-Revision': str(result_revision)})
 
     @routes.post('/tasks/{task_id}/preview')
-    def full_preview(task_id: uuid.UUID, body: FullPreview, user=Depends(operator)):
+    def full_preview(task_id: uuid.UUID, body: FullPreview, request: Request, user=Depends(operator)):
         from .preview import corrected_preview
         data = corrected_preview(business.store, str(task_id), str(body.run_id), body.expected_revision, body.page,
-                                 actor=user['user_id'], role=user['role'], masked=False, access_reason=body.reason, user=user)
+                                 actor=user['user_id'], role=user['role'], masked=False, access_reason=body.reason,
+                                 user=user, authorize=authorization(request, user))
         return Response(data, media_type='image/png', headers={'X-Preview-Stage': 'corrected', 'X-Result-Revision': str(body.expected_revision)})
 
     @routes.post('/tasks/{task_id}/reveal')
-    def reveal(task_id: uuid.UUID, body: RevealBody, user=Depends(operator)):
+    def reveal(task_id: uuid.UUID, body: RevealBody, request: Request, user=Depends(operator)):
         from .preview import reveal_fields
-        return reveal_fields(business.store, str(task_id), body.model_dump(mode='json'), user['user_id'], user['role'], user=user)
+        return reveal_fields(business.store, str(task_id), body.model_dump(mode='json'), user['user_id'], user['role'],
+                             user=user, authorize=authorization(request, user))
 
     @routes.post('/export')
-    def export(body: ExportBody, user=Depends(principal)):
+    def export(body: ExportBody, request: Request, user=Depends(operator)):
         from .exporting import export_results
-        data = export_results(business.store, body.model_dump(mode='json', exclude_none=True), user['user_id'], user['role'], user=user)
+        data = export_results(business.store, body.model_dump(mode='json', exclude_none=True), user['user_id'], user['role'],
+                              user=user, authorize=authorization(request, user))
         return Response(data, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         headers={'Content-Disposition': 'attachment; filename="reviewed-results.xlsx"'})
 
     @routes.post('/tasks/{task_id}/cancel', status_code=202)
-    def cancel(task_id: uuid.UUID, version: Version, user=Depends(operator)):
-        return business.store.cancel(str(task_id), str(version.run_id), version.expected_revision, user['user_id'], user=user)
+    def cancel(task_id: uuid.UUID, version: Version, request: Request, user=Depends(operator)):
+        return business.store.cancel(str(task_id), str(version.run_id), version.expected_revision, user['user_id'],
+                                     user=user, authorize=authorization(request, user))
 
     @routes.post('/tasks/{task_id}/rerun', status_code=202)
-    def rerun(task_id: uuid.UUID, version: Version, user=Depends(operator)):
+    def rerun(task_id: uuid.UUID, version: Version, request: Request, user=Depends(operator)):
         if not runtime.is_alive():
             raise TaskError('INTERNAL_ERROR', '处理服务不可用，请先重新启动程序', 503)
-        return business.store.rerun(str(task_id), str(version.run_id), version.expected_revision, user['user_id'], user=user)
+        return business.store.rerun(str(task_id), str(version.run_id), version.expected_revision, user['user_id'],
+                                    user=user, authorize=authorization(request, user))
 
-    return routes
+    public.include_router(routes)
+    return public

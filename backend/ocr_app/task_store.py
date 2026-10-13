@@ -542,11 +542,13 @@ class TaskStore:
             self.storage.delete(reference)
             raise
 
-    def review(self, task_id, body, actor, *, user=None):
+    def review(self, task_id, body, actor, *, user=None, authorize=None):
         from .review import apply_review, invalid, reason
         reference = None
         try:
             with self.transaction() as connection:
+                if authorize:
+                    authorize(connection)
                 row = self._row(connection, task_id, user)
                 self._expected(row, body.get('run_id'), body.get('expected_revision'))
                 if row['status'] not in {'FAILED', 'NEED_REVIEW', 'COMPLETED'}:
@@ -656,8 +658,10 @@ class TaskStore:
                 self.storage.delete(reference)
             raise
 
-    def cancel(self, task_id, run_id, revision, actor, *, user=None):
+    def cancel(self, task_id, run_id, revision, actor, *, user=None, authorize=None):
         with self.transaction() as connection:
+            if authorize:
+                authorize(connection)
             row = self._row(connection, task_id, user)
             self._expected(row, run_id, revision)
             if row['status'] not in ACTIVE | {'QUEUED'}:
@@ -670,8 +674,10 @@ class TaskStore:
             self._audit(connection, 'cancel_requested', actor, row)
         return self.task(task_id)
 
-    def rerun(self, task_id, run_id, revision, actor, *, user=None):
+    def rerun(self, task_id, run_id, revision, actor, *, user=None, authorize=None):
         with self.transaction() as connection:
+            if authorize:
+                authorize(connection)
             row = self._row(connection, task_id, user)
             self._expected(row, run_id, revision)
             if row['status'] not in TERMINAL | {'NEED_REVIEW'}:
