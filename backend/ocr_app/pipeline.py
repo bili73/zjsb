@@ -38,10 +38,15 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     Storage/record/progress callback errors propagate: a failed durable write must
     not be represented as a successful or persisted result.
     """
+    if doc_type == 'TABLE':
+        from .photo_table_pipeline import process_photo_table
+        return process_photo_table(content, recognize=recognize, progress=progress, save_page=save_page,
+                                   record_attempt=record_attempt, cancelled=cancelled, deadline=deadline)
     options = options or {}
     evidence, pages, warnings, limitations = [], [], [], []
     # Only coordinates and small metadata survive a page iteration, never PIL images.
     pending = {}
+    form_lines = {}
     planning_complete = False
     stage, stop_code = 'PREPROCESSING', None
     preprocessing = {'doc_type': doc_type} if doc_type in UPRIGHT_DOCUMENT_TYPES and not content.lstrip().startswith(b'%PDF-') else None
@@ -49,10 +54,12 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     if not isinstance(bank_admission, dict) or not bank_admission.get('text') or bank_admission.get('termination_reason') != 'eos':
         bank_admission = None
     medical = doc_type == 'MEDICAL_REPORT'
-    model = 'paddleocr_vl' if medical else 'glm_ocr'
-    alternate = 'glm_ocr' if medical else 'paddleocr_vl'
-    attempt_models = (model, alternate) if medical else (model, model, alternate)
-    generation_timeout = 20.0 if medical else None
+    generic = doc_type == 'GENERIC'
+    paddle_primary = medical or generic
+    model = 'paddleocr_vl' if paddle_primary else 'glm_ocr'
+    alternate = 'glm_ocr' if paddle_primary else 'paddleocr_vl'
+    attempt_models = (model, alternate) if paddle_primary else (model, model, alternate)
+    generation_timeout = 20.0 if medical else 40.0 if generic else None
     revisions = model_revisions if model_revisions is not None else {}
     cache = {}  # Successful predictions only; never shared with another Task or rerun.
     signature = inspect.signature(recognize)
@@ -130,15 +137,24 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 page.ocr_boxes = []
             limitations.extend(page.limitations)
             warnings.extend(dict(code=code, message='PDF文字或布局需通过识别补充。') for code in page.warnings)
-            regions = [region for box in page.ocr_boxes
-                       for region in split_regions(page.image, box, doc_type == 'MEDICAL_REPORT')]
+            plans=[]
+            for box in page.ocr_boxes:
+                if generic:
+                    from .generic_layout import plan_form_regions
+                    form_regions, notes=plan_form_regions(page.image,box,check)
+                    plans.extend(form_regions);limitations.extend(notes)
+                else:
+                    plans.extend(dict(box=area,task=region_task(page.image,area,medical))
+                                 for area in split_regions(page.image,box,medical))
             planned = []
-            for box in regions:
+            for plan in plans:
+                box=plan['box']
                 region_id = str(uuid4())
                 location = normalized_box(box, page.image.size)
                 region = dict(region_id=region_id, bbox=location, extraction_method='ocr', status='pending')
                 info['regions'].append(region)
-                task = region_task(page.image, box, doc_type == 'MEDICAL_REPORT')
+                task = plan['task']
+                if generic:form_lines[region_id]=plan['lines']
                 planned.append((box, region, task))
             if planned:
                 pending[page.index] = planned
@@ -165,7 +181,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                     check()
                     image = page.image.crop(box)
                     transform = 'original'
-                    if attempt_index and not medical:
+                    if attempt_index and not paddle_primary:
                         # A real deterministic input repair, recorded separately from inference.
                         image = ImageOps.autocontrast(image)
                         image = ImageOps.expand(image, border=24, fill='white')
@@ -195,7 +211,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                                            reused_from_attempt=cached['attempt'])
                         else:
                             extra = {'context': dict(page=page.index, region_id=region_id, stage=stage)} if accepts_context else {}
-                            if medical and accepts_generation_timeout:
+                            if paddle_primary and accepts_generation_timeout:
                                 extra['generation_timeout_seconds'] = generation_timeout
                             prediction = recognize(used_model, base64.b64encode(png).decode('ascii'),
                                                    task, max(.001, deadline - time.monotonic()), **extra)
@@ -212,9 +228,16 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                         termination = prediction.get('termination_reason', prediction.get('termination'))
                         successful = isinstance(text, str) and bool(text.strip()) and not prediction.get('error_code') and termination not in {
                             'token_limit', 'length', 'repetition_stop', 'truncated', 'timeout', 'time_limit'}
+                        if generic and termination != 'eos':successful=False
                         if isinstance(text, str) and text.strip():
                             selected = dict(text=text, page=page.index, region_id=region_id,
                                             bbox=location, extraction_method='ocr')
+                            if generic:
+                                selected['_layout_lines']=form_lines.get(region_id,[])
+                                if task == 'table' and successful:
+                                    from .table_recognition import decode_table_output
+                                    try:successful=not any(grid['warnings'] for grid in decode_table_output(text))
+                                    except ValueError:successful=False
                         attempt.update(prediction=prediction, status='completed' if successful else 'incomplete')
                     except _Stop:
                         raise
@@ -257,7 +280,8 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 publish('OCR')
             info['extraction_method'] = 'mixed' if page.evidence else 'ocr'
             # Coordinate coverage is known; semantic OCR coverage remains unverified.
-            limitations.append('自动分区保留整页像素覆盖；文字与表格行是否全部识别仍需原页复核。')
+            limitations.append('已保留完整校正原图；主体内外文字及表格是否全部识别仍需核对。' if generic else
+                               '自动分区保留整页像素覆盖；文字与表格行是否全部识别仍需原页复核。')
             del pending[page.index]
             if not pending:
                 break

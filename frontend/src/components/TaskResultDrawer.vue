@@ -14,6 +14,8 @@ import type { LocalPreviewBatch } from '../workbench.ts'
 import ResultView from './ResultView.vue'
 import SourcePreview from './SourcePreview.vue'
 import ReviewEditor from './ReviewEditor.vue'
+import TableReview from './TableReview.vue'
+import GenericSources from './GenericSources.vue'
 import BankCardRecovery from './BankCardRecovery.vue'
 import { needsBankCrop } from '../bankCrop.ts'
 import { sourceSelection } from '../sourceLocation.ts'
@@ -112,7 +114,7 @@ const previewTask = computed(() => props.task && result.value ? { ...props.task,
 watch(() => result.value ? resultKey(result.value) : '', () => { activeSource.value = null })
 watch(() => props.open, open => { if (!open) activeSource.value = null })
 function locate(source: FieldSource) {
-  if (result.value?.doc_type === 'MEDICAL_REPORT') activeSource.value = sourceSelection(source)
+  if (['MEDICAL_REPORT','TABLE','GENERIC'].includes(result.value?.doc_type ?? '')) activeSource.value = sourceSelection(source)
 }
 const regions = computed(() => (props.task?.pages ?? []).flatMap(page => (page.regions ?? []).map(region => ({ region_id: region.region_id, page: page.page_index }))))
 
@@ -164,7 +166,7 @@ async function runExport() {
       versions: [{ task_id: task.task_id, run_id: result.value.run_id, result_revision: result.value.result_revision }],
     }, exportController.signal)
     if (exportController.signal.aborted) return
-    downloadBlob(blob, filename)
+    downloadBlob(blob, result.value.doc_type === 'TABLE' ? blob.downloadName ?? '表格.xlsx' : filename)
     ElMessage.success('已导出 Excel 文件。')
   } catch (error) {
     if (isAbort(error)) return
@@ -220,20 +222,22 @@ async function runExport() {
         <el-alert v-if="task.error" type="error" :closable="false" show-icon class="drawer-alert">
           {{ errorMessages[task.error.code] }}{{ task.error.error_id ? `（错误编号 ${task.error.error_id}）` : '' }}
         </el-alert>
-        <BankCardRecovery v-if="open && api && previewTask && canWrite && needsBankCrop(result)" :key="resultKey(result)" :task="previewTask" :api="api" :monitor="monitor" :disabled="dirty || saving || stale" @submitted="emit('bank-retried')" @preview="(files, tasks) => emit('preview', files, tasks)" @unauthorized="emit('unauthorized')" />
+        <BankCardRecovery v-if="open && api && previewTask && canWrite && (needsBankCrop(result) || result.doc_type === 'TABLE')" :key="resultKey(result)" :task="previewTask" :api="api" :monitor="monitor" :disabled="dirty || saving || stale" @submitted="emit('bank-retried')" @preview="(files, tasks) => emit('preview', files, tasks)" @unauthorized="emit('unauthorized')" />
         <div class="drawer-split" :style="{ '--left-width': `${leftWidth}%` }">
           <aside class="split-left">
             <SourcePreview v-if="previewTask" :key="`${previewTask.task_id}:${previewTask.run_id}:${previewTask.result_revision}`" :task="previewTask" :api="api" :can-write="canWrite" :active="open" :ocr-enabled="!stale && !saving" :preview="preview" :source="activeSource" @unauthorized="emit('unauthorized')" />
           </aside>
           <div class="splitter" :class="{ dragging }" role="separator" aria-orientation="vertical" title="拖动调整左右宽度，双击复位" @pointerdown="onSplitterDown" @pointermove="onSplitterMove" @pointerup="onSplitterUp" @pointercancel="onSplitterUp" @dblclick="resetSplit"></div>
           <div class="split-right">
-            <ResultView
+            <TableReview v-if="result.doc_type === 'TABLE'" :key="resultKey(result)" :result="result" :can-write="canWrite && !stale" :busy="saving" @dirty="dirty=$event" @save="saveReview" @locate="locate" />
+            <ResultView v-if="result.doc_type !== 'TABLE'"
               :result="result"
               :filter="filter"
               @locate="locate"
               @update:filter="value => (filter = value)"
             />
-            <ReviewEditor :key="resultKey(result)" :result="result" :profile="catalogue.find(p => p.doc_type === result!.doc_type)" :can-write="canWrite && !stale" :busy="saving" :page-count="task.actual_source_page_count ?? 0" :regions="regions" @dirty="dirty = $event" @save="saveReview" @locate="locate" />
+            <GenericSources v-if="result.doc_type === 'GENERIC' && result.generic" :original="result.generic" @locate="locate" />
+            <ReviewEditor v-if="result.doc_type !== 'TABLE'" :key="resultKey(result)" :result="result" :profile="catalogue.find(p => p.doc_type === result!.doc_type)" :can-write="canWrite && !stale" :busy="saving" :page-count="task.actual_source_page_count ?? 0" :regions="regions" @dirty="dirty = $event" @save="saveReview" @locate="locate" />
           </div>
         </div>
       </template>

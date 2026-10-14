@@ -36,6 +36,7 @@ class ReviewBody(Version):
     removed_member_indexes: list[int] = Field(default_factory=list)
     coverage: dict | None = None
     generic: dict | None = None
+    tables: list[dict] | None = None
     note: str | None = Field(default=None, max_length=1000)
 
 
@@ -432,10 +433,11 @@ def router(business, runtime, health):
     @routes.post('/export')
     def export(body: ExportBody, request: Request, user=Depends(operator)):
         from .exporting import export_results
-        data = export_results(business.store, body.model_dump(mode='json', exclude_none=True), user['user_id'], user['role'],
-                              user=user, authorize=authorization(request, user))
-        return Response(data, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        headers={'Content-Disposition': 'attachment; filename="reviewed-results.xlsx"'})
+        from urllib.parse import quote
+        data, media, filename = export_results(business.store, body.model_dump(mode='json', exclude_none=True), user['user_id'], user['role'],
+                              user=user, authorize=authorization(request, user), with_metadata=True)
+        return Response(data, media_type=media,
+                        headers={'Content-Disposition': "attachment; filename*=UTF-8''" + quote(filename, safe='')})
 
     @routes.post('/tasks/{task_id}/cancel', status_code=202)
     def cancel(task_id: uuid.UUID, version: Version, request: Request, user=Depends(operator)):

@@ -24,9 +24,11 @@ PROFILES = {
     'PASSPORT': _fields('passport_number:护照号码:required|name:姓名:required|surname:姓|given_names:名|gender:性别:enum|nationality:国籍:required|birth_date:出生日期:required:date|birth_place:出生地点|issue_date:签发日期:date|expiry_date:有效期至:required:date|issuing_authority:签发机关|issuing_country:签发国|document_code:证件代码|mrz:机读区'),
     'HOUSEHOLD_REGISTER': _fields('household_type:户别:required|householder:户主姓名:required|household_no:户号:required|address:住址:required|issued_by:签发机关|issued_date:签发日期:date|registrar:承办人'),
     'GENERIC': [],
+    'TABLE': [],
 }
 MEMBER_PROFILE = _fields('name:姓名:required|gender:性别:enum|birth_date:出生日期:date|ethnicity:民族|birth_place:出生地|native_place:籍贯|id_number:公民身份号码|relation_to_householder:与户主关系|education:文化程度|marital_status:婚姻状况|occupation:职业|workplace:服务处所|migration_address:迁入地址')
 LABELS = dict(zip(PROFILES, ['身份证人像面','身份证国徽面','毕业证','学位证','体检报告','银行卡','营业执照','学历证书电子注册备案表','护照','户口本','通用识别']))
+LABELS['TABLE'] = '表格'
 SUPPORTED = frozenset(PROFILES)
 
 

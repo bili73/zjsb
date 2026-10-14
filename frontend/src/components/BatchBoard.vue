@@ -52,6 +52,7 @@ const entries = computed(() => props.monitor.state.order
   .filter((item): item is { id: string; entry: BatchEntry } => item.entry !== undefined))
 const groups = computed(() => groupBatchEntries(entries.value, period.value))
 const missingTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, entry.tasks.filter(hasMissingRequiredFields)])))
+const isTableEntry = (entry: BatchEntry) => entry.tasks.some(task => task.doc_type === 'TABLE')
 const hasMore = computed(() => props.monitor.state.listedIds.length < props.monitor.state.serverTotal)
 
 const expandedNames = computed<string[]>({
@@ -271,12 +272,12 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
           <span class="poll-hint">{{ entryRunning(entry) ? '请等待排队及识别任务停止后再删除。' : '永久删除本批次及关联文件；待人工核对的记录也可删除。' }}</span>
         </div>
         <div class="required-toolbar">
-          <el-checkbox v-if="entry.tasksLoaded" v-model="missingOnly[id]">只看必填未填（{{ missingTasks[id]?.length ?? 0 }}）</el-checkbox>
+          <el-checkbox v-if="entry.tasksLoaded" v-model="missingOnly[id]">{{ isTableEntry(entry) ? '只看导出待处理' : '只看必填未填' }}（{{ missingTasks[id]?.length ?? 0 }}）</el-checkbox>
           <span v-else class="poll-hint">正在获取任务，检查必填信息…</span>
-          <span class="poll-hint">补齐并保存后标记自动更新；筛选不改变“本批次全部”的导出范围。</span>
+          <span class="poll-hint">{{ isTableEntry(entry) ? '完整表格可直接导出；有修改时才需保存。' : '补齐并保存后标记自动更新；' }}筛选不改变“本批次全部”的导出范围。</span>
         </div>
         <el-table :data="missingOnly[id] ? missingTasks[id] ?? [] : entry.tasks" row-key="task_id" :row-class-name="({ row }) => hasMissingRequiredFields(row as Task) ? 'required-missing-row' : ''" @selection-change="rows => selected[id] = rows" @row-click="row => onRowClick(id, row)">
-          <template #empty>{{ missingOnly[id] ? '本批次没有必填未填的任务' : entry.tasksLoaded ? '暂无任务' : '正在获取任务…' }}</template>
+          <template #empty>{{ missingOnly[id] ? (isTableEntry(entry) ? '本批次没有导出待处理的任务' : '本批次没有必填未填的任务') : entry.tasksLoaded ? '暂无任务' : '正在获取任务…' }}</template>
           <el-table-column type="selection" width="45" :reserve-selection="true" />
           <el-table-column label="文件" min-width="220">
             <template #default="{ row }">
@@ -299,14 +300,14 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="必填信息" min-width="220">
+          <el-table-column :label="isTableEntry(entry) ? '导出检查' : '必填信息'" min-width="220">
             <template #default="{ row }">
               <span v-if="runningStatuses.has(row.status)" class="poll-hint">识别中，尚未检查</span>
               <div v-else-if="hasMissingRequiredFields(row as Task)" class="required-fields-cell">
-                <el-tag size="small" type="danger" effect="light">必填未填</el-tag>
+                <el-tag size="small" type="danger" effect="light">{{ row.doc_type === 'TABLE' ? '导出待处理' : '必填未填' }}</el-tag>
                 <span class="missing-field-names">{{ requiredFieldLabels(row as Task, catalogue).join('、') || '请打开结果查看缺失项' }}</span>
               </div>
-              <el-tag v-else-if="row.export_ready === true" size="small" type="success" effect="plain">必填已齐</el-tag>
+              <el-tag v-else-if="row.export_ready === true" size="small" type="success" effect="plain">{{ row.doc_type === 'TABLE' ? '可直接导出' : '必填已齐' }}</el-tag>
               <span v-else-if="row.export_blockers?.some((blocker: { field: string }) => ['task', 'doc_type'].includes(blocker.field))" class="poll-hint">暂无识别结果</span>
               <span v-else class="poll-hint">尚未检查</span>
             </template>

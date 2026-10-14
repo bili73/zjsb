@@ -1,8 +1,11 @@
 import { safeCode, safeId, safeStage } from './diagnostics.ts'
 import type { ErrorCode, Stage } from './diagnostics.ts'
+import type { PhotoTable, TableDraft } from './table-review.ts'
+import { validTableResponse } from './table-review.ts'
+import type { GenericDraft, GenericResult } from './generic-review.ts'
 
 export const docTypes = {
-  MEDICAL_REPORT: '体检报告', DIPLOMA: '毕业证', DEGREE_CERT: '学位证',
+  TABLE: '表格', MEDICAL_REPORT: '体检报告', DIPLOMA: '毕业证', DEGREE_CERT: '学位证',
   BANK_CARD: '银行卡', ID_CARD_FRONT: '身份证人像面', ID_CARD_BACK: '身份证国徽面', PASSPORT: '护照',
   HOUSEHOLD_REGISTER: '户口本', BUSINESS_LICENSE: '营业执照', GENERIC: '通用识别', XUEXIN_DIPLOMA_TABLE: '学历证书电子注册备案表',
 } as const
@@ -34,6 +37,7 @@ export interface Batch { batch_id: string; display_name?: string; status: BatchS
 export const isPersonPackage = (batch: Batch) => batch.is_person_package === true || !!batch.person_name
 export const pairingLabels: Record<IdCardPairing, string> = { unassigned: '未指定人员', not_provided: '尚未上传身份证', missing_front: '缺少身份证人像面', missing_back: '国徽面未上传（可选，可仅识别人像面）', both_present: '身份证两面已上传，仍需核对是否属于同一人' }
 export function sampleQualification(kind: UploadDocType): string {
+  if (kind === 'TABLE') return '上传JPG/PNG/HEIC表格照片，自动摆正并识别主体；请核对标题、表头、划除行及表外手写补录。每张独立导出，暂不接收PDF或自动拼接续表。'
   return ['DIPLOMA', 'DEGREE_CERT', 'BANK_CARD', 'XUEXIN_DIPLOMA_TABLE', 'MEDICAL_REPORT'].includes(kind)
     ? '已有有限真实样本测试，尚不代表所有版式准确率；请对照原件核对。'
     : '规则已接入，尚缺真实样本验收；请逐项对照原件核对。'
@@ -67,7 +71,7 @@ export function medicalProjectCount(value: unknown): number | null {
   return names.size || null
 }
 export interface MedicalItem { item_id: string; name: string; alias?: string | null; category?: string | null; result_raw: string; risk_grade?: string | null; diagnosis?: string | null; diagnosis_sources?: FieldSource[]; value_num?: number | null; unit?: string | null; reference_range?: string | null; ref_low?: number | null; ref_high?: number | null; abnormal_flag: AbnormalFlag; reported_abnormal_marker: string | null; abnormal_basis: AbnormalBasis; abnormal_exclusion_reason?: 'HEIGHT_WEIGHT' | 'SECTION_SUMMARY' | null; deviation?: string | null; confidence: number | null; confidence_method: 'calibrated' | 'unavailable'; need_review: boolean; review_issues: ReviewIssue[]; source?: FieldSource }
-export interface TaskResult extends ExportEligibility { task_id: string; run_id: string; result_revision: number; doc_type: string; status: TaskStatus; review_issues: ReviewIssue[]; fields?: Field[]; basic_info?: Record<string, Field>; items?: MedicalItem[]; stats?: { total: number | null; normal: number | null; abnormal: number | null; unknown: number | null; categories: string[] }; abnormal_summary?: MedicalItem[]; normal_summary?: string | null; report_summary?: ReportSummary; limitations?: string[]; members?: Record<string, Field>[]; generic?: { full_text: string; key_values: { key: string; value: string | null }[] }; reviewed_generic?: { full_text: string; key_values: { key: string; value: string | null }[] } }
+export interface TaskResult extends ExportEligibility { tables?: PhotoTable[]; reviewed_tables?: TableDraft[]; task_id: string; run_id: string; result_revision: number; doc_type: string; status: TaskStatus; review_issues: ReviewIssue[]; fields?: Field[]; basic_info?: Record<string, Field>; items?: MedicalItem[]; stats?: { total: number | null; normal: number | null; abnormal: number | null; unknown: number | null; categories: string[] }; abnormal_summary?: MedicalItem[]; normal_summary?: string | null; report_summary?: ReportSummary; limitations?: string[]; members?: Record<string, Field>[]; generic?: GenericResult; reviewed_generic?: GenericDraft }
 export const runningStatuses = new Set<TaskStatus>(['QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING'])
 export const hasResult = (task: Pick<Task, 'status'>) => ['NEED_REVIEW', 'COMPLETED', 'FAILED'].includes(task.status)
 export const householdMemberLabels: Record<string, string> = { name: '姓名', gender: '性别', birth_date: '出生日期', ethnicity: '民族', birth_place: '出生地', native_place: '籍贯', id_number: '公民身份号码', relation_to_householder: '与户主关系', education: '文化程度', marital_status: '婚姻状况', occupation: '职业', workplace: '服务处所', migration_address: '迁入地址' }
@@ -79,6 +83,13 @@ export function hasMissingRequiredFields(task: RequiredTask): boolean {
 export function requiredFieldLabels(task: RequiredTask, catalogue: readonly DocProfile[]): string[] {
   if (!hasMissingRequiredFields(task)) return []
   const labels = new Map(catalogue.find(profile => profile.doc_type === task.doc_type)?.fields.map(field => [field.key, field.label]))
+  if (task.doc_type === 'TABLE') return [...new Set((task.export_blockers ?? []).map(blocker => {
+    if (blocker.code === 'INCOMPLETE_OUTPUT') return '识别不完整，需补正或确认'
+    if (blocker.code === 'INVALID_TABLE') return '表格结构需修正'
+    if (blocker.field === 'tables[0].title') return '表格标题缺失或不确定'
+    if (blocker.field === 'tables[0].header_rows') return '表头行数不确定'
+    return '未获得可导出的表格'
+  }))]
   const keys = [...new Set((task.export_blockers ?? []).filter(blocker => blocker.code === 'MISSING').map(blocker => blocker.field))]
   return keys.map(key => {
     if (key === 'generic.full_text') return '正文'
@@ -196,6 +207,7 @@ function summaryValid(value: unknown): boolean {
 function fieldValid(value: unknown): boolean { return isRecord(value) && typeof value.key === 'string' && typeof value.label === 'string' && (value.value === null || ['string', 'number', 'boolean'].includes(typeof value.value)) && confidenceValid(value) && typeof value.need_review === 'boolean' && issuesValid(value.review_issues) && (value.source === undefined || sourceValid(value.source)) && optionalSources(value.sources) }
 function itemValid(value: unknown): boolean { return isRecord(value) && typeof value.item_id === 'string' && typeof value.name === 'string' && typeof value.result_raw === 'string' && ['NORMAL', 'HIGH', 'LOW', 'ABNORMAL', 'POSITIVE', 'UNKNOWN'].includes(String(value.abnormal_flag)) && ['report_marker', 'report_grade', 'reference_comparison', 'unknown'].includes(String(value.abnormal_basis)) && (value.abnormal_exclusion_reason == null || value.abnormal_exclusion_reason === 'HEIGHT_WEIGHT' || value.abnormal_exclusion_reason === 'SECTION_SUMMARY') && confidenceValid(value) && typeof value.need_review === 'boolean' && issuesValid(value.review_issues) && (value.source === undefined || sourceValid(value.source)) && optionalString(value.reported_abnormal_marker) && optionalString(value.risk_grade) && optionalString(value.diagnosis) && optionalSources(value.diagnosis_sources) && optionalNumber(value.value_num) && optionalNumber(value.ref_low) && optionalNumber(value.ref_high) && optionalString(value.deviation) }
 export function parseResult(value: unknown): TaskResult {
+  if (isRecord(value) && value.doc_type === 'TABLE') requireValue(validTableResponse(value))
   requireValue(isRecord(value) && uuid(value.task_id) && uuid(value.run_id) && integer(value.result_revision) && typeof value.doc_type === 'string' && typeof value.status === 'string' && Object.hasOwn(taskLabels, value.status) && issuesValid(value.review_issues))
   requireValue(exportEligibilityValid(value))
   requireValue(value.fields === undefined || (Array.isArray(value.fields) && value.fields.every(fieldValid)))
@@ -203,6 +215,17 @@ export function parseResult(value: unknown): TaskResult {
   for (const key of ['generic', 'reviewed_generic']) {
     const generic = value[key]
     requireValue(generic === undefined || (isRecord(generic) && typeof generic.full_text === 'string' && Array.isArray(generic.key_values) && generic.key_values.every(pair => isRecord(pair) && typeof pair.key === 'string' && (pair.value === null || typeof pair.value === 'string'))))
+    if (isRecord(generic)) {
+      const pairs=generic.key_values as Record<string,unknown>[]
+      requireValue(pairs.every(pair=>(pair.pair_id===undefined || uuid(pair.pair_id)) &&
+        (pair.source_pair_id===undefined || uuid(pair.source_pair_id)) &&
+        (pair.source===undefined || sourceValid(pair.source))))
+      requireValue(generic.blocks===undefined || Array.isArray(generic.blocks) && generic.blocks.every(block=>isRecord(block) &&
+        typeof block.text==='string' && integer(block.page,1) && optionalString(block.raw_text) && (block.source===undefined || sourceValid(block.source))))
+      requireValue(generic.tables===undefined || Array.isArray(generic.tables) && generic.tables.every(table=>isRecord(table) &&
+        sourceValid(table.source) && Array.isArray(table.rows) && table.rows.length>0 && table.rows.length<=1000 &&
+        table.rows.every(row=>Array.isArray(row) && row.length>0 && row.length<=200 && row.every(cell=>typeof cell==='string')) && Array.isArray(table.merges)))
+    }
   }
   requireValue(value.basic_info === undefined || (isRecord(value.basic_info) && Object.values(value.basic_info).every(fieldValid)))
   requireValue(value.items === undefined || (Array.isArray(value.items) && value.items.every(itemValid)))

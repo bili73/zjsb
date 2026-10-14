@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: 证件关键信息提取系统 API
-  version: 1.22.3
+  version: 1.24.0
   description: |
     内部证件信息提取系统 API 契约（SPEC v1.28）。
     批次按不可变上传账号ID隔离：管理员查看全部，operator/viewer仅能访问自己的批次和所属任务。列表先过滤归属再计算总数和分页，越权ID与不存在ID统一404；结果、原图、复核、取消、重跑、完整字段及导出同样校验。混合账号导出整次拒绝，不输出部分结果。删除批次仍仅管理员可操作。
@@ -484,7 +484,7 @@ paths:
                 file_types:
                   type: string
                   maxLength: 4096
-                  description: JSON数组字符串，按files顺序为每份指定一种DocTypeEnum；长度必须相同，不能同时传doc_type_hint。创建人员材料包，无需预填person_name，识别后提供姓名建议。不按文件名绑定，重名文件不会互相覆盖。先校验全部文件，再在一个事务内提交。
+                  description: JSON数组字符串，按files顺序为每份指定一种DocTypeEnum（TABLE除外，表格须独立入口）；长度必须相同，不能同时传doc_type_hint。创建人员材料包，无需预填person_name，识别后提供姓名建议。不按文件名绑定，重名文件不会互相覆盖。先校验全部文件，再在一个事务内提交。
                 person_name:
                   type: string
                   minLength: 1
@@ -662,7 +662,7 @@ paths:
                 file_types:
                   type: string
                   maxLength: 4096
-                  description: JSON数组字符串，按files顺序指定每份材料类型；长度须相同。与doc_type_hint二选一。人员归属继承现有材料包。
+                  description: JSON数组字符串，按files顺序指定每份材料类型（TABLE除外）；长度须相同。与doc_type_hint二选一。人员归属继承现有材料包。
                 abnormal_only:
                   type: boolean
                   default: false
@@ -1285,8 +1285,14 @@ paths:
       responses:
         '404': {$ref: '#/components/responses/NotFound'}
         '200':
-          description: 整个选择的XLSX，标识符按文本单元格且禁用公式执行。
+          description: 业务材料为XLSX；TABLE单任务为标题命名XLSX，多任务为ZIP；不能混合TABLE与其他类型。表格须先保存有效标题、表头和矩阵；不完整结果须明确确认。全部内容按文本写入。
+          headers:
+            Content-Disposition:
+              schema: {type: string}
+              description: UTF-8 filename*；单表使用有效标题（人工版本优先，否则唯一识别候选），多表为ZIP。完整表格无需先保存，修改后须保存；缺标题/表头或结构不完整仍阻止整次导出。
           content:
+            application/zip:
+              schema: {type: string, format: binary}
             application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
               schema:
                 type: string
@@ -1382,7 +1388,11 @@ components:
       additionalProperties: false
       required: [doc_type, required_fields, expected_revision]
       properties:
-        doc_type: {$ref: '#/components/schemas/DocTypeEnum'}
+        doc_type:
+          allOf:
+          - {$ref: '#/components/schemas/DocTypeEnum'}
+          - not: {enum: [TABLE]}
+          description: 照片表格使用独立标题/表头确认规则，不支持固定必填字段设置。
         required_fields:
           type: array
           nullable: true
@@ -1526,6 +1536,7 @@ components:
       - XUEXIN_DIPLOMA_TABLE
       - GENERIC
       - PASSPORT
+      - TABLE
 
     TaskStatus:
       type: string
@@ -2414,6 +2425,8 @@ components:
       required: [text, page, confidence, confidence_method]
       properties:
         text: {type: string, description: 鉴权后完整返回的业务全文片段，不含CVV}
+        raw_text: {type: string, description: 可选原始OCR或PDF文字，结构标记保持原样，仅作为文本显示}
+        source: {$ref: '#/components/schemas/FieldSource'}
         page: {type: integer, minimum: 1, description: '当前run的pages[].page_index，定位多页通用识别文本'}
         bbox:
           type: array
@@ -2517,10 +2530,86 @@ components:
             type: object
             properties:
               key: {type: string}
-              value: {type: string}
+              value: {type: string, nullable: true}
+              pair_id: {type: string, format: uuid, description: 原始键值的稳定来源标识，同名字段不合并}
+              source: {$ref: '#/components/schemas/FieldSource'}
+              basis: {type: string, enum: [label, aligned_label, table_cells, header_value]}
               confidence: {$ref: '#/components/schemas/Confidence'}
               confidence_method: {$ref: '#/components/schemas/ConfidenceMethod'}
         full_text: {type: string}
+        extraction_notes: {type: array, items: {type: string}}
+        tables:
+          type: array
+          description: 保留的原始表格，不确定键值关系时不强制配对；完整矩阵文字同时保留于正文
+          items:
+            type: object
+            required: [rows, merges, source]
+            properties:
+              rows: {type: array, maxItems: 1000, items: {type: array, maxItems: 200, items: {type: string}}}
+              merges: {type: array, items: {$ref: '#/components/schemas/TableMerge'}}
+              source: {$ref: '#/components/schemas/FieldSource'}
+
+    TableMerge:
+      type: object
+      additionalProperties: false
+      required: [row, column, rowspan, colspan]
+      properties:
+        row: {type: integer, minimum: 0, maximum: 999}
+        column: {type: integer, minimum: 0, maximum: 199}
+        rowspan: {type: integer, minimum: 1, maximum: 1000}
+        colspan: {type: integer, minimum: 1, maximum: 200}
+    PhotoTableReview:
+      type: object
+      additionalProperties: false
+      required: [table_id, title, header_rows, rows, merges, partial_acknowledged]
+      description: 仅修改当前任务已存在的table_id。矩阵最多10000格、总文本100万字符；合并不可越界/重叠/覆盖非空格。原始来源与初始识别不可由客户端改写。title或header_rows未确认时可保存草稿，但不能导出。
+      properties: &table_review_properties
+        table_id: {type: string, format: uuid}
+        title: {type: string, maxLength: 200}
+        header_rows: {type: integer, minimum: 0, maximum: 1000, nullable: true, description: 从首行起的表头行数，0表示无表头，null表示待确认}
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            type: array
+            minItems: 1
+            maxItems: 200
+            items: {type: string, maxLength: 32767}
+        merges:
+          type: array
+          maxItems: 10000
+          items: {$ref: '#/components/schemas/TableMerge'}
+        partial_acknowledged: {type: boolean, description: 对不完整初始输出明确确认人工已补正或仅导出所保留部分}
+    PhotoTable:
+      type: object
+      required: [table_id, title, header_rows, rows, merges, partial_acknowledged, source, candidates, title_candidates, outside_text, quality_warnings, incomplete, confidence]
+      properties:
+        <<: *table_review_properties
+        header_suggestion: {type: integer, nullable: true, minimum: 0, maximum: 1000, description: 有依据的表头建议行数，0表示无表头，null表示无法可靠判断；不是已保存审核值}
+        header_suggestion_source: {type: string, nullable: true, enum: [model_tags, structure, data_rows, null], description: 可选建议依据。首次草稿及无人工版本的导出只自动采用带已知来源且结构完整的建议；旧结果缺少此属性不自动采用，已保存header_rows包括0/null优先}
+        source: {$ref: '#/components/schemas/FieldSource'}
+        candidates:
+          type: array
+          items:
+            type: object
+            properties:
+              bbox: {type: array, minItems: 4, maxItems: 4, items: {type: number, minimum: 0, maximum: 1}}
+        title_candidates:
+          type: array
+          items: {$ref: '#/components/schemas/TableSnippet'}
+        outside_text:
+          type: array
+          items: {$ref: '#/components/schemas/TableSnippet'}
+        quality_warnings: {type: array, items: {type: string}}
+        incomplete: {type: boolean}
+        confidence: {type: number, nullable: true, enum: [null]}
+    TableSnippet:
+      type: object
+      required: [text, box]
+      properties:
+        text: {type: string}
+        box: {type: array, minItems: 4, maxItems: 4, items: {type: number}, description: 校正页像素坐标；仅标题/表外文本候选，不自动推断业务归属}
 
     TaskResult:
       type: object
@@ -2556,7 +2645,20 @@ components:
             - XUEXIN_DIPLOMA_TABLE
             - GENERIC
             - PASSPORT
+      - required: [tables]
+        properties:
+          doc_type: {type: string, enum: [TABLE]}
       properties:
+        tables:
+          type: array
+          maxItems: 1
+          items: {$ref: '#/components/schemas/PhotoTable'}
+        reviewed_tables:
+          description: 人工保存版本；存在时完全优先。缺省时可直接导出完整的初始表格及可靠标题/表头建议，不写人工审核或改变状态/版本。
+          type: array
+          minItems: 1
+          maxItems: 1
+          items: {$ref: '#/components/schemas/PhotoTableReview'}
         required_fields_revision: {type: integer, minimum: 0, description: 本次投影所用共享设置版本；不改变result_revision}
         required_field_keys:
           type: array
@@ -2665,6 +2767,11 @@ components:
       - run_id
       - expected_revision
       properties:
+        tables:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items: {$ref: '#/components/schemas/PhotoTableReview'}
         run_id:
           type: string
           format: uuid
@@ -3190,6 +3297,7 @@ components:
             - key
             - value
             properties:
+              source_pair_id: {type: string, format: uuid, description: 可选原始键值来源ID，必须属于当前run；不允许提交任意来源坐标}
               key:
                 type: string
                 minLength: 1

@@ -61,3 +61,7 @@ The [extension service activation](../../../../output/other-document-upright-act
 ## Consequences
 
 Orientation scores are uncalibrated and small-angle estimates can be unreliable on sparse or decorative pages. Rotation resampling can reduce fine-detail quality even when geometric correction is correct. Keep right-angle rotations lossless, deskew conservative, and original inputs recoverable. Windows measurements do not qualify Mac performance.
+
+## Generic form extension (2026-10-14)
+
+[Adaptive generic forms](../../implemented/feature/2026-10-14-adaptive-generic-forms.md) extends the existing implementation: GENERIC uses the Paddle document lane, reuses CPU upright/geometry, and retains optional source-bound dynamic pairs. Existing document rules, one request per model, human-result precedence and required-value export gates remain applicable.

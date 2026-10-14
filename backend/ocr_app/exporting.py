@@ -26,6 +26,9 @@ def required_export_blockers(result, required_overrides=None):
     if not result:
         return [dict(field='task', code='MISSING')]
     kind = result.get('doc_type')
+    if kind == 'TABLE':
+        from .table_recognition import table_blockers
+        return table_blockers(result)
     if kind not in SUPPORTED:
         return [dict(field='doc_type', code='MISSING')]
     values = _field_values(result)
@@ -209,20 +212,21 @@ def workbook_bytes(results, packages=()):
             for column, (cell, width) in enumerate(zip(row, widths),1):
                 cell.alignment = Alignment(vertical='center' if index==1 or medical else 'top', wrap_text=True,
                     horizontal='center' if medical and (index==1 or column<11 or sheet.cell(1,column).value=='体检项目数量') else 'left')
-                cell.font = Font(name='Microsoft YaHei', size=11, bold=index == 1, color='FFFFFF' if index == 1 else '243746')
+                size = 12
+                cell.font = Font(name='Microsoft YaHei', size=size, bold=index == 1, color='FFFFFF' if index == 1 else '243746')
                 color = ('FF6C0D' if 11<=column<=16 else '4472C4') if medical else 'EF760E'
-                cell.fill = PatternFill('solid', fgColor=color if index == 1 else 'EEF4F8' if index % 2 == 0 else 'FFFFFF')
+                cell.fill = PatternFill('solid', fgColor=color if index == 1 else 'FFFFFF')
                 # Estimate visual line width, accounting for wide Chinese glyphs.
                 text_lines = str(cell.value or '').split('\n')
-                visual = sum(max(1, ceil(sum(2 if ord(c) > 255 else 1 for c in line) / max(1, width - 2))) for line in text_lines)
+                visual = sum(max(1, ceil(sum(2 if ord(c) > 255 else 1 for c in line) * size / 11 / max(1, width - 2))) for line in text_lines)
                 lines = max(lines, visual)
-            sheet.row_dimensions[index].height = min(409, max(30, 17 * lines + 8))
+            sheet.row_dimensions[index].height = min(409, max(32, 18 * lines + 10))
     target = BytesIO()
     book.save(target)
     return target.getvalue()
 
 
-def export_results(store, request, actor, role, *, user=None, authorize=None):
+def export_results(store, request, actor, role, *, user=None, authorize=None, with_metadata=False):
     from sqlalchemy import text
     from .review import optional_reason, invalid
     if not isinstance(request, dict) or set(request) - {'batch_id', 'task_ids', 'versions', 'masked', 'reason', 'format'}:
@@ -277,14 +281,21 @@ def export_results(store, request, actor, role, *, user=None, authorize=None):
                     person_name=store.storage.unpack(batch['person_name_enc']), results=[]))
                 package['results'].append(snapshot)
         if blocked:
-            raise TaskError('EXPORT_BLOCKED', '所选任务仍缺必填值，未导出任何任务', 409, {'tasks': blocked})
+            raise TaskError('EXPORT_BLOCKED', '所选任务缺少必填值，或表格的标题、表头、结构及完整性需处理，未导出任何任务', 409, {'tasks': blocked})
+        table_export = any(snapshot['doc_type'] == 'TABLE' for snapshot in snapshots)
+        if table_export and (packages or any(snapshot['doc_type'] != 'TABLE' for snapshot in snapshots)):
+            invalid('表格请单独导出，不能与证件或人员材料包混合')
         for row in rows:
             store._audit(connection, 'export_full', actor, row,
                          required_fields_revision=policy['revision'],
                          result_revision=row['revision'], legacy_masked=is_masked)
             store._access_history(connection, row, actor, 'export_full', request.get('reason'), legacy_masked=is_masked)
-    data = workbook_bytes(snapshots, packages.values())
+    if table_export:
+        from .table_export import table_export_bundle
+        data, media, filename = table_export_bundle(snapshots)
+    else:
+        data, media, filename = workbook_bytes(snapshots, packages.values()), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'reviewed-results.xlsx'
     if authorize:
         with store.engine.connect() as connection:
             authorize(connection)
-    return data
+    return (data, media, filename) if with_metadata else data

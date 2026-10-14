@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-13T07:08:41.517Z",
+  "generatedAt": "2026-10-14T01:59:06.331Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,14 +12,14 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 77,
+    "activeNotes": 83,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 479,
+    "relations": 507,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 73,
-      "rejected": 2
+      "implemented": 78,
+      "rejected": 3
     },
     "staleNotes": []
   },
@@ -60,7 +60,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep current recognition optimization independent of the host backend. When the Mac is available, qualify its native Apple GPU route using the existing frozen evidence and separate measurements. The official GLM MLX guide and Paddle Apple S",
@@ -147,7 +147,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Use a single shared HR workbench with one or two named accounts. Keep username/password login and server-side sessions. Create or reset accounts through a deployment command; omit public registration, email recovery and a user-management ap",
@@ -328,6 +328,7 @@
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
         "implemented/testing/2026-09-30-dual-certificate-extraction.md",
         "implemented/testing/2026-09-30-whole-medical-corpus.md"
       ],
@@ -335,7 +336,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.4,
+        "monthsSinceVerify": 0.5,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "PaddlePaddle/PaddleOCR-VL-1.6 is installed at pinned revision c5630abae1d940eafe0697512a0325494b02ab42 in models/paddleocr-vl-1.6 and a separate .venvs/paddleocr-vl-1.6 environment with native Transformers 5.17.0 and Torch 2.10.0+cu128. Ori",
@@ -404,7 +405,8 @@
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md",
-        "proposed/architecture/2026-10-08-mac-studio-inference-service.md"
+        "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
       ],
       "citedBy": [
         "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
@@ -415,6 +417,8 @@
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
         "rejected/feature/2026-10-09-certificate-field-localization.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md"
       ],
@@ -426,7 +430,7 @@
         "rule": "最近复核 2026-10-08"
       },
       "summary": "When both models complete serial startup successfully, use two bounded document lanes: one certificate lane (DIPLOMA and DEGREE_CERT) and one medical lane, each with at most one supervised CPU task process. Single-resident or startup-degrad",
-      "bodySha256": "1a73b27d9329d96c",
+      "bodySha256": "c5364c130961db4f",
       "lines": {
         "title": 1,
         "status": 3,
@@ -460,6 +464,10 @@
           {
             "title": "Consequences",
             "line": 48
+          },
+          {
+            "title": "Generic form extension (2026-10-14)",
+            "line": 52
           }
         ]
       },
@@ -519,7 +527,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.4,
+        "monthsSinceVerify": 0.5,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The implementation restores native medical structure and repairs the confirmed certificate mapping defects under the user's approved scope. Both deployed recognition models, the production default, serial GPU ownership, confidence semantics",
@@ -594,13 +602,14 @@
         "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
         "implemented/testing/2026-09-30-whole-medical-corpus.md"
       ],
       "lastVerified": "2026-09-30",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.4,
+        "monthsSinceVerify": 0.5,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The small standard-library OTSL-to-HTML decoder runs before existing medical column mapping. It follows official PaddleX token semantics, escapes cell text, preserves horizontal and vertical spans, and never uses field references to repair ",
@@ -930,7 +939,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep existing 生化检验报告单 source attribution and its liver-name/abbreviation whitelist; never treat every biochemical or hepatitis measurement as liver function. When liver_function has no abnormal summary or explicit conclusion, serialize the ",
@@ -1119,7 +1128,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Automatically populate liver_function only with confirmed abnormal source-backed measurements attributed to the liver group. Keep actual abnormal names, results, units and diagnoses; ignore normal/unknown measurements and normal or unclassi",
@@ -1207,7 +1216,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "When no explicit institution value or conflict already exists, accept the complete observed 普潓/普惠年华健康体检中心 branch line only on page one and within the observed lower-right personal-information band (normalized x-start at least .35, y-start .",
@@ -1299,7 +1308,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Summarize all six groups from measured rows, independently of a printed conclusion. Keep confirmed abnormal results and conflicts ahead of normal fallback. Allow a source-backed, nonempty A-grade UNKNOWN row as report-level normal evidence,",
@@ -1380,7 +1389,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "For blood_routine, urine_routine, ecg, dr_imaging and abdominal_ultrasound, derive 未见异常 when the observed group contains at least one eligible measured row, every group row has a real source and nonempty result, every row is NORMAL with a r",
@@ -1552,7 +1561,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Extend native table recovery with one bounded adjacent-page context for an observed split header: a qualified medical header at the prior page bottom ends in 风险, and the aligned next-page top header contains only 等级 in its last cell. Requir",
@@ -1636,7 +1645,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Initialize the calendar with today's Shanghai civil date and immediately filter the server-side batch list to that day. Day/week/month select the period containing the chosen anchor, so each view shows only that selected period. Clearing th",
@@ -2137,7 +2146,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Retain the existing evidence-bound extraction. Split a closed gender token only when followed by an explicit demographic label present in the current profile. Preserve the original source and genuine disagreements. Do not infer demographics",
@@ -2220,7 +2229,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD uses a dedicated classifier path, selected by an optional internal doc_type keyword on prepare_image. Bounded CPU OpenCV contour analysis operates on a maximum1000-pixel thumbnail: blurred gray dark Otsu, saturation Otsu and Canny",
@@ -2296,7 +2305,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Share school whitespace normalization and signature boundaries between diploma and degree extraction. In degrees, an unlabelled institution immediately adjacent to a signing title within the same text block has the same authority as an expl",
@@ -2374,7 +2383,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Lock the complete upload/confirmation operation against reentry, capture the client, target/version, mode, files and types before asking the attribution question, and cancel its continuation after unmount, abort, identity change or selectio",
@@ -2452,7 +2461,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "The user approves 已识别明细未见异常 only for normal summaries derived from measured rows without a printed conclusion. Explicit source conclusions and manual values keep their original meaning. Read/export projections apply the rule without rewriti",
@@ -2552,7 +2561,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Require an authorization callback for save_configuration and execute it inside BEGIN IMMEDIATE before reading or changing policy, including no-op saves. The HTTP route supplies the existing live administrator-session check; trusted internal",
@@ -3058,7 +3067,8 @@
         "implemented/feature/2026-10-12-certificate-image-upright.md",
         "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
-        "implemented/bug-fix/2026-10-12-adjacent-document-field-boundaries.md"
+        "implemented/bug-fix/2026-10-12-adjacent-document-field-boundaries.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-adjacent-document-field-boundaries.md",
@@ -3072,17 +3082,18 @@
         "implemented/feature/2026-10-10-configurable-required-fields.md",
         "implemented/feature/2026-10-12-certificate-image-upright.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
         "implemented/simplification/2026-10-08-required-fields-only-export.md"
       ],
       "lastVerified": "2026-10-12",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "A backend document catalogue owns field names, editability, conditional applicability and required fields. GET /doc-types supplies that catalogue to the UI. Pure versioned validation distinguishes FORMAT, CHECKSUM and OFFICIAL outcomes; unk",
-      "bodySha256": "d4450b8191782569",
+      "bodySha256": "3ba802ff647543d4",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3132,6 +3143,10 @@
           {
             "title": "Current input-policy refinement",
             "line": 61
+          },
+          {
+            "title": "Generic form extension (2026-10-14)",
+            "line": 73
           }
         ]
       },
@@ -3446,7 +3461,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Review binds task_id, run_id and expected_revision in a short atomic transaction. Patches accept only editable business fields, current item/finding/member IDs and explicit acceptance of currently acceptable issues. Keep raw OCR/source and ",
@@ -3749,7 +3764,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Provision HRSSC as admin using hidden terminal input and the existing Argon2id account store. Account names remain case-insensitive. Change the creation/reset minimum to eight characters; preserve the 128-character maximum and login throttl",
@@ -3837,7 +3852,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD accepts decoded single photographs, including full front faces, and cropped rows. Upload does not call a recognizer; encrypted source persistence and independent per-file tasks match the other document families. PDF remains unsupp",
@@ -3933,7 +3948,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Default to day-grouped all-date browsing. Day/week/month controls change grouping, and a corresponding date/week/month picker selects a server-side creation-date range; clearing it restores all dates. Use Shanghai UTC+8 civil dates and Mond",
@@ -4036,7 +4051,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Replace the technical workbook with business worksheets grouped by material type. A document row contains its latest saved field values in profile order with Chinese labels, plus a readable source filename to distinguish repeated names/mate",
@@ -4122,7 +4137,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "All three workbench download actions use Chinese material labels and a Shanghai UTC+8 export-start timestamp: 体检报告_20261009_151530.xlsx. Combine distinct types with + for a mixed selection; unknown or missing types use 识别结果 without copying ",
@@ -4225,7 +4240,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "The user approves the field/extraction/review/export plan and explicitly defines the project count as the count of the body 本次体检项目意义 catalogue. Keep that editable catalogue as supporting evidence. Derive a read-only integer exam_project_cou",
@@ -4337,7 +4352,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Add an additive SQLite migration for named users, hashed opaque sessions and login throttling. Deployment operators create/change/disable accounts with a masked-password CLI; no default password, registration or browser account administrati",
@@ -4512,7 +4527,8 @@
         "implemented/feature/2026-10-10-account-lifecycle-management.md",
         "implemented/feature/2026-10-10-web-user-manual.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
-        "implemented/feature/2026-10-12-thirty-day-single-session.md"
+        "implemented/feature/2026-10-12-thirty-day-single-session.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md"
       ],
       "lastVerified": "2026-10-10",
       "archivedDate": null,
@@ -4983,7 +4999,8 @@
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-09-bank-auto-recognition.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
-        "rejected/feature/2026-10-09-certificate-field-localization.md"
+        "rejected/feature/2026-10-09-certificate-field-localization.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
@@ -4991,17 +5008,19 @@
         "implemented/bug-fix/2026-10-12-degree-school-and-award-mapping.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
-        "implemented/feature/2026-10-09-bank-auto-recognition.md"
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
       ],
       "lastVerified": "2026-10-12",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "The CPU helper uses the Apache-2.0 PaddlePaddle PP-LCNet_x1_0_doc_ori official ONNX export, pinned to revision 7330ab7039123e46af2dc03154b9969aa412c61d and SHA256 af9a0a4f317ff0709ce752067807f819cb15d883f8ecad89f28df1c6ee2d9c92. Each view f",
-      "bodySha256": "4cf17c72dcffbdd4",
+      "bodySha256": "dbf67d2ce28cd11e",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5035,6 +5054,10 @@
           {
             "title": "Consequences",
             "line": 61
+          },
+          {
+            "title": "Generic form extension (2026-10-14)",
+            "line": 65
           }
         ]
       },
@@ -5072,7 +5095,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Treat the back as an optional material. Preserve independent ID_CARD_FRONT tasks and their own required fields; no back upload is needed for completion or export. Keep missing_back as a compatible presence state but display 国徽面未上传（可选，可仅识别人像",
@@ -5250,7 +5273,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Person-package exports use 人员信息总表 instead of 人员材料总览 as their first sheet. Personnel name and naming status come first, followed by every current profile field of each selected material type, and then package source/count/candidate metadata.",
@@ -5451,7 +5474,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Offer explicit 按人员整理 and 按类型批量 modes; the chosen primary workflow is the person mode, while preserving existing type-batch uploads. A person enters the name once, chooses mixed files together, reviews a list containing thumbnail/file name a",
@@ -5541,7 +5564,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "New successful logins issue a random token with thirty-day absolute validity (30243600 seconds), with matching Cookie Max-Age. Polling/restoration does not extend expiry. Keep hashed server-side tokens, HttpOnly/SameSite/CSRF, secure HTTPS ",
@@ -5618,6 +5641,7 @@
         "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
         "implemented/feature/2026-10-12-person-package-single-submit.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
         "implemented/feature/2026-10-13-source-region-ocr-copy.md"
       ],
       "lastVerified": "2026-10-13",
@@ -5666,6 +5690,121 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-13-field-region-ocr.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "path": ".agents/notes/implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "title": "Replan photo-table conversion from the verified 1.22.3 baseline",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-13",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "tests",
+        "frontend/tests",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "rejected/feature/2026-10-13-photo-table-to-excel.md",
+        "implemented/feature/2026-10-14-auto-table-header-rows.md",
+        "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+        "implemented/feature/2026-10-12-certificate-image-upright.md",
+        "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
+        "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
+        "implemented/feature/2026-10-13-field-region-ocr.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/feature/2026-10-14-auto-table-header-rows.md",
+        "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+        "rejected/feature/2026-10-13-photo-table-to-excel.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "1. 先证明真实样本可以恢复，再接入业务",
+      "bodySha256": "ff79b468d9a7b90c",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Verified facts",
+            "line": 13
+          },
+          {
+            "title": "Goal and acceptance",
+            "line": 23
+          },
+          {
+            "title": "Assumptions",
+            "line": 29
+          },
+          {
+            "title": "Decision",
+            "line": 39
+          },
+          {
+            "title": "Implementation boundaries",
+            "line": 93
+          },
+          {
+            "title": "Decision audit",
+            "line": 99
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 108
+          },
+          {
+            "title": "Verified behavior",
+            "line": 118
+          },
+          {
+            "title": "Consequences",
+            "line": 127
+          },
+          {
+            "title": "Qualification checkpoint",
+            "line": 131
+          },
+          {
+            "title": "Validation",
+            "line": 137
+          },
+          {
+            "title": "Generic form extension (2026-10-14)",
+            "line": 145
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-13-photo-table-to-excel-replan.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/feature/2026-10-13-region-date-copy-suggestions.md",
@@ -5894,6 +6033,232 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-13-source-region-ocr-copy.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-adaptive-generic-forms.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-adaptive-generic-forms.md",
+      "title": "Extract source-bound dynamic form pairs through the existing Paddle pipeline",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "tests",
+        "frontend/tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "README.md",
+        "frontend/public/help/index.html"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-12-certificate-image-upright.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-12-certificate-image-upright.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "Retain reliable native PDF evidence, otherwise use the current Paddle model, with one GLM fallback per region and a 40-second generation soft budget inside the existing 180-second task budget. GENERIC shares the Paddle document lane with ME",
+      "bodySha256": "b69d47df814db796",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 26
+          },
+          {
+            "title": "Verified scope",
+            "line": 33
+          },
+          {
+            "title": "Consequences",
+            "line": 37
+          },
+          {
+            "title": "Verification",
+            "line": 41
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-adaptive-generic-forms.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-14-auto-table-header-rows.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-auto-table-header-rows.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-auto-table-header-rows.md",
+      "title": "Populate table header drafts only from supported boundaries",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "backend/ocr_app/table_recognition.py",
+        "backend/ocr_app/photo_table_pipeline.py",
+        "frontend/src/table-review.ts",
+        "frontend/src/components/TableReview.vue",
+        "tests/test_photo_table_recognition.py",
+        "tests/test_photo_table_workflow.py",
+        "frontend/tests/table-review.test.ts",
+        "openapi.yaml",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help/index.html"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "rejected/feature/2026-10-13-photo-table-to-excel.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/simplification/2026-10-14-table-export-without-confirmation.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "后续免首次保存导出让完整且有依据的建议直接参与导出，替代本篇“必须核对保存”的交互门禁；推断、保留原始值和人工优先约束继续有效。",
+      "bodySha256": "e44f8a900d6dd117",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Verification",
+            "line": 31
+          },
+          {
+            "title": "Consequences",
+            "line": 43
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-auto-table-header-rows.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-14-workbench-entry-customization.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-workbench-entry-customization.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-workbench-entry-customization.md",
+      "title": "Customizable workbench entry layout",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "frontend/src/components/UploadPanel.vue",
+        "frontend/src/workbenchEntries.ts",
+        "frontend/tests/workbench-entries.test.ts"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "Split the type-card grid into an ordered visible set plus a tucked \"更多类型\" collapsible section whose cards behave identically. A 自定义入口 dialog manages both panes: move up/down (order), 移出/放回 (visibility), capped at 12 visible entries, with 恢复",
+      "bodySha256": "c0e6223fedfd9b08",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 15
+          },
+          {
+            "title": "Verification",
+            "line": 21
+          },
+          {
+            "title": "Consequences",
+            "line": 25
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-workbench-entry-customization.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/process/2026-09-29-dde-project-workflow.md",
       "path": ".agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
       "anchor": "// Note: .agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
@@ -5993,7 +6358,8 @@
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
         "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
         "implemented/feature/2026-10-10-configurable-required-fields.md",
-        "implemented/feature/2026-10-09-medical-ledger-template.md"
+        "implemented/feature/2026-10-09-medical-ledger-template.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
@@ -6008,6 +6374,8 @@
         "implemented/feature/2026-10-10-configurable-required-fields.md",
         "implemented/feature/2026-10-12-person-package-full-field-table.md",
         "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
         "rejected/feature/2026-10-09-medical-threshold-review.md"
       ],
       "lastVerified": "2026-10-10",
@@ -6018,7 +6386,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Export current saved, unfiltered results when their business-required values are present. Resolve conditional top-level requirements through doc_profiles.profile(doc_type,current_values), include basic_info-compatible values, each household",
-      "bodySha256": "fa18891ad90b0e45",
+      "bodySha256": "3173208be0360838",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6056,6 +6424,10 @@
           {
             "title": "Verification",
             "line": 44
+          },
+          {
+            "title": "Generic form extension (2026-10-14)",
+            "line": 52
           }
         ]
       },
@@ -6143,6 +6515,87 @@
       "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-08-retire-temporary-frontend.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+      "path": ".agents/notes/implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+      "anchor": "// Note: .agents/notes/implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+      "title": "Export complete recognized tables without a mandatory review save",
+      "lifecycle": "implemented",
+      "class": "simplification",
+      "date": "2026-10-14",
+      "scope": [
+        "backend/ocr_app/table_recognition.py",
+        "backend/ocr_app/table_export.py",
+        "backend/ocr_app/exporting.py",
+        "frontend/src",
+        "frontend/tests",
+        "tests/test_photo_table_workflow.py",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "openapi.yaml",
+        "frontend/public/help/index.html",
+        "README.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-14-auto-table-header-rows.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "rejected/feature/2026-10-13-photo-table-to-excel.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-14-auto-table-header-rows.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "Use one server effective-table helper for eligibility and serialization. An existing reviewed_tables value is authoritative, including intentionally blank titles, null/zero headers and an unfinished draft. Otherwise clone the original matri",
+      "bodySha256": "5f78b157fad46278",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 24
+          },
+          {
+            "title": "Verification",
+            "line": 30
+          },
+          {
+            "title": "Consequences",
+            "line": 42
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-14-table-export-without-confirmation.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
       "path": ".agents/notes/implemented/testing/2026-09-29-automatic-layout-evaluation.md",
       "anchor": "// Note: .agents/notes/implemented/testing/2026-09-29-automatic-layout-evaluation.md",
@@ -6166,6 +6619,7 @@
       "citedBy": [
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
         "implemented/process/2026-09-29-dde-project-workflow.md",
         "implemented/testing/2026-09-30-schema-extraction-benchmark.md",
         "rejected/feature/2026-10-09-certificate-field-localization.md"
@@ -6252,7 +6706,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.4,
+        "monthsSinceVerify": 0.5,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The isolated paired diagnostic uses four encrypted certificate inputs and frozen visual references from the valid schema v2 experiment, plus three existing front-side bank-card samples scored only on card_number. Bank references are visuall",
@@ -6330,7 +6784,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.4,
+        "monthsSinceVerify": 0.5,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The diagnostic freezes source images, SPEC field templates and provisional Agent visual references before model inference. Identical inputs run through text recognition plus the unchanged extractor and explicit English-key and Chinese-field",
@@ -6564,7 +7018,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Visually inspect original images before inference. Copy historical references into a new encrypted fixture and record study endpoints under the user's approved graduation semantics; preserve printed month precision. Add the three current or",
@@ -6651,7 +7105,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep GLM/Paddle as the business recognizers. Use pinned rapidocr-onnxruntime1.4.4 with its bundled PP-OCRv4 detector/recognizer and direction classifier as a CPU-only positioning helper. Independent line text is needed to match values relia",
@@ -6734,7 +7188,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep the current business Excel layout until the business team supplies its template, but add reference-threshold review and a separately saved human hiring-opinion field after the user approves this narrowed contract. Automated output is l",
@@ -6776,6 +7230,73 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/rejected/feature/2026-10-09-medical-threshold-review.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "rejected/feature/2026-10-13-photo-table-to-excel.md",
+      "path": ".agents/notes/rejected/feature/2026-10-13-photo-table-to-excel.md",
+      "anchor": "// Note: .agents/notes/rejected/feature/2026-10-13-photo-table-to-excel.md",
+      "title": "Withdraw the uncommitted photo-table implementation",
+      "lifecycle": "rejected",
+      "class": "feature",
+      "date": "2026-10-13",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "tests",
+        "frontend/tests",
+        "openapi.yaml",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-14-auto-table-header-rows.md",
+        "implemented/simplification/2026-10-14-table-export-without-confirmation.md"
+      ],
+      "lastVerified": "2026-10-13",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-13"
+      },
+      "summary": "被撤回的方案使用OpenCV候选框、Paddle结构识别和GLM备用，保留原始矩阵与人工矩阵；一张照片一个标题命名的XLSX，多张ZIP。其优点是复用了现有模型、版本校验和加密存储，较少引入依赖。",
+      "bodySha256": "29d5cda87f3d7333",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Proposal",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Consequences",
+            "line": 27
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/rejected/feature/2026-10-13-photo-table-to-excel.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "archived/feature/2026-10-08-temporary-recognition-workbench.md",
@@ -7038,6 +7559,11 @@
       "type": "cite",
       "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
       "to": "proposed/architecture/2026-10-08-mac-studio-inference-service.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
     },
     {
       "type": "cite",
@@ -7961,6 +8487,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
       "to": "implemented/feature/2026-10-09-web-password-sessions.md"
     },
@@ -8756,6 +9287,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-12-certificate-image-upright.md",
+      "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-12-optional-id-card-back.md",
       "to": "implemented/feature/2026-10-12-person-material-packages.md"
     },
@@ -8946,6 +9482,61 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "rejected/feature/2026-10-13-photo-table-to-excel.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/feature/2026-10-14-auto-table-header-rows.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/simplification/2026-10-14-table-export-without-confirmation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/feature/2026-10-12-certificate-image-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/feature/2026-10-10-account-owned-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/feature/2026-10-13-field-region-ocr.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-13-region-date-copy-suggestions.md",
       "to": "implemented/feature/2026-10-13-source-region-ocr-copy.md"
     },
@@ -8996,6 +9587,46 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+      "to": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+      "to": "implemented/feature/2026-10-12-certificate-image-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-auto-table-header-rows.md",
+      "to": "implemented/simplification/2026-10-14-table-export-without-confirmation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-auto-table-header-rows.md",
+      "to": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-auto-table-header-rows.md",
+      "to": "rejected/feature/2026-10-13-photo-table-to-excel.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/process/2026-09-29-dde-project-workflow.md",
       "to": "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
     },
@@ -9033,6 +9664,31 @@
       "type": "cite",
       "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
       "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+      "to": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+      "to": "implemented/feature/2026-10-14-auto-table-header-rows.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+      "to": "rejected/feature/2026-10-13-photo-table-to-excel.md"
     },
     {
       "type": "cite",
@@ -9218,6 +9874,11 @@
       "type": "cite",
       "from": "rejected/feature/2026-10-09-medical-threshold-review.md",
       "to": "implemented/feature/2026-10-09-medical-ledger-template.md"
+    },
+    {
+      "type": "cite",
+      "from": "rejected/feature/2026-10-13-photo-table-to-excel.md",
+      "to": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md"
     },
     {
       "type": "cite",

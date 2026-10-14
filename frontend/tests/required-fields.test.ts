@@ -11,6 +11,15 @@ const catalogue: DocProfile[] = [{ doc_type: 'DIPLOMA', label: '毕业证', fiel
 const missing = { status: 'NEED_REVIEW' as const, doc_type: 'DIPLOMA', export_ready: false,
   export_blockers: [{ field: 'school_name', code: 'MISSING' }, { field: 'graduate_date', code: 'MISSING' }] }
 
+test('tables show actual export requirements, including partial output and invalid grids', () => {
+  const table={...missing,doc_type:'TABLE',export_blockers:[{field:'tables[0].title',code:'MISSING'},
+    {field:'tables[0].header_rows',code:'MISSING'},{field:'tables[0]',code:'INCOMPLETE_OUTPUT'},
+    {field:'tables[0]',code:'INVALID_TABLE'}]}
+  assert.deepEqual(requiredFieldLabels(table,[]),['表格标题缺失或不确定','表头行数不确定','识别不完整，需补正或确认','表格结构需修正'])
+  assert.deepEqual(requiredFieldLabels({...table,export_blockers:[{field:'tables',code:'MISSING'}]},[]),['未获得可导出的表格'])
+  assert.equal(hasMissingRequiredFields({...table,export_ready:true,export_blockers:[]}),false)
+})
+
 test('missing markers use saved required blockers, not review state or optional metadata', () => {
   assert.equal(hasMissingRequiredFields(missing), true)
   assert.deepEqual(requiredFieldLabels(missing, catalogue), ['学校名称', '毕业日期'])

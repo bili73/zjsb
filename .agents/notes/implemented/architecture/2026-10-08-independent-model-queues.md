@@ -48,3 +48,7 @@ The [local lifecycle](2026-09-29-local-dual-model-lifecycle.md) is partly change
 ## Consequences
 
 Both models share the same GPU. Contention can increase latency, soft stops or OOM; individual serial scores and the earlier 156-second startup do not qualify this execution mode. Killing a stuck model request may disable that model for the current session; the other lane must remain usable. Native file parsing remains bounded by supervised process lifetime. Mac process supervision and remote-user access still require separate work.
+
+## Generic form extension (2026-10-14)
+
+[Adaptive generic forms](../../implemented/feature/2026-10-14-adaptive-generic-forms.md) extends the existing implementation: GENERIC uses the Paddle document lane, reuses CPU upright/geometry, and retains optional source-bound dynamic pairs. Existing document rules, one request per model, human-result precedence and required-value export gates remain applicable.

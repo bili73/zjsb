@@ -1,6 +1,8 @@
 import type { TaskResult, ReviewIssue, Task, Field, ReportSummary } from './business.ts'
 import { docTypes, isMedicalReviewItem } from './business.ts'
 import { formatTime } from './presentation.ts'
+import type { TableDraft } from './table-review.ts'
+import type { GenericDraft } from './generic-review.ts'
 export type AbsenceReason = 'NOT_ON_DOCUMENT' | 'NOT_APPLICABLE'
 export type Scalar = string | number | boolean | null
 export interface ReviewBody {
@@ -9,10 +11,11 @@ export interface ReviewBody {
   items?: Record<string, unknown>[]; added_items?: Record<string, unknown>[]; removed_item_ids?: string[];
   findings?: Record<string, unknown>[]; members?: { index: number; fields: Record<string, Scalar>; absence_reasons?: Record<string, AbsenceReason> }[];
   added_members?: { fields: Record<string, Scalar>; source_page: number }[]; removed_member_indexes?: number[]; added_member_indexes?: number[];
-  generic?: { full_text: string; key_values: { key: string; value: string | null }[] };
+  generic?: GenericDraft;
   coverage?: { pages: number[]; reason: string; regions?: { region_id: string; action: 'TRANSCRIBED' | 'NO_CONTENT'; item_ids?: string[]; field_keys?: string[]; added_item_indexes?: number[]; finding_ids?: string[]; member_indexes?: number[]; added_member_indexes?: number[]; generic?: boolean; reason: string }[] };
   report_summary?: { declared_count?: number | null; scope?: ReportSummary['scope']; title?: string; reason: string; source_page: number; added_findings?: Record<string, unknown>[]; removed_finding_ids?: string[] };
   note?: string;
+  tables?: TableDraft[];
 }
 export type ReviewDraft = Omit<ReviewBody, 'run_id' | 'expected_revision'>
 export const canAcceptIssue = (issue: ReviewIssue) => issue.can_accept === true && !['MISSING','CONFLICT','INCOMPLETE_OUTPUT','MULTI_CANDIDATES'].includes(issue.code)
@@ -77,7 +80,7 @@ export function buildReview(result: TaskResult, draft: ReviewDraft): ReviewBody 
 export function exportBlockReason(tasks: readonly Pick<Task, 'status' | 'export_ready'>[]): string | null {
   if (!tasks.length) return '请先选择需要导出的任务。'
   const missing = tasks.filter(t => t.export_ready === false).length
-  return missing ? `有 ${missing} 个任务尚不能导出：识别结果未生成或必填字段未填写完整。` : null
+  return missing ? `有 ${missing} 个任务尚不能导出：识别结果未生成、必填字段未填写完整，或表格的标题、表头、结构及完整性需处理。` : null
 }
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)

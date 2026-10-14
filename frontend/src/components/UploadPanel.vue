@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadUserFile } from 'element-plus'
-import { CreditCard, Files, FirstAidKit, Medal, Notebook, OfficeBuilding, Postcard, Reading, Stamp, UploadFilled, User } from '@element-plus/icons-vue'
+import { CreditCard, Files, FirstAidKit, Grid, Medal, Notebook, OfficeBuilding, Postcard, Reading, Stamp, UploadFilled, User } from '@element-plus/icons-vue'
 import { ApiFailure, isAbort } from '../api.ts'
 import { docTypes, sampleQualification, uploadLimits, validateUpload } from '../business.ts'
 import type { BusinessApi } from '../api.ts'
@@ -11,6 +11,7 @@ import type { Batch, DocProfile, Task, UploadDocType } from '../business.ts'
 import { errorMessages } from '../diagnostics.ts'
 import type { Monitor } from '../monitor.ts'
 import { createClassificationQueue } from '../packageUpload.ts'
+import { WORKBENCH_MAX_ENTRIES, loadWorkbenchLayout, saveWorkbenchLayout, splitEntries } from '../workbenchEntries.ts'
 
 const props = defineProps<{ monitor: Monitor; canWrite: boolean; api: BusinessApi | null; catalogue: DocProfile[]; targetBatch?: Batch }>()
 const emit = defineEmits<{
@@ -60,16 +61,17 @@ onBeforeUnmount(() => {
 })
 
 const typeMeta: Partial<Record<UploadDocType, { icon: Component; desc: string }>> = {
+  TABLE: { icon: Grid, desc: '照片自动摆正、定位表格，核对后导出 Excel。' },
   MEDICAL_REPORT: { icon: FirstAidKit, desc: '检测项目与报告清单分开核对。' },
   DIPLOMA: { icon: Reading, desc: '毕业证字段与来源核对。' }, DEGREE_CERT: { icon: Medal, desc: '学位级别与授予信息。' },
   BANK_CARD: { icon: CreditCard, desc: '整张照片自动识别，未读出卡号再单独裁剪或补录。' },
   ID_CARD_FRONT: { icon: Postcard, desc: '身份证人像面。' }, ID_CARD_BACK: { icon: Postcard, desc: '身份证国徽面及有效期。' },
   PASSPORT: { icon: Stamp, desc: '护照 TD3 资料页和机读区。' }, HOUSEHOLD_REGISTER: { icon: Notebook, desc: '首页与成员页。' },
-  BUSINESS_LICENSE: { icon: OfficeBuilding, desc: '按主体类型整理执照字段。' }, GENERIC: { icon: Files, desc: '通用全文与可编辑键值。' },
+  BUSINESS_LICENSE: { icon: OfficeBuilding, desc: '按主体类型整理执照字段。' }, GENERIC: { icon: Files, desc: '表单、申请单和登记资料的正文与动态键值。' },
   XUEXIN_DIPLOMA_TABLE: { icon: Reading, desc: '仅学历证书电子注册备案表。' },
 }
 const selectedFiles = computed<File[]>(() => fileList.value.flatMap(item => (item.raw instanceof File ? [item.raw] : [])))
-const invalidReason = computed(() => (selectedFiles.value.length ? validateUpload(selectedFiles.value) : null))
+const invalidReason = computed(() => !mixed.value && docType.value === 'TABLE' && selectedFiles.value.some(file => /\.pdf$/i.test(file.name) || file.type === 'application/pdf') ? '表格识别暂不接收PDF，请上传单张照片。' : (selectedFiles.value.length ? validateUpload(selectedFiles.value) : null))
 const entries = computed(() => fileList.value.filter(item => item.raw instanceof File && item.uid !== undefined))
 const unknownCount = computed(() => mixed.value ? entries.value.filter(item => !rows[item.uid!]?.type).length : 0)
 const hasMedical = computed(() => mixed.value ? entries.value.some(item => rows[item.uid!]?.type === 'MEDICAL_REPORT') : docType.value === 'MEDICAL_REPORT')
@@ -89,6 +91,98 @@ function manualType(uid: number, type: UploadDocType | '') {
   classifier.remove(uid)
   const row = rows[uid]; if (row) Object.assign(row, { type, state: '手动选择', reason: '以你选择的类型提交' })
 }
+
+// 工作台入口自定义：展示哪些类型、按什么顺序，保存在本机浏览器。自定义后新增类型默认收纳进「更多类型」。
+const customizeOpen = ref(false)
+const layout = ref<string[] | null>(loadWorkbenchLayout(typeof window === 'undefined' ? undefined : window.localStorage))
+const catalogueKeys = computed(() => props.catalogue.map(profile => profile.doc_type))
+const split = computed(() => splitEntries(catalogueKeys.value, layout.value))
+const visibleProfiles = computed(() => split.value.visible.map(key => props.catalogue.find(profile => profile.doc_type === key)!).filter(Boolean))
+const hiddenProfiles = computed(() => split.value.hidden.map(key => props.catalogue.find(profile => profile.doc_type === key)!).filter(Boolean))
+function applyLayout(next: string[]) { layout.value = next; saveWorkbenchLayout(window.localStorage, next) }
+function openCustomize() {
+  if (!catalogueKeys.value.length) return
+  if (layout.value === null) applyLayout(catalogueKeys.value)
+  customizeOpen.value = true
+}
+function resetLayout() { layout.value = null; saveWorkbenchLayout(window.localStorage, null) }
+function moveEntry(index: number, delta: number) {
+  const next = [...(layout.value ?? [])]
+  const target = index + delta
+  if (target < 0 || target >= next.length) return
+  ;[next[index], next[target]] = [next[target]!, next[index]!]
+  applyLayout(next)
+}
+function removeEntry(index: number) { applyLayout((layout.value ?? []).filter((_, i) => i !== index)) }
+function addEntry(key: string) {
+  if (!layout.value || layout.value.length >= WORKBENCH_MAX_ENTRIES) return
+  applyLayout([...layout.value, key])
+}
+// 拖拉拽：工作台列表内拖动排序；拖到「已收纳」= 移出，从「已收纳」拖入 = 放回（受 12 上限约束）。
+const dragState = ref<{ pane: 'visible' | 'hidden'; key: string } | null>(null)
+const dropHint = ref<{ pane: 'visible' | 'hidden'; index: number } | null>(null)
+function onDragStart(pane: 'visible' | 'hidden', key: string, event: DragEvent) {
+  dragState.value = { pane, key }
+  // Firefox 需要显式 setData 才会进入拖拽；数据本体走 dragState。
+  event.dataTransfer?.setData('text/plain', key)
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+}
+function onDragEnd() { dragState.value = null; dropHint.value = null }
+function setDropHint(pane: 'visible' | 'hidden', index: number) {
+  // 已满 12 个时，隐藏区拖入不再给出可放置指示。
+  if (pane === 'visible' && dragState.value?.pane === 'hidden' && (layout.value?.length ?? 0) >= WORKBENCH_MAX_ENTRIES) { dropHint.value = null; return }
+  dropHint.value = { pane, index }
+}
+function onItemDragOver(pane: 'visible' | 'hidden', index: number, event: DragEvent) {
+  if (!dragState.value) return
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  if (pane === 'hidden') { dropHint.value = { pane, index: 0 }; return }
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  setDropHint(pane, event.clientY < rect.top + rect.height / 2 ? index : index + 1)
+}
+function onPaneDragOver(pane: 'visible' | 'hidden', event: DragEvent) {
+  if (!dragState.value || event.target !== event.currentTarget) return
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  setDropHint(pane, pane === 'visible' ? (layout.value?.length ?? 0) : 0)
+}
+function onPaneDragLeave(pane: 'visible' | 'hidden') { if (dropHint.value?.pane === pane) dropHint.value = null }
+function onDrop(pane: 'visible' | 'hidden', event: DragEvent) {
+  event.preventDefault()
+  const drag = dragState.value, hint = dropHint.value
+  dragState.value = null; dropHint.value = null
+  if (!drag) return
+  const list = [...(layout.value ?? [])]
+  if (drag.pane === 'visible') {
+    const from = list.indexOf(drag.key)
+    if (from < 0) return
+    list.splice(from, 1)
+    if (pane === 'visible') {
+      let to = hint && hint.pane === 'visible' ? hint.index : list.length
+      if (to > from) to -= 1
+      list.splice(Math.max(0, Math.min(list.length, to)), 0, drag.key)
+    }
+    applyLayout(list)
+    return
+  }
+  if (pane !== 'visible' || list.length >= WORKBENCH_MAX_ENTRIES) return
+  const to = hint && hint.pane === 'visible' ? hint.index : list.length
+  list.splice(Math.max(0, Math.min(list.length, to)), 0, drag.key)
+  applyLayout(list)
+}
+// 目录变更时清掉自定义里已下线的类型；首次加载目录为空时绝不清写，避免误抹自定义。
+watch(catalogueKeys, keys => {
+  if (!keys.length || layout.value === null) return
+  const { visible } = splitEntries(keys, layout.value)
+  if (visible.length !== layout.value.length) applyLayout(visible)
+})
+// 当前选中类型被收纳且尚未选择文件时，自动切到第一个展示中的类型，保持入口与上传卡一致。
+watch(visibleProfiles, list => {
+  if (!personPackage.value && !entries.value.length && list.length && !list.some(profile => profile.doc_type === docType.value)) {
+    docType.value = list[0]!.doc_type
+  }
+})
 function retryClassify(item: UploadUserFile) {
   if (!item.raw || item.uid === undefined || validateUpload([item.raw])) return
   const row = rows[item.uid]; if (row) Object.assign(row, { type: '', state: '等待分类', reason: '' })
@@ -217,22 +311,51 @@ async function submit() {
       </div>
       <span class="mode-hint">{{ personPackage ? '选齐此人的各类材料，核对类型后整包提交；识别后再确认姓名。' : '选定一种材料类型，集中批量处理同一种材料。' }}</span>
     </div>
-    <div v-if="!mixed" class="type-cards">
-      <button
-        v-for="profile in catalogue"
-        :key="profile.doc_type"
-        type="button"
-        class="type-card"
-        :class="{ active: docType === profile.doc_type }"
-        :disabled="submitting"
-        @click="selectType(profile.doc_type)"
-      >
-        <span class="type-head">
-          <el-icon><component :is="typeMeta[profile.doc_type]?.icon ?? Files" /></el-icon>
-          <span class="type-title">{{ profile.label }}</span>
+    <div v-if="!mixed" class="type-section">
+      <div class="type-cards-head">
+        <span class="type-cards-title">选择材料类型</span>
+        <span class="type-cards-tools">
+          <span v-if="hiddenProfiles.length" class="type-cards-note">已收纳 {{ hiddenProfiles.length }} 个类型</span>
+          <el-button link type="primary" @click="openCustomize">自定义入口</el-button>
         </span>
-        <p class="type-desc">{{ typeMeta[profile.doc_type]?.desc }}</p>
-      </button>
+      </div>
+      <div class="type-cards">
+        <button
+          v-for="profile in visibleProfiles"
+          :key="profile.doc_type"
+          type="button"
+          class="type-card"
+          :class="{ active: docType === profile.doc_type }"
+          :disabled="submitting"
+          @click="selectType(profile.doc_type)"
+        >
+          <span class="type-head">
+            <el-icon><component :is="typeMeta[profile.doc_type]?.icon ?? Files" /></el-icon>
+            <span class="type-title">{{ profile.label }}</span>
+          </span>
+          <p class="type-desc">{{ typeMeta[profile.doc_type]?.desc }}</p>
+        </button>
+      </div>
+      <details v-if="hiddenProfiles.length" class="type-more">
+        <summary>更多类型（{{ hiddenProfiles.length }}）</summary>
+        <div class="type-cards">
+          <button
+            v-for="profile in hiddenProfiles"
+            :key="profile.doc_type"
+            type="button"
+            class="type-card"
+            :class="{ active: docType === profile.doc_type }"
+            :disabled="submitting"
+            @click="selectType(profile.doc_type)"
+          >
+            <span class="type-head">
+              <el-icon><component :is="typeMeta[profile.doc_type]?.icon ?? Files" /></el-icon>
+              <span class="type-title">{{ profile.label }}</span>
+            </span>
+            <p class="type-desc">{{ typeMeta[profile.doc_type]?.desc }}</p>
+          </button>
+        </div>
+      </details>
     </div>
 
     <el-card shadow="never" class="upload-card">
@@ -272,7 +395,7 @@ async function submit() {
             <small class="material-state" :class="stateClass(rows[item.uid!]?.state)">{{ rows[item.uid!]?.state }} · {{ rows[item.uid!]?.reason || '正在读取内容，仅用于建议材料类型' }}</small>
           </div>
           <el-select :model-value="rows[item.uid!]?.type || ''" :aria-label="`材料类型：${item.name}`" placeholder="待选择类型" :disabled="submitting" class="material-type" @update:model-value="type => manualType(item.uid!, type)">
-            <el-option v-for="profile in catalogue" :key="profile.doc_type" :label="profile.label" :value="profile.doc_type" />
+            <el-option v-for="profile in catalogue.filter(p => p.doc_type !== 'TABLE')" :key="profile.doc_type" :label="profile.label" :value="profile.doc_type" />
           </el-select>
           <div class="material-actions">
             <el-button text size="small" :disabled="submitting" @click="retryClassify(item)">重新分类</el-button>
@@ -301,6 +424,82 @@ async function submit() {
       </div>
       <div v-if="!canWrite" class="upload-hint readonly-hint">当前账号为只读角色，仅可查看任务与结果。</div>
     </el-card>
+
+    <el-dialog v-model="customizeOpen" title="自定义工作台入口" width="min(720px, 94vw)" append-to-body>
+      <p class="customize-tip">工作台最多展示 {{ WORKBENCH_MAX_ENTRIES }} 个入口；未展示的类型收进「更多类型」，随时放回。设置保存在本机浏览器。</p>
+      <div class="customize-columns">
+        <div class="customize-pane">
+          <h4>工作台展示（{{ (layout ?? []).length }}/{{ WORKBENCH_MAX_ENTRIES }}）</h4>
+          <ul
+            class="customize-list"
+            :class="{ 'drop-target': dragState?.pane === 'hidden' }"
+            @dragover="onPaneDragOver('visible', $event)"
+            @drop="onDrop('visible', $event)"
+            @dragleave="onPaneDragLeave('visible')"
+          >
+            <li
+              v-for="(key, index) in layout ?? []"
+              :key="key"
+              draggable="true"
+              :class="{
+                'is-dragging': dragState?.pane === 'visible' && dragState.key === key,
+                'drop-before': dropHint?.pane === 'visible' && dropHint.index === index,
+                'drop-after': dropHint?.pane === 'visible' && dropHint.index === index + 1,
+              }"
+              @dragstart="onDragStart('visible', key, $event)"
+              @dragover="onItemDragOver('visible', index, $event)"
+              @drop="onDrop('visible', $event)"
+              @dragend="onDragEnd"
+            >
+              <span class="customize-label">
+                <el-icon class="drag-handle"><component :is="typeMeta[key as UploadDocType]?.icon ?? Files" /></el-icon>
+                {{ docTypes[key as UploadDocType] ?? key }}
+              </span>
+              <span class="customize-ops">
+                <el-button link size="small" :disabled="index === 0" @click="moveEntry(index, -1)">上移</el-button>
+                <el-button link size="small" :disabled="index === (layout?.length ?? 0) - 1" @click="moveEntry(index, 1)">下移</el-button>
+                <el-button link size="small" type="danger" @click="removeEntry(index)">移出</el-button>
+              </span>
+            </li>
+          </ul>
+          <p v-if="!layout?.length" class="conf">工作台暂无入口，把右侧类型拖到这里，或点「放回」。</p>
+        </div>
+        <div class="customize-pane">
+          <h4>已收纳（{{ hiddenProfiles.length }}）</h4>
+          <ul
+            class="customize-list"
+            :class="{ 'drop-target': dragState?.pane === 'visible' }"
+            @dragover="onPaneDragOver('hidden', $event)"
+            @drop="onDrop('hidden', $event)"
+            @dragleave="onPaneDragLeave('hidden')"
+          >
+            <li
+              v-for="profile in hiddenProfiles"
+              :key="profile.doc_type"
+              draggable="true"
+              :class="{ 'is-dragging': dragState?.pane === 'hidden' && dragState.key === profile.doc_type }"
+              @dragstart="onDragStart('hidden', profile.doc_type, $event)"
+              @dragover="onItemDragOver('hidden', 0, $event)"
+              @drop="onDrop('hidden', $event)"
+              @dragend="onDragEnd"
+            >
+              <span class="customize-label">
+                <el-icon class="drag-handle"><component :is="typeMeta[profile.doc_type]?.icon ?? Files" /></el-icon>
+                {{ profile.label }}
+              </span>
+              <span class="customize-ops">
+                <el-button link size="small" :disabled="(layout?.length ?? 0) >= WORKBENCH_MAX_ENTRIES" @click="addEntry(profile.doc_type)">放回</el-button>
+              </span>
+            </li>
+          </ul>
+          <p v-if="!hiddenProfiles.length" class="conf">全部类型都在工作台上。</p>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="resetLayout">恢复默认</el-button>
+        <el-button type="primary" @click="customizeOpen = false">完成</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -354,4 +553,32 @@ async function submit() {
   font-weight: 600;
   color: var(--el-color-primary);
 }
+/* 工作台入口自定义：标题行 + 收纳折叠区 + 自定义对话框。 */
+.type-section { margin-bottom: 16px; }
+.type-cards-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.type-cards-title { font-weight: 600; }
+.type-cards-tools { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
+.type-cards-note { font-size: 12px; color: var(--el-text-color-secondary); }
+.type-more { margin: -6px 0 16px; }
+.type-more summary { cursor: pointer; font-size: 13px; color: var(--el-text-color-secondary); user-select: none; }
+.type-more .type-cards { margin-top: 10px; margin-bottom: 0; }
+.type-more .type-card { opacity: .85; }
+.customize-tip { margin: 0 0 12px; font-size: 13px; color: var(--el-text-color-secondary); }
+.customize-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.customize-pane { border: 1px solid var(--el-border-color-lighter); border-radius: 10px; padding: 10px 12px; min-height: 220px; }
+.customize-pane h4 { margin: 0 0 8px; font-size: 13px; }
+.customize-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; min-height: 80px; align-content: start; }
+.customize-list li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--el-border-color-lighter); border-radius: 8px; background: var(--el-fill-color-lighter); }
+.customize-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+.customize-ops { display: inline-flex; align-items: center; flex: none; }
+.customize-ops .el-button { margin: 0 0 0 4px; padding: 0 4px; }
+/* 拖拉拽：拖动项半透明，落点以主色横线指示，可投递窗格描边提示。 */
+.customize-list li { cursor: grab; }
+.customize-list li:active { cursor: grabbing; }
+.customize-list li.is-dragging { opacity: .4; }
+.customize-list li.drop-before { box-shadow: inset 0 3px 0 var(--el-color-primary); }
+.customize-list li.drop-after { box-shadow: inset 0 -3px 0 var(--el-color-primary); }
+.customize-list.drop-target { outline: 1px dashed var(--el-color-primary); outline-offset: 2px; }
+.drag-handle { color: var(--el-text-color-placeholder); }
+@media (max-width: 760px) { .customize-columns { grid-template-columns: 1fr; } }
 </style>

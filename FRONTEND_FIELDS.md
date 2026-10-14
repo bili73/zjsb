@@ -1,6 +1,6 @@
 # 前端字段与当前 API 说明
 
-对应 SPEC v1.27、OpenAPI / 应用源码 1.21.0。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入；账号批次隔离、上传人署名和管理员姓名编辑已实现，各版本验收及实际服务切换见运行记录。
+对应 SPEC v1.30、OpenAPI / 应用源码 1.24.0。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入；账号批次隔离、上传人署名和管理员姓名编辑已实现，各版本验收及实际服务切换见运行记录。
 
 批次按上传账号的不可变ID隔离：管理员看全部，操作员/只读仅看自己的。列表先限制归属再计算total和分页，日期筛选不改变隔离；全部Task结果/原图/复核/取消/重跑/完整字段/导出接口独立校验，越权与不存在ID统一404，混合账号导出整次拒绝。批次删除仍仅管理员；材料目录及必填设置仍共享。账号切换清空任务、结果及预览，旧会话的迟到读取和写响应不得回填新会话。
 
@@ -268,7 +268,7 @@ Review body必须包含当前`run_id`、`expected_revision`；只提交变更字
 
 医疗按item_id改items，added_items新增，removed_item_ids删除；后端重算异常/数值/范围。findings按finding_id更正文本/等级/诊断，以result_item_id关联实际检测项；原件无等级/诊断/结果时明确absence_reasons，不编造检测值。report_summary可补源页、作用域、标题、数量以及新增/删除清单，原识别声明另保留。新增ID由服务端分配。
 
-户成员按index+revision编辑，新增/删除成员使用独立列表并保留源页；GENERIC提交`generic:{full_text,key_values:[{key,value}]}`生成reviewed_generic，不改原文证据。
+户成员按index+revision编辑，新增/删除成员使用独立列表并保留源页；GENERIC提交`generic:{full_text,key_values:[{key,value,source_pair_id?}]}`生成reviewed_generic，不改原文证据。
 
 FAILED或INCOMPLETE_OUTPUT需要coverage：全部实际源页和未完成区域逐项核对，修正引用本次具体字段/项目等；缺corrected页面证据则重跑，不能仅点完整。人工完成后`recognition_status/recognition_error`保留原执行，`completion_origin=human_review`，original run不改。
 
@@ -331,3 +331,25 @@ id_card_pairing为unassigned/not_provided/missing_front/missing_back/both_presen
 接口授权边界：业务路由默认要求登录，再按角色和不可变批次归属校验；写入事务及预览/Excel/自动分类等耗时响应前复验会话。前端隐藏按钮不代替后端权限。401结束登录；403提示权限变化，不自动重放操作。退出和切换登录清除引擎详情并废弃旧健康请求，未登录只读取根路径status。
 
 接口权限加固及验收见[授权边界记录](.agents/notes/implemented/bug-fix/2026-10-13-api-authorization-boundaries.md)。
+
+## 照片表格 TABLE（1.23.0）
+
+上传使用普通`doc_type_hint=TABLE`，只接收单张照片文件，每个文件独立任务；不支持PDF、人员包file_types/追加和必填字段设置。入口名“表格”。
+
+`header_suggestion`可为0或null，新增可选`header_suggestion_source`（`model_tags`/`structure`/`data_rows`/null）说明判断依据。首次草稿仅对结构完整且来源已知的建议自动填入表头行数并高亮；没有可靠依据时手选，不固定建议1。初始`header_rows`仍为null，保存后写入`reviewed_tables`；已经保存的0、null和人工行数均优先。旧结果没有来源属性时不自动采用旧建议，避免旧的固定1被误当自动识别结果。不增加模型调用，不更改矩阵或原标题字体。
+
+`TaskResult.tables`保存初始主体（0或1个，失败可能无主体）；`reviewed_tables`保存人工版本。结构为`table_id,title,header_rows,rows:string[][],merges:[{row,column,rowspan,colspan}],partial_acknowledged`。行列下标从0起；被合并覆盖的格必须为空。原始主体另有`source,title_candidates,header_suggestion,candidates,outside_text,quality_warnings,incomplete,confidence:null`。候选文字box为校正图片像素，source/candidates的bbox为归一化xyxy；候选不直接视为已确认内容。
+
+审核接口提交`run_id,expected_revision,tables:[人工结构]`；禁止修改来源或混入fields/items等业务载荷。可保存未完成草稿，`export_ready/export_blockers`才是导出依据。没有人工版本时，页面与导出都采用唯一非空标题候选和带来源的完整表头建议，不强制首次保存；多个不同标题候选不自动选第一项。存在`reviewed_tables`时完全优先，包括空标题和null/0表头。表格标题、明确的表头行数和有效矩阵必需；0代表无表头，null尚未确认。原始不完整输出需要保存partial_acknowledged=true。所有空格仍可留空。导出不改变状态/版本，不生成虚假人工审核；未保存的修改阻止详情页导出。列表显示“可直接导出”或“导出待处理”，并区分标题、表头、无表格、结构或完整性问题。
+
+详情编辑保持原始矩阵不可变；分页不裁掉导出行，插删按选中位置操作，非空删除确认、合并覆盖拒绝。保存冲突保留草稿。主体错误时复用裁剪入口创建新的TABLE批次；框选OCR只辅助复制文字。来源定位对TABLE可用。
+
+导出单TABLE返回XLSX，多TABLE返回ZIP；读取Content-Disposition的UTF-8文件名并过滤非法文件名，回退为表格.xlsx/表格.zip。不和其他材料/人员包混合导出。照片表格标题单独第一行21号，矩阵从第二行开始，表头/数据12号；所有现有Excel同样改为12号，数据区域统一白色底色，旧结构及表头配色不变。
+
+## 通用表单动态字段（1.24.0）
+
+GENERIC主识别改为Paddle，复用CPU摆正与布局检测，失败/截断时在180秒总预算内最多回退一次GLM/区域。可靠PDF原生文本不调用模型。
+
+`generic.key_values[]` 可附 `pair_id`、`source`、`basis`（label/aligned_label/table_cells/header_value）；重复key和空value保留。来源优先实际cell/block，否则明确标为region。`blocks[]`增加可选`raw_text/source`；`tables[]`保留rows/merges/source供只读对照。旧结果没有这些字段仍可打开。
+
+人工draft通过source_pair_id引用原始pair，删除/排序/改名不串来源；新增字段及旧人工版本不按序号猜来源，后端拒绝伪造坐标或未知ID。详情允许GENERIC来源定位，原文和OCR标记以纯文本显示。保存版本始终优先，修改后必须保存才能导出；所有已保存键值、空值、重复值及正文沿用既有Excel导出，不改变人员包规则。

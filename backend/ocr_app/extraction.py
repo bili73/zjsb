@@ -912,6 +912,8 @@ def extract_report_summary(evidence, *, complete=False, items=None):
 
 
 def extract_result(evidence: list[dict], doc_type: str, *, complete=False) -> dict:
+    if doc_type == 'TABLE':
+        return dict(doc_type='TABLE', fields=[], tables=[], review_issues=[issue('UNKNOWN','未获得表格结构，请重新识别或调整主体后上传。')], limitations=[])
     from .doc_profiles import SUPPORTED, profile
     additional = {}
     if doc_type in SUPPORTED - {'DIPLOMA', 'DEGREE_CERT', 'MEDICAL_REPORT'}:

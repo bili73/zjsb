@@ -186,23 +186,10 @@ def extract_document_fields(evidence, doc_type):
         out['fields']=extract_fields(evidence,doc_type)
         return out
     if doc_type=='GENERIC':
-        blocks=[dict(text=plain(b['text']),page=b['page'],confidence=None,confidence_method='unavailable',**({'bbox':b['bbox']} if b.get('bbox') else {})) for b in evidence]
-        kv=[]
-        for b in blocks:
-            for line in b['text'].splitlines():
-                m=re.fullmatch(r'([^:：\n]{1,40})[:：]\s*(\S.*)',line)
-                if m:kv.append(dict(key=m[1].strip(),value=m[2],confidence=None,confidence_method='unavailable'))
-        for b in evidence:
-            if '<table' not in b['text'].lower(): continue
-            for row in BeautifulSoup(b['text'],'html.parser').find_all('tr'):
-                cells=row.find_all(['td','th'],recursive=False)
-                if len(cells)==2:
-                    key,value=(c.get_text(' ',strip=True) for c in cells)
-                    if key and value and len(key)<=40:
-                        kv.append(dict(key=key,value=value,confidence=None,confidence_method='unavailable'))
-        out.update(generic=dict(full_text='\n'.join(b['text'] for b in blocks),blocks=blocks,key_values=kv,
-            doc_subtype_guess=None,doc_subtype_confidence=None,doc_subtype_confidence_method='unavailable'),
-            review_issues=[issue('CONFIDENCE_UNAVAILABLE','通用识别内容与完整覆盖需人工核对。',True)] if any(b['text'].strip() for b in blocks) else [issue('MISSING','没有可靠识别的正文内容。')])
+        from .generic_forms import extract_generic
+        result=extract_generic(evidence)
+        out.update(generic=result, limitations=result['extraction_notes'],
+            review_issues=[issue('CONFIDENCE_UNAVAILABLE','通用识别内容与完整覆盖需人工核对。',True)] if result['full_text'].strip() else [issue('MISSING','没有可靠识别的正文内容。')])
         return out
     if doc_type=='XUEXIN_DIPLOMA_TABLE':
         compact=re.sub(r'\s','',texts)

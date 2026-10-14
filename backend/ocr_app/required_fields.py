@@ -25,14 +25,14 @@ def configurable_fields(kind, overrides=None):
 def configuration(policy):
     return dict(revision=policy['revision'], items=[dict(doc_type=kind, label=LABELS[kind],
                 uses_defaults=kind not in policy['overrides'], fields=configurable_fields(kind, policy['overrides']))
-                for kind in PROFILES])
+                for kind in PROFILES if kind != 'TABLE'])
 
 
 def save_configuration(store, body, actor, *, authorize):
     from .task_store import TaskError
     if (not isinstance(body, dict) or set(body) != {'doc_type', 'required_fields', 'expected_revision'}
             or type(body['expected_revision']) is not int or body['expected_revision'] < 0
-            or not isinstance(body['doc_type'], str) or body['doc_type'] not in PROFILES):
+            or not isinstance(body['doc_type'], str) or body['doc_type'] not in PROFILES or body['doc_type'] == 'TABLE'):
         raise TaskError('INVALID_REQUEST', '必填字段设置参数无效', 422)
     kind, selected = body['doc_type'], body['required_fields']
     allowed = [field['key'] for field in configurable_fields(kind) if field['editable']]

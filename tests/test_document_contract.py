@@ -26,6 +26,20 @@ class DocumentContractTests(unittest.TestCase):
     def validate(self,name,value):
         jsonschema.Draft7Validator(dict(self.document,**{'$ref':'#/components/schemas/'+name}),format_checker=jsonschema.FormatChecker()).validate(value)
 
+    def test_generic_optional_sources_tables_and_review_links(self):
+        from test_generic_forms import block
+        initial=extract_result([block('姓名：张三\n电话：'),
+            block('<table><tr><td>申请原因：</td><td>第一行<br>第二行</td></tr></table>')],'GENERIC')
+        self.validate('GenericResult',initial['generic'])
+        original_pair=initial['generic']['key_values'][0]
+        body=dict(generic=dict(full_text='人工正文',key_values=[dict(key='姓名',value='李四',source_pair_id=original_pair['pair_id'])]))
+        saved=apply_review(initial,body,actor='synthetic')
+        self.validate('ReviewedGeneric',saved['reviewed_generic'])
+        self.validate('GenericResult',saved['generic'])
+        self.assertEqual(saved['generic'],initial['generic'])
+        bad=copy.deepcopy(body['generic']);bad['key_values'][0]['source']={'page':10}
+        with self.assertRaises(jsonschema.ValidationError):self.validate('ReviewedGeneric',bad)
+
     def test_upload_limit_contract_matches_admission(self):
         from ocr_app.upload_limits import MAX_FILES, MAX_FILE_BYTES, MAX_BATCH_BYTES
         self.assertEqual((MAX_FILES, MAX_FILE_BYTES, MAX_BATCH_BYTES),
@@ -168,7 +182,7 @@ class DocumentContractTests(unittest.TestCase):
         with self.assertRaises(jsonschema.ValidationError):self.validate('FieldDerivation',bad)
 
     def test_implemented_methods_and_explicit_future_paths(self):
-        self.assertEqual(self.document['info']['version'],'1.22.3')
+        self.assertEqual(self.document['info']['version'],'1.24.0')
         self.assertIn('post',self.document['paths']['/export'])
         self.assertNotIn('get',self.document['paths']['/export'])
         permissions=self.document['paths']['/auth/me']['get']['responses']['200']['content']['application/json']['schema']['properties']['permissions']['items']['enum']

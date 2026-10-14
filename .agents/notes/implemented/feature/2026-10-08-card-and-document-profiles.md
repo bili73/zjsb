@@ -69,3 +69,7 @@ The [bank ROI orientation repair](../bug-fix/2026-10-12-bank-card-roi-orientatio
 [Person material packages](2026-10-12-person-material-packages.md) extend batches with explicit encrypted attribution, versioned append and presence-only identity-card pairing. Existing ownership, task versioning, deletion and recognition boundaries remain; old tasks and their expiry are not changed by append.
 
 The [adjacent document field repair](../bug-fix/2026-10-12-adjacent-document-field-boundaries.md) separates explicitly labelled demographics and combined validity ranges, retaining original evidence and conflicts. Catalogue fields, validators, model routing and saved/manual results remain unchanged.
+
+## Generic form extension (2026-10-14)
+
+[Adaptive generic forms](../../implemented/feature/2026-10-14-adaptive-generic-forms.md) extends the existing implementation: GENERIC uses the Paddle document lane, reuses CPU upright/geometry, and retains optional source-bound dynamic pairs. Existing document rules, one request per model, human-result precedence and required-value export gates remain applicable.

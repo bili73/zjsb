@@ -92,8 +92,9 @@ class TaskScheduler:
         self.config, self.logger, self.reply, self.factory = config, logger, reply, factory
         self.parallel = bool(getattr(manager, 'parallel_inference', False))
         from .doc_profiles import catalogue
-        document_types = {entry['doc_type'] for entry in catalogue()} - {'MEDICAL_REPORT'}
-        self.lanes = {'certificate': document_types, 'medical': {'MEDICAL_REPORT'}} if self.parallel else {'all': None}
+        paddle_types = {'MEDICAL_REPORT', 'TABLE', 'GENERIC'}
+        document_types = {entry['doc_type'] for entry in catalogue()} - paddle_types
+        self.lanes = {'certificate': document_types, 'medical': paddle_types} if self.parallel else {'all': None}
         self.jobs = {}
         self.closed_runs = set()
         self.events = queue.Queue()

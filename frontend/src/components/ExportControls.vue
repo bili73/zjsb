@@ -20,7 +20,7 @@ async function run(){
   try{
     const blob=await props.api.export({...(mode.value==='batch'?{batch_id:props.batchId}:{task_ids:targets.value.map(t=>t.task_id)}),masked:false,versions:targets.value.map(t=>({task_id:t.task_id,run_id:t.run_id,result_revision:t.result_revision}))},controller.signal)
     if(controller.signal.aborted) return
-    downloadBlob(blob, filename)
+    downloadBlob(blob, targets.value.every(t => t.doc_type === 'TABLE') ? blob.downloadName ?? (targets.value.length > 1 ? '表格.zip' : '表格.xlsx') : filename)
   }catch(error){if(isAbort(error)) return;if(error instanceof ApiFailure){message.value=`${errorMessages[error.card.code]}（错误编号 ${error.card.error_id}）`;if(error.card.http_status===401)emit('unauthorized')}else message.value='导出未完成，请重新检查任务状态。'}finally{busy.value=false}
 }
 </script>

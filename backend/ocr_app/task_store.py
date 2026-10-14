@@ -190,14 +190,16 @@ class TaskStore:
     def _write_upload(self, files, doc_type, actor, options=None, *, person_name=None,
                       batch_id=None, expected_revision=None, user=None, authorize=None):
         kinds = upload_types(doc_type, len(files))
+        if 'TABLE' in kinds and (isinstance(doc_type,list) or person_name is not None or batch_id is not None):
+            raise TaskError('INVALID_REQUEST', '请使用独立的“表格”入口，不加入人员材料包', 422)
         if person_name is not None:
             if not isinstance(person_name, str) or not 1 <= len(person_name.strip()) <= 80 or not person_name.isprintable():
                 raise TaskError('INVALID_REQUEST', '人员名称需1至80个可打印字符，不能全为空白', 422)
             person_name = person_name.strip()
         for file, kind in zip(files, kinds):
-            if kind == 'BANK_CARD':
+            if kind in {'BANK_CARD','TABLE'}:
                 if file.get('mime') not in {'image/png', 'image/jpeg', 'image/heic', 'image/heif'} or file.get('actual_source_page_count') != 1:
-                    raise TaskError('UNSUPPORTED_FORMAT', '银行卡请上传已解码的单张照片', 415)
+                    raise TaskError('UNSUPPORTED_FORMAT', '银行卡和表格请上传已解码的单张照片', 415)
         batch, created, references, task_ids = batch_id or identity(), now(), [], []
         try:
             with self.transaction() as connection:
@@ -592,6 +594,10 @@ class TaskStore:
                                 image.verify()
                         except Exception as error:
                             raise TaskError('INVALID_REQUEST', '页面证据无法读取，请重新处理', 422) from error
+                    if row['doc_type'] == 'TABLE' and original.get('tables') and body.get('tables'):
+                        # A one-photo table has its complete source artifact above;
+                        # apply_table_review separately validates the partial-output acknowledgement.
+                        verified = True
                     if coverage is not None:
                         if not isinstance(coverage, dict) or set(coverage) - {'pages', 'reason', 'regions'}:
                             invalid()

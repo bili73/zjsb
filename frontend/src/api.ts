@@ -1,4 +1,5 @@
 import { recordDiagnostic, safeCode } from './diagnostics.ts'
+import { responseFilename } from './table-review.ts'
 import type { DiagnosticCard, Operation } from './diagnostics.ts'
 import { isRecord, parseBatches, parseCatalogue, parseCreated, parseResult, parseTask, parseTasks, parseUser, parseManagedUser, parseManagedUsers, parseClassification } from './business.ts'
 import type { Batch, ItemsFilter, Task, UploadDocType, User } from './business.ts'
@@ -43,7 +44,7 @@ export class BusinessApi {
       const response = await this.fetcher.call(globalThis, `/api/v1${path}`, { ...init, headers, signal: controller.signal, credentials: 'same-origin', cache: 'no-store' })
       status = response.status
       requestId = response.headers.get('X-Request-ID')
-      const body: unknown = response.ok && binary ? { blob: await response.blob(), stage: response.headers.get('X-Preview-Stage'), revision: response.headers.get('X-Result-Revision') } : await response.json().catch(() => null)
+      const body: unknown = response.ok && binary ? { blob: await response.blob(), filename: responseFilename(response.headers.get('Content-Disposition')), stage: response.headers.get('X-Preview-Stage'), revision: response.headers.get('X-Result-Revision') } : await response.json().catch(() => null)
       signal.throwIfAborted()
       if (!response.ok) {
         const error = isRecord(body) && isRecord(body.error) ? body.error : isRecord(body) ? body : {}
@@ -111,7 +112,7 @@ export class BusinessApi {
   export(body: { batch_id?: string; task_ids?: string[]; masked: boolean; reason?: string; versions?: { task_id: string; run_id: string; result_revision: number }[] }, signal: AbortSignal) {
     return this.request('/export', 'export', value => {
       if (!isRecord(value) || !(value.blob instanceof Blob)) throw new Error('INVALID_RESPONSE')
-      return value.blob
+      return Object.assign(value.blob, { downloadName: typeof value.filename === 'string' ? value.filename : null })
     }, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, format: 'xlsx' }) }, true)
   }
   batches(page: number, pageSize: number, signal: AbortSignal, range?: BatchDateRange | null) {

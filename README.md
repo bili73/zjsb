@@ -6,8 +6,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/app-1.22.3-0f9d8f?style=flat-square" alt="app 1.22.3">
-  <img src="https://img.shields.io/badge/SPEC-v1.28-0c7e72?style=flat-square" alt="SPEC v1.28">
+  <img src="https://img.shields.io/badge/app-1.24.0-0f9d8f?style=flat-square" alt="app 1.24.0">
+  <img src="https://img.shields.io/badge/SPEC-v1.30-0c7e72?style=flat-square" alt="SPEC v1.30">
   <img src="https://img.shields.io/badge/platform-Windows%2010%2B-0078d4?style=flat-square" alt="Windows 10+">
   <img src="https://img.shields.io/badge/Python-3.12-3776ab?style=flat-square" alt="Python 3.12">
   <img src="https://img.shields.io/badge/Vue-3.5-35495e?style=flat-square" alt="Vue 3">
@@ -21,6 +21,7 @@
 面向 HR 场景的**单机内部工具**：操作人员在网页上传证件照片、学历材料与体检报告，系统在本地完成 OCR 识别与结构化提取，经**人工核对补填**后导出为 Excel 台账。服务仅绑定 `127.0.0.1`，识别与存储全程不出本机。
 
 - **11 类材料**：身份证（人像面/国徽面）、毕业证、学位证、银行卡、体检报告、户口本、营业执照、护照、学信网备案表、通用识别
+- **表格**：单张照片自动摆正、建议主体/标题，有依据时自动填写单行或多行表头，无法判断时手选；对照原图编辑单元格、插删行列后保存。单份标题命名XLSX，多份ZIP；当前不支持PDF、人员包或跨照片续表拼接。复用现有模型，无新增模型。
 - **双模型主备**：GLM-OCR（证件语义理解）+ PaddleOCR-VL（体检版面识别），各自独立进程与虚拟环境
 - **人工复核优先**：识别成功一律进入「待人工核对」，置信度不造假、进度不造假、导出有门禁
 - **安全内建**：账号密码 + Cookie 会话、AES-GCM 加密存储、7 天到期清理、脱敏诊断
@@ -34,9 +35,11 @@
 | 毕业证 | `DIPLOMA` | 护照 | `PASSPORT` |
 | 学位证 | `DEGREE_CERT` | 学信网备案表 | `XUEXIN_DIPLOMA_TABLE` |
 | 银行卡 | `BANK_CARD` | 通用识别 | `GENERIC` |
-| 体检报告 | `MEDICAL_REPORT` | | |
+| 体检报告 | `MEDICAL_REPORT` | 表格照片转Excel | `TABLE` |
 
 > 识别路由：证件 / 银行卡 / 未知类型默认 GLM-OCR，体检报告默认 PaddleOCR-VL，互为备用。银行卡只收图片（不收 PDF），并内置离线 BIN 表匹配发卡行。
+
+通用识别面向表单、申请单和登记资料：可靠PDF文字直接提取，照片由现有Paddle识别，必要时回退GLM；按文字位置和表格结构整理动态键值。重复、空值和原文保留，可查看来源、人工补改后导出。复杂记录型表格仍建议使用“表格”入口。
 
 ## 端到端流程
 
@@ -44,8 +47,8 @@
   上传材料（选定类型，1–100 个文件）
      │
      ▼
-  解码建页 ── EXIF 纠正；证件类照片另做保守小角度自动摆正
-     │        （体检报告、通用识别与所有 PDF 保持原状；全程不做透视矫正）
+  解码建页 ── EXIF 纠正；证件、表格和通用识别照片另做保守自动摆正
+     │        （体检报告与所有 PDF 保持原状；通用识别不做透视矫正）
      │        PDF 优先可靠文字层，图片区域走模型识别
      ▼
   识别提取 ── GLM-OCR / PaddleOCR-VL 主备路由
@@ -65,7 +68,7 @@
 三条诚实红线：
 
 1. **待人工核对 ≠ 识别失败**，也**不是审核完成态**——所有成功结果一律进入 NEED_REVIEW，由人工定夺；
-2. **是否可导出只看已保存结果的必填字段**，与审核状态相互独立，0 和 False 算已填写；
+2. **证件/体检是否可导出只看已保存结果的必填字段**，与审核状态相互独立，0 和 False 算已填写；照片表格完整且标题、表头明确时可直接导出，无需首次保存；人工修改后须保存，不完整输出还需明确确认，真实空白格可保留。所有Excel数据区域使用白色底色，表头保留原配色；
 3. **进度条 = 已完成的物理 OCR 区域数**（`processed/total`），不代表剩余时间、准确率或整体完成度。
 
 ## 系统架构
@@ -182,8 +185,8 @@ cd ..
 ├─ .venvs/             # app / glm-ocr / paddleocr-vl 等多套 Python 环境（另含 chandra、
 │                      # paddleocr-vl-1.6、image-upright 离线对照环境；gitignore）
 ├─ .runtime/           # SQLite 数据、加密密钥、诊断日志（gitignore，运行态）
-├─ SPEC.md             # 业务契约与验收基线（v1.28）
-├─ openapi.yaml        # 接口契约（/api/v1，版本 1.22.3）
+├─ SPEC.md             # 业务契约与验收基线（v1.30）
+├─ openapi.yaml        # 接口契约（/api/v1，版本 1.24.0）
 ├─ ARCHITECTURE.md     # 技术决策与实现边界
 ├─ RUNTIME.md          # 启动/运行方式与各轮验收记录
 ├─ LOCAL_OCR.md        # 模型环境与离线测试方法

@@ -63,8 +63,8 @@ def prepare_uploads(files, doc_type, runtime):
     kinds = upload_types(doc_type, len(files))
     for (data, name), kind in zip(files, kinds):
         file = validate_upload(data, name)
-        if kind == 'BANK_CARD' and file['mime'] == 'application/pdf':
-            raise TaskError('UNSUPPORTED_FORMAT', '银行卡请上传单张JPG/PNG/HEIC照片；不接收PDF', 415)
+        if kind in {'BANK_CARD','TABLE'} and file['mime'] == 'application/pdf':
+            raise TaskError('UNSUPPORTED_FORMAT', '银行卡和表格请上传单张JPG/PNG/HEIC照片；不接收PDF', 415)
         prepared.append(file)
     return prepared
 

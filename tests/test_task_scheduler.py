@@ -70,6 +70,18 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual(next(iter(self.scheduler.jobs.values())).task['id'], 'cert-one')
         self.scheduler.close()
 
+    def test_photo_tables_share_paddle_lane_and_wait_for_medical_work(self):
+        self.remaining.append(task('table','TABLE'))
+        self.scheduler.poll()
+        self.assertEqual({j.task['id'] for j in self.scheduler.jobs.values()},{'cert-one','report'})
+        self.assertIn('table',[t['id'] for t in self.remaining])
+        self.scheduler.close()
+        self.remaining=[task('table','TABLE'),task('certificate','DIPLOMA')]
+        self.scheduler=TaskScheduler(self.store,self.manager,self.models,Mock(),self.logger,self.replies.append,factory=Child)
+        self.scheduler.poll()
+        self.assertEqual({j.task['doc_type']:j.lane for j in self.scheduler.jobs.values()},{'TABLE':'medical','DIPLOMA':'certificate'})
+        self.scheduler.close()
+
     def test_recognition_replies_return_to_matching_child_without_blocking_other_lane(self):
         self.scheduler.poll()
         jobs = {j.task['id']: j for j in self.scheduler.jobs.values()}
@@ -91,6 +103,14 @@ class SchedulerTests(unittest.TestCase):
         for call in self.models.submit.call_args_list:
             self.assertNotIn('timeout', call.args[1])
             self.assertLessEqual(call.kwargs['deadline'], cert.deadline)
+        self.scheduler.close()
+
+    def test_generic_forms_share_paddle_lane_without_blocking_certificates(self):
+        self.remaining=[task('form','GENERIC'),task('table','TABLE'),task('certificate','DIPLOMA')]
+        self.scheduler.poll()
+        self.assertEqual({j.task['doc_type']:j.lane for j in self.scheduler.jobs.values()},
+                         {'GENERIC':'medical','DIPLOMA':'certificate'})
+        self.assertEqual([t['doc_type'] for t in self.remaining],['TABLE'])
         self.scheduler.close()
 
     def test_pending_stop_never_blocks_poll_or_touches_other_child(self):

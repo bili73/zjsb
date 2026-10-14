@@ -12,7 +12,7 @@ ITEM_KEYS = {'name', 'alias', 'category', 'result_raw', 'unit', 'reference_range
              'reported_abnormal_marker', 'risk_grade', 'diagnosis'}
 REQUEST_KEYS = {'run_id', 'expected_revision', 'fields', 'absence_reasons', 'accepted_issues',
                 'items', 'added_items', 'removed_item_ids', 'findings', 'members', 'added_members', 'removed_member_indexes',
-                'coverage', 'generic', 'note', 'report_summary'}
+                'coverage', 'generic', 'note', 'report_summary', 'tables'}
 
 
 def invalid(message='复核参数无效，请检查字段和项目对应关系'):
@@ -331,6 +331,11 @@ def blockers(result):
 
 
 def apply_review(original, body, *, actor, coverage_verified=False, required_overrides=None):
+    if original.get('doc_type') == 'TABLE':
+        from .table_recognition import apply_table_review
+        return apply_table_review(original, body, actor)
+    if 'tables' in body:
+        invalid('当前材料不支持表格编辑')
     if set(mapping(body)) - REQUEST_KEYS:
         invalid('复核包含未知参数')
     if required_overrides is not None:
@@ -433,9 +438,13 @@ def apply_review(original, body, *, actor, coverage_verified=False, required_ove
                 or generic_required(required_overrides) and not generic['full_text'].strip()):
             invalid('通用材料须填写并核对正文')
         clean_value(generic['full_text'], max_length=1000000)
+        pair_ids={p['pair_id'] for p in result.get('generic',{}).get('key_values',[]) if p.get('pair_id')}
         for pair in sequence(generic['key_values']):
-            if set(mapping(pair)) != {'key', 'value'} or not isinstance(pair['key'], str) or not pair['key'].strip():
+            if (not {'key','value'} <= set(mapping(pair)) or set(pair)-{'key','value','source_pair_id'}
+                    or not isinstance(pair['key'], str) or not pair['key'].strip()):
                 invalid()
+            if 'source_pair_id' in pair and (not isinstance(pair['source_pair_id'],str) or pair['source_pair_id'] not in pair_ids):
+                invalid('通用字段来源不属于当前识别版本')
             clean_value(pair['key']); clean_value(pair['value'])
             if re.search(r'CVV|CVC|CVN2|安全码', pair['key'], re.I):
                 invalid('通用字段不得保存卡片安全码')
@@ -464,7 +473,7 @@ def apply_review(original, body, *, actor, coverage_verified=False, required_ove
             generic = result.get('generic', {})
             if isinstance(generic.get('full_text'), str) and generic['full_text'].strip():
                 result['reviewed_generic'] = dict(full_text=generic['full_text'], key_values=[
-                    dict(key=p['key'], value=p.get('value')) for p in generic.get('key_values', [])])
+                    dict(key=p['key'], value=p.get('value'),**({'source_pair_id':p['pair_id']} if p.get('pair_id') else {})) for p in generic.get('key_values', [])])
     if result.get('doc_type') == 'GENERIC' and not result.get('reviewed_generic'):
         if not any(p['code'] in {'MISSING', 'CONFIDENCE_UNAVAILABLE'} for p in result.get('review_issues', [])):
             result.setdefault('review_issues', []).append(issue('MISSING', '请完整填写或确认通用材料正文。'))

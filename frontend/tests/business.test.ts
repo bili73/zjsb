@@ -200,8 +200,9 @@ test('validateUpload covers count, type, size and batch limits', () => {
   assert.equal(validateUpload([file('体检报告.PDF', 1024), file('x.jpeg', 2048), file('y.heic', 512)]), null)
 })
 
-test('docTypes uses the eleven canonical catalogue identifiers', () => {
-  assert.equal(Object.keys(docTypes).length, 11)
+test('docTypes includes the independent photo-table entry and canonical identifiers', () => {
+  assert.equal(Object.keys(docTypes).length, 12)
+  assert.equal(docTypes.TABLE, '表格')
   assert.equal(docTypes.MEDICAL_REPORT, '体检报告')
   assert.equal(docTypes.BANK_CARD, '银行卡')
   assert.equal(docTypes.GENERIC, '通用识别')

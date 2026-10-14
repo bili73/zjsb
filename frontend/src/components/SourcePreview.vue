@@ -151,7 +151,7 @@ function onPageClick(page: number) {
 watch([() => props.active, () => props.api, () => props.canWrite, () => props.ocrEnabled, () => resultKey(props.task)], () => { ocrOpen.value = false }, { flush: 'sync' })
 
 function overlayFor(page: number) {
-  if (props.task.doc_type !== 'MEDICAL_REPORT' || !entries[page - 1]?.corrected || !entries[page - 1]?.loaded || !props.source?.bbox || props.source.page !== page) return null
+  if (!['MEDICAL_REPORT','TABLE','GENERIC'].includes(props.task.doc_type ?? '') || !entries[page - 1]?.corrected || !entries[page - 1]?.loaded || !props.source?.bbox || props.source.page !== page) return null
   const [x1, y1, x2, y2] = props.source.bbox
   return { left: `${x1 * 100}%`, top: `${y1 * 100}%`, width: `${(x2 - x1) * 100}%`, height: `${(y2 - y1) * 100}%` }
 }
@@ -210,7 +210,7 @@ void (async () => {
       </el-tooltip>
     </div>
     <p v-if="task.doc_type === 'MEDICAL_REPORT'" class="conf">无可靠定位框时显示整页。来源框仅叠加在版本一致的校正页，不能证明模型已读完整页。</p>
-    <p v-else class="conf">证件提供整页原图对照，点击图片查看原图、框选识别。</p>
+    <p v-else class="conf">{{ ['TABLE','GENERIC'].includes(task.doc_type ?? '') ? '可定位主体或已有来源，点击图片查看原图、框选识别文字。' : '证件提供整页原图对照，点击图片查看原图、框选识别。' }}</p>
     <el-alert v-if="failure" type="warning" :closable="false">{{ failure }}</el-alert>
     <ol ref="pageListEl" class="page-list">
       <li v-for="n in maxPage" :key="n" :ref="el => setPageRef(el, n)" :data-page="n" class="page-item">
