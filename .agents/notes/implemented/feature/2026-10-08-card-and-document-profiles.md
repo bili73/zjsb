@@ -73,3 +73,6 @@ The [adjacent document field repair](../bug-fix/2026-10-12-adjacent-document-fie
 ## Generic form extension (2026-10-14)
 
 [Adaptive generic forms](../../implemented/feature/2026-10-14-adaptive-generic-forms.md) extends the existing implementation: GENERIC uses the Paddle document lane, reuses CPU upright/geometry, and retains optional source-bound dynamic pairs. Existing document rules, one request per model, human-result precedence and required-value export gates remain applicable.
+
+
+复印件分区与手写补充见[银行卡复印件](../../implemented/feature/2026-10-14-bank-photocopy-handwriting.md)，其余普通卡片与证据约束保留。

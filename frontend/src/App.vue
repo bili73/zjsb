@@ -185,7 +185,7 @@ onBeforeUnmount(() => {
       <el-tabs v-model="activeTab">
         <el-tab-pane label="上传识别" name="upload">
           <el-alert v-if="catalogueError" :closable="false" type="error">{{ catalogueError }}</el-alert>
-          <UploadPanel :api="api" :catalogue="catalogue" :monitor="monitor" :can-write="canWrite" @submitted="handleSubmitted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
+          <UploadPanel :key="user.user_id" :api="api" :catalogue="catalogue" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" @submitted="handleSubmitted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane label="任务批次" name="batches">
           <BatchBoard :api="api" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" :upload-reset="uploadReset" :catalogue="catalogue" @open-result="openResult" @batch-deleted="batchDeleted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />

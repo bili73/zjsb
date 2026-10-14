@@ -73,7 +73,7 @@ class MigrationAtomicityTests(unittest.TestCase):
                 restarted = open_database(root)
                 try:
                     with restarted.connect() as c:
-                        self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0008')
+                        self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0009')
                         for table, (columns, rows) in before.items():
                             self.assertEqual(c.execute(text('SELECT ' + ','.join(columns) + ' FROM ' + table)).all(), rows)
                         self.assertEqual(c.exec_driver_sql('PRAGMA foreign_key_check').all(), [])
@@ -85,6 +85,9 @@ class MigrationAtomicityTests(unittest.TestCase):
 
     def test_0007_interruption_rolls_back_package_flag_and_preserves_named_package(self):
         self.interrupted_upgrade('0006', 'UPDATE batches SET is_person_package=1 WHERE person_name_enc IS NOT NULL')
+
+    def test_0009_interruption_rolls_back_preferences_without_changing_existing_records(self):
+        self.interrupted_upgrade('0008', "UPDATE alembic_version SET version_num='0009' WHERE alembic_version.version_num = '0008'")
 
 
 if __name__ == '__main__':

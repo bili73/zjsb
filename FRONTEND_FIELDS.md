@@ -1,6 +1,6 @@
 # 前端字段与当前 API 说明
 
-对应 SPEC v1.30、OpenAPI / 应用源码 1.24.0。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入；账号批次隔离、上传人署名和管理员姓名编辑已实现，各版本验收及实际服务切换见运行记录。
+对应 SPEC v1.31、OpenAPI / 应用源码 1.25.0。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入；账号批次隔离、上传人署名和管理员姓名编辑已实现，各版本验收及实际服务切换见运行记录。
 
 批次按上传账号的不可变ID隔离：管理员看全部，操作员/只读仅看自己的。列表先限制归属再计算total和分页，日期筛选不改变隔离；全部Task结果/原图/复核/取消/重跑/完整字段/导出接口独立校验，越权与不存在ID统一404，混合账号导出整次拒绝。批次删除仍仅管理员；材料目录及必填设置仍共享。账号切换清空任务、结果及预览，旧会话的迟到读取和写响应不得回填新会话。
 
@@ -353,3 +353,18 @@ GENERIC主识别改为Paddle，复用CPU摆正与布局检测，失败/截断时
 `generic.key_values[]` 可附 `pair_id`、`source`、`basis`（label/aligned_label/table_cells/header_value）；重复key和空value保留。来源优先实际cell/block，否则明确标为region。`blocks[]`增加可选`raw_text/source`；`tables[]`保留rows/merges/source供只读对照。旧结果没有这些字段仍可打开。
 
 人工draft通过source_pair_id引用原始pair，删除/排序/改名不串来源；新增字段及旧人工版本不按序号猜来源，后端拒绝伪造坐标或未知ID。详情允许GENERIC来源定位，原文和OCR标记以纯文本显示。保存版本始终优先，修改后必须保存才能导出；所有已保存键值、空值、重复值及正文沿用既有Excel导出，不改变人员包规则。
+
+
+## 银行卡复印件（1.25.0）
+
+入口与doc_type保持BANK_CARD。profile前四项为holder_name（姓名）、card_number（卡号）、bank_name（开户行）、branch_name（开户支行）。分支新增为可编辑选填，管理员配置仍优先；旧结果读取时补空字段、更新显示标签和顺序，不重写已保存人工值。bank_name复用旧key，不能将其当作具体网点。
+
+Field.candidates可带reason和source，用于区分卡面与补充文字候选；Field.sources保留相同值的多处证据。银行卡来源按钮复用corrected页和归一化bbox，属于区域定位，不是逐字定位。选择候选仅修改前端草稿，必须保存；旧识别候选仍保留供追溯。卡号冲突时后端value为空，默认阻止导出；人工保存后仍按现有必填值门禁执行，不额外阻止仅待审核的任务。照片裁剪恢复入口与整页框选OCR仍可使用。
+
+## 个人工作台布局
+
+`GET /api/v1/auth/me/workbench` 返回 `{layout: string[] | null, revision: number, defaults: {layout: string[] | null, revision: number}}`；`PUT` 仅接受 `{layout, expected_revision}`。只使用当前命名账号会话和CSRF，不传user_id，管理员也只修改自己的布局。数组是已展示类型的顺序（最多12个，不能重复或含未支持类型）；未列出的类型收纳。个人layout=null继承defaults.layout，defaults.layout=null才回到系统目录；[]为全部收纳。新增类型在自定义布局中默认收纳。
+
+读取成功后可编辑，拖拽和收纳先改草稿，点击“完成”才保存。网络失败保留草稿，409 WORKBENCH_VERSION_CONFLICT保留原版本并禁止自动重试；“重新读取”需确认放弃未保存调整，读失败仍保留原草稿。恢复默认先将草稿设为null，完成后保存。不导入旧浏览器共享键；切换账号取消请求并清空状态，迟到响应不能恢复上一账号布局。
+
+管理员在自定义入口中另有“设为默认布局”，确认影响后调用`PUT /api/v1/admin/workbench-default`，正文`{layout, expected_revision}`使用defaults.revision。保存当前可见顺序；只更新defaults，不提交个人草稿，也不退出编辑。返回`{layout,revision}`。冲突码为WORKBENCH_DEFAULT_VERSION_CONFLICT。后端在同一写事务复验管理员身份；普通账号不能调用。已有个人数组（包括[]）不随公共默认改变，继承账号在重新进入页面/读取时更新。

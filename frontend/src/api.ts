@@ -9,6 +9,7 @@ import { parseRequiredFieldSettings } from './requiredFields.ts'
 import type { RequiredFieldSave } from './requiredFields.ts'
 import { parseRegionText } from './regionOcr.ts'
 import type { RegionBox } from './regionOcr.ts'
+import { parseWorkbenchLayout, parseWorkbenchPreferences } from './workbenchEntries.ts'
 
 export class ApiFailure extends Error {
   readonly card: DiagnosticCard
@@ -25,6 +26,17 @@ export function resultConflictAction(error: unknown, status: Task['status'], alr
 
 // Session credentials are HttpOnly cookies; only the CSRF token stays in memory.
 export class BusinessApi {
+  workbenchLayout(signal: AbortSignal) {
+    return this.request('/auth/me/workbench', 'workbench_layout_read', parseWorkbenchPreferences, signal)
+  }
+  saveWorkbenchLayout(body: { layout: string[] | null; expected_revision: number }, signal: AbortSignal) {
+    return this.request('/auth/me/workbench', 'workbench_layout_save', parseWorkbenchPreferences, signal,
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  }
+  saveWorkbenchDefault(body: { layout: string[] | null; expected_revision: number }, signal: AbortSignal) {
+    return this.request('/admin/workbench-default', 'workbench_default_save', parseWorkbenchLayout, signal,
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  }
   private csrfToken: string | undefined
   private readonly fetcher: typeof fetch
   constructor(fetcher: typeof fetch = fetch) { this.fetcher = fetcher }

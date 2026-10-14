@@ -96,6 +96,12 @@ def public_result(value, required_overrides=None):
     if isinstance(projected, dict) and projected.get('doc_type') == 'BANK_CARD':
         projected['fields'] = [field for field in projected.get('fields', [])
                                if field.get('key') != 'card_number_masked']
+    if isinstance(projected, dict) and projected.get('doc_type') == 'BANK_CARD':
+        from .doc_profiles import profile
+        from .extraction import _field
+        fields = {field['key']:field for field in projected.get('fields', [])}
+        projected['fields'] = [dict(fields.get(meta['key']) or _field(meta['key'],meta['label'],[],meta['required']),
+            label=meta['label'],required=meta['required'],editable=meta['editable']) for meta in profile('BANK_CARD')]
     if (isinstance(projected, dict) and projected.get('doc_type') == 'MEDICAL_REPORT'
             and ('fields' in projected or 'basic_info' in projected)):
         from .doc_profiles import profile

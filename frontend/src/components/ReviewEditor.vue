@@ -113,6 +113,14 @@ function save() {
           <el-select v-else-if="isGenderKey(field.key)" :model-value="genderText(values[field.key])" placeholder="未识别" clearable @update:model-value="v => setField(field.key, v ?? '')"><el-option label="男" value="男" /><el-option label="女" value="女" /></el-select>
           <el-input v-else :type="['exam_projects','blood_routine','urine_routine','ecg','dr_imaging','abdominal_ultrasound','liver_function'].includes(field.key) ? 'textarea' : 'text'" :rows="3" :model-value="String((field.key === 'exam_project_count' ? projectCount : values[field.key]) ?? '')" :disabled="!editable(field.key)" @update:model-value="v => setField(field.key,v)" />
           <el-select v-if="!required(field.key) && editable(field.key)" v-model="absence[field.key]" placeholder="缺省原因（可选）" clearable><el-option label="原件未记载" value="NOT_ON_DOCUMENT" /><el-option label="不适用" value="NOT_APPLICABLE" /></el-select>
+          <div v-if="result.doc_type === 'BANK_CARD' && field.candidates?.length" class="bank-candidates">
+            <p class="conf">{{ field.review_issues.some(issue => issue.code === 'CONFLICT') ? '识别结果不一致，请对照原件选择；选择后仍需保存修正。' : '原始识别候选保留供对照；再次修改后仍需保存。' }}</p>
+            <div v-for="(candidate,index) in field.candidates" :key="index">
+              <el-button @click="setField(field.key, String(candidate.value ?? ''))">采用{{ candidate.reason ? '（' + candidate.reason + '）' : '' }}：{{ candidate.value }}</el-button>
+              <el-button v-if="candidate.source" link @click="emit('locate',candidate.source)">查看来源</el-button>
+            </div>
+          </div>
+          <el-button v-if="result.doc_type === 'BANK_CARD' && field.source" link @click="emit('locate', field.source)">查看来源</el-button>
           <el-button v-if="result.doc_type === 'MEDICAL_REPORT'" link @click="emit('locate', field.source ?? {})">查看来源 / 整页</el-button>
         </el-form-item>
       </div>

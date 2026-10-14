@@ -19,6 +19,7 @@ import GenericSources from './GenericSources.vue'
 import BankCardRecovery from './BankCardRecovery.vue'
 import { needsBankCrop } from '../bankCrop.ts'
 import { sourceSelection } from '../sourceLocation.ts'
+import { isInteractiveClickTarget } from '../interactiveTarget.ts'
 import type { Monitor } from '../monitor.ts'
 
 const props = defineProps<{ open: boolean; task: Task | null; api: BusinessApi | null; monitor: Monitor; previews: LocalPreviewBatch; canWrite: boolean; catalogue: DocProfile[] }>()
@@ -114,7 +115,14 @@ const previewTask = computed(() => props.task && result.value ? { ...props.task,
 watch(() => result.value ? resultKey(result.value) : '', () => { activeSource.value = null })
 watch(() => props.open, open => { if (!open) activeSource.value = null })
 function locate(source: FieldSource) {
-  if (['MEDICAL_REPORT','TABLE','GENERIC'].includes(result.value?.doc_type ?? '')) activeSource.value = sourceSelection(source)
+  if (['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD'].includes(result.value?.doc_type ?? '')) activeSource.value = sourceSelection(source)
+}
+// 点击抽屉版面任意空白（字段面板的间隙、说明文字、边缘等，非交互控件、非页面图片）取消定位红框；
+// 定位红框会一直遮着原图，需要一个随手可及的取消方式。交互控件与图片各自的点击语义不受影响。
+function onBodyClick(event: MouseEvent) {
+  if (isInteractiveClickTarget(event.target)) return
+  if (!activeSource.value) return
+  activeSource.value = null
 }
 const regions = computed(() => (props.task?.pages ?? []).flatMap(page => (page.regions ?? []).map(region => ({ region_id: region.region_id, page: page.page_index }))))
 
@@ -203,7 +211,7 @@ async function runExport() {
         </span>
       </div>
     </template>
-    <div class="drawer-body">
+    <div class="drawer-body" @click="onBodyClick">
       <div v-if="loading" class="detail-loading">
         <span class="rainbow-spinner detail-spinner" aria-hidden="true"></span>
         <p class="loading-slogan">成就每一位贡献者</p>
@@ -225,7 +233,7 @@ async function runExport() {
         <BankCardRecovery v-if="open && api && previewTask && canWrite && (needsBankCrop(result) || result.doc_type === 'TABLE')" :key="resultKey(result)" :task="previewTask" :api="api" :monitor="monitor" :disabled="dirty || saving || stale" @submitted="emit('bank-retried')" @preview="(files, tasks) => emit('preview', files, tasks)" @unauthorized="emit('unauthorized')" />
         <div class="drawer-split" :style="{ '--left-width': `${leftWidth}%` }">
           <aside class="split-left">
-            <SourcePreview v-if="previewTask" :key="`${previewTask.task_id}:${previewTask.run_id}:${previewTask.result_revision}`" :task="previewTask" :api="api" :can-write="canWrite" :active="open" :ocr-enabled="!stale && !saving" :preview="preview" :source="activeSource" @unauthorized="emit('unauthorized')" />
+            <SourcePreview v-if="previewTask" :key="`${previewTask.task_id}:${previewTask.run_id}:${previewTask.result_revision}`" :task="previewTask" :api="api" :can-write="canWrite" :active="open" :ocr-enabled="!stale && !saving" :preview="preview" :source="activeSource" @clear-source="activeSource = null" @unauthorized="emit('unauthorized')" />
           </aside>
           <div class="splitter" :class="{ dragging }" role="separator" aria-orientation="vertical" title="拖动调整左右宽度，双击复位" @pointerdown="onSplitterDown" @pointermove="onSplitterMove" @pointerup="onSplitterUp" @pointercancel="onSplitterUp" @dblclick="resetSplit"></div>
           <div class="split-right">

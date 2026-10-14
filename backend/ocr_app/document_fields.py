@@ -9,6 +9,8 @@ from .doc_profiles import profile, MEMBER_PROFILE
 from .validation import validate_field
 
 ALIASES = {
+    'holder_name': ('持卡人姓名','户名'), 'bank_name': ('发卡行','开户银行'),
+    'branch_name': ('开户网点','支行名称'),
     'id_number': ('公民身份号码','公民身份证号码','身份证号码','身份证号'),
     'name': ('姓名','持有人姓名','Name'), 'gender': ('性别','Sex','Gender'),
     'birth_date': ('出生日期','出生年月日','出生','Date of Birth'),
@@ -50,6 +52,10 @@ def _normalize(key, value):
     if key in {'card_number','id_number','unified_social_credit_code'}:
         if key=='card_number':value=unicodedata.normalize('NFKC',value)
         return re.sub(r'[\s-]' if key=='card_number' else r'\s','',value)
+    if key=='holder_name':
+        if re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,79}",value):return value
+        match=re.fullmatch(r'([\u4e00-\u9fff·]{2,8})(?:\s*1[3-9][0-9]{9})?',value)
+        return match[1] if match else None
     return value
 
 
@@ -223,19 +229,10 @@ def extract_document_fields(evidence, doc_type):
         out['members']=[{f['key']:f for f in _build([b for b in evidence if b['page']==p],doc_type,MEMBER_PROFILE)} for p in sorted(member_pages)]
         if not member_pages:out['review_issues']=[issue('MISSING','未确认常住人口登记卡页面，需核对材料完整性。')]
         return out
-    out['fields']=_build(evidence,doc_type)
+    out['fields']=_build([b for b in evidence if b.get('_bank_role') not in {'back','ambiguous_front'}] if doc_type=='BANK_CARD' else evidence,doc_type)
     if doc_type=='BANK_CARD':
-        candidates=[]
-        for b in evidence:
-            for m in re.finditer(r'(?<![0-9０-９])(?:[0-9０-９][ \t\u3000－-]*){13,19}(?![ \t\u3000－-]*[0-9０-９])',plain(b['text'])):
-                candidates.append((_normalize('card_number',m[0]),b,m[0]))
-        f=_field('card_number','卡号',candidates,True)
-        f['validation_checks']=validate_field(doc_type,'card_number',f['value'])
-        if f['value'] is not None:
-            f['review_issues'].append(issue('VALIDATION_FAILED','离线匹配不验证账户或Luhn适用性，请对照原件确认卡号。',True))
-        if any(c['status']=='FAIL' for c in f['validation_checks']):f['review_issues'].append(issue('VALIDATION_FAILED','卡号本地校验失败，不能自动改号。'))
-        for i,old in enumerate(out['fields']):
-            if old['key']=='card_number':out['fields'][i]=f
+        from .bank_photocopy import build_bank_fields
+        build_bank_fields(evidence, out['fields'])
         refresh_bank_fields(out)
     if doc_type=='PASSPORT':
         lines=[]

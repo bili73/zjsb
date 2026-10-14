@@ -22,6 +22,12 @@ class Version(BaseModel):
     expected_revision: int = Field(ge=0, strict=True)
 
 
+class WorkbenchLayoutBody(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    layout: list[Annotated[str, Field(strict=True, min_length=1, max_length=64)]] | None = Field(max_length=12)
+    expected_revision: int = Field(ge=0, le=9007199254740991, strict=True)
+
+
 class ReviewBody(Version):
     fields: dict = Field(default_factory=dict)
     absence_reasons: dict = Field(default_factory=dict)
@@ -214,6 +220,36 @@ def router(business, runtime, health):
         if request.state.csrf_token:
             payload['csrf_token']=request.state.csrf_token
         return payload
+
+    @routes.get('/auth/me/workbench')
+    def workbench_layout(request: Request, user=Depends(principal)):
+        from .workbench_preferences import load_preferences
+        with business.engine.connect() as connection:
+            business.accounts._acting_user(connection, user['user_id'], request.cookies.get(SESSION_COOKIE))
+            return load_preferences(connection, user['user_id'])
+
+    @routes.put('/auth/me/workbench')
+    def update_workbench_layout(body: WorkbenchLayoutBody, request: Request, user=Depends(principal)):
+        from .workbench_preferences import save_layout, load_default
+        if body.layout is not None and (len(set(body.layout)) != len(body.layout)
+                                        or not set(body.layout) <= SUPPORTED):
+            raise TaskError('INVALID_REQUEST', '布局包含重复或不支持的材料类型', 422)
+        with business.accounts.transaction() as connection:
+            # Personal presentation preferences are writable by all named roles.
+            # Recheck the session inside the transaction, including revocation.
+            business.accounts._acting_user(connection, user['user_id'], request.cookies.get(SESSION_COOKIE))
+            return dict(save_layout(connection, user['user_id'], body.layout, body.expected_revision),
+                        defaults=load_default(connection))
+
+    @routes.put('/admin/workbench-default')
+    def update_workbench_default(body: WorkbenchLayoutBody, request: Request, user=Depends(administrator)):
+        from .workbench_preferences import save_default
+        if body.layout is not None and (len(set(body.layout)) != len(body.layout)
+                                        or not set(body.layout) <= SUPPORTED):
+            raise TaskError('INVALID_REQUEST', '布局包含重复或不支持的材料类型', 422)
+        with business.accounts.transaction() as connection:
+            business.accounts._acting_user(connection, user['user_id'], request.cookies.get(SESSION_COOKIE), administrator=True)
+            return save_default(connection, body.layout, body.expected_revision)
 
     @public.post('/auth/login')
     async def login(request: Request):

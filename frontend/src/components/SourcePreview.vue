@@ -4,13 +4,14 @@ import { Crop } from '@element-plus/icons-vue'
 import RegionOcrDialog from './RegionOcrDialog.vue'
 import { mostVisiblePage } from '../regionOcr.ts'
 import { resultKey } from '../business.ts'
+import { isInteractiveClickTarget } from '../interactiveTarget.ts'
 import { ApiFailure, isAbort } from '../api.ts'
 import type { BusinessApi } from '../api.ts'
 import type { FieldSource, Task } from '../business.ts'
 import type { LocalPreview } from '../workbench.ts'
 import { errorMessages } from '../diagnostics.ts'
 const props = withDefaults(defineProps<{ task: Task; api: BusinessApi | null; preview?: LocalPreview; source: FieldSource | null; canWrite: boolean; active?: boolean; ocrEnabled?: boolean }>(), { active: true, ocrEnabled: true })
-const emit = defineEmits<{ (e: 'unauthorized'): void }>()
+const emit = defineEmits<{ (e: 'unauthorized'): void; (e: 'clear-source'): void }>()
 
 // 每页独立状态：懒加载（IntersectionObserver 滚动到附近才请求），点击进全屏缩放查看器。
 interface PageEntry { url: string; corrected: boolean; loaded: boolean; status: 'idle' | 'loading' | 'done' | 'error' }
@@ -148,10 +149,16 @@ function openOcrAt(page: number) {
 function onPageClick(page: number) {
   if (props.ocrEnabled) openOcrAt(page)
 }
+// 定位红框会一直遮着校正页；点击版面空白处（非图片、非交互控件）取消定位，图片和按钮各有自己的语义不动。
+function onSectionClick(event: MouseEvent) {
+  if (isInteractiveClickTarget(event.target)) return
+  if (!props.source) return
+  emit('clear-source')
+}
 watch([() => props.active, () => props.api, () => props.canWrite, () => props.ocrEnabled, () => resultKey(props.task)], () => { ocrOpen.value = false }, { flush: 'sync' })
 
 function overlayFor(page: number) {
-  if (!['MEDICAL_REPORT','TABLE','GENERIC'].includes(props.task.doc_type ?? '') || !entries[page - 1]?.corrected || !entries[page - 1]?.loaded || !props.source?.bbox || props.source.page !== page) return null
+  if (!['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD'].includes(props.task.doc_type ?? '') || !entries[page - 1]?.corrected || !entries[page - 1]?.loaded || !props.source?.bbox || props.source.page !== page) return null
   const [x1, y1, x2, y2] = props.source.bbox
   return { left: `${x1 * 100}%`, top: `${y1 * 100}%`, width: `${(x2 - x1) * 100}%`, height: `${(y2 - y1) * 100}%` }
 }
@@ -197,10 +204,10 @@ void (async () => {
 })()
 </script>
 <template>
-  <section ref="previewEl" v-loading="loading" class="source-preview">
+  <section ref="previewEl" v-loading="loading" class="source-preview" @click="onSectionClick">
     <h3>原件对照 · 服务端校正页</h3>
     <div ref="pageToolsEl" class="page-tools">
-      <span>共 {{ maxPage }} 页 · 上下滚动连续浏览，{{ ocrEnabled ? '点击页面查看原图并框选识别' : '点击页面全屏缩放' }}</span>
+      <span>共 {{ maxPage }} 页 · 上下滚动连续浏览，{{ ocrEnabled ? '点击页面查看原图并框选识别' : '点击页面全屏缩放' }}<template v-if="source?.bbox">，点击空白处可取消红框</template></span>
       <el-input-number v-model="jumpPage" :min="1" :max="maxPage" :precision="0" size="small" controls-position="right" />
       <el-button size="small" @click="goTo(jumpPage)">跳页</el-button>
       <span class="tools-spacer" />
@@ -210,7 +217,7 @@ void (async () => {
       </el-tooltip>
     </div>
     <p v-if="task.doc_type === 'MEDICAL_REPORT'" class="conf">无可靠定位框时显示整页。来源框仅叠加在版本一致的校正页，不能证明模型已读完整页。</p>
-    <p v-else class="conf">{{ ['TABLE','GENERIC'].includes(task.doc_type ?? '') ? '可定位主体或已有来源，点击图片查看原图、框选识别文字。' : '证件提供整页原图对照，点击图片查看原图、框选识别。' }}</p>
+    <p v-else class="conf">{{ ['TABLE','GENERIC','BANK_CARD'].includes(task.doc_type ?? '') ? '可定位主体或已有来源，点击图片查看原图、框选识别文字。' : '证件提供整页原图对照，点击图片查看原图、框选识别。' }}</p>
     <el-alert v-if="failure" type="warning" :closable="false">{{ failure }}</el-alert>
     <ol ref="pageListEl" class="page-list">
       <li v-for="n in maxPage" :key="n" :ref="el => setPageRef(el, n)" :data-page="n" class="page-item">

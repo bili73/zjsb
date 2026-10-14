@@ -49,3 +49,6 @@ The final backend suite passes477 tests in117.560s, the frontend passes70 tests 
 Three native medical reports retain7 source-backed liver measurements each (21 total, page14), catalogue counts9/10/11 and abnormal counts7/6/2, with0 model calls and154 unprocessed image regions. XLSX round-trip and rendered QA verify actual liver results,7/6/2 newline anomaly entries, original string identifiers, EF760E nonmedical headers and unchanged medical blue/orange. This is mapping and layout verification, not new full-report or bank OCR accuracy.
 
 After three idle checks, a consistent SQLite backup and confirmed exit of all12 old owned processes, Windows loopback1.17.0 serves the qualified frontend. Both models are ready. The55 existing tasks encrypted fields, one account and key files retain their previous signatures. Evidence: output/bank-auto-20261009-v1/ and output/biochemistry-export-20261009-v1/. No database migration, original sample rewrite, extra semantic model, Mac qualification, commit or push occurs.
+
+
+复印件分区与手写补充见[银行卡复印件](../../implemented/feature/2026-10-14-bank-photocopy-handwriting.md)，其余普通卡片与证据约束保留。

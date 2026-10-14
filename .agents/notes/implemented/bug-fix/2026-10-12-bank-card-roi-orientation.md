@@ -46,3 +46,6 @@ The [idle service activation](../../../../output/bank-card-upright-activation-20
 ## Consequences
 
 Three horizontal-front bank layouts do not qualify all designs, white cards on white backgrounds, multiple overlapping cards or severe perspective. Contour scoring can select a rectangle that is not a card; require classifier evidence rather than long-side geometry alone. Confidence remains uncalibrated. The existing small-angle estimator may abstain on full-photo backgrounds. Windows CPU measurements are not Mac measurements.
+
+
+复印件的多卡面方向一致性与后续识别裁区见[银行卡复印件](../../implemented/feature/2026-10-14-bank-photocopy-handwriting.md)；普通卡片仍使用本篇路径，整页预览仍保留。

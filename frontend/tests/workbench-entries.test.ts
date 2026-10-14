@@ -1,17 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { WORKBENCH_MAX_ENTRIES, loadWorkbenchLayout, saveWorkbenchLayout, splitEntries } from '../src/workbenchEntries.ts'
+import { WORKBENCH_MAX_ENTRIES, parseWorkbenchLayout, parseWorkbenchPreferences, splitEntries } from '../src/workbenchEntries.ts'
 
 const keys = ['A', 'B', 'C', 'D']
-function fakeStorage(initial: Record<string, string> = {}) {
-  const map = new Map(Object.entries(initial))
-  return {
-    getItem: (key: string) => map.get(key) ?? null,
-    setItem: (key: string, value: string) => void map.set(key, value),
-    removeItem: (key: string) => void map.delete(key),
-  }
-}
-
 test('no customization keeps the full catalogue in default order', () => {
   assert.deepEqual(splitEntries(keys, null), { visible: keys, hidden: [] })
 })
@@ -25,22 +16,19 @@ test('visible entries are capped at twelve; extras stay tucked in catalogue orde
   assert.deepEqual(visible, many.slice(0, WORKBENCH_MAX_ENTRIES))
   assert.deepEqual(hidden, ['T12', 'T13', 'T14', 'EXTRA'])
 })
-test('layout roundtrips through storage; corrupt or malformed records fall back to default', () => {
-  const storage = fakeStorage()
-  assert.equal(loadWorkbenchLayout(storage), null)
-  saveWorkbenchLayout(storage, ['A', 'B'])
-  assert.deepEqual(loadWorkbenchLayout(storage), ['A', 'B'])
-  storage.setItem('ocr-workbench-entries-v1', '{broken')
-  assert.equal(loadWorkbenchLayout(storage), null)
-  storage.setItem('ocr-workbench-entries-v1', '["A",5]')
-  assert.equal(loadWorkbenchLayout(storage), null)
-  assert.equal(loadWorkbenchLayout(null), null)
-})
-test('saving null clears the stored customization', () => {
-  const storage = fakeStorage({ 'ocr-workbench-entries-v1': '["A"]' })
-  saveWorkbenchLayout(storage, null)
-  assert.equal(loadWorkbenchLayout(storage), null)
-})
-test('storage failures while saving are swallowed', () => {
-  saveWorkbenchLayout({ getItem: () => null, setItem: () => { throw new Error('quota') }, removeItem: () => {} }, ['A'])
+test('server contracts distinguish defaults from all tucked and reject malformed data', () => {
+  for (const layout of [null, [], ['TABLE', 'BANK_CARD']]) {
+    assert.deepEqual(parseWorkbenchLayout({ layout, revision: 3 }), { layout, revision: 3 })
+  }
+  assert.deepEqual(splitEntries(keys, []), { visible: [], hidden: keys })
+  for (const value of [null, {}, { layout: null, revision: -1 }, { layout: [], revision: true },
+    { layout: [3], revision: 1 }, { layout: ['TABLE', 'TABLE'], revision: 1 },
+    { layout: ['<script>'], revision: 1 }, { layout: [], revision: 1, user_id: 'forged' }]) {
+    assert.throws(() => parseWorkbenchLayout(value))
+  }
+  assert.deepEqual(parseWorkbenchPreferences({layout:null, revision:0, defaults:{layout:['TABLE'], revision:2}}),
+    {layout:null, revision:0, defaults:{layout:['TABLE'], revision:2}})
+  for (const defaults of [undefined, null, {}, {layout:['TABLE','TABLE'], revision:0}]) {
+    assert.throws(() => parseWorkbenchPreferences({layout:null, revision:0, defaults}))
+  }
 })

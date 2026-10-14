@@ -87,6 +87,15 @@ def _bank_card_view(image, check=lambda: None):
 
 def classify_bank_orientation(image, check=lambda: None):
     """Resolve direction from a card view, then compose any analysis-only turn."""
+    from .bank_photocopy import card_boxes
+    boxes = card_boxes(image, check)
+    if len(boxes) >= 2:
+        predictions = [classify_orientation(image.crop(tuple(round(v) for v in box))) for box in boxes]
+        check()
+        if all(_confident(p) for p in predictions) and len({p[0] for p in predictions}) == 1:
+            return predictions[0][0], min(p[1] for p in predictions), min(p[2] for p in predictions)
+        # Opposing card faces cannot justify rotating the whole sheet.
+        return 0, 0., 0.
     crop = _bank_card_view(image, check)
     check()
     if crop is None:

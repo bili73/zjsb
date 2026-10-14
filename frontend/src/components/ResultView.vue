@@ -40,7 +40,7 @@ function basisText(item: MedicalItem): string {
 }
 const statText = (value: number | null) => (value === null ? '未确认' : String(value))
 function onFilterChange(value: string | number | boolean | undefined) { emit('update:filter', value as ItemsFilter) }
-function locate(source: FieldSource | undefined) { if (isMedical.value && source) emit('locate', source) }
+function locate(source: FieldSource | undefined) { if ((isMedical.value || props.result.doc_type === 'BANK_CARD') && source) emit('locate', source) }
 </script>
 
 <template>
@@ -62,12 +62,19 @@ function locate(source: FieldSource | undefined) { if (isMedical.value && source
             <el-tag size="small" type="warning" effect="plain">核对项 {{ field.review_issues.length }}</el-tag>
           </el-tooltip>
           <span class="conf">置信度 {{ confidenceText(field) }}</span>
-          <el-button v-if="isMedical && field.source" link type="primary" size="small" @click="locate(field.source)">定位</el-button>
-          <el-dropdown v-if="isMedical && field.sources?.length" @command="index => locate(field.sources?.[Number(index)])">
+          <el-button v-if="(isMedical || result.doc_type === 'BANK_CARD') && field.source" link type="primary" size="small" @click="locate(field.source)">定位</el-button>
+          <el-dropdown v-if="(isMedical || result.doc_type === 'BANK_CARD') && field.sources?.length" @command="index => locate(field.sources?.[Number(index)])">
             <el-button link type="primary" size="small">{{ field.key === 'exam_projects' ? '各项目来源' : '相关来源' }}</el-button>
             <template #dropdown><el-dropdown-menu><el-dropdown-item v-for="(source,index) in field.sources" :key="index" :command="index">第{{ source.page }}页 · {{ source.raw_text }}</el-dropdown-item></el-dropdown-menu></template>
           </el-dropdown>
         </span>
+        <div v-if="result.doc_type === 'BANK_CARD' && field.candidates?.length">
+          <div v-for="(candidate,index) in field.candidates" :key="index">
+            {{ candidate.reason ?? '候选值' }}：{{ candidate.value }}
+            <el-button v-if="candidate.source" link type="primary" @click="locate(candidate.source)">查看来源</el-button>
+          </div>
+          <span class="conf">{{ field.review_issues.some(issue => issue.code === 'CONFLICT') ? '请在“人工核对与修正”中核对并选择，系统不会按校验码自动改号。' : '以上为保留的原始候选，已保存值显示在字段中。' }}</span>
+        </div>
       </el-descriptions-item>
     </el-descriptions>
 

@@ -88,8 +88,13 @@ class DocumentPrivacyTests(unittest.TestCase):
         original=copy.deepcopy(value)
         out=public_result(value)
         self.assertEqual(value,original)
-        self.assertEqual(len(out['fields']),1)
-        self.assertEqual(out['fields'][0],field('card_number','0012345678901234'))
+        from ocr_app.doc_profiles import profile
+        self.assertEqual([f['key'] for f in out['fields']],[f['key'] for f in profile('BANK_CARD')])
+        number=next(f for f in out['fields'] if f['key']=='card_number')
+        self.assertEqual(number['value'],'0012345678901234')
+        self.assertNotIn('value_masked',number)
+        self.assertNotIn('_sensitive_history',number)
+        self.assertIsNone(next(f for f in out['fields'] if f['key']=='branch_name')['value'])
 
 
 if __name__=='__main__':unittest.main()

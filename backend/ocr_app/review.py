@@ -86,7 +86,7 @@ def _field_patch(result, patches, absences, actor, definitions_override=None, re
     for key, meta in definitions.items():
         target = fields.setdefault(key, dict(key=key, label=meta['label'], value=None, confidence=None,
                                             confidence_method='unavailable', review_issues=[], need_review=False))
-        target.update(required=bool(meta.get('required')), editable=meta.get('editable', True))
+        target.update(label=meta['label'], required=bool(meta.get('required')), editable=meta.get('editable', True))
         target.setdefault('reviewed', False)
         target.setdefault('value_origin', 'recognized')
         changed = key in patches or key in absences

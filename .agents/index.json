@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-14T01:59:06.331Z",
+  "generatedAt": "2026-10-14T07:15:13.611Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 83,
+    "activeNotes": 88,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 507,
+    "relations": 528,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 78,
+      "implemented": 83,
       "rejected": 3
     },
     "staleNotes": []
@@ -2217,13 +2217,16 @@
         "implemented/feature/2026-10-12-certificate-image-upright.md",
         "implemented/feature/2026-10-09-bank-auto-recognition.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
-        "implemented/feature/2026-09-30-durable-document-tasks.md"
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-09-bank-auto-recognition.md",
-        "implemented/feature/2026-10-12-certificate-image-upright.md"
+        "implemented/feature/2026-10-12-certificate-image-upright.md",
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
       ],
       "lastVerified": "2026-10-12",
       "archivedDate": null,
@@ -2233,7 +2236,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD uses a dedicated classifier path, selected by an optional internal doc_type keyword on prepare_image. Bounded CPU OpenCV contour analysis operates on a maximum1000-pixel thumbnail: blurred gray dark Otsu, saturation Otsu and Canny",
-      "bodySha256": "649653505baedb3f",
+      "bodySha256": "a1fe863441eadaf9",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2794,6 +2797,76 @@
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md",
+      "title": "Correct bank scan region selection and field semantics",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-14",
+      "scope": [
+        "backend/ocr_app/bank_photocopy.py",
+        "tests/test_bank_photocopy.py",
+        "scripts/probe_bank_photocopy.py"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "Use positive issuer/card evidence and negative back-service evidence together. Keep nearby detected text pixels for visual recognition even when quick OCR cannot read the text. Recognize aligned side supplements when source cues connect the",
+      "bodySha256": "4cc5d650a7e0dff8",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related-note audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Verification",
+            "line": 27
+          },
+          {
+            "title": "Consequences",
+            "line": 35
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "path": ".agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -3068,7 +3141,8 @@
         "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
         "implemented/bug-fix/2026-10-12-adjacent-document-field-boundaries.md",
-        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-adjacent-document-field-boundaries.md",
@@ -3083,6 +3157,7 @@
         "implemented/feature/2026-10-12-certificate-image-upright.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
         "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
         "implemented/simplification/2026-10-08-required-fields-only-export.md"
       ],
       "lastVerified": "2026-10-12",
@@ -3093,7 +3168,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "A backend document catalogue owns field names, editability, conditional applicability and required fields. GET /doc-types supplies that catalogue to the UI. Pure versioned validation distinguishes FORMAT, CHECKSUM and OFFICIAL outcomes; unk",
-      "bodySha256": "3ba802ff647543d4",
+      "bodySha256": "adfdace172da42b9",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3837,16 +3912,19 @@
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
-        "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md"
+        "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
+        "implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
         "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
-        "implemented/feature/2026-10-12-certificate-image-upright.md"
+        "implemented/feature/2026-10-12-certificate-image-upright.md",
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
       ],
       "lastVerified": "2026-10-12",
       "archivedDate": null,
@@ -3856,7 +3934,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD accepts decoded single photographs, including full front faces, and cropped rows. Upload does not call a recognizer; encrypted source persistence and independent per-file tasks match the other document families. PDF remains unsupp",
-      "bodySha256": "a556f0e798ff5da2",
+      "bodySha256": "317f76cf79395014",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4438,7 +4516,8 @@
         "implemented/feature/2026-10-10-delete-recognized-batches.md",
         "implemented/feature/2026-10-10-embedded-help-integration.md",
         "implemented/feature/2026-10-10-web-user-manual.md",
-        "implemented/feature/2026-10-12-thirty-day-single-session.md"
+        "implemented/feature/2026-10-12-thirty-day-single-session.md",
+        "implemented/feature/2026-10-14-account-workbench-layout.md"
       ],
       "lastVerified": "2026-10-10",
       "archivedDate": null,
@@ -4528,7 +4607,8 @@
         "implemented/feature/2026-10-10-web-user-manual.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
         "implemented/feature/2026-10-12-thirty-day-single-session.md",
-        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md"
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-14-account-workbench-layout.md"
       ],
       "lastVerified": "2026-10-10",
       "archivedDate": null,
@@ -5913,7 +5993,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "For materials with trusted corrected pages (ocrEnabled), clicking a source page image opens the region OCR dialog in a new cinema variant: a fullscreen dark backdrop (82% black modal mask, like the retired stock viewer) with the corrected p",
-      "bodySha256": "ff3f41c4dbb9a7cb",
+      "bodySha256": "2828289e48633004",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6033,6 +6113,90 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-13-source-region-ocr-copy.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-14-account-workbench-layout.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-account-workbench-layout.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-account-workbench-layout.md",
+      "title": "Persist workbench layouts per authenticated account",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "backend/ocr_app",
+        "backend/migrations",
+        "frontend/src",
+        "tests",
+        "frontend/tests",
+        "scripts/probe_account_layout.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-14-workbench-entry-customization.md",
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/feature/2026-10-10-account-lifecycle-management.md",
+        "implemented/feature/2026-10-14-admin-workbench-default.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-14-admin-workbench-default.md",
+        "implemented/feature/2026-10-14-workbench-entry-customization.md",
+        "implemented/simplification/2026-10-14-remove-system-layout-reset.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "Store one ordered nullable list plus revision per immutable named account in SQLite. Null means catalogue defaults; an empty list means all entries tucked. Retain a revision after restoring defaults to prevent stale writes. A self-only GET/",
+      "bodySha256": "d3642655cf788419",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related-note audit",
+            "line": 17
+          },
+          {
+            "title": "Default-layout extension",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Verification",
+            "line": 31
+          },
+          {
+            "title": "Consequences",
+            "line": 37
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-account-workbench-layout.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-10-14-adaptive-generic-forms.md",
       "path": ".agents/notes/implemented/feature/2026-10-14-adaptive-generic-forms.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-adaptive-generic-forms.md",
@@ -6120,6 +6284,84 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-adaptive-generic-forms.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-14-admin-workbench-default.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-admin-workbench-default.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-admin-workbench-default.md",
+      "title": "Let administrators set the inherited workbench default",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "backend/ocr_app",
+        "backend/migrations",
+        "frontend/src",
+        "tests",
+        "frontend/tests",
+        "scripts/probe_account_layout.py",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/simplification/2026-10-14-remove-system-layout-reset.md",
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/feature/2026-10-14-workbench-entry-customization.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/simplification/2026-10-14-remove-system-layout-reset.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "Persist a singleton default layout and independent revision. Personal null now means inherit that default; default null means the system catalogue order. Personal arrays, including an empty array, override the shared default. Return both pe",
+      "bodySha256": "83598a8341b20135",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related-note audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Verification",
+            "line": 28
+          },
+          {
+            "title": "Consequences",
+            "line": 34
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-admin-workbench-default.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-10-14-auto-table-header-rows.md",
       "path": ".agents/notes/implemented/feature/2026-10-14-auto-table-header-rows.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-auto-table-header-rows.md",
@@ -6199,22 +6441,37 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-auto-table-header-rows.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
-      "id": "implemented/feature/2026-10-14-workbench-entry-customization.md",
-      "path": ".agents/notes/implemented/feature/2026-10-14-workbench-entry-customization.md",
-      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-workbench-entry-customization.md",
-      "title": "Customizable workbench entry layout",
+      "id": "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+      "title": "Recognize bank photocopies and handwritten supplements in BANK_CARD",
       "lifecycle": "implemented",
       "class": "feature",
       "date": "2026-10-14",
       "scope": [
-        "frontend/src/components/UploadPanel.vue",
-        "frontend/src/workbenchEntries.ts",
-        "frontend/tests/workbench-entries.test.ts"
+        "backend/ocr_app",
+        "tests",
+        "scripts",
+        "frontend/src",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md"
       ],
       "supersedes": null,
       "supersededBy": [],
-      "cites": [],
-      "citedBy": [],
+      "cites": [
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
+        "implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-09-bank-auto-recognition.md"
+      ],
       "lastVerified": "2026-10-14",
       "archivedDate": null,
       "freshness": {
@@ -6222,8 +6479,8 @@
         "monthsSinceVerify": 0,
         "rule": "最近复核 2026-10-14"
       },
-      "summary": "Split the type-card grid into an ordered visible set plus a tucked \"更多类型\" collapsible section whose cards behave identically. A 自定义入口 dialog manages both panes: move up/down (order), 移出/放回 (visibility), capped at 12 visible entries, with 恢复",
-      "bodySha256": "c0e6223fedfd9b08",
+      "summary": "The profile reuses holder_name and bank_name with labels 姓名 and 开户行, adds optional branch_name, and puts these four business fields first. Existing required-field settings remain authoritative. The pipeline identifies front-card and supplem",
+      "bodySha256": "dcd1a4d8a8a66e95",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6243,16 +6500,95 @@
             "line": 11
           },
           {
-            "title": "Alternatives considered",
+            "title": "Related-note audit",
             "line": 15
           },
           {
-            "title": "Verification",
-            "line": 21
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Verified scope",
+            "line": 29
           },
           {
             "title": "Consequences",
-            "line": 25
+            "line": 33
+          },
+          {
+            "title": "Verification evidence",
+            "line": 38
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-bank-photocopy-handwriting.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-14-workbench-entry-customization.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-workbench-entry-customization.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-workbench-entry-customization.md",
+      "title": "Customizable workbench entry layout",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "frontend/src/components/UploadPanel.vue",
+        "frontend/src/useDragReorder.ts",
+        "frontend/src/workbenchEntries.ts",
+        "frontend/tests/workbench-entries.test.ts"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-14-account-workbench-layout.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/feature/2026-10-14-admin-workbench-default.md",
+        "implemented/simplification/2026-10-14-remove-system-layout-reset.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "Split the type-card grid into an ordered visible set plus a tucked set. Customization is an on-grid edit mode: 自定义入口 toggles it, and the actual workbench cards become directly manipulable — long-press (~280 ms, 10 px slop) picks a card up, ",
+      "bodySha256": "8ff227dfb57b815d",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Persistence decision update",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Verification",
+            "line": 27
+          },
+          {
+            "title": "Consequences",
+            "line": 31
           }
         ]
       },
@@ -6513,6 +6849,78 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-08-retire-temporary-frontend.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/simplification/2026-10-14-remove-system-layout-reset.md",
+      "path": ".agents/notes/implemented/simplification/2026-10-14-remove-system-layout-reset.md",
+      "anchor": "// Note: .agents/notes/implemented/simplification/2026-10-14-remove-system-layout-reset.md",
+      "title": "Remove the system-layout reset entry",
+      "lifecycle": "implemented",
+      "class": "simplification",
+      "date": "2026-10-14",
+      "scope": [
+        "frontend/src/components/UploadPanel.vue",
+        "frontend/public/help",
+        "scripts/probe_account_layout.py",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-14-admin-workbench-default.md",
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/feature/2026-10-14-workbench-entry-customization.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-14-admin-workbench-default.md"
+      ],
+      "lastVerified": null,
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "The 恢复系统默认 button and its confirmation branch are removed. Administrator saving of the visible layout and personal 恢复默认 inheritance remain unchanged. Persisted layouts and nullable API compatibility are preserved; this change does not reset",
+      "bodySha256": "5573ee7b9659d000",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": null,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 8
+          },
+          {
+            "title": "Decision",
+            "line": 12
+          },
+          {
+            "title": "Related-note audit",
+            "line": 16
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 20
+          },
+          {
+            "title": "Verification",
+            "line": 25
+          },
+          {
+            "title": "Consequences",
+            "line": 31
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-14-remove-system-layout-reset.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
@@ -8072,6 +8480,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
+      "to": "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-12-degree-school-and-award-mapping.md",
       "to": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md"
     },
@@ -8244,6 +8657,21 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
       "to": "implemented/feature/2026-10-10-delete-recognized-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md",
+      "to": "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md",
+      "to": "implemented/feature/2026-10-09-bank-auto-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md",
+      "to": "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md"
     },
     {
       "type": "cite",
@@ -8489,6 +8917,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
       "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
     },
     {
       "type": "cite",
@@ -8849,6 +9282,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-09-bank-auto-recognition.md",
       "to": "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-bank-auto-recognition.md",
+      "to": "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
     },
     {
       "type": "cite",
@@ -9587,6 +10025,26 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-14-account-workbench-layout.md",
+      "to": "implemented/feature/2026-10-14-workbench-entry-customization.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-account-workbench-layout.md",
+      "to": "implemented/feature/2026-10-10-account-owned-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-account-workbench-layout.md",
+      "to": "implemented/feature/2026-10-10-account-lifecycle-management.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-account-workbench-layout.md",
+      "to": "implemented/feature/2026-10-14-admin-workbench-default.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-14-adaptive-generic-forms.md",
       "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
     },
@@ -9612,6 +10070,21 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-14-admin-workbench-default.md",
+      "to": "implemented/simplification/2026-10-14-remove-system-layout-reset.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-admin-workbench-default.md",
+      "to": "implemented/feature/2026-10-14-account-workbench-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-admin-workbench-default.md",
+      "to": "implemented/feature/2026-10-14-workbench-entry-customization.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-14-auto-table-header-rows.md",
       "to": "implemented/simplification/2026-10-14-table-export-without-confirmation.md"
     },
@@ -9624,6 +10097,31 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-14-auto-table-header-rows.md",
       "to": "rejected/feature/2026-10-13-photo-table-to-excel.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+      "to": "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+      "to": "implemented/feature/2026-10-09-bank-auto-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+      "to": "implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-workbench-entry-customization.md",
+      "to": "implemented/feature/2026-10-14-account-workbench-layout.md"
     },
     {
       "type": "cite",
@@ -9669,6 +10167,21 @@
       "type": "cite",
       "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
       "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-14-remove-system-layout-reset.md",
+      "to": "implemented/feature/2026-10-14-admin-workbench-default.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-14-remove-system-layout-reset.md",
+      "to": "implemented/feature/2026-10-14-account-workbench-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-14-remove-system-layout-reset.md",
+      "to": "implemented/feature/2026-10-14-workbench-entry-customization.md"
     },
     {
       "type": "cite",

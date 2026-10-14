@@ -47,6 +47,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     # Only coordinates and small metadata survive a page iteration, never PIL images.
     pending = {}
     form_lines = {}
+    bank_roles = {}
     planning_complete = False
     stage, stop_code = 'PREPROCESSING', None
     preprocessing = {'doc_type': doc_type} if doc_type in UPRIGHT_DOCUMENT_TYPES and not content.lstrip().startswith(b'%PDF-') else None
@@ -59,7 +60,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     model = 'paddleocr_vl' if paddle_primary else 'glm_ocr'
     alternate = 'glm_ocr' if paddle_primary else 'paddleocr_vl'
     attempt_models = (model, alternate) if paddle_primary else (model, model, alternate)
-    generation_timeout = 20.0 if medical else 40.0 if generic else None
+    generation_timeout = 20.0 if medical else 40.0 if generic or doc_type == 'BANK_CARD' else None
     revisions = model_revisions if model_revisions is not None else {}
     cache = {}  # Successful predictions only; never shared with another Task or rerun.
     signature = inspect.signature(recognize)
@@ -139,7 +140,11 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
             warnings.extend(dict(code=code, message='PDF文字或布局需通过识别补充。') for code in page.warnings)
             plans=[]
             for box in page.ocr_boxes:
-                if generic:
+                if doc_type == 'BANK_CARD':
+                    from .bank_photocopy import plan_bank_regions
+                    bank_plans, notes = plan_bank_regions(page.image, box, check)
+                    plans.extend(bank_plans); limitations.extend(notes)
+                elif generic:
                     from .generic_layout import plan_form_regions
                     form_regions, notes=plan_form_regions(page.image,box,check)
                     plans.extend(form_regions);limitations.extend(notes)
@@ -155,6 +160,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 info['regions'].append(region)
                 task = plan['task']
                 if generic:form_lines[region_id]=plan['lines']
+                if doc_type == 'BANK_CARD':bank_roles[region_id]=plan.get('bank_role','whole')
                 planned.append((box, region, task))
             if planned:
                 pending[page.index] = planned
@@ -177,7 +183,8 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 region_id, location = region['region_id'], region['bbox']
                 selected = None
                 successful = False
-                for attempt_index, used_model in enumerate(attempt_models):
+                region_models = (model, alternate) if bank_roles.get(region_id) in {'front','supplement','ambiguous_front'} else attempt_models
+                for attempt_index, used_model in enumerate(region_models):
                     check()
                     image = page.image.crop(box)
                     transform = 'original'
@@ -211,7 +218,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                                            reused_from_attempt=cached['attempt'])
                         else:
                             extra = {'context': dict(page=page.index, region_id=region_id, stage=stage)} if accepts_context else {}
-                            if paddle_primary and accepts_generation_timeout:
+                            if generation_timeout is not None and accepts_generation_timeout:
                                 extra['generation_timeout_seconds'] = generation_timeout
                             prediction = recognize(used_model, base64.b64encode(png).decode('ascii'),
                                                    task, max(.001, deadline - time.monotonic()), **extra)
@@ -232,6 +239,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                         if isinstance(text, str) and text.strip():
                             selected = dict(text=text, page=page.index, region_id=region_id,
                                             bbox=location, extraction_method='ocr')
+                            if doc_type == 'BANK_CARD':selected['_bank_role']=bank_roles.get(region_id,'whole')
                             if generic:
                                 selected['_layout_lines']=form_lines.get(region_id,[])
                                 if task == 'table' and successful:
@@ -276,11 +284,12 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                             cache[key] = dict(text=prediction['text'], region_id=region_id, attempt=attempt_index + 1)
                         break
                 if not successful:
-                    limitations.append(f'有识别区域在{len(attempt_models)}次尝试后仍不完整，保留最后一次可用原文。')
+                    limitations.append(f'有识别区域在{len(region_models)}次尝试后仍不完整，保留最后一次可用原文。')
                 publish('OCR')
             info['extraction_method'] = 'mixed' if page.evidence else 'ocr'
             # Coordinate coverage is known; semantic OCR coverage remains unverified.
-            limitations.append('已保留完整校正原图；主体内外文字及表格是否全部识别仍需核对。' if generic else
+            limitations.append('保留整页原图对照；银行卡分区或整图识别的完整性需人工核对。' if doc_type == 'BANK_CARD' else
+                               '已保留完整校正原图；主体内外文字及表格是否全部识别仍需核对。' if generic else
                                '自动分区保留整页像素覆盖；文字与表格行是否全部识别仍需原页复核。')
             del pending[page.index]
             if not pending:

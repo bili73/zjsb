@@ -79,6 +79,12 @@ class PipelineSchemaTests(unittest.TestCase):
             result = extract_result(evidence, doc_type)
             self.validate('TaskResult', self.publish_identity(result))
 
+    def test_bank_photocopy_conflict_sources_match_contract(self):
+        evidence=[dict(text=text,_bank_role=role,page=1,region_id=str(uuid4()),extraction_method='ocr',bbox=[0,0,1,1])
+                  for role,text in [('front','中国银行\n4111111111111111'),('supplement','4111111111111112\n李小明 13800000000\n东城支行')]]
+        result=extract_result(evidence,'BANK_CARD')
+        self.validate('TaskResult', self.publish_identity(result))
+
     def test_follow_up_summary_from_mixed_ocr_block_matches_contract(self):
         text = ('您共有2项异常需进一步检查并治疗：\n'
                 '<table><tr><td>序号</td><td>项目</td><td>异常诊断</td></tr>'

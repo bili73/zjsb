@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadUserFile } from 'element-plus'
-import { CreditCard, Files, FirstAidKit, Grid, Medal, Notebook, OfficeBuilding, Postcard, Reading, Stamp, UploadFilled, User } from '@element-plus/icons-vue'
+import { CreditCard, Files, FirstAidKit, Grid, Medal, Notebook, OfficeBuilding, Plus, Postcard, Reading, Stamp, UploadFilled, User } from '@element-plus/icons-vue'
 import { ApiFailure, isAbort } from '../api.ts'
 import { docTypes, sampleQualification, uploadLimits, validateUpload } from '../business.ts'
 import type { BusinessApi } from '../api.ts'
@@ -11,9 +11,11 @@ import type { Batch, DocProfile, Task, UploadDocType } from '../business.ts'
 import { errorMessages } from '../diagnostics.ts'
 import type { Monitor } from '../monitor.ts'
 import { createClassificationQueue } from '../packageUpload.ts'
-import { WORKBENCH_MAX_ENTRIES, loadWorkbenchLayout, saveWorkbenchLayout, splitEntries } from '../workbenchEntries.ts'
+import { WORKBENCH_MAX_ENTRIES, splitEntries } from '../workbenchEntries.ts'
+import { createWorkbenchLayout } from '../workbenchLayout.ts'
+import { useDragReorder } from '../useDragReorder.ts'
 
-const props = defineProps<{ monitor: Monitor; canWrite: boolean; api: BusinessApi | null; catalogue: DocProfile[]; targetBatch?: Batch }>()
+const props = defineProps<{ monitor: Monitor; canWrite: boolean; api: BusinessApi | null; catalogue: DocProfile[]; targetBatch?: Batch; isAdmin?: boolean }>()
 const emit = defineEmits<{
   (e: 'submitted', batchId: string): void
   (e: 'preview', files: File[], tasks: Task[]): void
@@ -47,6 +49,8 @@ function releaseRow(uid: number) {
 }
 onBeforeUnmount(() => {
   disposed = true
+  preferences.dispose()
+  drag.dispose()
   if (submitController) {
     // 组件被卸载（如追加弹窗被关闭）而上传仍在途时，catch 里的提示已被 disposed 拦下；
     // 在这里补一条「可能已被服务端接收」的警示并刷新，避免操作员误以为提交丢失。
@@ -92,97 +96,106 @@ function manualType(uid: number, type: UploadDocType | '') {
   const row = rows[uid]; if (row) Object.assign(row, { type, state: '手动选择', reason: '以你选择的类型提交' })
 }
 
-// 工作台入口自定义：展示哪些类型、按什么顺序，保存在本机浏览器。自定义后新增类型默认收纳进「更多类型」。
-const customizeOpen = ref(false)
-const layout = ref<string[] | null>(loadWorkbenchLayout(typeof window === 'undefined' ? undefined : window.localStorage))
+// 工作台入口自定义（编辑模式）：长按卡片拖动交换位置，右上角 ✕ 收纳，不足 12 个时末尾出现「+」位、从收纳区拖入放回。
+// Account-owned server state; dragging only changes a draft until 完成.
+const preferences = createWorkbenchLayout(() => emit('unauthorized'))
+const preferenceState = preferences.state
+const editMode = computed(() => preferenceState.editing)
+const tuckedOpen = ref(false)
+const layout = computed(() => preferenceState.layout)
 const catalogueKeys = computed(() => props.catalogue.map(profile => profile.doc_type))
-const split = computed(() => splitEntries(catalogueKeys.value, layout.value))
-const visibleProfiles = computed(() => split.value.visible.map(key => props.catalogue.find(profile => profile.doc_type === key)!).filter(Boolean))
+const split = computed(() => splitEntries(catalogueKeys.value, layout.value ?? preferenceState.defaults.layout))
+const visibleKeys = computed(() => split.value.visible)
+const visibleProfiles = computed(() => visibleKeys.value.map(key => props.catalogue.find(profile => profile.doc_type === key)!).filter(Boolean))
 const hiddenProfiles = computed(() => split.value.hidden.map(key => props.catalogue.find(profile => profile.doc_type === key)!).filter(Boolean))
-function applyLayout(next: string[]) { layout.value = next; saveWorkbenchLayout(window.localStorage, next) }
-function openCustomize() {
-  if (!catalogueKeys.value.length) return
-  if (layout.value === null) applyLayout(catalogueKeys.value)
-  customizeOpen.value = true
+function applyLayout(next: string[]) {
+  if (editMode.value && !preferenceState.saving && !preferenceState.loading) preferenceState.layout = next
 }
-function resetLayout() { layout.value = null; saveWorkbenchLayout(window.localStorage, null) }
-function moveEntry(index: number, delta: number) {
-  const next = [...(layout.value ?? [])]
-  const target = index + delta
-  if (target < 0 || target >= next.length) return
-  ;[next[index], next[target]] = [next[target]!, next[index]!]
-  applyLayout(next)
+function enterEditMode() {
+  if (!catalogueKeys.value.length || !preferenceState.loaded || preferenceState.saving) return
+  preferenceState.editing = true
+  if (layout.value !== null) applyLayout(split.value.visible)
 }
-function removeEntry(index: number) { applyLayout((layout.value ?? []).filter((_, i) => i !== index)) }
-function addEntry(key: string) {
-  if (!layout.value || layout.value.length >= WORKBENCH_MAX_ENTRIES) return
-  applyLayout([...layout.value, key])
-}
-// 拖拉拽：工作台列表内拖动排序；拖到「已收纳」= 移出，从「已收纳」拖入 = 放回（受 12 上限约束）。
-const dragState = ref<{ pane: 'visible' | 'hidden'; key: string } | null>(null)
-const dropHint = ref<{ pane: 'visible' | 'hidden'; index: number } | null>(null)
-function onDragStart(pane: 'visible' | 'hidden', key: string, event: DragEvent) {
-  dragState.value = { pane, key }
-  // Firefox 需要显式 setData 才会进入拖拽；数据本体走 dragState。
-  event.dataTransfer?.setData('text/plain', key)
-  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
-}
-function onDragEnd() { dragState.value = null; dropHint.value = null }
-function setDropHint(pane: 'visible' | 'hidden', index: number) {
-  // 已满 12 个时，隐藏区拖入不再给出可放置指示。
-  if (pane === 'visible' && dragState.value?.pane === 'hidden' && (layout.value?.length ?? 0) >= WORKBENCH_MAX_ENTRIES) { dropHint.value = null; return }
-  dropHint.value = { pane, index }
-}
-function onItemDragOver(pane: 'visible' | 'hidden', index: number, event: DragEvent) {
-  if (!dragState.value) return
-  event.preventDefault()
-  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-  if (pane === 'hidden') { dropHint.value = { pane, index: 0 }; return }
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  setDropHint(pane, event.clientY < rect.top + rect.height / 2 ? index : index + 1)
-}
-function onPaneDragOver(pane: 'visible' | 'hidden', event: DragEvent) {
-  if (!dragState.value || event.target !== event.currentTarget) return
-  event.preventDefault()
-  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-  setDropHint(pane, pane === 'visible' ? (layout.value?.length ?? 0) : 0)
-}
-function onPaneDragLeave(pane: 'visible' | 'hidden') { if (dropHint.value?.pane === pane) dropHint.value = null }
-function onDrop(pane: 'visible' | 'hidden', event: DragEvent) {
-  event.preventDefault()
-  const drag = dragState.value, hint = dropHint.value
-  dragState.value = null; dropHint.value = null
-  if (!drag) return
-  const list = [...(layout.value ?? [])]
-  if (drag.pane === 'visible') {
-    const from = list.indexOf(drag.key)
-    if (from < 0) return
-    list.splice(from, 1)
-    if (pane === 'visible') {
-      let to = hint && hint.pane === 'visible' ? hint.index : list.length
-      if (to > from) to -= 1
-      list.splice(Math.max(0, Math.min(list.length, to)), 0, drag.key)
-    }
-    applyLayout(list)
-    return
+async function exitEditMode() {
+  // 连同未落地的长按手势（定时、window 监听、拖拽态）一起撤掉，避免退出编辑后手势仍起拖并写入布局。
+  drag.cancelGesture()
+  if (await preferences.save()) {
+    tuckedOpen.value = false
+    ElMessage.success('个人布局已保存')
   }
-  if (pane !== 'visible' || list.length >= WORKBENCH_MAX_ENTRIES) return
-  const to = hint && hint.pane === 'visible' ? hint.index : list.length
-  list.splice(Math.max(0, Math.min(list.length, to)), 0, drag.key)
-  applyLayout(list)
 }
-// 目录变更时清掉自定义里已下线的类型；首次加载目录为空时绝不清写，避免误抹自定义。
-watch(catalogueKeys, keys => {
-  if (!keys.length || layout.value === null) return
-  const { visible } = splitEntries(keys, layout.value)
-  if (visible.length !== layout.value.length) applyLayout(visible)
+function resetLayout() {
+  if (preferenceState.saving || preferenceState.loading) return
+  drag.cancelGesture()
+  preferenceState.layout = null
+}
+async function reloadLayout() {
+  if (editMode.value) {
+    try { await ElMessageBox.confirm('重新读取会放弃本页尚未保存的布局调整，是否继续？', '重新读取个人布局', { type: 'warning' }) }
+    catch { return }
+  }
+  if (disposed) return
+  drag.cancelGesture()
+  await preferences.load()
+}
+async function saveDefaultLayout() {
+  if (!props.isAdmin || preferenceState.saving || preferenceState.loading) return
+  drag.cancelGesture()
+  const next = [...visibleKeys.value]
+  try {
+    await ElMessageBox.confirm('将当前排列设为公共默认布局。未自定义的账号重新进入页面后使用此排列，已有个人布局不变。本页个人草稿不会保存。',
+      '设置默认布局', { type: 'warning', confirmButtonText: '确认修改' })
+  } catch { return }
+  if (disposed) return
+  if (await preferences.saveDefault(next)) ElMessage.success('默认布局已更新，已有个人布局不变')
+}
+// 按key删除：恢复默认后继承管理员排列，以当前可见列表为基准。
+function removeEntry(key: string) {
+  const base = visibleKeys.value
+  applyLayout(base.filter(k => k !== key))
+}
+function addEntry(key: string) {
+  const base = visibleKeys.value
+  if (base.length >= WORKBENCH_MAX_ENTRIES || base.includes(key)) return
+  applyLayout([...base, key])
+}
+// 长按拖动机制在 useDragReorder.ts（可复用）：本组件只提供顺序读写与「+」位放置回调。
+const drag = useDragReorder({
+  enabled: () => editMode.value && !preferenceState.saving && !preferenceState.loading,
+  getOrder: () => visibleKeys.value,
+  setOrder: next => applyLayout(next),
+  gridSelector: '.type-section > .type-cards',
+  dropSlotSelector: '[data-plus-slot]',
+  onDropAtSlot: key => addEntry(key),
+  onExternalDragEnd: () => { suppressTuckedClick = true },
 })
+function onPlusClick() { if (hiddenProfiles.value.length) tuckedOpen.value = true }
+// 拖拽结束的 click 会落回原卡片（pointer capture 让 up 也派发到它），吞掉防止拖完又点选重复添加。
+let suppressTuckedClick = false
+function onTuckedCardClick(key: string) {
+  if (suppressTuckedClick) { suppressTuckedClick = false; return }
+  addEntry(key)
+}
+function onCardPointerDown(source: 'grid' | 'external', key: string, event: PointerEvent) {
+  suppressTuckedClick = false
+  drag.onCardPointerDown(source, key, event)
+}
+function onCardClick(type: UploadDocType) { if (!editMode.value) void selectType(type) }
+
+// Switching sessions clears drafts, cancels gestures and fences old requests.
+watch(() => props.api, client => {
+  drag.cancelGesture()
+  tuckedOpen.value = false
+  preferences.bind(props.targetBatch ? null : client)
+}, { immediate: true, flush: 'sync' })
 // 当前选中类型被收纳且尚未选择文件时，自动切到第一个展示中的类型，保持入口与上传卡一致。
 watch(visibleProfiles, list => {
   if (!personPackage.value && !entries.value.length && list.length && !list.some(profile => profile.doc_type === docType.value)) {
     docType.value = list[0]!.doc_type
   }
 })
+// 收纳箱清空（或恢复默认）后悬浮弹窗自动收起，避免留一个空壳浮层。
+watch(hiddenProfiles, list => { if (!list.length) tuckedOpen.value = false })
 function retryClassify(item: UploadUserFile) {
   if (!item.raw || item.uid === undefined || validateUpload([item.raw])) return
   const row = rows[item.uid]; if (row) Object.assign(row, { type: '', state: '等待分类', reason: '' })
@@ -311,12 +324,26 @@ async function submit() {
       </div>
       <span class="mode-hint">{{ personPackage ? '选齐此人的各类材料，核对类型后整包提交；识别后再确认姓名。' : '选定一种材料类型，集中批量处理同一种材料。' }}</span>
     </div>
-    <div v-if="!mixed" class="type-section">
+    <div v-if="!mixed" class="type-section" :class="{ editing: editMode }">
+      <el-alert v-if="preferenceState.error" :closable="false" type="warning">
+        {{ preferenceState.error }}
+        <el-button link :disabled="preferenceState.loading || preferenceState.saving" @click="reloadLayout">重新读取</el-button>
+      </el-alert>
       <div class="type-cards-head">
-        <span class="type-cards-title">选择材料类型</span>
         <span class="type-cards-tools">
-          <span v-if="hiddenProfiles.length" class="type-cards-note">已收纳 {{ hiddenProfiles.length }} 个类型</span>
-          <el-button link type="primary" @click="openCustomize">自定义入口</el-button>
+          <template v-if="!editMode">
+            <span v-if="hiddenProfiles.length" class="type-cards-note">已收纳 {{ hiddenProfiles.length }} 个类型</span>
+            <el-button link type="primary" :disabled="!preferenceState.loaded || preferenceState.loading" @click="enterEditMode">{{ preferenceState.loading ? '读取个人布局…' : '自定义入口' }}</el-button>
+          </template>
+          <template v-else>
+            <span class="type-cards-note">长按拖动交换 · 点 ✕ 收纳 · 点「+」从收纳箱点选添加</span>
+            <el-button link :type="tuckedOpen ? 'primary' : ''" @click="tuckedOpen = !tuckedOpen">收纳箱{{ hiddenProfiles.length ? `(${hiddenProfiles.length})` : '' }}</el-button>
+            <el-button link :disabled="preferenceState.saving || preferenceState.loading" @click="resetLayout">恢复默认</el-button>
+            <template v-if="isAdmin">
+              <el-button link :disabled="preferenceState.saving || preferenceState.loading || preferenceState.defaultConflict || !preferenceState.loaded" @click="saveDefaultLayout()">设为默认布局</el-button>
+            </template>
+            <el-button link type="primary" :loading="preferenceState.saving" :disabled="preferenceState.conflict || preferenceState.loading || !preferenceState.loaded" @click="exitEditMode">完成</el-button>
+          </template>
         </span>
       </div>
       <div class="type-cards">
@@ -325,18 +352,49 @@ async function submit() {
           :key="profile.doc_type"
           type="button"
           class="type-card"
-          :class="{ active: docType === profile.doc_type }"
-          :disabled="submitting"
-          @click="selectType(profile.doc_type)"
+          :class="{ active: !editMode && docType === profile.doc_type }"
+          :data-key="profile.doc_type"
+          :disabled="submitting || preferenceState.saving || preferenceState.loading"
+          @click="onCardClick(profile.doc_type)"
+          @pointerdown="onCardPointerDown('grid', profile.doc_type, $event)"
+          @contextmenu.prevent
         >
           <span class="type-head">
             <el-icon><component :is="typeMeta[profile.doc_type]?.icon ?? Files" /></el-icon>
             <span class="type-title">{{ profile.label }}</span>
           </span>
           <p class="type-desc">{{ typeMeta[profile.doc_type]?.desc }}</p>
+          <span v-if="editMode" class="card-tuck" role="button" aria-label="收纳入收纳箱" @pointerdown.stop @click.stop="removeEntry(profile.doc_type)">×</span>
         </button>
+        <div v-if="editMode && visibleProfiles.length < WORKBENCH_MAX_ENTRIES" class="type-card type-plus" data-plus-slot aria-label="打开收纳箱添加类型" @click="onPlusClick">
+          <el-icon><Plus /></el-icon>
+          <span>点击添加类型</span>
+        </div>
       </div>
-      <details v-if="hiddenProfiles.length" class="type-more">
+      <div v-if="editMode && tuckedOpen && hiddenProfiles.length" class="type-tucked-pop">
+        <div class="tucked-pop-head">
+          <span>收纳箱 · 点击卡片添加到工作台</span>
+          <button type="button" class="tucked-pop-close" aria-label="关闭收纳箱" @click="tuckedOpen = false">×</button>
+        </div>
+        <div class="type-cards is-pop">
+          <button
+            v-for="profile in hiddenProfiles"
+            :key="profile.doc_type"
+            type="button"
+            class="type-card"
+            :disabled="submitting || preferenceState.saving || preferenceState.loading"
+            @click="onTuckedCardClick(profile.doc_type)"
+            @pointerdown="onCardPointerDown('external', profile.doc_type, $event)"
+            @contextmenu.prevent
+          >
+            <span class="type-head">
+              <el-icon><component :is="typeMeta[profile.doc_type]?.icon ?? Files" /></el-icon>
+              <span class="type-title">{{ profile.label }}</span>
+            </span>
+          </button>
+        </div>
+      </div>
+      <details v-else-if="!editMode && hiddenProfiles.length" class="type-more">
         <summary>更多类型（{{ hiddenProfiles.length }}）</summary>
         <div class="type-cards">
           <button
@@ -424,82 +482,6 @@ async function submit() {
       </div>
       <div v-if="!canWrite" class="upload-hint readonly-hint">当前账号为只读角色，仅可查看任务与结果。</div>
     </el-card>
-
-    <el-dialog v-model="customizeOpen" title="自定义工作台入口" width="min(720px, 94vw)" append-to-body>
-      <p class="customize-tip">工作台最多展示 {{ WORKBENCH_MAX_ENTRIES }} 个入口；未展示的类型收进「更多类型」，随时放回。设置保存在本机浏览器。</p>
-      <div class="customize-columns">
-        <div class="customize-pane">
-          <h4>工作台展示（{{ (layout ?? []).length }}/{{ WORKBENCH_MAX_ENTRIES }}）</h4>
-          <ul
-            class="customize-list"
-            :class="{ 'drop-target': dragState?.pane === 'hidden' }"
-            @dragover="onPaneDragOver('visible', $event)"
-            @drop="onDrop('visible', $event)"
-            @dragleave="onPaneDragLeave('visible')"
-          >
-            <li
-              v-for="(key, index) in layout ?? []"
-              :key="key"
-              draggable="true"
-              :class="{
-                'is-dragging': dragState?.pane === 'visible' && dragState.key === key,
-                'drop-before': dropHint?.pane === 'visible' && dropHint.index === index,
-                'drop-after': dropHint?.pane === 'visible' && dropHint.index === index + 1,
-              }"
-              @dragstart="onDragStart('visible', key, $event)"
-              @dragover="onItemDragOver('visible', index, $event)"
-              @drop="onDrop('visible', $event)"
-              @dragend="onDragEnd"
-            >
-              <span class="customize-label">
-                <el-icon class="drag-handle"><component :is="typeMeta[key as UploadDocType]?.icon ?? Files" /></el-icon>
-                {{ docTypes[key as UploadDocType] ?? key }}
-              </span>
-              <span class="customize-ops">
-                <el-button link size="small" :disabled="index === 0" @click="moveEntry(index, -1)">上移</el-button>
-                <el-button link size="small" :disabled="index === (layout?.length ?? 0) - 1" @click="moveEntry(index, 1)">下移</el-button>
-                <el-button link size="small" type="danger" @click="removeEntry(index)">移出</el-button>
-              </span>
-            </li>
-          </ul>
-          <p v-if="!layout?.length" class="conf">工作台暂无入口，把右侧类型拖到这里，或点「放回」。</p>
-        </div>
-        <div class="customize-pane">
-          <h4>已收纳（{{ hiddenProfiles.length }}）</h4>
-          <ul
-            class="customize-list"
-            :class="{ 'drop-target': dragState?.pane === 'visible' }"
-            @dragover="onPaneDragOver('hidden', $event)"
-            @drop="onDrop('hidden', $event)"
-            @dragleave="onPaneDragLeave('hidden')"
-          >
-            <li
-              v-for="profile in hiddenProfiles"
-              :key="profile.doc_type"
-              draggable="true"
-              :class="{ 'is-dragging': dragState?.pane === 'hidden' && dragState.key === profile.doc_type }"
-              @dragstart="onDragStart('hidden', profile.doc_type, $event)"
-              @dragover="onItemDragOver('hidden', 0, $event)"
-              @drop="onDrop('hidden', $event)"
-              @dragend="onDragEnd"
-            >
-              <span class="customize-label">
-                <el-icon class="drag-handle"><component :is="typeMeta[profile.doc_type]?.icon ?? Files" /></el-icon>
-                {{ profile.label }}
-              </span>
-              <span class="customize-ops">
-                <el-button link size="small" :disabled="(layout?.length ?? 0) >= WORKBENCH_MAX_ENTRIES" @click="addEntry(profile.doc_type)">放回</el-button>
-              </span>
-            </li>
-          </ul>
-          <p v-if="!hiddenProfiles.length" class="conf">全部类型都在工作台上。</p>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="resetLayout">恢复默认</el-button>
-        <el-button type="primary" @click="customizeOpen = false">完成</el-button>
-      </template>
-    </el-dialog>
   </section>
 </template>
 
@@ -553,32 +535,28 @@ async function submit() {
   font-weight: 600;
   color: var(--el-color-primary);
 }
-/* 工作台入口自定义：标题行 + 收纳折叠区 + 自定义对话框。 */
-.type-section { margin-bottom: 16px; }
+/* 工作台入口编辑模式：长按拖动交换位置、右上角 ✕ 收纳、末尾「+」位从收纳箱弹窗拖入。 */
+.type-section { position: relative; margin-bottom: 16px; }
 .type-cards-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.type-cards-title { font-weight: 600; }
 .type-cards-tools { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
 .type-cards-note { font-size: 12px; color: var(--el-text-color-secondary); }
 .type-more { margin: -6px 0 16px; }
 .type-more summary { cursor: pointer; font-size: 13px; color: var(--el-text-color-secondary); user-select: none; }
 .type-more .type-cards { margin-top: 10px; margin-bottom: 0; }
 .type-more .type-card { opacity: .85; }
-.customize-tip { margin: 0 0 12px; font-size: 13px; color: var(--el-text-color-secondary); }
-.customize-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.customize-pane { border: 1px solid var(--el-border-color-lighter); border-radius: 10px; padding: 10px 12px; min-height: 220px; }
-.customize-pane h4 { margin: 0 0 8px; font-size: 13px; }
-.customize-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; min-height: 80px; align-content: start; }
-.customize-list li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--el-border-color-lighter); border-radius: 8px; background: var(--el-fill-color-lighter); }
-.customize-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
-.customize-ops { display: inline-flex; align-items: center; flex: none; }
-.customize-ops .el-button { margin: 0 0 0 4px; padding: 0 4px; }
-/* 拖拉拽：拖动项半透明，落点以主色横线指示，可投递窗格描边提示。 */
-.customize-list li { cursor: grab; }
-.customize-list li:active { cursor: grabbing; }
-.customize-list li.is-dragging { opacity: .4; }
-.customize-list li.drop-before { box-shadow: inset 0 3px 0 var(--el-color-primary); }
-.customize-list li.drop-after { box-shadow: inset 0 -3px 0 var(--el-color-primary); }
-.customize-list.drop-target { outline: 1px dashed var(--el-color-primary); outline-offset: 2px; }
-.drag-handle { color: var(--el-text-color-placeholder); }
-@media (max-width: 760px) { .customize-columns { grid-template-columns: 1fr; } }
+.type-section .type-card { position: relative; }
+.type-section.editing .type-card { touch-action: none; cursor: grab; }
+.type-section.editing .type-card:active { cursor: grabbing; }
+.card-tuck { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, 0.45); color: #fff; font-size: 14px; line-height: 22px; text-align: center; cursor: pointer; padding: 0; user-select: none; }
+.card-tuck:hover { background: var(--el-color-danger); }
+.type-plus { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 96px; border: 1px dashed var(--el-border-color); border-radius: 10px; background: var(--el-fill-color-lighter); color: var(--el-text-color-secondary); font-size: 13px; cursor: pointer; }
+.type-plus .el-icon { font-size: 22px; }
+.type-plus.drag-over { border-color: var(--el-color-primary); color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
+/* 收纳箱悬浮弹窗：编辑模式下按需展开，不再在网格下方常驻占位，页面保持紧凑。 */
+.type-tucked-pop { position: absolute; top: 34px; right: 0; z-index: 5; width: min(430px, 100%); background: #fff; border: 1px solid var(--el-border-color-light); border-radius: 10px; box-shadow: 0 10px 30px rgba(16, 60, 54, 0.16); padding: 10px 12px 12px; }
+.tucked-pop-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 8px; }
+.tucked-pop-close { border: 0; background: transparent; padding: 2px 7px; font-size: 15px; line-height: 1; color: var(--el-text-color-secondary); cursor: pointer; border-radius: 4px; }
+.tucked-pop-close:hover { color: var(--el-color-danger); background: var(--el-fill-color-light); }
+.type-cards.is-pop { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 0; }
+.type-cards.is-pop .type-card { padding: 10px 12px; cursor: pointer; }
 </style>
