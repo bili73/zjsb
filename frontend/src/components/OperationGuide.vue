@@ -67,6 +67,7 @@ function locate() {
     if (!open.value || run !== generation) return
     const element = findGuideTarget(document, props.scope, steps.value[current.value]?.anchor ?? '')
     if (!element) {
+      found = undefined; resolved = false
       // 锚点被移出文档 → 立即解绑（兜底居中 + 提示）；只是暂时找不到（懒加载、未展开）→
       // 保留上一个锚点，面板不闪回屏幕中央，超过 800ms 才落兜底。
       // 两种情况都不退出循环：兜底后元素再出现，仍要能重新绑定。
@@ -79,7 +80,9 @@ function locate() {
       }
     } else {
       if (element !== found) {
+        if (outlined?.isConnected === false) target.value = undefined
         outlined?.classList.remove('operation-guide-target'); outlined = undefined
+        resolved = false; locating.value = true
         found = element; previousRect = ''; stableSince = performance.now()
         element.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center', inline: 'nearest' })
       }

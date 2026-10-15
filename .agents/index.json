@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-15T06:13:05.396Z",
+  "generatedAt": "2026-10-15T08:11:45.379Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 102,
+    "activeNotes": 104,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 613,
+    "relations": 627,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 97,
+      "implemented": 99,
       "rejected": 3
     },
     "staleNotes": []
@@ -3030,6 +3030,92 @@
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+      "title": "Preserve queued work and isolate diagnostic recovery failures",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-15",
+      "scope": [
+        "backend/ocr_app/task_store.py",
+        "backend/ocr_app/retention.py",
+        "backend/ocr_app/api.py",
+        "backend/ocr_app/routes.py",
+        "backend/ocr_app/diagnostics.py",
+        "backend/ocr_app/diagnostic_archive.py",
+        "backend/ocr_app/diagnostic_service.py",
+        "frontend/src",
+        "frontend/tests",
+        "tests",
+        "SPEC.md",
+        "RUNTIME.md",
+        "openapi.yaml",
+        "frontend/public/help/index.html"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-15-admin-file-retention.md",
+        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+        "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+        "implemented/feature/2026-10-15-contextual-operation-guide.md",
+        "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
+        "implemented/feature/2026-10-15-admin-file-retention.md",
+        "implemented/feature/2026-10-15-contextual-operation-guide.md",
+        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
+      ],
+      "lastVerified": "2026-10-15",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-15"
+      },
+      "summary": "Exclude QUEUED and active processing states from automatic expiry and use the same set for retention impact counts. Preserve original upload deadlines, explicit cancellation and eventual expiry after processing stops. Do not expand ACTIVE i",
+      "bodySha256": "9cf2d6d25473ab1d",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 23
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 31
+          },
+          {
+            "title": "Verification",
+            "line": 38
+          },
+          {
+            "title": "Consequences",
+            "line": 53
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
       "path": ".agents/notes/implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
       "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
@@ -3120,6 +3206,87 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
+      "title": "Preserve actionable error context without private exception prose",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-15",
+      "scope": [
+        "backend/ocr_app/diagnostics.py",
+        "backend/ocr_app/routes.py",
+        "frontend/src/diagnostics.ts",
+        "frontend/src/main.ts",
+        "frontend/src/api.ts",
+        "frontend/src/components/DiagnosticsPanel.vue",
+        "frontend/tests",
+        "tests",
+        "SPEC.md",
+        "RUNTIME.md",
+        "openapi.yaml"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
+      ],
+      "lastVerified": "2026-10-15",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-15"
+      },
+      "summary": "Vue errors use the existing diagnostic path and retain console behavior. Browser ErrorEvent records prefer parsed stack positions and fall back to bounded numeric event coordinates. Exact known ResizeObserver and opaque script messages map ",
+      "bodySha256": "5c7062718b89a1f6",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 27
+          },
+          {
+            "title": "Testing",
+            "line": 33
+          },
+          {
+            "title": "Consequences",
+            "line": 46
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -3298,6 +3465,7 @@
       "supersededBy": [],
       "cites": [
         "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+        "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -3312,6 +3480,7 @@
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+        "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-hr-document-field-profile.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
@@ -3327,7 +3496,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Diagnostics initialize before launcher configuration and business imports. One structured JSONL writer per process instance rotates at 10 MiB across five files. The verified automatic archive extension provides severity, administrator searc",
-      "bodySha256": "99ff4f1cab70601d",
+      "bodySha256": "464d12cca0c9a5e8",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3348,19 +3517,19 @@
           },
           {
             "title": "Decision audit",
-            "line": 19
+            "line": 21
           },
           {
             "title": "Alternatives considered",
-            "line": 23
+            "line": 25
           },
           {
             "title": "Testing",
-            "line": 29
+            "line": 31
           },
           {
             "title": "Consequences",
-            "line": 43
+            "line": 45
           }
         ]
       },
@@ -7375,6 +7544,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-10-progress-detail-and-retention-display.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
@@ -7382,6 +7552,7 @@
         "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-10-progress-detail-and-retention-display.md",
         "implemented/feature/2026-10-12-person-material-packages.md"
@@ -7393,8 +7564,8 @@
         "monthsSinceVerify": 0,
         "rule": "最近复核 2026-10-15"
       },
-      "summary": "Persist one global policy and revision in an additive SQLite migration, defaulting to seven days. Finite deadlines use each task's original creation time; append and rerun never reset older uploads. Save requires administrator authorization",
-      "bodySha256": "a37ac8213e8379e5",
+      "summary": "Queued-work recovery clarifies automatic expiry: QUEUED and processing states are both protected and counted as deferred. Completion, failure or cancellation restores eligibility using the original upload deadline. ACTIVE remains reserved f",
+      "bodySha256": "589c9a9b80bb81e1",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7415,19 +7586,19 @@
           },
           {
             "title": "Decision audit",
-            "line": 19
+            "line": 21
           },
           {
             "title": "Alternatives considered",
-            "line": 25
+            "line": 27
           },
           {
             "title": "Verification",
-            "line": 31
+            "line": 33
           },
           {
             "title": "Consequences",
-            "line": 39
+            "line": 41
           }
         ]
       },
@@ -7451,10 +7622,12 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/feature/2026-10-10-web-user-manual.md",
         "implemented/feature/2026-10-10-embedded-help-integration.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/feature/2026-10-10-embedded-help-integration.md",
         "implemented/feature/2026-10-10-web-user-manual.md",
         "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
@@ -7466,8 +7639,8 @@
         "monthsSinceVerify": 0,
         "rule": "最近复核 2026-10-15"
       },
-      "summary": "使用已安装的 Element Plus Tour 提供手动启动的短指引，每次按当前页面、材料类型和账号权限解释 3–6 个步骤。页面用稳定的 data-guide 锚点，重复批次使用独立 scope；只定位当前作用域中唯一可见的元素。缺失或尚未加载的目标明确提示，不借用其他批次的按钮。可选步骤按当前上传方式显示。",
-      "bodySha256": "cd2cb6bbeeca5b5f",
+      "summary": "目标恢复细节见审查修复：目标隐藏、移除或被新 DOM 替换时重置解析状态，稳定后重新绑定正确高亮；移除的旧节点立即解绑，保留既有作用域、退出和草稿保护边界。",
+      "bodySha256": "5ee653731c7a9964",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7488,19 +7661,19 @@
           },
           {
             "title": "Related notes and audit",
-            "line": 21
+            "line": 23
           },
           {
             "title": "Alternatives considered",
-            "line": 27
+            "line": 29
           },
           {
             "title": "Verification",
-            "line": 33
+            "line": 35
           },
           {
             "title": "Consequences",
-            "line": 41
+            "line": 43
           }
         ]
       },
@@ -7530,11 +7703,15 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+        "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "implemented/feature/2026-10-15-contextual-operation-guide.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+        "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md"
       ],
@@ -7545,8 +7722,8 @@
         "monthsSinceVerify": 0,
         "rule": "最近复核 2026-10-15"
       },
-      "summary": "Retain the allowlisted technical schema and introduce DEBUG/INFO/WARNING/ERROR/CRITICAL, application version, stable record IDs and safe request operation/context. The original INFO default is narrowed to ERROR by the serious-log and Chines",
-      "bodySha256": "33740d4b6af5ab9e",
+      "summary": "Diagnostic recovery and scan bounds extends this design with awaited thread-pool HTTP logging, per-file maintenance isolation and explicit partial-query/ZIP metadata. Damaged sources remain intact while valid records/files remain accessible",
+      "bodySha256": "8ef6c9103d288764",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7567,19 +7744,19 @@
           },
           {
             "title": "Decision audit",
-            "line": 23
+            "line": 27
           },
           {
             "title": "Alternatives considered",
-            "line": 29
+            "line": 33
           },
           {
             "title": "Testing",
-            "line": 36
+            "line": 40
           },
           {
             "title": "Consequences",
-            "line": 47
+            "line": 51
           }
         ]
       },
@@ -7613,6 +7790,8 @@
         "implemented/feature/2026-09-30-local-diagnostics.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+        "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
         "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
       ],
       "lastVerified": "2026-10-15",
@@ -9960,6 +10139,31 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+      "to": "implemented/feature/2026-10-15-admin-file-retention.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+      "to": "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+      "to": "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+      "to": "implemented/feature/2026-10-15-contextual-operation-guide.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+      "to": "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
       "to": "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
     },
@@ -9982,6 +10186,26 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
       "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
+      "to": "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
+      "to": "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
+      "to": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
     },
     {
       "type": "cite",
@@ -10122,6 +10346,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-09-30-local-diagnostics.md",
       "to": "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md"
     },
     {
       "type": "cite",
@@ -11686,6 +11915,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-15-admin-file-retention.md",
+      "to": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-15-admin-file-retention.md",
       "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
     },
     {
@@ -11711,6 +11945,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-15-contextual-operation-guide.md",
+      "to": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-15-contextual-operation-guide.md",
       "to": "implemented/feature/2026-10-10-web-user-manual.md"
     },
     {
@@ -11721,7 +11960,17 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+      "to": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
       "to": "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+      "to": "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md"
     },
     {
       "type": "cite",

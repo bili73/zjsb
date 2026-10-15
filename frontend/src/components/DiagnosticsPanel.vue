@@ -66,7 +66,8 @@ function download(card: DiagnosticCard) {
         <el-descriptions-item label="错误编号">{{ card.error_id }}</el-descriptions-item>
         <el-descriptions-item v-if="card.request_id" label="请求编号">{{ card.request_id }}</el-descriptions-item>
         <el-descriptions-item v-if="card.exception_type" label="异常类型">{{ card.exception_type }}</el-descriptions-item>
-        <el-descriptions-item label="前端版本">{{ card.app_version }}</el-descriptions-item>
+        <el-descriptions-item label="服务版本">{{ card.app_version }}</el-descriptions-item>
+        <el-descriptions-item v-if="card.frontend_build" label="前端构建">{{ card.frontend_build }}</el-descriptions-item>
       </el-descriptions>
       <div class="diag-actions">
         <el-button size="small" :icon="CopyDocument" @click="copy(card)">复制</el-button>

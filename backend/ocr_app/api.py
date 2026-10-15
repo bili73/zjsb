@@ -12,6 +12,7 @@ from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from .task_store import TaskError
@@ -103,7 +104,8 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
     @app.exception_handler(TaskError)
     async def task_error(request, error):
         request_id = getattr(request.state, 'request_id', str(uuid.uuid4()))
-        error_id = logger.exception('request_failed', error, **request_context(request), http_status=error.status, error_code=error.code) if logger else str(uuid.uuid4())
+        error_id = await run_in_threadpool(logger.exception, 'request_failed', error,
+            **request_context(request), http_status=error.status, error_code=error.code) if logger else str(uuid.uuid4())
         payload = dict(code=error.code, message=error.message, error_id=error_id, request_id=request_id)
         if getattr(error, 'details', None) is not None:
             payload['details'] = error.details
@@ -127,14 +129,15 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
         try:
             response = await call_next(request)
         except Exception as error:
-            error_id = logger.exception('request_failed', error, **request_context(request), http_status=500, error_code='INTERNAL_ERROR') if logger else str(uuid.uuid4())
+            error_id = await run_in_threadpool(logger.exception, 'request_failed', error,
+                **request_context(request), http_status=500, error_code='INTERNAL_ERROR') if logger else str(uuid.uuid4())
             response = JSONResponse(dict(code='INTERNAL_ERROR', message='处理失败，请保存错误编号和诊断记录',
                                          error_id=error_id, request_id=request.state.request_id), status_code=500)
         response.headers['X-Request-ID'] = request.state.request_id
         response.headers['Cache-Control'] = 'no-store'
         # Polling/read success and diagnostics reporting must not amplify log traffic.
         if logger and response.status_code < 400 and request.method not in {'GET', 'HEAD', 'OPTIONS'} and not request.url.path.startswith('/api/v1/diagnostics'):
-            logger.event('request_completed', **request_context(request),
+            await run_in_threadpool(logger.event, 'request_completed', **request_context(request),
                          http_status=response.status_code, duration_seconds=time.monotonic()-begin)
         return response
 

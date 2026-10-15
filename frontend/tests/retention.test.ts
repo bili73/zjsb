@@ -15,6 +15,7 @@ test('retention decoder accepts four choices and rejects ambiguous counts/types'
 })
 test('shortening and never warnings explain retrospective effect and destructive scope', () => {
   const warning=retentionWarning(settings,7)
+  assert.match(warning, /正在排队或处理.*处理结束或取消后清理/)
   for (const content of ['所有账号已上传及今后','原上传时间','4 个文件','1 个超期','原件、识别结果及修改历史','不能恢复']) assert.ok(warning.includes(content))
   assert.match(retentionWarning({...settings,days:null},15),/永不清除.*15天.*不从本次保存重新计时/)
   assert.match(retentionWarning(settings,null),/停止自动清理.*仍可手动删除.*不会恢复/)

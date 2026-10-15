@@ -431,15 +431,18 @@ paths:
         - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
       responses:
         '200':
-          description: 一页安全日志，next_cursor为空表示没有下一页
+          description: 一页可读取的安全日志，next_cursor为空表示可读取记录没有下一页。损坏或无法读取的文件/行保留原件并跳过，以incomplete和跳过数量标记不完整；数量针对本次扫描，无法确定坏文件是否属于筛选日期。
           content:
             application/json:
               schema:
                 type: object
-                required: [items, next_cursor]
+                required: [items, next_cursor, incomplete, skipped_files, skipped_records]
                 properties:
                   items: {type: array, items: {$ref: '#/components/schemas/DiagnosticRecord'}}
                   next_cursor: {type: string, nullable: true}
+                  incomplete: {type: boolean}
+                  skipped_files: {type: integer, minimum: 0}
+                  skipped_records: {type: integer, minimum: 0}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '409': {description: DIAGNOSTICS_BUSY，已有查询或打包进行中}
@@ -450,7 +453,7 @@ paths:
     get:
       tags: [system]
       summary: 管理员下载筛选后的安全诊断包
-      description: 打包后复验有效管理员会话。仅events.jsonl和manifest.json，不包含材料、密钥或原始stderr。最多64MiB未压缩记录；超限时X-Diagnostics-Truncated=true且manifest.truncated=true，需要缩小筛选范围。
+      description: 打包后复验有效管理员会话。仅events.jsonl和manifest.json，不包含材料、密钥或原始stderr。最多64MiB未压缩记录；超限时X-Diagnostics-Truncated=true且manifest.truncated=true，需要缩小筛选范围。遇到损坏或不可读文件/记录时保留原件并继续打包有效记录，X-Diagnostics-Incomplete=true且manifest含incomplete、skipped_files、skipped_records；跳过数量仅代表达到截断点前已扫描的内容。完整目录无法读取仍返回503。
       parameters:
         - {$ref: '#/components/parameters/DiagnosticLevel'}
         - {$ref: '#/components/parameters/DiagnosticDateFrom'}
@@ -462,6 +465,7 @@ paths:
           description: ZIP诊断包
           headers:
             X-Diagnostics-Truncated: {schema: {type: string, enum: ['true', 'false']}}
+            X-Diagnostics-Incomplete: {schema: {type: string, enum: ['true', 'false']}}
           content:
             application/zip:
               schema: {type: string, format: binary}
@@ -475,7 +479,7 @@ paths:
     post:
       tags: [system]
       summary: 已登录账号上报安全前端故障
-      description: 所有有效角色允许，同源Origin及CSRF；正文不超过8192字节，每账号每分钟最多10次。仅枚举、编号、代码行列，不接受message、URL、身份或材料。读取正文后复验会话，操作者由服务端填写。失败不递归上报，前端保留本页卡片。
+      description: 所有有效角色允许，同源Origin及CSRF；正文不超过8192字节，每账号每分钟最多10次。仅枚举、编号、代码行列与前端构建哈希，不接受message、URL、身份或材料。新诊断字段选填，兼容旧客户端；frontend_build仅标识已加载代码包，不是可信版本证明。读取正文后复验会话，操作者由服务端填写。失败不递归上报，前端保留本页卡片。
       requestBody:
         required: true
         content:
@@ -492,6 +496,9 @@ paths:
                 request_id: {type: string, nullable: true, pattern: '^[a-fA-F0-9-]{36}$'}
                 line: {type: integer, nullable: true, minimum: 0, maximum: 10000000}
                 column: {type: integer, nullable: true, minimum: 0, maximum: 10000000}
+                exception_type: {type: string, nullable: true, enum: [Error, TypeError, RangeError, SyntaxError, ReferenceError, URIError, EvalError, DOMException]}
+                browser_event: {type: string, nullable: true, enum: [javascript_error, resize_observer, opaque_script, promise_rejection, vue_error]}
+                frontend_build: {type: string, nullable: true, pattern: '^b_[A-Za-z0-9_-]{8,64}$'}
       responses:
         '202': {description: accepted=true，已写入安全记录}
         '401': {$ref: '#/components/responses/Unauthorized'}
@@ -1673,7 +1680,7 @@ components:
             properties:
               days: {type: integer, enum: [7, 15, 30]}
               eligible_count: {type: integer, minimum: 0, description: 此刻已超过期限且不在处理中的文件数}
-              active_count: {type: integer, minimum: 0, description: 此刻已超过期限但正在处理的文件数}
+              active_count: {type: integer, minimum: 0, description: 此刻已超过期限但正在排队或处理的文件数，结束或取消后按原上传时间清理}
     RequiredFieldSettings:
       type: object
       additionalProperties: false

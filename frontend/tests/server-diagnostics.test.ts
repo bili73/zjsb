@@ -15,7 +15,12 @@ test('diagnostic responses reject malformed levels, counters and pages', () => {
   assert.equal(parseLogStatus(status).backup_retention_days, 30)
   assert.throws(() => parseLogStatus({ ...status, raw_bytes: -1 }))
   assert.throws(() => parseLogStatus({ ...status, recording_ok: 'true' }))
-  assert.deepEqual(parseLogPage({ items: [], next_cursor: null }), { items: [], next_cursor: null })
+  assert.deepEqual(parseLogPage({ items: [], next_cursor: null }), { items: [], next_cursor: null, incomplete: false, skipped_files: 0, skipped_records: 0 })
+  const partial = { items: [], next_cursor: null, incomplete: true, skipped_files: 1, skipped_records: 2 }
+  assert.deepEqual(parseLogPage(partial), partial)
+  for (const change of [{ incomplete: 'true' }, { skipped_files: -1 }, { skipped_records: 0.5 }]) {
+    assert.throws(() => parseLogPage({ ...partial, ...change }))
+  }
   const row = { record_id: 'l_' + 'b'.repeat(32), timestamp: '2026-10-15T04:00:00Z', level: 'ERROR', app_version: '1.26.0', component: 'api', event: 'request_failed', context: {} }
   assert.equal(parseLogPage({ items: [row], next_cursor: null }).items.length, 1)
   assert.throws(() => parseLogPage({ items: [{ ...row, level: 'PRIVATE' }], next_cursor: null }))
@@ -59,7 +64,8 @@ test('frontend reporting sends safe fields and CSRF; failures do not recursively
   const request = calls[1]!
   assert.equal(new Headers(request.init.headers).get('X-CSRF-Token'), 'a'.repeat(64))
   const body = JSON.parse(String(request.init.body))
-  assert.deepEqual(Object.keys(body).sort(), ['client_error_id', 'code', 'column', 'line', 'operation', 'origin', 'request_id'])
+  assert.deepEqual(Object.keys(body).sort(), ['browser_event', 'client_error_id', 'code', 'column', 'exception_type', 'frontend_build', 'line', 'operation', 'origin', 'request_id'])
+  assert.equal(body.exception_type, 'Error')
   assert.ok(!String(request.init.body).includes('PRIVATE'))
   clearDiagnosticCards()
 })
@@ -106,14 +112,15 @@ test('monitor tracks new errors, acknowledges seen IDs and revokes sessions on 4
   } finally { monitor.stop() }
 })
 
-test('diagnostic ZIP honors truncated flag and does not create cards on unavailable status', async () => {
+test('diagnostic ZIP honors truncation and incomplete flags without recursive errors', async () => {
   clearDiagnosticCards()
   const api = new BusinessApi((async url => {
-    if (String(url).includes('/bundle')) return new Response('zip bytes', { headers: { 'Content-Type': 'application/zip', 'X-Diagnostics-Truncated': 'true' } })
+    if (String(url).includes('/bundle')) return new Response('zip bytes', { headers: { 'Content-Type': 'application/zip', 'X-Diagnostics-Truncated': 'true', 'X-Diagnostics-Incomplete': 'true' } })
     return new Response(JSON.stringify({ code: 'DIAGNOSTICS_UNAVAILABLE' }), { status: 503 })
   }) as typeof fetch)
   const result = await api.diagnosticBundle({}, new AbortController().signal)
   assert.equal(result.truncated, true)
+  assert.equal(result.incomplete, true)
   await assert.rejects(api.diagnosticStatus(new AbortController().signal))
   assert.equal(diagnosticCards.value.length, 0)
 })

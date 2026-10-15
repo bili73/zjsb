@@ -107,6 +107,49 @@ class RetentionSettingsTests(unittest.TestCase):
         self.business.store.cleanup()
         self.assertEqual(self.business.store.tasks(), [])
 
+    def test_overdue_queued_rerun_survives_policy_change_and_startup_until_stopped(self):
+        self.admin()
+        for outcome in ('cancelled', 'failed', 'completed'):
+            with self.subTest(outcome=outcome):
+                self.assertEqual(self.save(None).status_code, 200)
+                created = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+                with patch('ocr_app.task_store.now', return_value=created):
+                    task = self.ready(values=dict(name='synthetic'))
+                result = self.business.store.result(task['task_id'])
+                response = self.client.post('/api/v1/tasks/' + task['task_id'] + '/rerun', headers=self.headers,
+                    json=dict(run_id=task['run_id'], expected_revision=task['result_revision']))
+                self.assertEqual(response.status_code, 202)
+                queued = response.json()
+                with self.business.engine.connect() as connection:
+                    history = {table: connection.execute(text('SELECT * FROM ' + table)).all()
+                               for table in ('runs', 'artifacts', 'attempts')}
+                blobs = {p.name: p.read_bytes() for p in self.business.storage.blobs.iterdir()}
+                response = self.save(7)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()['impact'][0], dict(days=7, eligible_count=0, active_count=1))
+                self.business.prepare()
+                current = self.business.store.task(task['task_id'])
+                self.assertEqual(current['status'], 'QUEUED')
+                self.assertEqual(current['run_id'], queued['run_id'])
+                self.assertEqual(current['expires_at'], (datetime.fromisoformat(created) + timedelta(days=7)).isoformat())
+                with self.business.engine.connect() as connection:
+                    self.assertEqual(history, {table: connection.execute(text('SELECT * FROM ' + table)).all()
+                                             for table in history})
+                self.assertEqual(blobs, {p.name: p.read_bytes() for p in self.business.storage.blobs.iterdir()})
+                if outcome == 'cancelled':
+                    self.business.store.cancel(current['task_id'], current['run_id'], current['result_revision'], 'test')
+                else:
+                    claimed = self.business.store.claim_next()
+                    self.assertEqual(claimed['id'], current['task_id'])
+                    if outcome == 'failed':
+                        self.business.store.finish_stopped(claimed, 'EXTRACT_TIMEOUT')
+                    else:
+                        result['status'] = 'COMPLETED'
+                        self.assertTrue(self.business.store.publish(claimed, result))
+                self.business.store.cleanup()
+                self.assertEqual(self.business.store.tasks(), [])
+                self.assertEqual(list(self.business.storage.blobs.iterdir()), [])
+
     def test_roles_csrf_validation_and_confirmation(self):
         self.assertEqual(self.client.get('/api/v1/admin/retention').status_code, 401)
         for role in ('operator','viewer'):

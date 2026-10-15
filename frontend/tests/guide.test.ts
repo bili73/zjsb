@@ -152,6 +152,37 @@ test('Esc stops propagation, closes just the guide and removes listeners and hig
   } finally { h.dispose() }
 })
 
+test('resolved guide anchors recover after hiding, removal and immediate replacement', async () => {
+  const h = harness()
+  try {
+    await h.start(); await h.advance()
+    let element = h.targets.get('source-tools')!
+    for (const mode of ['hidden', 'removed', 'replaced']) {
+      if (mode === 'hidden') element.visible = false
+      else element.isConnected = false
+      if (mode !== 'replaced') {
+        await h.advance(7)
+        assert.equal(h.exposed.target.value, undefined)
+        assert.ok(!element.classes.has('operation-guide-target'))
+        if (mode === 'hidden') element.visible = true
+        else element.isConnected = true
+      } else {
+        const previous = element
+        element = new Element()
+        h.scope.children.set('[data-guide="source-tools"]', [element])
+        await h.advance(1)
+        assert.ok(!previous.classes.has('operation-guide-target'))
+        assert.equal(h.exposed.target.value, undefined)
+        assert.equal(h.exposed.locating.value, true)
+      }
+      await h.advance()
+      assert.equal(h.exposed.target.value?.(), element, mode)
+      assert.ok(element.classes.has('operation-guide-target'), mode)
+      assert.equal(h.exposed.locating.value, false, mode)
+    }
+  } finally { h.dispose() }
+})
+
 test('close during nextTick, page change, permission loss and unmount cancel pending positioning', async () => {
   const h = harness()
   try {

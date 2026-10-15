@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import sqlite3
 import stat
 import sys
 import threading
@@ -58,6 +59,9 @@ ENUMS = {
                   'interface', 'catalogue', 'review', 'preview', 'export', 'diagnostics'},
     'http_method': {'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'},
     'origin': {'vue', 'window', 'promise', 'http'},
+    'frontend_exception_type': {'Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'URIError', 'EvalError', 'DOMException'},
+    'browser_event': {'javascript_error', 'resize_observer', 'opaque_script', 'promise_rejection', 'vue_error'},
+    'database_error': {'missing_table', 'missing_column', 'busy', 'readonly', 'constraint', 'corrupt', 'other'},
     'configured_mode': {'dual_resident', 'single_resident'},
     'effective_mode': {'dual_resident', 'single_resident', 'ocr_unavailable'},
     'state': {'starting', 'ready', 'degraded', 'stopping'},
@@ -74,7 +78,9 @@ NUMBERS = {'pid', 'child_pid', 'exit_code', 'duration_seconds', 'timeout_seconds
 EXCEPTION_TYPES = set('''Exception BaseException RuntimeError ValueError TypeError KeyError OSError
 PermissionError FileNotFoundError FileExistsError TimeoutError MemoryError ImportError ModuleNotFoundError
 BrokenPipeError UnicodeError UnicodeDecodeError JSONDecodeError AssertionError RuntimeFailure JobError TaskError DocumentError
-OutOfMemoryError UnidentifiedImageError DecompressionBombError KeyboardInterrupt SystemExit'''.split())
+OutOfMemoryError UnidentifiedImageError DecompressionBombError KeyboardInterrupt SystemExit
+OperationalError IntegrityError ProgrammingError DatabaseError InterfaceError DataError InternalError
+NotSupportedError StatementError DBAPIError'''.split())
 FILE_PATTERN = re.compile(r'^ocrdiag-s_[0-9a-f]{24}-(?:' + '|'.join(sorted(COMPONENTS)) +
                           r')-[0-9]+-[0-9a-f]{32}\.jsonl(?:\.[1-4])?$')
 
@@ -98,6 +104,10 @@ def safe_context(context):
         elif key == 'error_id' and isinstance(value, str) and re.fullmatch(r'e_[0-9a-f]{32}', value):
             result[key] = value
         elif key == 'model_revision' and isinstance(value, str) and re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', value):
+            result[key] = value
+        elif key == 'frontend_build' and isinstance(value, str) and re.fullmatch(r'b_[A-Za-z0-9_-]{8,64}', value):
+            result[key] = value
+        elif key == 'sqlite_errorcode' and type(value) is int and 0 <= value < 2**31:
             result[key] = value
         elif key in ENUMS and (value is None or isinstance(value, str) and value in ENUMS[key]):
             result[key] = value
@@ -125,6 +135,25 @@ def _frame(frame):
     return 'external', 'external'
 
 
+def _sqlite_context(error):
+    if not isinstance(error, sqlite3.Error):
+        return {}
+    details = safe_context({'sqlite_errorcode': getattr(error, 'sqlite_errorcode', None)})
+    primary = details.get('sqlite_errorcode', 0) & 0xff
+    category = {
+        sqlite3.SQLITE_BUSY: 'busy', sqlite3.SQLITE_LOCKED: 'busy', sqlite3.SQLITE_READONLY: 'readonly',
+        sqlite3.SQLITE_CONSTRAINT: 'constraint', sqlite3.SQLITE_CORRUPT: 'corrupt', sqlite3.SQLITE_NOTADB: 'corrupt',
+    }.get(primary, 'other')
+    # Inspect only native SQLite prose for fixed prefixes; never retain any of it.
+    if primary == sqlite3.SQLITE_ERROR:
+        message = str(error)
+        if message.startswith('no such table: '):
+            category = 'missing_table'
+        elif message.startswith('no such column: '):
+            category = 'missing_column'
+    return dict(details, database_error=category)
+
+
 def safe_exception(error):
     chain, seen = [], set()
     while error is not None and id(error) not in seen and len(chain) < 4:
@@ -136,6 +165,7 @@ def safe_exception(error):
         name = type(error).__name__
         entry = dict(type=name if name in EXCEPTION_TYPES else 'Exception', frames=frames[-16:])
         entry.update(safe_context({key: getattr(error, key, None) for key in ('errno', 'winerror')}))
+        entry.update(_sqlite_context(error))
         chain.append(entry)
         error = error.__cause__ or (None if error.__suppress_context__ else error.__context__)
     return chain
@@ -299,7 +329,7 @@ def _export_record(record):
         if not isinstance(error, dict):
             continue
         entry = dict(type=error.get('type') if error.get('type') in EXCEPTION_TYPES else 'Exception', frames=[])
-        entry.update(safe_context({key: error.get(key) for key in ('errno', 'winerror')}))
+        entry.update(safe_context({key: error[key] for key in ('errno', 'winerror', 'sqlite_errorcode', 'database_error') if key in error}))
         for frame in error.get('frames', [])[-16:] if isinstance(error.get('frames'), list) else []:
             if not isinstance(frame, dict) or type(frame.get('line')) is not int:
                 continue

@@ -52,7 +52,7 @@ onBeforeUnmount(() => controller.abort())
           <el-radio :value="7">7天</el-radio><el-radio :value="15">15天</el-radio><el-radio :value="30">30天</el-radio><el-radio value="never">永不清除</el-radio>
         </el-radio-group>
       </el-form-item>
-      <p>到期清理包含原件、识别结果和修改历史；正在处理的文件延后清理。永不清除时仍可手动删除。已清理的数据不能通过延长期限恢复。</p>
+      <p>到期清理包含原件、识别结果和修改历史；正在排队或处理的文件延后到处理结束或取消后清理。永不清除时仍可手动删除。已清理的数据不能通过延长期限恢复。</p>
       <el-button data-guide="retention-save" type="primary" native-type="submit" :disabled="!settings || loading" :loading="saving">保存设置</el-button>
     </el-form>
   </el-card>

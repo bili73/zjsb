@@ -12,8 +12,8 @@ import time
 import zipfile
 
 from . import diagnostics as d
-from .diagnostic_archive import (ARCHIVE_BUDGET, ARCHIVE_RETENTION, FAILURE_PATTERN, RAW_BUDGET,
-                                 archive_content, atomic_json, iter_records, locked, maintenance,
+from .diagnostic_archive import (ARCHIVE_BUDGET, FAILURE_PATTERN, RAW_BUDGET, ArchiveIndex, ReadIssues,
+                                 atomic_json, iter_records, locked, maintenance,
                                  owned_archives, owned_raw)
 from .task_store import TaskError
 
@@ -38,6 +38,7 @@ class DiagnosticService:
         self.query_lock = threading.Lock()
         self.state_lock = threading.Lock()
         self.rate_lock = threading.Lock()
+        self.archive_index = ArchiveIndex()
         self.reports = {}
         self.state = dict(last_backup_at=None, backup_ok=None, last_check_at=None, scan_ok=None,
                           raw_bytes=0, archive_bytes=0, error_count_24h=0, latest_error_at=None,
@@ -47,7 +48,7 @@ class DiagnosticService:
             path = self.root / 'maintenance.json'
             if d._regular(path):
                 old = json.loads(path.read_text())
-                if isinstance(old.get('last_backup_at'), str) and re.fullmatch(r'[0-9T:+.Z-]{20,40}', old['last_backup_at']):
+                if isinstance(old, dict) and isinstance(old.get('last_backup_at'), str) and re.fullmatch(r'[0-9T:+.Z-]{20,40}', old['last_backup_at']):
                     self.state['last_backup_at'] = old['last_backup_at']
                     self.last_day = old.get('backup_day')
         except (OSError, ValueError, TypeError):
@@ -71,25 +72,28 @@ class DiagnosticService:
         day = now.astimezone(SHANGHAI).date().isoformat()
         backup = dict(backup_ok=False)
         try:
-            if not maintenance(self.root, daily=day != self.last_day, stop=self.stop_event):
+            if not maintenance(self.root, daily=day != self.last_day, stop=self.stop_event, index=self.archive_index):
                 return
-            backup['backup_ok'] = True
-            if day != self.last_day:
-                self.last_day = day
-                backup['last_backup_at'] = now.isoformat()
+            stamp = now.isoformat() if day != self.last_day else self.state['last_backup_at']
             with locked(self.root):
-                atomic_json(self.root / 'maintenance.json', dict(backup_day=self.last_day,
-                            last_backup_at=backup.get('last_backup_at', self.state['last_backup_at'])))
+                atomic_json(self.root / 'maintenance.json', dict(backup_day=day, last_backup_at=stamp))
+            self.last_day = day
+            backup.update(backup_ok=True, last_backup_at=stamp)
         except Exception:
             # Visible status does not depend on being able to write another error record.
             pass
         scan = dict(scan_ok=False, last_check_at=now.isoformat())
         try:
             since = (now - timedelta(days=1)).isoformat()
-            errors = [row for row in iter_records(self.root, since=since, stop=self.stop_event) if d.LEVELS[row['level']] >= 40]
+            issues = ReadIssues()
+            count, latest = 0, None
+            for row in iter_records(self.root, since=since, stop=self.stop_event, issues=issues, index=self.archive_index):
+                if d.LEVELS[row['level']] >= 40:
+                    count += 1
+                    if latest is None or (row['timestamp'], row['record_id']) > (latest['timestamp'], latest['record_id']):
+                        latest = row
             if self.stop_event.is_set():
                 return
-            latest = max(errors, key=lambda row: (row['timestamp'], row['record_id']), default=None)
             with locked(self.root):
                 raw_size = sum(p.stat().st_size for p in owned_raw(self.root))
                 archive_size = sum(p.stat().st_size for p in owned_archives(self.root))
@@ -100,8 +104,8 @@ class DiagnosticService:
                     marker = json.loads(path.read_text())
                     # Previous crashed sessions remain evidence, not a false current-write alarm.
                     failed = failed or marker.get('session_id') == self.logger.session_id
-            scan.update(scan_ok=True, raw_bytes=raw_size, archive_bytes=archive_size,
-                        recording_ok=self.logger.available and not failed, error_count_24h=len(errors),
+            scan.update(scan_ok=not issues.incomplete, raw_bytes=raw_size, archive_bytes=archive_size,
+                        recording_ok=self.logger.available and not failed, error_count_24h=count,
                         latest_error_at=latest['timestamp'] if latest else None,
                         latest_error_id=latest['record_id'] if latest else None)
         except Exception:
@@ -116,11 +120,11 @@ class DiagnosticService:
         return dict(state, raw_retention_days=7, backup_retention_days=30,
                     raw_limit_bytes=RAW_BUDGET, archive_limit_bytes=ARCHIVE_BUDGET)
 
-    def records(self, *, level=None, date_from=None, date_to=None, error_id=None, task_id=None):
+    def records(self, *, level=None, date_from=None, date_to=None, error_id=None, task_id=None, issues=None):
         start, end = window(date_from, date_to)
-        for row in iter_records(self.root, since=start):
+        for row in iter_records(self.root, since=start, until=end, issues=issues, index=self.archive_index):
             context = row['context']
-            if row['timestamp'] >= end or (level and row['level'] != level):
+            if level and row['level'] != level:
                 continue
             if error_id and error_id not in {context.get('error_id'), context.get('client_error_id'), context.get('request_id'), row['record_id']}:
                 continue
@@ -141,12 +145,16 @@ class DiagnosticService:
         if not self.query_lock.acquire(blocking=False):
             raise TaskError('DIAGNOSTICS_BUSY', '日志正在读取，请稍后重试', 409)
         try:
+            issues = ReadIssues()
             key = lambda row: (row['timestamp'], row['record_id'])
-            rows = heapq.nlargest(limit + 1, (row for row in self.records(**filters) if before is None or key(row) < before), key=key)
+            rows = heapq.nlargest(limit + 1, (row for row in self.records(issues=issues, **filters) if before is None or key(row) < before), key=key)
             more = len(rows) > limit
             rows = rows[:limit]
             next_cursor = base64.urlsafe_b64encode(json.dumps(key(rows[-1])).encode()).decode().rstrip('=') if more else None
-            return dict(items=rows, next_cursor=next_cursor)
+            if issues.incomplete:
+                with self.state_lock:
+                    self.state['scan_ok'] = False
+            return dict(items=rows, next_cursor=next_cursor, **issues.metadata())
         except TaskError:
             raise
         except Exception:
@@ -161,20 +169,25 @@ class DiagnosticService:
             raise TaskError('DIAGNOSTICS_BUSY', '日志正在读取，请稍后重试', 409)
         try:
             payload, count, truncated = bytearray(), 0, False
-            for row in self.records(**filters):
+            issues = ReadIssues()
+            for row in self.records(issues=issues, **filters):
                 line = (json.dumps(row, ensure_ascii=True) + '\n').encode()
                 if len(payload) + len(line) > MAX_DOWNLOAD:
                     truncated = True
                     break
                 payload.extend(line)
                 count += 1
+            metadata = dict(truncated=truncated, **issues.metadata())
+            if issues.incomplete:
+                with self.state_lock:
+                    self.state['scan_ok'] = False
             manifest = dict(schema_version=2, app_version=d.APP_VERSION, created_at=datetime.now(timezone.utc).isoformat(),
-                            records=count, truncated=truncated, status=self.status(), scope='Allowlisted technical events only')
+                            records=count, **metadata, status=self.status(), scope='Allowlisted technical events only')
             buffer = io.BytesIO()
             with zipfile.ZipFile(buffer, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
                 archive.writestr('events.jsonl', payload)
                 archive.writestr('manifest.json', json.dumps(manifest, ensure_ascii=True))
-            return buffer.getvalue(), truncated
+            return buffer.getvalue(), metadata
         except TaskError:
             raise
         except Exception:

@@ -14,6 +14,8 @@ Diagnostics initialize before launcher configuration and business imports. One s
 
 A standalone collector exports only revalidated diagnostic records and a safe runtime manifest, independently of HTTP and model dependencies. Frontend HTTP, network and render failures have safe copy/download summaries; their backend error/request IDs correlate to persisted records. Screenshots are auxiliary: no continuous desktop capture; document evidence stays in encrypted business storage outside diagnostic bundles. Logging failure prints DIAGNOSTICS_UNAVAILABLE and never prevents process cleanup.
 
+The [safe error context extension](../bug-fix/2026-10-15-safe-diagnostic-error-context.md) preserves DB-API/SQLAlchemy exception names, native SQLite numeric codes and fixed database categories. It excludes SQL, parameters and identifiers, retains export revalidation, and performs no additional business-database query. The current frontend captures Vue/global/promise errors and supplies optional safe type, position, event category and loaded bundle hash.
+
 [Bounded medical recognition](../bug-fix/2026-10-08-bounded-medical-recognition.md) adds time_limit to the bounded termination vocabulary and records actual generation_timeout_seconds/max_new_tokens. Soft normal return remains distinct from hard transport failure; private attempt records distinguish physical inference from cache reuse, without copying the original GPU timings into a reused attempt.
 
 ## Decision audit

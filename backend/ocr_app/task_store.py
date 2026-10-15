@@ -12,6 +12,7 @@ from sqlalchemy import bindparam, text
 from .extraction import confirmed_abnormal, medical_exclusion_reason, medical_statistics
 
 ACTIVE = {'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING'}
+RETENTION_PROTECTED = ACTIVE | {'QUEUED'}
 TERMINAL = {'COMPLETED', 'FAILED', 'REJECTED', 'CANCELLED'}
 from .doc_profiles import SUPPORTED, LABELS
 
@@ -842,7 +843,7 @@ class TaskStore:
                 return
             rows = connection.execute(text('SELECT * FROM tasks WHERE expires_at<=:at'), {'at': at or now()}).mappings().all()
             for row in rows:
-                if row['status'] in ACTIVE:
+                if row['status'] in RETENTION_PROTECTED:
                     continue
                 references.extend(connection.execute(text('SELECT reference FROM artifacts WHERE task_id=:id'), {'id': row['id']}).scalars())
                 self._audit(connection, 'task_expired', task=row)

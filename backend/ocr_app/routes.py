@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from python_multipart import MultipartParser
 from python_multipart.multipart import parse_options_header
+from starlette.concurrency import run_in_threadpool
 
 from .business import prepare_uploads
 from .task_store import TaskError, SUPPORTED, upload_types
@@ -98,6 +99,9 @@ class FrontendDiagnosticBody(BaseModel):
     request_id: str | None = Field(default=None, pattern=r'^[a-fA-F0-9-]{36}$')
     line: int | None = Field(default=None, ge=0, le=10000000)
     column: int | None = Field(default=None, ge=0, le=10000000)
+    exception_type: str | None = Field(default=None, max_length=40)
+    browser_event: str | None = Field(default=None, max_length=40)
+    frontend_build: str | None = Field(default=None, pattern=r'^b_[A-Za-z0-9_-]{8,64}$')
 
 
 async def bounded_json(request):
@@ -257,11 +261,12 @@ def router(business, runtime, health):
 
     @routes.get('/admin/diagnostics/bundle')
     def diagnostic_bundle(request: Request, filters=Depends(diagnostic_filters), user=Depends(administrator)):
-        data, truncated = diagnostics(request).bundle(**filters)
+        data, metadata = diagnostics(request).bundle(**filters)
         recheck_diagnostic_user(request, user)
         return Response(data, media_type='application/zip', headers={
             'Content-Disposition': 'attachment; filename="diagnostics.zip"',
-            'X-Diagnostics-Truncated': 'true' if truncated else 'false'})
+            'X-Diagnostics-Truncated': 'true' if metadata['truncated'] else 'false',
+            'X-Diagnostics-Incomplete': 'true' if metadata['incomplete'] else 'false'})
 
     @routes.post('/diagnostics/frontend', status_code=202)
     async def diagnostic_frontend(request: Request, user=Depends(principal)):
@@ -273,15 +278,23 @@ def router(business, runtime, health):
             from .diagnostics import ENUMS
             if body.operation not in ENUMS['operation']:
                 raise ValueError()
+            if body.exception_type is not None and body.exception_type not in ENUMS['frontend_exception_type']:
+                raise ValueError()
+            if body.browser_event is not None and body.browser_event not in ENUMS['browser_event']:
+                raise ValueError()
         except ValueError:
             raise TaskError('INVALID_REQUEST', '诊断数据格式无效', 422) from None
-        # Recheck after reading the request body; attribution never comes from the client.
-        recheck_diagnostic_user(request, user, admin=False)
-        service.logger.event('frontend_error', origin=body.origin, operation=body.operation,
-                             error_code=body.code, actor_id=user['user_id'], client_error_id=body.client_error_id,
-                             request_id=body.request_id, frontend_line=body.line, frontend_column=body.column)
-        if not service.logger.available:
-            raise TaskError('DIAGNOSTICS_UNAVAILABLE', '诊断记录暂时无法写入，请下载本页诊断信息', 503)
+        def record_report():
+            # Recheck after reading the body and entering the pool; attribution is server-owned.
+            recheck_diagnostic_user(request, user, admin=False)
+            service.logger.event('frontend_error', origin=body.origin, operation=body.operation,
+                                 error_code=body.code, actor_id=user['user_id'], client_error_id=body.client_error_id,
+                                 request_id=body.request_id, frontend_line=body.line, frontend_column=body.column,
+                                 frontend_exception_type=body.exception_type, browser_event=body.browser_event,
+                                 frontend_build=body.frontend_build)
+            if not service.logger.available:
+                raise TaskError('DIAGNOSTICS_UNAVAILABLE', '诊断记录暂时无法写入，请下载本页诊断信息', 503)
+        await run_in_threadpool(record_report)
         return {'accepted': True}
 
     @routes.get('/health')

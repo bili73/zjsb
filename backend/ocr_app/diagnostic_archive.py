@@ -1,8 +1,11 @@
 """Owned diagnostic snapshots, independent of business storage and model imports."""
 from contextlib import contextmanager
+from collections import OrderedDict
+from dataclasses import dataclass
 import hashlib
 import io
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -10,6 +13,7 @@ import threading
 import time
 import uuid
 import zipfile
+import zlib
 
 ARCHIVE_RETENTION = 30 * 86400
 RAW_BUDGET = 512 * 1024 * 1024
@@ -17,6 +21,70 @@ ARCHIVE_BUDGET = 1024 * 1024 * 1024
 ARCHIVE_PATTERN = re.compile(r'^snapshot-[0-9a-f]{64}\.zip$')
 FAILURE_PATTERN = re.compile(r'^failure-[0-9a-f]{32}\.json$')
 _thread_lock = threading.RLock()
+FILE_ERRORS = (OSError, ValueError, OverflowError, EOFError, RuntimeError, zipfile.BadZipFile, zlib.error)
+
+
+@dataclass
+class ReadIssues:
+    skipped_files: int = 0
+    skipped_records: int = 0
+
+    @property
+    def incomplete(self):
+        return bool(self.skipped_files or self.skipped_records)
+
+    def metadata(self):
+        return dict(incomplete=self.incomplete, skipped_files=self.skipped_files,
+                    skipped_records=self.skipped_records)
+
+
+def file_signature(path):
+    info = path.stat()
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+
+
+@dataclass(frozen=True)
+class ArchiveMetadata:
+    created_at: float
+    first: str | None
+    last: str | None
+
+    def intersects(self, since, until):
+        return self.first is not None and not ((since and self.last < since) or (until and self.first >= until))
+
+
+class ArchiveIndex:
+    """Bounded metadata only; changed files, record emission and deletion still need validation."""
+    def __init__(self, capacity=2048):
+        self.capacity = capacity
+        self.entries = OrderedDict()
+        self.lock = threading.Lock()
+
+    def get(self, path, signature):
+        with self.lock:
+            entry = self.entries.pop(path, None)
+            if entry and entry[0] == signature:
+                self.entries[path] = entry
+                return entry[1]
+        return None
+
+    def put(self, path, signature, metadata):
+        with self.lock:
+            self.entries.pop(path, None)
+            self.entries[path] = (signature, metadata)
+            while len(self.entries) > self.capacity:
+                self.entries.popitem(last=False)
+
+
+def archive_metadata(content, manifest):
+    first = last = None
+    for row in decoded(content):
+        if row is None:
+            raise ValueError('Incomplete diagnostic archive retained')
+        stamp = row['timestamp']
+        first = min(first, stamp) if first else stamp
+        last = max(last, stamp) if last else stamp
+    return ArchiveMetadata(manifest['created_at'], first, last)
 
 
 def safe_directory(root):
@@ -130,7 +198,9 @@ def archive_content(path):
             raise ValueError('Oversized diagnostic archive')
         manifest = json.loads(archive.read('manifest.json'))
         content = archive.read('events.jsonl')
-        if manifest.get('owner') != 'ocr-diagnostic-snapshot-v1' or manifest.get('content_sha256') != hashlib.sha256(content).hexdigest():
+        if (not isinstance(manifest, dict) or manifest.get('owner') != 'ocr-diagnostic-snapshot-v1'
+                or manifest.get('content_sha256') != hashlib.sha256(content).hexdigest()
+                or type(manifest.get('created_at')) not in (int, float) or not math.isfinite(manifest['created_at'])):
             raise ValueError('Diagnostic archive checksum mismatch')
         return content, manifest
 
@@ -174,67 +244,104 @@ def archive_file(root, path):
         temporary.unlink(missing_ok=True)
 
 
-def maintenance(root, *, daily=False, stop=None):
+def maintenance(root, *, daily=False, stop=None, index=None):
     """Bound lock duration to one segment; background work never runs in the OCR watchdog."""
     from .diagnostics import RETENTION_SECONDS
     now = time.time()
+    failed = False
     with locked(root):
         backups = owned_archives(root)
     for path in background_files(backups, stop):
-        with locked(root):
-            if not path.exists():
-                continue
-            # Corrupt/unrecognized archives are retained for investigation, not removed.
-            _, manifest = archive_content(path)
-            if now - manifest['created_at'] > ARCHIVE_RETENTION:
-                path.unlink()
+        try:
+            with locked(root):
+                if not path.exists():
+                    continue
+                # Corrupt/unrecognized archives are retained for investigation, not removed.
+                signature = file_signature(path)
+                metadata = index.get(path, signature) if index is not None else None
+                cached = metadata is not None
+                if metadata is None:
+                    metadata = archive_metadata(*archive_content(path))
+                    if index is not None:
+                        index.put(path, signature, metadata)
+                if now - metadata.created_at > ARCHIVE_RETENTION:
+                    if cached:
+                        metadata = archive_metadata(*archive_content(path))
+                    if now - metadata.created_at <= ARCHIVE_RETENTION:
+                        continue
+                    path.unlink()
+        except FILE_ERRORS:
+            failed = True
     with locked(root):
         files = sorted(owned_raw(root), key=lambda p: p.stat().st_mtime)
         raw_bytes = sum(p.stat().st_size for p in files)
     for path in background_files(files, stop):
-        with locked(root):
-            if not path.exists():
-                continue
-            info = path.stat()
-            # Recently touched files may still be active. A snapshot is safe, but don't reclaim them.
-            remove = now - info.st_mtime > RETENTION_SECONDS or (raw_bytes > RAW_BUDGET and now - info.st_mtime > 3600)
-            if daily or remove:
-                archive_file(root, path)
-            if remove:
-                path.unlink()
-                raw_bytes -= info.st_size
+        try:
+            with locked(root):
+                if not path.exists():
+                    continue
+                info = path.stat()
+                # Recently touched files may still be active. A snapshot is safe, but don't reclaim them.
+                remove = now - info.st_mtime > RETENTION_SECONDS or (raw_bytes > RAW_BUDGET and now - info.st_mtime > 3600)
+                if daily or remove:
+                    archive_file(root, path)
+                if remove:
+                    path.unlink()
+                    raw_bytes -= info.st_size
+        except FILE_ERRORS:
+            failed = True
     if stop and stop.is_set():
         return False
     if raw_bytes > RAW_BUDGET:
         raise OSError('Active diagnostic log capacity reached')
+    if failed:
+        raise OSError('Some diagnostic files could not be maintained')
     return True
 
 
-def iter_records(root, *, archives=True, since=None, stop=None):
+def iter_records(root, *, archives=True, since=None, until=None, stop=None, issues=None, index=None):
     """Read immutable snapshots one at a time and deduplicate daily/live overlap."""
     from .diagnostics import MAX_BYTES
     seen = set()
+    issues = issues if issues is not None else ReadIssues()
     with locked(root):
         paths = owned_raw(root)
         backups = owned_archives(root) if archives else []
     for path in background_files(paths + backups, stop):
-        with locked(root):
-            if not path.exists():
-                continue
-            if ARCHIVE_PATTERN.fullmatch(path.name):
-                content, _ = archive_content(path)
-            else:
-                if path.stat().st_size > MAX_BYTES + 65536:
-                    raise ValueError('Oversized diagnostic segment')
-                content = path.read_bytes()
+        manifest = None
+        try:
+            with locked(root):
+                if not path.exists():
+                    continue
+                if ARCHIVE_PATTERN.fullmatch(path.name):
+                    signature = file_signature(path)
+                    metadata = index.get(path, signature) if index is not None else None
+                    if metadata is not None and not metadata.intersects(since, until):
+                        continue
+                    content, manifest = archive_content(path)
+                else:
+                    if path.stat().st_size > MAX_BYTES + 65536:
+                        raise ValueError('Oversized diagnostic segment')
+                    content = path.read_bytes()
+        except FILE_ERRORS:
+            issues.skipped_files += 1
+            continue
+        skipped_before = issues.skipped_records
+        first = last = None
         for row in decoded(content):
             if stop and stop.is_set():
                 return
             if row is None:
-                raise ValueError('Incomplete diagnostic record')
-            if since and row['timestamp'] < since:
+                issues.skipped_records += 1
+                continue
+            stamp = row['timestamp']
+            first = min(first, stamp) if first else stamp
+            last = max(last, stamp) if last else stamp
+            if (since and row['timestamp'] < since) or (until and row['timestamp'] >= until):
                 continue
             identity = row['record_id']
             if identity not in seen:
                 seen.add(identity)
                 yield row
+        if manifest is not None and index is not None and issues.skipped_records == skipped_before:
+            index.put(path, signature, ArchiveMetadata(manifest['created_at'], first, last))

@@ -61,7 +61,7 @@ export class BusinessApi {
       const response = await this.fetcher.call(globalThis, `/api/v1${path}`, { ...init, headers, signal: controller.signal, credentials: 'same-origin', cache: 'no-store' })
       status = response.status
       requestId = response.headers.get('X-Request-ID')
-      const body: unknown = response.ok && binary ? { blob: await response.blob(), filename: responseFilename(response.headers.get('Content-Disposition')), stage: response.headers.get('X-Preview-Stage'), revision: response.headers.get('X-Result-Revision'), truncated: response.headers.get('X-Diagnostics-Truncated') === 'true' } : await response.json().catch(() => null)
+      const body: unknown = response.ok && binary ? { blob: await response.blob(), filename: responseFilename(response.headers.get('Content-Disposition')), stage: response.headers.get('X-Preview-Stage'), revision: response.headers.get('X-Result-Revision'), truncated: response.headers.get('X-Diagnostics-Truncated') === 'true', incomplete: response.headers.get('X-Diagnostics-Incomplete') === 'true' } : await response.json().catch(() => null)
       signal.throwIfAborted()
       if (!response.ok) {
         const error = isRecord(body) && isRecord(body.error) ? body.error : isRecord(body) ? body : {}
@@ -85,7 +85,7 @@ export class BusinessApi {
   diagnosticBundle(filters: LogFilters, signal: AbortSignal) {
     return this.request('/admin/diagnostics/bundle?' + logQuery(filters), 'diagnostics', value => {
       if (!isRecord(value) || !(value.blob instanceof Blob)) throw new Error('INVALID_RESPONSE')
-      return { blob: value.blob, truncated: value.truncated === true }
+      return { blob: value.blob, truncated: value.truncated === true, incomplete: value.incomplete === true }
     }, signal, {}, true, true)
   }
   reportDiagnostic(card: DiagnosticCard, signal: AbortSignal) {
@@ -93,6 +93,7 @@ export class BusinessApi {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         origin: card.origin, operation: card.operation, code: card.code, client_error_id: card.error_id,
         request_id: card.request_id, line: card.stack_frames[0]?.line ?? null, column: card.stack_frames[0]?.column ?? null,
+        exception_type: card.exception_type, browser_event: card.browser_event, frontend_build: card.frontend_build,
       }),
     }, false, true)
   }

@@ -14,7 +14,10 @@ export interface LogRecord {
   record_id: string; timestamp: string; level: LogLevel; app_version: string
   component: string; event: string; description: string; context: Record<string, unknown>; exceptions?: unknown[]
 }
-export interface LogPage { items: LogRecord[]; next_cursor: string | null }
+export interface LogPage {
+  items: LogRecord[]; next_cursor: string | null
+  incomplete: boolean; skipped_files: number; skipped_records: number
+}
 export interface LogFilters { level?: LogLevel; date_from?: string; date_to?: string; error_id?: string; task_id?: string }
 const record = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
 const optionalText = (value: unknown) => value === null || typeof value === 'string'
@@ -31,9 +34,12 @@ export function parseLogPage(value: unknown): LogPage {
     typeof row.timestamp === 'string' && Number.isFinite(Date.parse(row.timestamp)) &&
     logLevels.includes(row.level as LogLevel) && typeof row.app_version === 'string' &&
     typeof row.component === 'string' && typeof row.event === 'string' &&
-    (row.description === undefined || typeof row.description === 'string') && record(row.context))) throw new Error('INVALID_RESPONSE')
+    (row.description === undefined || typeof row.description === 'string') && record(row.context)) ||
+    (value.incomplete !== undefined && typeof value.incomplete !== 'boolean') ||
+    !['skipped_files', 'skipped_records'].every(key => value[key] === undefined || Number.isSafeInteger(value[key]) && (value[key] as number) >= 0)) throw new Error('INVALID_RESPONSE')
   const page = value as unknown as LogPage
-  return { ...page, items: page.items.map(row => ({ ...row,
+  return { ...page, incomplete: page.incomplete ?? false, skipped_files: page.skipped_files ?? 0,
+    skipped_records: page.skipped_records ?? 0, items: page.items.map(row => ({ ...row,
     description: row.description?.trim() || '历史记录暂无中文说明，请展开查看技术详情。' })) }
 }
 export function logQuery(filters: LogFilters, cursor?: string | null) {

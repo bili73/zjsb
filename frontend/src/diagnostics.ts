@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import type { App } from 'vue'
 
 export const errorMessages = {
   DIAGNOSTICS_BUSY: '日志正在读取，请稍后重试。', DIAGNOSTICS_UNAVAILABLE: '日志记录或读取暂不可用，请下载本页诊断信息并联系管理员。', DIAGNOSTICS_RATE_LIMITED: '诊断上报过于频繁，请稍后重试。',
@@ -40,6 +41,15 @@ const stages = new Set(['BOOTSTRAP', 'QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTI
 const origins = new Set(['http', 'task', 'vue', 'window', 'promise'])
 const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save', 'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks', 'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export', 'diagnostics'])
 const exceptionNames = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'URIError', 'EvalError', 'DOMException'])
+const browserEvents = ['javascript_error', 'resize_observer', 'opaque_script', 'promise_rejection', 'vue_error'] as const
+type BrowserEvent = typeof browserEvents[number]
+export function frontendBuildId(url: string): string | null {
+  try {
+    const hash = /\/assets\/index-([A-Za-z0-9_-]{8,64})\.js$/.exec(new URL(url).pathname)?.[1]
+    return hash ? `b_${hash}` : null
+  } catch { return null }
+}
+const buildId = frontendBuildId(import.meta.url)
 export function safeId(value: unknown): string | null {
   return typeof value === 'string' && (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) || /^e_[A-Za-z0-9]{1,80}$/.test(value)) ? value : null
 }
@@ -60,6 +70,8 @@ export interface DiagnosticCard {
   http_status: number | null
   stage: Stage | null
   exception_type: string | null
+  browser_event: BrowserEvent | null
+  frontend_build: string | null
   stack_frames: { module: 'frontend'; line: number; column: number }[]
 }
 export const diagnosticCards = ref<DiagnosticCard[]>([])
@@ -72,7 +84,8 @@ export function setDiagnosticVersion(value: string) { appVersion = /^\d+\.\d+\.\
 // Never retain message, filename, URL, body, headers, key or document values.
 export function makeDiagnostic(input: {
   origin: DiagnosticOrigin; operation: Operation; code?: unknown; error_id?: unknown;
-  request_id?: unknown; status?: number; stage?: unknown; error?: unknown
+  request_id?: unknown; status?: number; stage?: unknown; error?: unknown;
+  browser_event?: BrowserEvent; line?: unknown; column?: unknown
 }): DiagnosticCard {
   const error = input.error instanceof Error ? input.error : null
   const frames: DiagnosticCard['stack_frames'] = []
@@ -82,6 +95,10 @@ export function makeDiagnostic(input: {
       if (match) frames.push({ module: 'frontend', line: Number(match[1]), column: Number(match[2]) })
     }
   }
+  if (!frames.length && Number.isSafeInteger(input.line) && (input.line as number) > 0 && (input.line as number) <= 10000000 &&
+      Number.isSafeInteger(input.column) && (input.column as number) >= 0 && (input.column as number) <= 10000000) {
+    frames.push({ module: 'frontend', line: input.line as number, column: input.column as number })
+  }
   return {
     schema_version: 1, error_id: safeId(input.error_id) ?? safeId(input.request_id) ?? crypto.randomUUID(),
     request_id: safeId(input.request_id), occurred_at: new Date().toISOString(), app_version: appVersion,
@@ -89,6 +106,8 @@ export function makeDiagnostic(input: {
     operation: operations.has(input.operation) ? input.operation : 'interface', code: safeCode(input.code),
     http_status: Number.isInteger(input.status) && input.status! >= 100 && input.status! <= 599 ? input.status! : null,
     stage: safeStage(input.stage), exception_type: error && exceptionNames.has(error.name) ? error.name : null, stack_frames: frames,
+    browser_event: browserEvents.includes(input.browser_event as BrowserEvent) ? input.browser_event! : null,
+    frontend_build: buildId,
   }
 }
 export function recordDiagnostic(input: Parameters<typeof makeDiagnostic>[0]): DiagnosticCard {
@@ -102,9 +121,21 @@ export function recordDiagnostic(input: Parameters<typeof makeDiagnostic>[0]): D
   return card
 }
 export function installGlobalDiagnostics() {
-  const onError = (event: ErrorEvent) => { recordDiagnostic({ origin: 'window', operation: 'interface', code: 'CLIENT_ERROR', error: event.error }) }
-  const onRejection = (event: PromiseRejectionEvent) => { recordDiagnostic({ origin: 'promise', operation: 'interface', code: 'CLIENT_ERROR', error: event.reason }) }
+  const onError = (event: ErrorEvent) => {
+    const category = ['ResizeObserver loop limit exceeded', 'ResizeObserver loop completed with undelivered notifications.'].includes(event.message)
+      ? 'resize_observer' : event.message === 'Script error.' ? 'opaque_script' : 'javascript_error'
+    recordDiagnostic({ origin: 'window', operation: 'interface', code: 'CLIENT_ERROR', error: event.error,
+      browser_event: category, line: event.lineno, column: event.colno })
+  }
+  const onRejection = (event: PromiseRejectionEvent) => { recordDiagnostic({ origin: 'promise', operation: 'interface', code: 'CLIENT_ERROR', error: event.reason, browser_event: 'promise_rejection' }) }
   window.addEventListener('error', onError)
   window.addEventListener('unhandledrejection', onRejection)
   return () => { window.removeEventListener('error', onError); window.removeEventListener('unhandledrejection', onRejection) }
+}
+
+export function installVueDiagnostics(app: Pick<App, 'config'>) {
+  app.config.errorHandler = error => {
+    recordDiagnostic({ origin: 'vue', operation: 'interface', code: 'CLIENT_ERROR', error, browser_event: 'vue_error' })
+    console.error(error)
+  }
 }

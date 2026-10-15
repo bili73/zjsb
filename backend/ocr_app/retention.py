@@ -13,14 +13,14 @@ def deadline(created_at, days):
 
 
 def configuration(connection):
-    from .task_store import ACTIVE
+    from .task_store import RETENTION_PROTECTED
     result = load_policy(connection)
     at = datetime.now(timezone.utc)
     rows = connection.execute(text('SELECT created_at,status FROM tasks')).mappings().all()
     impact = []
     for days in (7, 15, 30):
         aged = [row for row in rows if datetime.fromisoformat(row['created_at']) <= at - timedelta(days=days)]
-        active = sum(row['status'] in ACTIVE for row in aged)
+        active = sum(row['status'] in RETENTION_PROTECTED for row in aged)
         impact.append(dict(days=days, eligible_count=len(aged)-active, active_count=active))
     return dict(result, impact=impact, assessed_at=at.isoformat())
 

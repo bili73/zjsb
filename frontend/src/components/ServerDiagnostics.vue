@@ -13,6 +13,7 @@ const emit = defineEmits<{ (e: 'unauthorized'): void; (e: 'refresh-status'): voi
 const level = ref<LogLevel | ''>(''), range = ref<[string, string] | null>(null)
 const errorId = ref(''), taskId = ref(''), error = ref(''), rows = ref<LogRecord[]>([])
 const busy = ref(false), downloading = ref(false), cursor = ref<string | null>(null)
+const incomplete = ref(false), skippedFiles = ref(0), skippedRecords = ref(0)
 let controller = new AbortController(), generation = 0
 let applied: LogFilters = {}
 const filters = (): LogFilters => ({ ...(level.value ? { level: level.value } : {}),
@@ -28,13 +29,14 @@ function fail(value: unknown) {
 }
 async function query(next = false) {
   if (busy.value || downloading.value) return
-  if (!next) { applied = filters(); rows.value = []; cursor.value = null }
+  if (!next) { applied = filters(); rows.value = []; cursor.value = null; incomplete.value = false }
   busy.value = true; error.value = ''
   const revision = generation
   try {
     const page = await props.api.diagnosticEvents(applied, next ? cursor.value : null, controller.signal)
     if (revision !== generation) return
     rows.value = page.items; cursor.value = page.next_cursor
+    incomplete.value = page.incomplete; skippedFiles.value = page.skipped_files; skippedRecords.value = page.skipped_records
   } catch (value) { if (revision === generation) fail(value) }
   finally { if (revision === generation) busy.value = false }
 }
@@ -47,7 +49,10 @@ async function download() {
     const url = URL.createObjectURL(result.blob), anchor = document.createElement('a')
     anchor.href = url; anchor.download = '诊断日志.zip'; anchor.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
-    if (result.truncated) ElMessage.warning('日志超过单次下载上限，已下载部分内容；请缩小日期范围后重新下载。')
+    if (result.incomplete || result.truncated) ElMessage.warning([
+      result.incomplete ? '部分日志损坏或无法读取，诊断包不完整，原文件已保留；请联系维护人员。' : '',
+      result.truncated ? '日志超过单次下载上限，已下载部分内容；请缩小日期范围后重新下载。' : '',
+    ].filter(Boolean).join(''))
     else ElMessage.success('诊断包已下载，可交给维护人员排查。')
   } catch (value) { if (revision === generation) fail(value) }
   finally { if (revision === generation) downloading.value = false }
@@ -56,6 +61,7 @@ const size = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MiB`
 const tone = (value: LogLevel) => value === 'CRITICAL' || value === 'ERROR' ? 'danger' : value === 'WARNING' ? 'warning' : 'info'
 watch(() => [props.open, props.api] as const, ([open]) => {
   generation++; controller.abort(); controller = new AbortController(); busy.value = false; downloading.value = false; rows.value = []; cursor.value = null; error.value = ''
+  incomplete.value = false; skippedFiles.value = 0; skippedRecords.value = 0
   if (open) void query()
 }, { immediate: true })
 onBeforeUnmount(() => { generation++; controller.abort() })
@@ -83,6 +89,7 @@ onBeforeUnmount(() => { generation++; controller.abort() })
       <div class="actions"><el-button type="primary" native-type="submit" :loading="busy" :disabled="downloading">查询</el-button><el-button :loading="downloading" :disabled="busy" @click="download">下载诊断包</el-button></div>
     </el-form>
     <el-alert v-if="error" type="error" :closable="false" show-icon>{{ error }}</el-alert>
+    <el-alert v-if="incomplete" type="warning" :closable="false" show-icon>日志结果不完整：扫描时跳过 {{ skippedFiles }} 个无法读取的文件和 {{ skippedRecords }} 条损坏记录，原文件已保留。下表仅展示可读取的匹配记录，不能据此判断没有其他错误；请联系维护人员。</el-alert>
     <el-table :data="rows" v-loading="busy" stripe border empty-text="没有符合条件的日志" class="log-table">
       <el-table-column type="expand"><template #default="{ row }"><div class="log-description"><strong>问题说明：</strong>{{ row.description }}</div><pre class="log-details">{{ JSON.stringify(row, null, 2) }}</pre></template></el-table-column>
       <el-table-column label="时间（UTC+8）" min-width="175"><template #default="{ row }">{{ formatTime(row.timestamp) }}</template></el-table-column>

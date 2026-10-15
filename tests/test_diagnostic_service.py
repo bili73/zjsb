@@ -238,11 +238,11 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(len(first['items'] + second['items']), 4)
         self.assertIsNone(second['next_cursor'])
         self.assertFalse({r['record_id'] for r in first['items']} & {r['record_id'] for r in second['items']})
-        data, truncated = self.service.bundle(task_id=task)
+        data, metadata = self.service.bundle(task_id=task)
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             self.assertEqual(json.loads(archive.read('manifest.json'))['records'], 4)
             self.assertIsNone(archive.testzip())
-        self.assertFalse(truncated)
+        self.assertEqual(metadata, dict(truncated=False, incomplete=False, skipped_files=0, skipped_records=0))
         start, end = window('2026-10-15', '2026-10-15')
         self.assertEqual(start, '2026-10-14T16:00:00+00:00')
         self.assertEqual(end, '2026-10-15T16:00:00+00:00')
