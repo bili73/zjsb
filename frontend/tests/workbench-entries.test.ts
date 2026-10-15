@@ -3,18 +3,29 @@ import assert from 'node:assert/strict'
 import { WORKBENCH_MAX_ENTRIES, parseWorkbenchLayout, parseWorkbenchPreferences, splitEntries } from '../src/workbenchEntries.ts'
 
 const keys = ['A', 'B', 'C', 'D']
-test('no customization keeps the full catalogue in default order', () => {
+test('a small default catalogue keeps its order', () => {
   assert.deepEqual(splitEntries(keys, null), { visible: keys, hidden: [] })
 })
 test('custom layout splits visible and tucked entries, ignoring unknown and duplicate keys', () => {
   assert.deepEqual(splitEntries(keys, ['D', 'A', 'GONE', 'D']), { visible: ['D', 'A'], hidden: ['B', 'C'] })
 })
-test('visible entries are capped at twelve; extras stay tucked in catalogue order', () => {
+test('default and custom layouts show at most twelve; excess types stay accessible', () => {
   const many = Array.from({ length: WORKBENCH_MAX_ENTRIES + 3 }, (_, index) => `T${index}`)
   const { visible, hidden } = splitEntries([...many, 'EXTRA'], many)
   assert.equal(visible.length, WORKBENCH_MAX_ENTRIES)
   assert.deepEqual(visible, many.slice(0, WORKBENCH_MAX_ENTRIES))
   assert.deepEqual(hidden, ['T12', 'T13', 'T14', 'EXTRA'])
+  assert.deepEqual(splitEntries([...many, 'EXTRA'], null), { visible, hidden })
+  assert.equal(WORKBENCH_MAX_ENTRIES, 12)
+})
+
+test('legacy thirteen-key saved preferences remain readable and tuck the last card', () => {
+  const catalogue = Array.from({ length: 13 }, (_, index) => String.fromCharCode(65 + index))
+  const saved = parseWorkbenchLayout({ layout: catalogue, revision: 7 })
+  assert.deepEqual(saved.layout, catalogue)
+  assert.equal(saved.revision, 7)
+  assert.deepEqual(splitEntries(catalogue, saved.layout), { visible: catalogue.slice(0, 12), hidden: ['M'] })
+  assert.throws(() => parseWorkbenchLayout({ layout: [...catalogue, 'N'], revision: 7 }))
 })
 test('server contracts distinguish defaults from all tucked and reject malformed data', () => {
   for (const layout of [null, [], ['TABLE', 'BANK_CARD']]) {

@@ -92,7 +92,7 @@ class TaskScheduler:
         self.config, self.logger, self.reply, self.factory = config, logger, reply, factory
         self.parallel = bool(getattr(manager, 'parallel_inference', False))
         from .doc_profiles import catalogue
-        paddle_types = {'MEDICAL_REPORT', 'TABLE', 'GENERIC'}
+        paddle_types = {'MEDICAL_REPORT', 'TABLE', 'GENERIC', 'INTERVIEW_FORM'}
         document_types = {entry['doc_type'] for entry in catalogue()} - paddle_types
         self.lanes = {'certificate': document_types, 'medical': paddle_types} if self.parallel else {'all': None}
         self.jobs = {}

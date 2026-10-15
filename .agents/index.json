@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-14T07:15:13.611Z",
+  "generatedAt": "2026-10-15T01:04:54.788Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 88,
+    "activeNotes": 96,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 528,
+    "relations": 583,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 83,
+      "implemented": 91,
       "rejected": 3
     },
     "staleNotes": []
@@ -219,6 +219,7 @@
       "supersededBy": [],
       "cites": [
         "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/architecture/2026-10-14-production-dual-residency.md",
         "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
@@ -234,6 +235,7 @@
         "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
         "implemented/architecture/2026-09-30-paddle-vl-16-upgrade.md",
         "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/architecture/2026-10-14-production-dual-residency.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-10-measured-task-progress.md",
         "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
@@ -252,7 +254,7 @@
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The launcher exposes the lightweight local UI/service first and starts an independent runtime worker. It sequentially loads and warms GLM-OCR then PaddleOCR-VL in their existing isolated environments. Both remain resident in default dual_re",
-      "bodySha256": "2bfeb04bddb2fd1d",
+      "bodySha256": "1178c3aa4facd80c",
       "lines": {
         "title": 1,
         "status": 3,
@@ -406,11 +408,13 @@
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md",
         "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
-        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/architecture/2026-10-14-production-dual-residency.md"
       ],
       "citedBy": [
         "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/architecture/2026-10-14-production-dual-residency.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-10-measured-task-progress.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -430,7 +434,7 @@
         "rule": "最近复核 2026-10-08"
       },
       "summary": "When both models complete serial startup successfully, use two bounded document lanes: one certificate lane (DIPLOMA and DEGREE_CERT) and one medical lane, each with at most one supervised CPU task process. Single-resident or startup-degrad",
-      "bodySha256": "c5364c130961db4f",
+      "bodySha256": "7f10e22be5b51f65",
       "lines": {
         "title": 1,
         "status": 3,
@@ -472,6 +476,85 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/architecture/2026-10-08-independent-model-queues.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/architecture/2026-10-14-production-dual-residency.md",
+      "path": ".agents/notes/implemented/architecture/2026-10-14-production-dual-residency.md",
+      "anchor": "// Note: .agents/notes/implemented/architecture/2026-10-14-production-dual-residency.md",
+      "title": "Fix production to dual residency and retain isolated benchmark mode",
+      "lifecycle": "implemented",
+      "class": "architecture",
+      "date": "2026-10-14",
+      "scope": [
+        "backend/ocr_app",
+        "tests",
+        "frontend/src",
+        "SPEC.md",
+        "RUNTIME.md",
+        "ARCHITECTURE.md",
+        "openapi.yaml",
+        "frontend/public/help",
+        "start.ps1",
+        "README.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "The application launcher always selects dual_resident, accepts the old explicit dual flag for compatibility, rejects single, and replaces a saved single preference on launch. Load and warm both models sequentially. Failure of one model leav",
+      "bodySha256": "a61a384fdd5a9204",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related-note audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Validation",
+            "line": 27
+          },
+          {
+            "title": "Consequences",
+            "line": 31
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/architecture/2026-10-14-production-dual-residency.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
@@ -1030,7 +1113,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Add observed signatory boundaries including 院长 with spaced-label forms; these delimiters do not restore removed signatory fields. Rank an explicit printed 校名/学校名称 field above an unlabelled cover/title candidate. Distinct equally authoritati",
@@ -1475,7 +1558,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The application has no experimental certificate helper, endpoint or added positioning dependencies. Field-level positioning/source controls appear only for medical reports; all document types retain whole-page image preview and manual editi",
@@ -1713,7 +1796,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The entire illustration fits proportionally inside a centered viewer capped at 1000px width and 86 percent of the viewport height. Image scrolling and its explanatory text are removed. The existing cross, Escape, backdrop dismissal and read",
@@ -1779,7 +1862,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Open an illustration in one native modal dialog in the same manual document. Keep a visible 44px close button outside the scrollable image area, support native Escape and backdrop dismissal, and show the image at its original dimensions in ",
@@ -1861,7 +1944,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The pipeline publishes preparation checkpoints and one completed physical OCR-region checkpoint after retries, preserving the current worker callback signature, polling, run/revision fences and180-second deadline. It stays in OCR across pag",
@@ -1930,7 +2013,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "SourcePreview keeps the latest medical source as a cancellable navigation intent. After its image loads, it scrolls to its highlight or existing whole-page fallback. Page-load and preview-size changes coalesce into animation-frame alignment",
@@ -2007,7 +2090,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Element Plus and the existing polling remain. A measured bar appears only during OCR with a known positive region total, accompanied by literal processed/total counts. Queue has no activity spinner; other active phases use the existing Load",
@@ -2075,7 +2158,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The existing latest-selection intent, lazy loading, layout observation, scheduled-frame cancellation and manual-browsing cancellation remain active. Every alignment, including one triggered by page expansion, requests native smooth scrollin",
@@ -2218,7 +2301,8 @@
         "implemented/feature/2026-10-09-bank-auto-recognition.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
-        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md",
@@ -2226,7 +2310,8 @@
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-09-bank-auto-recognition.md",
         "implemented/feature/2026-10-12-certificate-image-upright.md",
-        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
       ],
       "lastVerified": "2026-10-12",
       "archivedDate": null,
@@ -2236,7 +2321,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD uses a dedicated classifier path, selected by an optional internal doc_type keyword on prepare_image. Bounded CPU OpenCV contour analysis operates on a maximum1000-pixel thumbnail: blurred gray dark Otsu, saturation Otsu and Canny",
-      "bodySha256": "a1fe863441eadaf9",
+      "bodySha256": "58f4e9a188b82d61",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2657,7 +2742,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Business endpoints inherit a protected APIRouter default principal dependency, separate from the explicitly public login route. Keep administrator/operator/viewer and immutable batch ownership semantics. Reuse the existing session/legacy-ke",
@@ -2745,7 +2830,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Region OCR reuses the native JobProcess supervisor for the short-lived binary protocol. The ten-second execution budget, bounded output and one in-flight request remain; whole-job cleanup precedes slot release. Job cleanup has its existing ",
@@ -2867,6 +2952,175 @@
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-14-bank-scan-source-mapping.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md",
+      "title": "Keep twelve visible cards independently of the type catalogue",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-14",
+      "scope": [
+        "frontend/src/workbenchEntries.ts",
+        "frontend/src/components/UploadPanel.vue",
+        "frontend/tests/workbench-entries.test.ts",
+        "scripts/probe_account_layout.py",
+        "scripts/probe_interview_browser.py",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-14-workbench-entry-customization.md",
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+        "implemented/feature/2026-10-14-workbench-entry-customization.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "Cap splitEntries at twelve for default, inherited and personal layouts. Preserve order and put every remaining catalogue key in the hidden set, still selectable under More Types. Add-to-workbench cannot exceed twelve; explain the need to tu",
+      "bodySha256": "cd8b1934b9778f94",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related-note audit",
+            "line": 15
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 19
+          },
+          {
+            "title": "Validation",
+            "line": 25
+          },
+          {
+            "title": "Consequences",
+            "line": 29
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+      "title": "Preserve unresolved selections and applicant ownership during review",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-15",
+      "scope": [
+        "backend/ocr_app/export_disputes.py",
+        "backend/ocr_app/review.py",
+        "backend/ocr_app/interview_form.py",
+        "backend/ocr_app/exporting.py",
+        "backend/ocr_app/task_store.py",
+        "frontend/src/table-review.ts",
+        "frontend/src/components/TableReview.vue",
+        "tests/test_export_disputes.py",
+        "tests/test_interview_form.py",
+        "tests/test_document_privacy.py",
+        "frontend/tests/table-review.test.ts",
+        "frontend/tests/table-review-component.test.ts",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "openapi.yaml"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-14-save-confirms-export-disputes.md",
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+        "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
+      ],
+      "lastVerified": "2026-10-15",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-15"
+      },
+      "summary": "Keep ordinary save as the authorized acknowledgment interaction. Confirm only targets with a selected value: medical findings require a live result association and nonempty result, and medical items require a nonempty result with selected o",
+      "bodySha256": "e011fa37d998f7f4",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related-note audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 26
+          },
+          {
+            "title": "Consequences",
+            "line": 33
+          },
+          {
+            "title": "Testing",
+            "line": 37
+          },
+          {
+            "title": "Local activation",
+            "line": 45
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "path": ".agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -2953,7 +3207,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Local SQLite uses synchronous SQLAlchemy and versioned Alembic migrations. Short transactions atomically claim tasks and protect run/revision publication, cancellation and reruns. The runtime worker remains the sole model coordinator. All p",
@@ -3127,6 +3381,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
         "implemented/feature/2026-10-09-bank-auto-recognition.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-hr-document-field-profile.md",
@@ -3142,12 +3397,15 @@
         "implemented/feature/2026-10-12-person-material-packages.md",
         "implemented/bug-fix/2026-10-12-adjacent-document-field-boundaries.md",
         "implemented/feature/2026-10-14-adaptive-generic-forms.md",
-        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
+        "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+        "implemented/feature/2026-10-14-number-length-review-hints.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-adjacent-document-field-boundaries.md",
         "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
         "implemented/bug-fix/2026-10-12-degree-school-and-award-mapping.md",
+        "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
@@ -3158,6 +3416,8 @@
         "implemented/feature/2026-10-12-person-material-packages.md",
         "implemented/feature/2026-10-14-adaptive-generic-forms.md",
         "implemented/feature/2026-10-14-bank-photocopy-handwriting.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+        "implemented/feature/2026-10-14-number-length-review-hints.md",
         "implemented/simplification/2026-10-08-required-fields-only-export.md"
       ],
       "lastVerified": "2026-10-12",
@@ -3167,8 +3427,8 @@
         "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-12"
       },
-      "summary": "A backend document catalogue owns field names, editability, conditional applicability and required fields. GET /doc-types supplies that catalogue to the UI. Pure versioned validation distinguishes FORMAT, CHECKSUM and OFFICIAL outcomes; unk",
-      "bodySha256": "adfdace172da42b9",
+      "summary": "Result projection repair limits bank-profile completion to actual result objects. Task summaries do not acquire fabricated empty fields; legacy results retain current profile fields and labels.",
+      "bodySha256": "9cd981275f796744",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3189,39 +3449,39 @@
           },
           {
             "title": "Decision audit",
-            "line": 21
+            "line": 23
           },
           {
             "title": "Alternatives considered",
-            "line": 25
+            "line": 27
           },
           {
             "title": "Verified behavior",
-            "line": 36
+            "line": 38
           },
           {
             "title": "Consequences",
-            "line": 40
+            "line": 42
           },
           {
             "title": "Verification",
-            "line": 48
+            "line": 50
           },
           {
             "title": "Final offline-bank and review verification",
-            "line": 52
+            "line": 54
           },
           {
             "title": "Export-policy boundary",
-            "line": 56
+            "line": 58
           },
           {
             "title": "Current input-policy refinement",
-            "line": 61
+            "line": 63
           },
           {
             "title": "Generic form extension (2026-10-14)",
-            "line": 73
+            "line": 75
           }
         ]
       },
@@ -3283,7 +3543,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "- Stack: Vue 3.5 + TypeScript + Vite, Element Plus 2.14 full import with zh-cn locale, pinned exact dependency versions. Composables only (no Pinia, no vue-router), matching ARCHITECTURE.md's composable-first stance for this local tool. - C",
@@ -3635,7 +3895,8 @@
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/simplification/2026-10-08-required-fields-only-export.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
-        "implemented/feature/2026-10-09-bank-auto-recognition.md"
+        "implemented/feature/2026-10-09-bank-auto-recognition.md",
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md"
       ],
       "citedBy": [
         "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
@@ -3646,6 +3907,8 @@
         "implemented/feature/2026-10-09-bank-auto-recognition.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
         "implemented/feature/2026-10-09-web-password-sessions.md",
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+        "implemented/feature/2026-10-14-save-confirms-export-disputes.md",
         "implemented/simplification/2026-10-08-required-fields-only-export.md"
       ],
       "lastVerified": "2026-10-08",
@@ -3656,7 +3919,7 @@
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Authenticated structured business results return complete stored values and original evidence; remove the masked projection and inherited value_masked display values. New bank profiles omit the redundant card_number_masked field. The public",
-      "bodySha256": "51b27663556f2977",
+      "bodySha256": "2d8c2c8e1e4ae646",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3702,6 +3965,10 @@
           {
             "title": "Current refinement",
             "line": 48
+          },
+          {
+            "title": "Partial supersession: explicit export disputes (2026-10-14)",
+            "line": 52
           }
         ]
       },
@@ -4523,7 +4790,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Extend administrator management with enable/disable, deletion and password reset for other accounts. Add a self-service change-password dialog to the logged-in user menu for all roles, requiring the current password and confirmation of the ",
@@ -4614,7 +4881,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Persist an immutable owner ID on each batch, inherited by every task. New ownership comes only from the authenticated uploader. Backfill existing batches only when every surviving task has creation audit evidence with one shared actor; ambi",
@@ -4703,7 +4970,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "An administrator-only settings tab provides authenticated GET/PUT endpoints under /admin/required-fields. The application persists document-type overrides and one monotonic revision in a small SQLite settings table; default absence preserve",
@@ -4793,7 +5060,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "DELETE /batches/{batch_id} accepts a complete task/run/revision snapshot. Within the same BEGIN IMMEDIATE transaction, recheck the current administrator session, batch membership, allowed states and each version. Only NEED_REVIEW, COMPLETED",
@@ -4866,7 +5133,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Preserve the concurrent HelpDrawer integration and qualify the current build with fresh synthetic real-HTTP account acceptance. The drawer embeds the same generic static manual in an iframe and unmounts its frame when closed; opening/closin",
@@ -4934,7 +5201,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The board consumes the measured progress contract in the backend progress note. It derives OCR work solely from physical region counts (processed_regions/total_regions), never the legacy integer progress. The later phase-aware correction li",
@@ -5008,7 +5275,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "A 使用说明 entry beside 诊断 in the authenticated workbench header is available to every account role. The initial separate-tab navigation is partially replaced by the later embedded-help integration, which owns the current drawer interaction and",
@@ -5074,6 +5341,7 @@
       "supersededBy": [],
       "cites": [
         "implemented/bug-fix/2026-10-12-degree-school-and-award-mapping.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
         "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -5090,7 +5358,8 @@
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-09-bank-auto-recognition.md",
         "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
-        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
       ],
       "lastVerified": "2026-10-12",
       "archivedDate": null,
@@ -5100,7 +5369,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "The CPU helper uses the Apache-2.0 PaddlePaddle PP-LCNet_x1_0_doc_ori official ONNX export, pinned to revision 7330ab7039123e46af2dc03154b9969aa412c61d and SHA256 af9a0a4f317ff0709ce752067807f819cb15d883f8ecad89f28df1c6ee2d9c92. Each view f",
-      "bodySha256": "dbf67d2ce28cd11e",
+      "bodySha256": "59ef97061c50e217",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5270,7 +5539,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Reuse a batch as an explicitly named person package when its first upload supplies a manually entered person name. Store the person label encrypted and append revision as additive batch columns. Legacy batches remain unassigned and retain t",
@@ -5458,7 +5727,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Represent package intent independently of the confirmed person name using an additive batch flag. Backfill existing explicitly named packages only; leave ordinary and historical unassigned batches unchanged. Mixed file_types creation means ",
@@ -5728,7 +5997,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "The field-button placement and automatic draft application described below are the original decision, partially replaced by source-region text copying. The current component is RegionOcrDialog.vue; the source toolbar opens general transcrip",
@@ -5803,23 +6072,27 @@
         "implemented/feature/2026-10-10-account-owned-batches.md",
         "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
         "implemented/feature/2026-10-13-field-region-ocr.md",
-        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+        "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
         "implemented/feature/2026-10-14-adaptive-generic-forms.md",
         "implemented/feature/2026-10-14-auto-table-header-rows.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
         "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
         "rejected/feature/2026-10-13-photo-table-to-excel.md"
       ],
-      "lastVerified": "2026-10-14",
+      "lastVerified": "2026-10-15",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
         "monthsSinceVerify": 0,
-        "rule": "最近复核 2026-10-14"
+        "rule": "最近复核 2026-10-15"
       },
       "summary": "1. 先证明真实样本可以恢复，再接入业务",
-      "bodySha256": "ff79b468d9a7b90c",
+      "bodySha256": "bab8d5b85a75112b",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5880,7 +6153,7 @@
           },
           {
             "title": "Generic form extension (2026-10-14)",
-            "line": 145
+            "line": 147
           }
         ]
       },
@@ -5917,7 +6190,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "A small deterministic browser helper extracts explicit four-digit-year Chinese dates from the current editable OCR text. Accept Arabic/full-width digits and common Chinese digit/year and ten-based month/day notation; whitespace between reco",
@@ -5989,7 +6262,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "For materials with trusted corrected pages (ocrEnabled), clicking a source page image opens the region OCR dialog in a new cinema variant: a fullscreen dark backdrop (82% black modal mask, like the retired stock viewer) with the corrected p",
@@ -6069,7 +6342,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Put a labelled camera button in SourcePreview's toolbar. It opens the existing bounded page/rectangle dialog at the most visible corrected page, with manual page selection. OCR text appears in the same dialog as an editable textarea. Copy a",
@@ -6138,10 +6411,14 @@
         "implemented/feature/2026-10-14-workbench-entry-customization.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
         "implemented/feature/2026-10-10-account-lifecycle-management.md",
-        "implemented/feature/2026-10-14-admin-workbench-default.md"
+        "implemented/feature/2026-10-14-admin-workbench-default.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+        "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md",
         "implemented/feature/2026-10-14-admin-workbench-default.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
         "implemented/feature/2026-10-14-workbench-entry-customization.md",
         "implemented/simplification/2026-10-14-remove-system-layout-reset.md"
       ],
@@ -6153,7 +6430,7 @@
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Store one ordered nullable list plus revision per immutable named account in SQLite. Null means catalogue defaults; an empty list means all entries tucked. Retain a revision after restoring defaults to prevent stale writes. A self-only GET/",
-      "bodySha256": "d3642655cf788419",
+      "bodySha256": "1fbc40d03392b9d5",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6223,13 +6500,15 @@
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/simplification/2026-10-08-required-fields-only-export.md",
         "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
-        "implemented/feature/2026-10-12-certificate-image-upright.md"
+        "implemented/feature/2026-10-12-certificate-image-upright.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
       ],
       "citedBy": [
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-12-certificate-image-upright.md",
         "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
         "implemented/simplification/2026-10-08-required-fields-only-export.md"
       ],
       "lastVerified": "2026-10-14",
@@ -6240,7 +6519,7 @@
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Retain reliable native PDF evidence, otherwise use the current Paddle model, with one GLM fallback per region and a 40-second generation soft budget inside the existing 180-second task budget. GENERIC shares the Paddle document lane with ME",
-      "bodySha256": "b69d47df814db796",
+      "bodySha256": "4bdfbcd224e85530",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6308,10 +6587,12 @@
       "cites": [
         "implemented/simplification/2026-10-14-remove-system-layout-reset.md",
         "implemented/feature/2026-10-14-account-workbench-layout.md",
-        "implemented/feature/2026-10-14-workbench-entry-customization.md"
+        "implemented/feature/2026-10-14-workbench-entry-customization.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
       ],
       "citedBy": [
         "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
         "implemented/simplification/2026-10-14-remove-system-layout-reset.md"
       ],
       "lastVerified": "2026-10-14",
@@ -6322,7 +6603,7 @@
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Persist a singleton default layout and independent revision. Personal null now means inherit that default; default null means the system catalogue order. Personal arrays, including an empty array, override the shared default. Return both pe",
-      "bodySha256": "83598a8341b20135",
+      "bodySha256": "d9bd2b27a3ab7a36",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6524,6 +6805,433 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-bank-photocopy-handwriting.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-disputed-results-export-gate.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-disputed-results-export-gate.md",
+      "title": "Block exports with explicit unresolved recognition disputes",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "frontend/tests",
+        "tests",
+        "scripts",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "openapi.yaml",
+        "frontend/public/help",
+        "ARCHITECTURE.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/feature/2026-10-14-number-length-review-hints.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
+        "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+        "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/feature/2026-10-14-number-length-review-hints.md",
+        "implemented/feature/2026-10-14-save-confirms-export-disputes.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md"
+      ],
+      "lastVerified": "2026-10-15",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-15"
+      },
+      "summary": "Keep required-value and table-structure gates. Add one server projection for explicit number-length warnings, current format/checksum failures and unresolved recognition conflicts. Uncalibrated confidence, no official lookup and uncovered r",
+      "bodySha256": "62fcc50644f55cda",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 27
+          },
+          {
+            "title": "Verification",
+            "line": 34
+          },
+          {
+            "title": "Consequences",
+            "line": 40
+          },
+          {
+            "title": "Local activation",
+            "line": 47
+          },
+          {
+            "title": "Save interaction update",
+            "line": 52
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-disputed-results-export-gate.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-14-export-disputes-section-removed.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-export-disputes-section-removed.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-export-disputes-section-removed.md",
+      "title": "Export disputes section removed from the result drawer",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "frontend/src/components/TaskResultDrawer.vue"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "The section, its confirmDispute handler (confirmed_disputes review path) and its scoped CSS are removed. The primary remedy for a dispute is unchanged and fully intact: fix the field (pick the candidate or fill the correct value) and save —",
+      "bodySha256": "345fe82f11b18036",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 15
+          },
+          {
+            "title": "Verification",
+            "line": 20
+          },
+          {
+            "title": "Consequences",
+            "line": 24
+          },
+          {
+            "title": "Save interaction update",
+            "line": 29
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-export-disputes-section-removed.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "title": "Add interview registration and complete entry-wide image orientation",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "tests",
+        "frontend/tests",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-12-certificate-image-upright.md",
+        "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/feature/2026-10-14-admin-workbench-default.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+        "implemented/architecture/2026-10-14-production-dual-residency.md",
+        "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md",
+        "implemented/feature/2026-10-14-number-length-review-hints.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-10-14-production-dual-residency.md",
+        "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
+        "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md",
+        "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-12-certificate-image-upright.md",
+        "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/feature/2026-10-14-admin-workbench-default.md",
+        "implemented/feature/2026-10-14-number-length-review-hints.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md"
+      ],
+      "lastVerified": "2026-10-15",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-15"
+      },
+      "summary": "Add INTERVIEW_FORM with exactly five initial fields: name (姓名), gender (性别), age (年龄), id_number (身份证号) and mobile_number (手机号). All are required by default and remain editable through the existing administrator required-field policy. Prese",
+      "bodySha256": "3c78034420d9d7de",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Related-note audit",
+            "line": 27
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 37
+          },
+          {
+            "title": "Validation",
+            "line": 47
+          },
+          {
+            "title": "Consequences",
+            "line": 55
+          },
+          {
+            "title": "Local activation",
+            "line": 66
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-interview-registration-and-shared-upright.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-14-number-length-review-hints.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-number-length-review-hints.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-number-length-review-hints.md",
+      "title": "Extend source-preserving length hints to card and certificate numbers",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "frontend/src",
+        "frontend/tests",
+        "scripts",
+        "FRONTEND_FIELDS.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+        "implemented/simplification/2026-10-08-required-fields-only-export.md",
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-08-card-and-document-profiles.md",
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+      ],
+      "lastVerified": "2026-10-14",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-14"
+      },
+      "summary": "Use one pure frontend hint function in the saved-result and live-review views. Counts ignore whitespace; bank counts also accept full-width digits and grouping hyphens for display only. Keep values, leading zeros, source text, backend valid",
+      "bodySha256": "22bfbea18afb5346",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Sources and related-note audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 27
+          },
+          {
+            "title": "Verification",
+            "line": 34
+          },
+          {
+            "title": "Consequences",
+            "line": 38
+          },
+          {
+            "title": "Partial supersession: explicit export disputes (2026-10-14)",
+            "line": 44
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-number-length-review-hints.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-14-save-confirms-export-disputes.md",
+      "path": ".agents/notes/implemented/feature/2026-10-14-save-confirms-export-disputes.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-save-confirms-export-disputes.md",
+      "title": "Confirm reviewed export disputes through the ordinary save action",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-14",
+      "scope": [
+        "backend/ocr_app/review.py",
+        "backend/ocr_app/task_store.py",
+        "backend/ocr_app/routes.py",
+        "frontend/src/review.ts",
+        "frontend/src/components/ReviewEditor.vue",
+        "tests/test_export_disputes.py",
+        "frontend/tests/review.test.ts",
+        "scripts/probe_interview_browser.py",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "openapi.yaml",
+        "frontend/public/help/index.html",
+        "ARCHITECTURE.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+        "implemented/feature/2026-10-14-export-disputes-section-removed.md",
+        "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+        "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+        "implemented/feature/2026-10-14-export-disputes-section-removed.md"
+      ],
+      "lastVerified": "2026-10-15",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-15"
+      },
+      "summary": "The ordinary non-table review editor sends confirm_export_disputes=true with its existing version-bound save. Apply all edits and current validation first, then acknowledge every remaining confirmable dispute against that resulting value/co",
+      "bodySha256": "8775a6d3335edf24",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 24
+          },
+          {
+            "title": "Verification",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 33
+          },
+          {
+            "title": "Local activation",
+            "line": 39
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-14-save-confirms-export-disputes.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-10-14-workbench-entry-customization.md",
       "path": ".agents/notes/implemented/feature/2026-10-14-workbench-entry-customization.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-10-14-workbench-entry-customization.md",
@@ -6540,9 +7248,11 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
-        "implemented/feature/2026-10-14-account-workbench-layout.md"
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md",
         "implemented/feature/2026-10-14-account-workbench-layout.md",
         "implemented/feature/2026-10-14-admin-workbench-default.md",
         "implemented/simplification/2026-10-14-remove-system-layout-reset.md"
@@ -6555,7 +7265,7 @@
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Split the type-card grid into an ordered visible set plus a tucked set. Customization is an on-grid edit mode: 自定义入口 toggles it, and the actual workbench cards become directly manipulable — long-press (~280 ms, 10 px slop) picks a card up, ",
-      "bodySha256": "8ff227dfb57b815d",
+      "bodySha256": "0c412712024925a3",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6695,7 +7405,9 @@
         "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
         "implemented/feature/2026-10-10-configurable-required-fields.md",
         "implemented/feature/2026-10-09-medical-ledger-template.md",
-        "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+        "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
@@ -6711,6 +7423,9 @@
         "implemented/feature/2026-10-12-person-package-full-field-table.md",
         "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md",
         "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+        "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+        "implemented/feature/2026-10-14-number-length-review-hints.md",
         "implemented/simplification/2026-10-14-table-export-without-confirmation.md",
         "rejected/feature/2026-10-09-medical-threshold-review.md"
       ],
@@ -6718,11 +7433,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Export current saved, unfiltered results when their business-required values are present. Resolve conditional top-level requirements through doc_profiles.profile(doc_type,current_values), include basic_info-compatible values, each household",
-      "bodySha256": "3173208be0360838",
+      "bodySha256": "b8007ad8e0e3ea89",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6764,6 +7479,10 @@
           {
             "title": "Generic form extension (2026-10-14)",
             "line": 52
+          },
+          {
+            "title": "Partial supersession: explicit export disputes (2026-10-14)",
+            "line": 58
           }
         ]
       },
@@ -6954,7 +7673,8 @@
       ],
       "citedBy": [
         "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
-        "implemented/feature/2026-10-14-auto-table-header-rows.md"
+        "implemented/feature/2026-10-14-auto-table-header-rows.md",
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md"
       ],
       "lastVerified": "2026-10-14",
       "archivedDate": null,
@@ -7671,7 +8391,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "被撤回的方案使用OpenCV候选框、Paddle结构识别和GLM备用，保留原始矩阵与人工矩阵；一张照片一个标题命名的XLSX，多张ZIP。其优点是复用了现有模型、版本校验和加密存储，较少引入依赖。",
@@ -7866,6 +8586,11 @@
     {
       "type": "cite",
       "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
+      "to": "implemented/architecture/2026-10-14-production-dual-residency.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
       "to": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md"
     },
     {
@@ -7972,6 +8697,26 @@
       "type": "cite",
       "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
       "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "implemented/architecture/2026-10-14-production-dual-residency.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-14-production-dual-residency.md",
+      "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-14-production-dual-residency.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-14-production-dual-residency.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
     },
     {
       "type": "cite",
@@ -8485,6 +9230,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-12-degree-school-and-award-mapping.md",
       "to": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md"
     },
@@ -8675,6 +9425,46 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md",
+      "to": "implemented/feature/2026-10-14-workbench-entry-customization.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md",
+      "to": "implemented/feature/2026-10-14-account-workbench-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+      "to": "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+      "to": "implemented/feature/2026-10-14-disputed-results-export-gate.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+      "to": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
     },
@@ -8846,6 +9636,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
       "to": "implemented/feature/2026-10-09-bank-auto-recognition.md"
     },
     {
@@ -8922,6 +9717,16 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
       "to": "implemented/feature/2026-10-14-bank-photocopy-handwriting.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-card-and-document-profiles.md",
+      "to": "implemented/feature/2026-10-14-number-length-review-hints.md"
     },
     {
       "type": "cite",
@@ -9182,6 +9987,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
       "to": "implemented/feature/2026-10-09-bank-auto-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
+      "to": "implemented/feature/2026-10-14-disputed-results-export-gate.md"
     },
     {
       "type": "cite",
@@ -9696,6 +10506,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-12-certificate-image-upright.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-12-certificate-image-upright.md",
       "to": "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md"
     },
     {
@@ -9971,7 +10786,17 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
       "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
     },
     {
       "type": "cite",
@@ -10045,6 +10870,16 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-14-account-workbench-layout.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-account-workbench-layout.md",
+      "to": "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-14-adaptive-generic-forms.md",
       "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
     },
@@ -10070,6 +10905,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-14-admin-workbench-default.md",
       "to": "implemented/simplification/2026-10-14-remove-system-layout-reset.md"
     },
@@ -10082,6 +10922,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-14-admin-workbench-default.md",
       "to": "implemented/feature/2026-10-14-workbench-entry-customization.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-admin-workbench-default.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
     },
     {
       "type": "cite",
@@ -10120,8 +10965,148 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+      "to": "implemented/feature/2026-10-14-number-length-review-hints.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+      "to": "implemented/simplification/2026-10-14-table-export-without-confirmation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+      "to": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+      "to": "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-export-disputes-section-removed.md",
+      "to": "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/feature/2026-10-13-photo-table-to-excel-replan.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/feature/2026-10-12-certificate-image-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/feature/2026-10-14-account-workbench-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/feature/2026-10-14-admin-workbench-default.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/architecture/2026-10-14-production-dual-residency.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md",
+      "to": "implemented/feature/2026-10-14-number-length-review-hints.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-number-length-review-hints.md",
+      "to": "implemented/feature/2026-10-08-card-and-document-profiles.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-number-length-review-hints.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-number-length-review-hints.md",
+      "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-number-length-review-hints.md",
+      "to": "implemented/feature/2026-10-14-disputed-results-export-gate.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-save-confirms-export-disputes.md",
+      "to": "implemented/feature/2026-10-14-disputed-results-export-gate.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-save-confirms-export-disputes.md",
+      "to": "implemented/feature/2026-10-14-export-disputes-section-removed.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-save-confirms-export-disputes.md",
+      "to": "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-save-confirms-export-disputes.md",
+      "to": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-14-workbench-entry-customization.md",
       "to": "implemented/feature/2026-10-14-account-workbench-layout.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-workbench-entry-customization.md",
+      "to": "implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md"
     },
     {
       "type": "cite",
@@ -10167,6 +11152,16 @@
       "type": "cite",
       "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
       "to": "implemented/feature/2026-10-14-adaptive-generic-forms.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-08-required-fields-only-export.md",
+      "to": "implemented/feature/2026-10-14-disputed-results-export-gate.md"
     },
     {
       "type": "cite",

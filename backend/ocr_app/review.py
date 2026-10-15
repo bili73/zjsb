@@ -12,7 +12,7 @@ ITEM_KEYS = {'name', 'alias', 'category', 'result_raw', 'unit', 'reference_range
              'reported_abnormal_marker', 'risk_grade', 'diagnosis'}
 REQUEST_KEYS = {'run_id', 'expected_revision', 'fields', 'absence_reasons', 'accepted_issues',
                 'items', 'added_items', 'removed_item_ids', 'findings', 'members', 'added_members', 'removed_member_indexes',
-                'coverage', 'generic', 'note', 'report_summary', 'tables'}
+                'coverage', 'generic', 'note', 'report_summary', 'tables', 'confirmed_disputes', 'confirm_export_disputes'}
 
 
 def invalid(message='复核参数无效，请检查字段和项目对应关系'):
@@ -75,6 +75,8 @@ def _field_patch(result, patches, absences, actor, definitions_override=None, re
     patches = dict(patches)
     if isinstance(patches.get('gender'), str):
         patches['gender'] = {'男': 'M', '女': 'F'}.get(patches['gender'].strip(), patches['gender'])
+    # An unchanged value is not a correction or an implicit acceptance.
+    patches = {key: value for key, value in patches.items() if key not in fields or value != fields[key].get('value')}
     values = {key: entry.get('value') for key, entry in fields.items()}
     values.update(patches)
     values.update({key: None for key in absences})
@@ -153,6 +155,7 @@ def _absence(target, values, allowed):
 
 
 def _medical_patch(item, patch, actor):
+    prior_issues = item.get('review_issues', [])
     if not (set(patch) & ITEM_KEYS or patch.get('absence_reasons')):
         invalid('请提交实际修正或使用明确的问题确认')
     if set(patch) - ITEM_KEYS - {'item_id', 'absence_reasons'}:
@@ -175,6 +178,12 @@ def _medical_patch(item, patch, actor):
     item['reported_abnormal_marker'] = derived['reported_abnormal_marker']
     item['review_issues'] = [p for p in derived['review_issues'] if p['code'] != 'CONFIDENCE_UNAVAILABLE'
                              and not (p['code'] == 'MISSING' and item.get('absence_reasons', {}).get('risk_grade') and '等级' in p['message'])]
+    if not item['result_raw'].strip() or (item.get('diagnosis_sources') and not item.get('diagnosis')
+                                          and not item.get('absence_reasons', {}).get('diagnosis')):
+        item['review_issues'].extend(p for p in prior_issues
+                                    if p['code'] in {'CONFLICT', 'MULTI_CANDIDATES', 'LOW_CONFIDENCE'}
+                                    and not any(q['code'] == p['code'] and q['message'] == p['message']
+                                                for q in item['review_issues']))
     if confirmed_abnormal(item) and not item.get('diagnosis') and not item.get('absence_reasons', {}).get('diagnosis'):
         item['review_issues'].append(issue('MISSING', '异常项目诊断未填写，或须明确报告未印刷。'))
     _mark(item, actor)
@@ -213,6 +222,7 @@ def _findings(result, patches, items, actor):
         if not (set(patch) - {'finding_id', 'absence_reasons'} or patch.get('absence_reasons')):
             invalid('请提交清单修正或使用明确的问题确认')
         entry = findings[identifier]
+        prior_issues = entry.get('review_issues', [])
         for key in {'text', 'risk_grade', 'diagnosis'} & patch.keys():
             value = clean_value(patch[key])
             if value is not None and not isinstance(value, str):
@@ -235,6 +245,9 @@ def _findings(result, patches, items, actor):
         entry['review_issues'] = [issue('MISSING', '清单字段尚未填写或说明缺省。')
                                   for key in ('risk_grade', 'diagnosis', 'result_raw')
                                   if not entry.get(key) and not entry.get('absence_reasons', {}).get(key)]
+        if (not entry.get('result_item_id') or not (entry.get('result_raw') or '').strip()) and not entry.get('absence_reasons', {}).get('result_raw'):
+            entry['review_issues'].extend(p for p in prior_issues
+                                        if p['code'] in {'CONFLICT', 'MULTI_CANDIDATES', 'LOW_CONFIDENCE'})
         entry.update(reviewed=True, reviewed_by=actor, value_origin='manual')
         _sync(entry)
     # Keep human links consistent when an item is changed or removed.
@@ -331,7 +344,17 @@ def blockers(result):
 
 
 def apply_review(original, body, *, actor, coverage_verified=False, required_overrides=None):
+    if type(body.get('confirm_export_disputes', False)) is not bool:
+        invalid('人工核对标记须为布尔值')
+    if body.get('confirmed_disputes'):
+        if set(mapping(body)) - REQUEST_KEYS or any(value for key, value in body.items()
+                if key not in {'run_id', 'expected_revision', 'confirmed_disputes'}):
+            invalid('请先保存修正，再单独确认当前异议')
+        from .export_disputes import confirm_disputes
+        return confirm_disputes(original, body['confirmed_disputes'], actor)
     if original.get('doc_type') == 'TABLE':
+        if body.get('confirm_export_disputes'):
+            invalid('表格请通过表格结构与完整性校验')
         from .table_recognition import apply_table_review
         return apply_table_review(original, body, actor)
     if 'tables' in body:
@@ -343,7 +366,7 @@ def apply_review(original, body, *, actor, coverage_verified=False, required_ove
         original = project_requirements(deepcopy(original), required_overrides)
     # Validate acceptance against the incoming revision before patches remove
     # resolved issues. Accepting a resolved issue is harmless, not a stale write.
-    prior = {p['issue_id']: p for _, target in _targets(original) for p in target.get('review_issues', [])}
+    prior = {p['issue_id']: (target, p) for _, target in _targets(original) for p in target.get('review_issues', [])}
     accepted_ids = set()
     for accepted in sequence(body.get('accepted_issues', [])):
         if set(mapping(accepted)) - {'issue_id', 'reason'} or not isinstance(accepted.get('issue_id'), str):
@@ -353,8 +376,14 @@ def apply_review(original, body, *, actor, coverage_verified=False, required_ove
         if identifier not in prior or identifier in accepted_ids:
             invalid('问题ID不存在或重复，请刷新当前版本')
         accepted_ids.add(identifier)
-        problem = prior[identifier]
-        if not problem.get('can_accept') or problem['code'] in {'MISSING', 'CONFLICT', 'INCOMPLETE_OUTPUT', 'MULTI_CANDIDATES'}:
+        target, problem = prior[identifier]
+        informational = any(c.get('status') == 'UNKNOWN' and
+            (c.get('rule_id') == problem.get('rule_id') if problem.get('rule_id') else c.get('message') == problem.get('message'))
+            for c in target.get('validation_checks', []))
+        informational = informational or (original.get('doc_type') == 'BANK_CARD' and target.get('key') == 'card_number'
+            and problem.get('message') == '离线匹配不验证账户或Luhn适用性，请对照原件确认卡号。')
+        explicit_failure = problem['code'] == 'VALIDATION_FAILED' and not informational
+        if not problem.get('can_accept') or explicit_failure or problem['code'] in {'MISSING', 'CONFLICT', 'INCOMPLETE_OUTPUT', 'MULTI_CANDIDATES', 'LOW_CONFIDENCE'}:
             invalid('此问题必须补正，不能直接确认放行')
     result = deepcopy(original)
     xuexin = result.get('xuexin_info', {})
@@ -490,6 +519,13 @@ def apply_review(original, body, *, actor, coverage_verified=False, required_ove
             result['stats'] = medical_statistics(items)
     if required_overrides is not None:
         project_requirements(result, required_overrides)
+    from .export_disputes import retain_confirmations, export_disputes, confirm_disputes
+    retain_confirmations(result)
+    if body.get('confirm_export_disputes'):
+        # Save acknowledges the resulting values, after edits and validation.
+        identifiers = [d['dispute_id'] for d in export_disputes(result) if d['can_confirm']]
+        if identifiers:
+            result = confirm_disputes(result, identifiers, actor)
     result['status'] = 'NEED_REVIEW' if blockers(result) else 'COMPLETED'
     result['state'] = result['status']
     return result

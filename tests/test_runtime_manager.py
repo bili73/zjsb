@@ -66,12 +66,12 @@ class ManagerTests(unittest.TestCase):
         self.assertEqual(set(manager.clients), {'paddleocr_vl'})
         self.assertEqual(manager.snapshot()['configured_mode'], 'single_resident')
 
-    def test_oom_fallback_only_one_isolated_recovery_then_no_retry(self):
+    def test_production_oom_keeps_peer_without_switch_or_retry(self):
         manager, factory = self.make(failures={('paddleocr_vl', 'load'): ['RESOURCE_LIMIT', 'RESOURCE_LIMIT']})
         manager.start()
         view = manager.snapshot()
         self.assertEqual(view['configured_mode'], 'dual_resident')
-        self.assertEqual(view['effective_mode'], 'single_resident')
+        self.assertEqual(view['effective_mode'], 'dual_resident')
         self.assertEqual(view['reason_code'], 'RESOURCE_LIMIT')
         with self.assertRaises(RuntimeFailure):
             manager.recognize('paddleocr_vl', 'unused')
@@ -83,11 +83,36 @@ class ManagerTests(unittest.TestCase):
         self.assertEqual(factory.events, before)
         self.assertEqual(manager.snapshot()['models']['paddleocr_vl'], 'failed')
 
+    def test_health_poll_during_intentional_single_switch_does_not_poison_model(self):
+        manager, factory = self.make('single_resident')
+        manager.start()
+        previous = factory.instances[0]
+        original_close = previous.close
+        def close_with_health_poll():
+            original_close()
+            manager.check_processes()
+        previous.close = close_with_health_poll
+        manager.recognize('paddleocr_vl', 'unused')
+        self.assertEqual(manager.snapshot()['models']['glm_ocr'], 'unloaded')
+        self.assertIsNone(manager.snapshot()['reason_code'])
+        manager.recognize('glm_ocr', 'unused')
+        self.assertEqual(manager.snapshot()['models']['glm_ocr'], 'ready')
+
     def test_dependency_error_is_not_resource_fallback(self):
         manager, factory = self.make(failures={('glm_ocr', 'load'): ['MODEL_LOAD_FAILED']})
         manager.start()
         self.assertEqual(manager.snapshot()['reason_code'], 'MODEL_LOAD_FAILED')
         self.assertEqual(manager.snapshot()['models']['paddleocr_vl'], 'ready')
+        with self.assertRaises(RuntimeFailure):
+            manager.recognize('glm_ocr', 'unused')
+        self.assertEqual(set(manager.clients), {'paddleocr_vl'})
+
+    def test_first_production_load_failure_still_attempts_second_without_retry(self):
+        manager, factory = self.make(failures={('glm_ocr', 'load'): ['RESOURCE_LIMIT']})
+        manager.start()
+        self.assertEqual(manager.snapshot()['models'], {'glm_ocr':'failed','paddleocr_vl':'ready'})
+        self.assertEqual(factory.events.count(('load','glm_ocr')), 1)
+        manager.recognize('paddleocr_vl', 'unused')
         with self.assertRaises(RuntimeFailure):
             manager.recognize('glm_ocr', 'unused')
         self.assertEqual(set(manager.clients), {'paddleocr_vl'})
@@ -114,7 +139,7 @@ class ManagerTests(unittest.TestCase):
         with self.assertRaises(RuntimeFailure):
             manager.recognize('glm_ocr', 'unused')
         self.assertEqual(factory.events.count(('recognize', 'glm_ocr')), 1)
-        self.assertEqual(manager.snapshot()['effective_mode'], 'single_resident')
+        self.assertEqual(manager.snapshot()['effective_mode'], 'dual_resident')
         self.assertEqual(manager.snapshot()['models']['paddleocr_vl'], 'ready')
 
 

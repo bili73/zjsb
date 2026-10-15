@@ -38,7 +38,7 @@ Batch新增owner={user_id:string|null,username:string|null,display_name:string|n
 | `GET /api/v1/tasks/{id}/result` | 当前已发布结果；无结果时409 INVALID_STATE |
 | `POST /api/v1/tasks/{id}/cancel`、`POST /api/v1/tasks/{id}/rerun` | 提交当前 run_id 与 expected_revision，返回202；409冲突后重新查询，不能自动重试写操作 |
 
-支持 `ID_CARD_FRONT / ID_CARD_BACK / DIPLOMA / DEGREE_CERT / MEDICAL_REPORT / BANK_CARD / BUSINESS_LICENSE / XUEXIN_DIPLOMA_TABLE / PASSPORT / HOUSEHOLD_REGISTER / GENERIC`。支持JPG/JPEG、PNG、HEIC、未加密PDF（银行卡只接收单张照片）；每批1–100文件，单文件50MB、总计500MB（MB=1024×1024字节），达到上限可上传。选择器、计数、超限提示与提交前校验共用 `uploadLimits`，后端仍独立校验；一文件一Task，同批重复内容沿用任务复用规则。
+支持 `INTERVIEW_FORM / ID_CARD_FRONT / ID_CARD_BACK / DIPLOMA / DEGREE_CERT / MEDICAL_REPORT / BANK_CARD / BUSINESS_LICENSE / XUEXIN_DIPLOMA_TABLE / PASSPORT / HOUSEHOLD_REGISTER / GENERIC`，另有独立TABLE入口。支持JPG/JPEG、PNG、HEIC、未加密PDF（银行卡和TABLE只接收单张照片）；每批1–100文件，单文件50MB、总计500MB（MB=1024×1024字节），达到上限可上传。选择器、计数、超限提示与提交前校验共用 `uploadLimits`，后端仍独立校验；一文件一Task，同批重复内容沿用任务复用规则。
 
 新增已实现入口如下；追加/拒绝/恢复/替换文件仍未开放。OpenAPI标记x-implemented:false的目标路径不能调用。
 
@@ -280,7 +280,7 @@ FAILED或INCOMPLETE_OUTPUT需要coverage：全部实际源页和未完成区域�
 
 POST export要求operator/admin，选择`batch_id`或`task_ids`（二选一），`format=xlsx`；legacy masked参数兼容接受但不改变完整值输出；可传覆盖全部所选的versions:[{task_id,run_id,result_revision}]。全批次/勾选/单任务均由服务端检查未筛选结果。任一无保存结果或缺必填值返回409 EXPORT_BLOCKED与details.tasks[].blockers（field/code），整个下载停止，不静默跳过。无需号码揭示理由，正常鉴权和必填值/版本门禁仍有效。
 
-导出仅检查已保存、未筛选结果的必填值，不要求审核状态为COMPLETED。按当前profile和字段值解析条件必填；户口本须至少一名成员且每名成员的必填字段有值；GENERIC优先已保存的reviewed_generic（即使为空也不回退），没有人工版本才取识别generic.full_text。None、空串和纯空白为缺失，0与False是已填写；选填空值无需缺省理由。已有值的格式/校验位失败、低或无置信度、冲突及覆盖问题不额外阻止导出。NEED_REVIEW/FAILED等状态已有保存结果且必填齐全也可导出；没有保存结果则阻止。
+导出检查已保存、未筛选结果的必填值及明确识别异议，不要求审核状态为COMPLETED。按当前profile和字段值解析条件必填；户口本须至少一名成员且每名成员的必填字段有值；GENERIC优先已保存的reviewed_generic（即使为空也不回退），没有人工版本才取识别generic.full_text。None、空串和纯空白为缺失，0与False是已填写；选填空值无需缺省理由。明确的编号位数异常、格式/校验位失败和识别冲突阻止导出，须核对或修正后点击保存；未标定置信度、未联网核验、规则未覆盖和通用覆盖提醒不单独阻止。NEED_REVIEW/FAILED等状态已有保存结果、必填齐全且明确异议已处理也可导出；没有保存结果则阻止。
 
 Task和TaskResult可选返回export_ready:boolean及export_blockers:[{field:string,code:string}]，由同一后端presence检查在医疗筛选前计算。按钮依据已保存版本的export_ready，旧响应未提供时交由服务端判定；未保存编辑须先保存。导出不确认问题、不改recognition/review状态或revision，识别/审核元数据仍保留在应用及审计，不进入业务Excel列。
 
@@ -298,7 +298,7 @@ XLSX各类型一文档一行，医疗检测、清单、户成员、通用正文/
 
 卡号可靠识别后，后端从本地BIN/IIN表填入bank_name、bin_code及明确覆盖的card_type。bin_code不可编辑，其余字段仍可人工核对/更正。自动值标记value_origin=derived，并附derivation数据来源，不生成伪OCR source；原件可通过卡号来源或整页查看。未知、长度不符、非支持的更具体前缀和冲突均不猜银行。修改卡号会重算旧自动值，人工银行信息不被静默覆盖，但不一致需确认。此表为2020-12-11社区快照，匹配不等于官方真实性校验；confidence保持null，不使用模型额外推理，也不向外网传卡号。
 
-卡号格式不合法（归一化后含非数字或不在10–19位兼容范围）是不可一键确认的FORMAT问题，不能通过确认变成审核完成，但有值时不额外阻止导出；银行号段未覆盖和Luhn适用性未知则保留UNKNOWN，允许对照原件人工核对。整图输入不要求上传阶段已读出卡号，后台识别失败进入人工处理。
+卡号格式不合法（归一化后含非数字或不在10–19位兼容范围）是不可一键确认的FORMAT问题，不能通过确认变成审核完成，且会阻止导出，须修正或使用独立的原件一致确认；银行号段未覆盖和Luhn适用性未知则保留UNKNOWN，允许对照原件人工核对。整图输入不要求上传阶段已读出卡号，后台识别失败进入人工处理。
 
 
 ## 2026-10-09 自动银行卡与批次日历
@@ -320,7 +320,7 @@ POST /batches 可选 person_name（1–80字符），人工指定同一个人的
 
 Batch新增is_person_package:boolean，独立于person_name。name_suggestions为{name,sources:[{task_id,doc_type,file_name}]}数组，从已保存的姓名/持卡人姓名字段推导；不从户主、法人或通用正文猜测。不同姓名保留并提示差异，不自动归属、合并或移动文件。PATCH /batches/{batch_id}/person接受{person_name,expected_revision}，仅包所属operator或admin可写，成功200返回Batch；与追加共享package_revision，冲突409。确认姓名加密保存，后续识别不覆盖。界面可使用建议、手工填写或修改；建议不是身份核验。
 
-人员包Excel第一张为“人员信息总表”，一包一行：人员姓名、姓名状态在前，随后按材料类型列出本次所选材料的全部当前业务字段（包括选填及空值列），最后为类型及数量、份数、姓名候选与来源文件。字段带类型前缀；同类多份材料用编号分组，每组含来源文件，互不覆盖。跨包导出列取本次选择的字段并集，缺少该组的行留空；不读取未选中任务。体检包含全部17个profile字段及异常指标，尤其保留体检项目名称；户口成员编号展开，通用正文分段并保留重复键值。冻结前两列与表头，可横向滚动。后面继续保留分类明细和精确18列体检台账。未确认姓名显示“姓名待确认”，不新增导出门禁；仍只要求已保存必填值齐全。文件名为人员材料包_北京时间.xlsx；普通批次格式和名称规则不变。超过Excel列数或单元格容量明确报错，不静默截断。
+人员包Excel第一张为“人员信息总表”，一包一行：人员姓名、姓名状态在前，随后按材料类型列出本次所选材料的全部当前业务字段（包括选填及空值列），最后为类型及数量、份数、姓名候选与来源文件。字段带类型前缀；同类多份材料用编号分组，每组含来源文件，互不覆盖。跨包导出列取本次选择的字段并集，缺少该组的行留空；不读取未选中任务。体检包含全部17个profile字段及异常指标，尤其保留体检项目名称；户口成员编号展开，通用正文分段并保留重复键值。冻结前两列与表头，可横向滚动。后面继续保留分类明细和精确18列体检台账。未确认姓名显示“姓名待确认”，不新增导出门禁；仍要求已保存必填值齐全且无未处理的明确异议。文件名为人员材料包_北京时间.xlsx；普通批次格式和名称规则不变。超过Excel列数或单元格容量明确报错，不静默截断。
 
 POST /classify multipart仅含一个files条目，需operator/admin及会话CSRF；不创建批次或任务、不保存原图，返回 `{doc_type: DocTypeEnum|null, basis: 'content'|'filename'|'unknown', reason: string, candidates: DocTypeEnum[]}`。内容分类优先，文件名提示明确标注；unknown或失败必须允许手动选择，所有建议均可改。客户端顺序分类，不覆盖手动选择；移除文件、切换模式或注销时丢弃过期响应。PDF只检查前两页，不自动拆分混合证件PDF；不据分类结果判断人员归属或显示伪造准确率。
 
@@ -359,12 +359,38 @@ GENERIC主识别改为Paddle，复用CPU摆正与布局检测，失败/截断时
 
 入口与doc_type保持BANK_CARD。profile前四项为holder_name（姓名）、card_number（卡号）、bank_name（开户行）、branch_name（开户支行）。分支新增为可编辑选填，管理员配置仍优先；旧结果读取时补空字段、更新显示标签和顺序，不重写已保存人工值。bank_name复用旧key，不能将其当作具体网点。
 
-Field.candidates可带reason和source，用于区分卡面与补充文字候选；Field.sources保留相同值的多处证据。银行卡来源按钮复用corrected页和归一化bbox，属于区域定位，不是逐字定位。选择候选仅修改前端草稿，必须保存；旧识别候选仍保留供追溯。卡号冲突时后端value为空，默认阻止导出；人工保存后仍按现有必填值门禁执行，不额外阻止仅待审核的任务。照片裁剪恢复入口与整页框选OCR仍可使用。
+Field.candidates可带reason和source，用于区分卡面与补充文字候选；Field.sources保留相同值的多处证据。银行卡来源按钮复用corrected页和归一化bbox，属于区域定位，不是逐字定位。选择候选仅修改前端草稿，必须保存；旧识别候选仍保留供追溯。卡号冲突时后端value为空，默认阻止导出；人工保存后按必填值及明确异议门禁执行；仅信息性的待审核提示不阻止。照片裁剪恢复入口与整页框选OCR仍可使用。
 
 ## 个人工作台布局
 
-`GET /api/v1/auth/me/workbench` 返回 `{layout: string[] | null, revision: number, defaults: {layout: string[] | null, revision: number}}`；`PUT` 仅接受 `{layout, expected_revision}`。只使用当前命名账号会话和CSRF，不传user_id，管理员也只修改自己的布局。数组是已展示类型的顺序（最多12个，不能重复或含未支持类型）；未列出的类型收纳。个人layout=null继承defaults.layout，defaults.layout=null才回到系统目录；[]为全部收纳。新增类型在自定义布局中默认收纳。
+`GET /api/v1/auth/me/workbench` 返回 `{layout: string[] | null, revision: number, defaults: {layout: string[] | null, revision: number}}`；`PUT` 仅接受 `{layout, expected_revision}`。只使用当前命名账号会话和CSRF，不传user_id，管理员也只修改自己的布局。数组保存类型顺序偏好（兼容上一版最多13个键，不能重复或含未支持类型）；界面始终最多展示12张，多出的类型和未列出的类型自动收纳。个人layout=null继承defaults.layout，defaults.layout=null才回到系统目录；[]为全部收纳。新增类型在自定义布局中默认收纳。
 
 读取成功后可编辑，拖拽和收纳先改草稿，点击“完成”才保存。网络失败保留草稿，409 WORKBENCH_VERSION_CONFLICT保留原版本并禁止自动重试；“重新读取”需确认放弃未保存调整，读失败仍保留原草稿。恢复默认先将草稿设为null，完成后保存。不导入旧浏览器共享键；切换账号取消请求并清空状态，迟到响应不能恢复上一账号布局。
 
 管理员在自定义入口中另有“设为默认布局”，确认影响后调用`PUT /api/v1/admin/workbench-default`，正文`{layout, expected_revision}`使用defaults.revision。保存当前可见顺序；只更新defaults，不提交个人草稿，也不退出编辑。返回`{layout,revision}`。冲突码为WORKBENCH_DEFAULT_VERSION_CONFLICT。后端在同一写事务复验管理员身份；普通账号不能调用。已有个人数组（包括[]）不随公共默认改变，继承账号在重新进入页面/读取时更新。
+
+
+## 面试登记表 INTERVIEW_FORM（1.26.0）
+
+固定字段顺序为name（姓名，string）、gender（性别，M/F）、age（年龄，integer）、id_number（身份证号，string）、mobile_number（手机号，string），均可为null，默认全部必填。现有管理员必填配置、历史任务缺失标记、审核保存和人员包总表均适用。按保存后的必填值及明确异议判定导出；未标定置信度不阻止，明确编号位数/格式/校验失败和冲突需处理；身份证号和手机号按文本导出。
+
+默认Paddle表格识别基本信息区域，缺失、格式疑点、冲突或不完整时，剩余任务预算内最多一次GLM普通OCR补读；单次生成软预算20秒。候选保留来源，冲突不覆盖，错栏身份证号和栏外姓名只能人工采用后保存。性别必须来自本栏文字或明确勾选；不由身份证号推导性别和年龄，不从紧急联系人取本人手机号。复用银行卡候选“查看来源／采用”交互，采用只修改草稿。未标定confidence保持null。
+
+所有识别入口复用保守照片摆正；无可靠文字层的纯扫描PDF逐页摆正并缓存决定，两次解码像素和来源坐标一致。原生／混合文字页保持原路径，不自动透视矫正。既有自定义布局不重写，新类型默认收纳；识别目录当前有13种，但工作台最多展示12张，默认排列也受此限制。
+
+## 编号位数提示
+
+结果页和人工填写框共用`numberLengthHint`，分别基于已保存值和当前草稿显示提示。身份证号、统一社会信用代码按18位提示；银行卡复用现有离线BIN资料的对应长度，优先最长前缀，遇到未支持或冲突记录不猜位数，未命中时只显示当前位数和未知提示；10–19位仅为本系统兼容范围。银行卡的空格、分隔横线及全角数字只在计数副本中处理，绝不改写输入值。
+
+毕业证和学信网证书编号以常见17/18位为参考，较短的早期或其他类型编号只作信息提示；学位编号参考16位并兼容历史T/Z前缀17位，旧式或特殊编号以原件为准。学信网在线验证码沿用12/16位兼容提示。银行卡资料可能过时，参考长度不等于官方核验；长度符合也不等于校验码或真伪通过。空值仍使用必填缺失提示。原始证据和人工值不变，历史任务无需重新识别即可显示。warning级位数异常同时进入后端导出门禁，info级未知/旧式编号不单独阻止导出。
+
+前端银行卡参考文件由`scripts/build_bank_length_reference.py`从后端已固定哈希的资料生成并提交，前端构建不额外依赖Python。更新资料时重生成，并运行该脚本的`--check`和前端数据一致性测试。规则边界与来源见[编号提示决策](.agents/notes/implemented/feature/2026-10-14-number-length-review-hints.md)。
+
+
+## 识别异议与导出（2026-10-14）
+
+医疗清单未选结果关联、检测结果为空或项目诊断候选未选定时，相关异议的can_confirm=false；普通保存、其他属性修改及历史确认均不能跳过。人工选定或明确说明选填内容缺省后沿用现有保存流程。
+
+必填缺失和明确识别异议分别提示：编号位数异常、明确的格式/校验失败、识别结果冲突会阻止单份、勾选、本批次全部及人员材料包导出；任一所选任务未处理则整次409 EXPORT_BLOCKED。置信度未标定、未联网核验、规则未覆盖只作信息提示。表格现有标题、表头、结构与完整性门禁不变。
+
+Task.export_blockers增加DISPUTED，批次显示“有异议”的任务数、字段名并支持筛选；筛选不改变本批次全部的导出范围，两个筛选同时选中时显示缺必填或有异议的任务并集。TaskResult.export_disputes提供当前未解决异议的dispute_id/field/label/code/message/can_confirm。操作员核对当前内容后，点击下方“保存修正并重新校验”即可保存并完成异议核对，不另设确认按钮。网页通过review的confirm_export_disputes=true提交；服务端先应用修正和重校验，再确认保存后所有可确认的异议，整个流程沿用同一run_id和expected_revision事务。省略该标记的接口调用仍只修正，不自动确认；既有confirmed_disputes接口保持兼容。无需填写理由，服务端保存确认账号和时间；来源证据、原值和置信度不变。没有明确值的候选冲突须先选择/填写，必填缺失不能确认跳过。后续修改相关值/上下文时旧确认失效；经保存按钮再次核对后记录新确认。重新识别须重新核对。历史结果实时应用，无需重新跑模型。此确认表示操作员核对原件，不代表官方真伪核验。

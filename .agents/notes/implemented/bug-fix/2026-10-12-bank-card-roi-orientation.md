@@ -49,3 +49,5 @@ Three horizontal-front bank layouts do not qualify all designs, white cards on w
 
 
 复印件的多卡面方向一致性与后续识别裁区见[银行卡复印件](../../implemented/feature/2026-10-14-bank-photocopy-handwriting.md)；普通卡片仍使用本篇路径，整页预览仍保留。
+
+The [interview and shared-upright extension](../feature/2026-10-14-interview-registration-and-shared-upright.md) adds the five-field profile and raises the shared entry capacity to13; the original rule and scope owned here remain in force.

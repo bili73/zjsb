@@ -134,7 +134,7 @@ class InvalidPanHTTPTests(unittest.TestCase):
         import test_business_api
         test_business_api.BusinessAPITests.setUp(self)
 
-    def test_invalid_pan_stays_unreviewed_but_present_value_can_export(self):
+    def test_invalid_pan_blocks_export_until_corrected(self):
         import hashlib
         safe=dict(data=self.image, name='synthetic-card.png', mime='image/png', actual_source_page_count=1,
                   processed_content_hash=hashlib.sha256(self.image).hexdigest(),
@@ -152,7 +152,8 @@ class InvalidPanHTTPTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200, response.text)
                 self.assertEqual(response.json()['status'], 'NEED_REVIEW')
                 exported=self.client.post('/api/v1/export', headers=self.headers, json={'task_ids': [identifier]})
-                self.assertEqual(exported.status_code, 200)
+                self.assertEqual(exported.status_code, 409)
+                self.assertEqual(exported.json()['details']['tasks'][0]['blockers'], [{'field':'card_number','code':'DISPUTED'}])
                 self.assertEqual(self.client.get(url, headers=self.headers).json()['status'], 'NEED_REVIEW')
                 latest=response.json()
                 body.update(expected_revision=latest['result_revision'], fields={'card_number': '9999990000000000'})

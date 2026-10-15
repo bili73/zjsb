@@ -37,3 +37,7 @@ The [isolated real HTTP and Edge acceptance](../../../../output/account-layout-2
 ## Consequences
 
 The first upgrade resets unowned local layouts to defaults. A failed save may already have committed; reload reconciles rather than automatically replaying it. Existing account/task/sample data and unrelated working-tree edits must be preserved.
+
+The [interview and shared-upright extension](../feature/2026-10-14-interview-registration-and-shared-upright.md) adds the five-field profile and raises the shared entry capacity to13; the original rule and scope owned here remain in force.
+
+The [twelve-visible-card correction](../bug-fix/2026-10-14-workbench-twelve-visible-cards.md) enforces12 visible entries for every layout independently of the13-type catalogue. Existing13-key preferences remain readable; excess cards are hidden rather than removed. This supersedes the interview extension display-cap increase, retaining the wire compatibility and original account rules.

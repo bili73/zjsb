@@ -220,8 +220,8 @@ def decode_pages(data: bytes, check=lambda: None, *, preprocessing=None):
     A PDF's text heuristic is deliberately conservative, not a probability.
     Raster image boxes with a substantial text overlay are still sent to OCR:
     a small text label never proves the underlying image was transcribed.
-    A supplied preprocessing dictionary enables certificate/card-photo preparation
-    and reuses its first decision on pass two. PDFs never consume that option.
+    A supplied preprocessing dictionary reuses decisions on pass two. Native/mixed
+    PDFs retain their text geometry; pure scanned pages use cached pixel correction.
     """
     check()
     mime = validate_document(data, check=check)
@@ -278,6 +278,17 @@ def decode_pages(data: bytes, check=lambda: None, *, preprocessing=None):
                 bad = []
             if not result.evidence:
                 result.warnings.append('PDF_NO_TEXT_LAYER' if not whole_text.strip() else 'PDF_TEXT_UNRELIABLE')
+                if preprocessing is not None:
+                    from .image_preprocessing import prepare_image, apply_correction
+                    decisions = preprocessing.setdefault('page_decisions', {})
+                    if index in decisions:
+                        decision = decisions[index]
+                        image = apply_correction(image, decision)
+                    else:
+                        image, decision = prepare_image(image, check, doc_type=preprocessing.get('doc_type'))
+                        decisions[index] = decision
+                    result.image = image
+                    result.image_preprocessing = decision
                 result.ocr_boxes = [(0, 0, *image.size)]
             else:
                 for block in bad:

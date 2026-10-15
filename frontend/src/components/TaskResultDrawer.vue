@@ -34,6 +34,7 @@ const refreshedOnce = ref(false)
 const dirty = ref(false), saving = ref(false), stale = ref(false), reviewError = ref('')
 let saveController: AbortController | undefined
 let controller: AbortController | undefined
+let disposed = false
 
 const taskKey = computed(() => (props.task ? resultKey(props.task) : ''))
 const isMedicalTask = computed(() => props.task?.doc_type === 'MEDICAL_REPORT')
@@ -110,12 +111,12 @@ async function beforeClose(done: () => void) {
   if (dirty.value) { try { await ElMessageBox.confirm('关闭会丢弃尚未提交的草稿，是否继续？', '未保存修正') } catch { return } }
   controller?.abort(); done()
 }
-onBeforeUnmount(() => { controller?.abort(); saveController?.abort(); exportController?.abort() })
+onBeforeUnmount(() => { disposed = true; controller?.abort(); saveController?.abort(); exportController?.abort() })
 const previewTask = computed(() => props.task && result.value ? { ...props.task, run_id: result.value.run_id, result_revision: result.value.result_revision } : props.task)
 watch(() => result.value ? resultKey(result.value) : '', () => { activeSource.value = null })
 watch(() => props.open, open => { if (!open) activeSource.value = null })
 function locate(source: FieldSource) {
-  if (['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD'].includes(result.value?.doc_type ?? '')) activeSource.value = sourceSelection(source)
+  if (['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD','INTERVIEW_FORM'].includes(result.value?.doc_type ?? '')) activeSource.value = sourceSelection(source)
 }
 // 点击抽屉版面任意空白（字段面板的间隙、说明文字、边缘等，非交互控件、非页面图片）取消定位红框；
 // 定位红框会一直遮着原图，需要一个随手可及的取消方式。交互控件与图片各自的点击语义不受影响。
@@ -157,7 +158,7 @@ const exporting = ref(false)
 let exportController: AbortController | undefined
 const exportBlocked = computed(() => {
   if (!props.canWrite) return '当前只读账号无 Excel 导出权限'
-  if (dirty.value || saving.value) return '有未保存的修正，请先保存后导出'
+  if (dirty.value || saving.value) return '有未保存的修正，请先点击「保存修正」，保存成功后才能导出'
   return result.value ? exportBlockReason([result.value]) : '请先读取已保存的结果'
 })
 async function runExport() {
@@ -224,9 +225,7 @@ async function runExport() {
       </el-result>
       <template v-else-if="result && task">
         <el-alert v-if="stale || reviewError" type="warning" :closable="false">{{ reviewError || '任务结果或必填设置已更新，当前草稿已保留；请明确刷新后重新核对。' }}<el-button @click="refreshDraft">读取最新版本</el-button></el-alert>
-        <el-alert v-if="task.status === 'NEED_REVIEW'" type="warning" :closable="false" show-icon class="drawer-alert">
-          该任务包含需要人工核对的内容，请结合左侧原图核对后再使用。
-        </el-alert>
+        <p v-if="task.status === 'NEED_REVIEW'" class="drawer-notice" role="note">该任务包含需要人工核对的内容，请结合左侧原图核对后再使用。</p>
         <el-alert v-if="task.error" type="error" :closable="false" show-icon class="drawer-alert">
           {{ errorMessages[task.error.code] }}{{ task.error.error_id ? `（错误编号 ${task.error.error_id}）` : '' }}
         </el-alert>
@@ -278,6 +277,8 @@ async function runExport() {
 @keyframes slogan-shimmer { to { background-position: 200% center; } }
 @media (prefers-reduced-motion: reduce) { .loading-slogan { animation-duration: 6s; } }
 .drawer-alert { margin-bottom: 12px; }
+/* 人工核对提示：与字段下的号码校验提示（number-length-hint）同款，一句红字，不用告警大条。 */
+.drawer-notice { margin: 0 0 10px; color: var(--el-color-danger); line-height: 1.5; }
 .drawer-hint { color: var(--el-text-color-secondary); font-size: 12px; }
 .drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-right: 28px; min-width: 0; }
 .drawer-title { font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

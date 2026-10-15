@@ -3,7 +3,7 @@ import { ref } from 'vue'
 export const errorMessages = {
   REGION_OCR_BUSY: '框选识别正在处理中，请稍后再试。', REGION_OCR_TIMEOUT: '框选识别超时，请缩小选区重试或手工填写。',
   REGION_OCR_EMPTY: '选区没有读出文字，请重新框选或手工填写。', REGION_OCR_UNAVAILABLE: '框选识别暂不可用，请手工填写；持续不可用时请联系管理员检查或重启后端。',
-  EXPORT_BLOCKED: '选择中有任务的必填字段未填写完整，整份导出已阻止；请补齐并保存。', EXPORT_VALUE_TOO_LONG: '导出内容超过 Excel 的单元格或列数上限，请拆分过长字段或减少本次选择的材料。', PREVIEW_MASK_UNAVAILABLE: '当前服务的预览合同已变化，请刷新或确认服务版本。', BANK_CROP_REQUIRED: '请裁选完整卡号一行，去除其他内容。', BANK_UNSAFE_CONTENT: '卡号区域含其他内容，请重新紧裁剪。',
+  EXPORT_BLOCKED: '选择中有任务必填未填、识别有异议或表格待处理，整份导出已阻止；请查看任务提示并处理。', EXPORT_VALUE_TOO_LONG: '导出内容超过 Excel 的单元格或列数上限，请拆分过长字段或减少本次选择的材料。', PREVIEW_MASK_UNAVAILABLE: '当前服务的预览合同已变化，请刷新或确认服务版本。', BANK_CROP_REQUIRED: '请裁选完整卡号一行，去除其他内容。', BANK_UNSAFE_CONTENT: '卡号区域含其他内容，请重新紧裁剪。',
   UNSAFE_CARD_INPUT: '请仅裁选完整卡号一行，去除姓名、有效期和安全码。', CARD_ADMISSION_FAILED: '卡号区域未可靠读出，请等待引擎就绪或重新裁紧卡号后再试。',
   INVALID_REQUEST: '请求内容不符合要求。', FILE_TOO_LARGE: '文件、图片像素或批次超过限制：单文件 50 MB，图片 4000 万像素，每批 100 个文件、共 500 MB。',
   UNSUPPORTED_FORMAT: '暂不支持此图片编码或多帧材料；请另存为单张 JPG/PNG，或将多页转换为 PDF。', IMAGE_UNREADABLE: '图片无法读取，请换用清晰文件。',

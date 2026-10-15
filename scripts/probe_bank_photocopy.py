@@ -91,7 +91,7 @@ def main():
         save()
 
 
-def pipeline_probe(args):
+def pipeline_probe(args, doc_type='BANK_CARD'):
     from uuid import uuid4
     import msvcrt
     from ocr_app.client import RuntimeClient
@@ -107,7 +107,7 @@ def pipeline_probe(args):
         [Path(__file__),*(ROOT/'backend/ocr_app').glob('*.py'),ROOT/'backend/model_worker.py']}
     vault = Storage(args.out/'private/data')
     runtime = None;results = [];rows = []
-    summary = dict(execution='serial',residency='single_resident',layout='automatic_pipeline',code_hashes=code_hashes)
+    summary = dict(execution='serial',residency='single_resident',layout='automatic_pipeline',doc_type=doc_type,code_hashes=code_hashes)
     lock=(ROOT/'output/two-model-retest-gpu.lock').open('a+b')
     def save():
         (args.out/'private/results.enc').write_bytes(vault.pack(results))
@@ -133,7 +133,7 @@ def pipeline_probe(args):
                 stats=runtime.request('statistics',wait=5)
                 assert len(stats['model_pids'])<=1
                 return result
-            result=process_document(path.read_bytes(),'BANK_CARD',recognize=recognize,progress=lambda *a:None,
+            result=process_document(path.read_bytes(),doc_type,recognize=recognize,progress=lambda *a:None,
                 save_page=save_page,record_attempt=attempts.append,cancelled=lambda:False,deadline=started+180)
             row=dict(sample=f'sample-{index:02}',input_sha256=watched[path],wall_seconds=time.monotonic()-started,
                 status=result['status'],regions=sum(len(p['regions']) for p in result['pages']),calls=len(attempts),

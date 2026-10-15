@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend/ocr_app, frontend/src, tests, frontend/tests, scripts, SPEC.md, openapi.yaml, FRONTEND_FIELDS.md, RUNTIME.md
-Last-verified: 2026-10-14
+Last-verified: 2026-10-15
 
 ## Problem
 
@@ -136,6 +136,8 @@ Last-verified: 2026-10-14
 
 ## Validation
 
+[Merge-index optimization](../bug-fix/2026-10-15-review-integrity-and-table-performance.md) preserves the grid and export rules while reusing a component-local index across text edits. Its synthetic calculation measurements are separate from the frozen photo recognition qualification below.
+
 - 后端全量709项、前端160项通过，Vue类型检查和隔离Vite构建通过。针对表格的19项测试覆盖严格结构、保存/导出、草稿和不完整门禁、权限/版本与导出过程中撤销会话；既有各业务工作簿字体均断言12号。
 - 四份实际模型输出经正式业务流水线回放；自动主体PNG哈希与资格测试推理输入完全一致，行列保持8×10、5×10、11×10、19×10，保存后XLSX逐格一致。第三张保留5段表外候选。此回放不计算新推理耗时。记录在`output/photo-table-integration-20261014/replay.json`，敏感结果加密。
 - 首张照片的90/180/270度衍生图经现有CPU方向判断回正为1280×960，保留同一主体。小角度仍报告不确定，未强行扶正；衍生图不增加准确率样本数。
@@ -145,3 +147,5 @@ Last-verified: 2026-10-14
 ## Generic form extension (2026-10-14)
 
 [Adaptive generic forms](../../implemented/feature/2026-10-14-adaptive-generic-forms.md) extends the existing implementation: GENERIC uses the Paddle document lane, reuses CPU upright/geometry, and retains optional source-bound dynamic pairs. Existing document rules, one request per model, human-result precedence and required-value export gates remain applicable.
+
+The [interview and shared-upright extension](../feature/2026-10-14-interview-registration-and-shared-upright.md) adds the five-field profile and raises the shared entry capacity to13; the original rule and scope owned here remain in force.

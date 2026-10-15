@@ -102,6 +102,12 @@ def validate_field(doc_type, key, value, fields=None):
             add('CROSS_DOCUMENT','PASS' if str(start)<=text else 'FAIL','within_document_date_order_v1','本材料结束日期不得早于开始日期。')
     elif key=='valid_thru':
         add('FORMAT','PASS' if re.fullmatch(r'(?:0[1-9]|1[0-2])/[0-9]{2}',text) else 'FAIL','card_expiry_v1','卡面有效期MM/YY格式检查。')
+    elif key == 'mobile_number':
+        add('FORMAT', 'PASS' if re.fullmatch(r'1[3-9][0-9]{9}', text) else 'FAIL',
+            'cn_mobile_shape_v1', '按中国大陆11位手机号做格式提示，不验证号码归属或在用状态。')
+    elif key == 'age' and doc_type == 'INTERVIEW_FORM':
+        add('FORMAT', 'PASS' if re.fullmatch(r'\d{1,3}', text) and 0 <= int(text) <= 120 else 'FAIL',
+            'age_shape_v1', '年龄须为原件明确填写的合理整数，不按身份证自动计算。')
     elif key=='gender':
         add('FORMAT','PASS' if text in ({'M','F','X'} if doc_type=='PASSPORT' else {'M','F'}) else 'UNKNOWN','gender_enum_v1','仅转换明确的性别标记，未知原文需核对。')
     elif key in {'degree_category','education_level','report_language'}:

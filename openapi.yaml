@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: 证件关键信息提取系统 API
-  version: 1.25.0
+  version: 1.26.0
   description: |
     内部证件信息提取系统 API 契约（SPEC v1.28）。
     批次按不可变上传账号ID隔离：管理员查看全部，operator/viewer仅能访问自己的批次和所属任务。列表先过滤归属再计算总数和分页，越权ID与不存在ID统一404；结果、原图、复核、取消、重跑、完整字段及导出同样校验。混合账号导出整次拒绝，不输出部分结果。删除批次仍仅管理员可操作。
@@ -18,7 +18,7 @@ info:
     护照、身份证、执照与户口本暂无真实样本准确率验收；本地校验PASS不等于官方真实性。
     当前列表支持分页和UTC+8创建日期范围过滤，不支持关键词/状态过滤；重跑只接受run_id及expected_revision并沿用类型/选项。
     人员材料包支持一次选齐多种材料，以file_types按文件顺序指定类型；普通类型批次仍用doc_type_hint。自动分类仅提供可修改的建议，不判断人员归属。追加绑定package_revision；不按姓名自动合并，不转换历史批次。身份证配套仅检查同包两面材料存在，不证明同一人或真实性，不改变必填导出条件。
-    未经标定置信度保持null；人工补正后仍须解决必填、冲突和覆盖问题才可COMPLETED。导出单独仅检查已保存结果必填有值，不更改审核或识别状态。
+    未经标定置信度保持null；人工补正后仍须解决必填、冲突和覆盖问题才可COMPLETED。导出独立检查已保存结果必填有值且没有未处理的明确异议，不更改审核或识别状态。
     x-implemented:false路径为后续目标；公开路径保持/api/v1。所有原始执行与证据不可被人工版本覆盖。
 
     面向每日约50文件、每台人资电脑独立本地部署，仅绑定loopback，无内网推理服务器依赖；接口不绑定数据库、任务队列或Web框架，实现建议见ARCHITECTURE.md。
@@ -1086,7 +1086,7 @@ paths:
       tags:
       - tasks
       summary: 提交人工复核修正
-      description: 已实现原子run/revision人工补正。NEED_REVIEW/COMPLETED可提交；FAILED仅在完整原件页面可读及逐页覆盖补正后创建独立人工版本。未知ID、不可编辑字段、缺失/冲突直接确认均拒绝；有阻塞问题保持NEED_REVIEW。学信网人工在线状态写入本期尚未实现。
+      description: 已实现原子run/revision人工补正。NEED_REVIEW/COMPLETED可提交；FAILED仅在完整原件页面可读及逐页覆盖补正后创建独立人工版本；无数据修改的异议核对保留FAILED和原错误。保存按钮通过confirm_export_disputes在修正与重校验后完成异议核对，无需理由；缺失值及未选定候选不能跳过。信息提示仍用accepted_issues。学信网人工在线状态写入本期尚未实现。
       requestBody:
         required: true
         content:
@@ -1347,8 +1347,8 @@ paths:
     post:
       tags:
       - export
-      summary: 所选保存结果必填值齐全后导出XLSX
-      description: batch_id与task_ids二选一，versions须精确覆盖整个选择；任一无保存结果或必填缺值则409 EXPORT_BLOCKED且整次阻止。仅operator/admin可导出，无额外理由；NEED_REVIEW/FAILED已有结果且必填齐全也可导出，格式/置信度/冲突/coverage不增加门禁或改状态。人员包第一张人员信息总表一包一行，包含所选材料类型的全部业务字段（含选填与空值），类型前缀区分同名字段，同类多份编号分组并附来源文件；体检总表保留全部17个profile字段及异常指标，户口成员和通用正文/键值完整保留。后附分类明细。普通批次格式不变。证件输出已保存业务字段；体检明细为单个18列审核记录台账，每报告一行，大项数量为本次体检项目意义清单count，异常原名/结果/诊断汇总一格；身高/体重记录测量而不计异常，小结不算项目，BMI保留，不默认正常、不自动分级/录取。内部状态、UUID和详情留在应用。
+      summary: 所选结果必填齐全且识别异议处理后导出XLSX
+      description: batch_id与task_ids二选一，versions须精确覆盖整个选择；任一无保存结果、必填缺值或明确异议未处理则409 EXPORT_BLOCKED且整次阻止。仅operator/admin可导出，无额外理由；NEED_REVIEW/FAILED已有结果、必填齐全且无未处理明确异议也可导出，明确的格式/校验失败和识别冲突增加导出门禁，但不改识别状态；未标定置信度、未联网核验和规则未覆盖仅提示。人员包第一张人员信息总表一包一行，包含所选材料类型的全部业务字段（含选填与空值），类型前缀区分同名字段，同类多份编号分组并附来源文件；体检总表保留全部17个profile字段及异常指标，户口成员和通用正文/键值完整保留。后附分类明细。普通批次格式不变。证件输出已保存业务字段；体检明细为单个18列审核记录台账，每报告一行，大项数量为本次体检项目意义清单count，异常原名/结果/诊断汇总一格；身高/体重记录测量而不计异常，小结不算项目，BMI保留，不默认正常、不自动分级/录取。内部状态、UUID和详情留在应用。
       requestBody:
         required: true
         content:
@@ -1446,7 +1446,7 @@ components:
         defaults: {$ref: '#/components/schemas/WorkbenchLayout'}
     WorkbenchEntries:
       type: [array, 'null']
-      maxItems: 12
+      maxItems: 13
       uniqueItems: true
       items: {type: string, minLength: 1, maxLength: 64}
     WorkbenchLayout:
@@ -1625,6 +1625,7 @@ components:
       - DIPLOMA
       - DEGREE_CERT
       - BANK_CARD
+      - INTERVIEW_FORM
       - MEDICAL_REPORT
       - HOUSEHOLD_REGISTER
       - BUSINESS_LICENSE
@@ -1768,10 +1769,10 @@ components:
         required_fields_revision: {type: integer, minimum: 0, description: 本次必填标记所用的共享设置版本}
         export_ready:
           type: boolean
-          description: 已保存未筛选结果必填值齐全即true，与COMPLETED独立；医疗筛选不改变此值，导出不改变审核/识别状态。
+          description: 已保存未筛选结果必填值齐全且无未处理的明确异议时true，与COMPLETED独立；医疗筛选不改变此值，导出不改变审核/识别状态。
         export_blockers:
           type: array
-          description: 与export_ready同源的缺失字段key/code；没有保存结果也为缺失，不包含原值或校验问题。
+          description: 与export_ready同源的匿名字段路径和代码；MISSING为缺值，DISPUTED为未处理的明确异议，不包含原值。
           items: {$ref: '#/components/schemas/ExportBlocker'}
         task_id: {type: string, format: uuid}
         run_id: {type: string, format: uuid, description: 当前执行ID，重跑/替换/恢复时重新分配}
@@ -2737,6 +2738,7 @@ components:
             - DIPLOMA
             - DEGREE_CERT
             - BANK_CARD
+            - INTERVIEW_FORM
             - HOUSEHOLD_REGISTER
             - BUSINESS_LICENSE
             - XUEXIN_DIPLOMA_TABLE
@@ -2763,10 +2765,14 @@ components:
           description: 当前材料及值条件下的有效必填集合，含members.key和generic.full_text；缺省时兼容旧默认
         export_ready:
           type: boolean
-          description: 已保存未筛选结果必填值齐全即true，与COMPLETED独立；医疗筛选不改变此值，导出不改变审核/识别状态。
+          description: 已保存未筛选结果必填值齐全且无未处理的明确异议时true，与COMPLETED独立；医疗筛选不改变此值，导出不改变审核/识别状态。
+        export_disputes:
+          type: array
+          description: 未筛选保存结果上的明确异议；人工确认仅影响导出资格，不修改原值或提升置信度。
+          items: {$ref: '#/components/schemas/ExportDispute'}
         export_blockers:
           type: array
-          description: 与export_ready同源的缺失字段key/code；没有保存结果也为缺失，不包含原值或校验问题。
+          description: 与export_ready同源的匿名字段路径和代码；MISSING为缺值，DISPUTED为未处理的明确异议，不包含原值。
           items: {$ref: '#/components/schemas/ExportBlocker'}
         task_id:
           type: string
@@ -2890,6 +2896,16 @@ components:
             enum:
             - NOT_ON_DOCUMENT
             - NOT_APPLICABLE
+        confirm_export_disputes:
+          type: boolean
+          default: false
+          description: 普通保存按钮提交true，在同一授权和版本事务内先修正重校验，再确认保存后所有有明确值的异议，无需理由。必填缺失及未选定的空值冲突不能跳过。原始证据不改，服务端记录确认账号和时间。省略或false保留仅修正语义；不与confirmed_disputes混用，不适用于TABLE。
+        confirmed_disputes:
+          type: array
+          maxItems: 10000
+          uniqueItems: true
+          description: 兼容既有客户端的逐项确认接口；当前网页使用confirm_export_disputes随保存完成核对。此列表不能与字段或其他修正混用。ID取自当前export_disputes，空值冲突须先补正；绑定run/revision，值或关联上下文变化后失效。
+          items: {type: string, pattern: '^d_[0-9a-f]{64}$'}
         accepted_issues:
           type: array
           items:
@@ -3468,11 +3484,23 @@ components:
           maxLength: 1000
           description: 可选的历史兼容说明，不要求提供访问理由。
 
+    ExportDispute:
+      type: object
+      additionalProperties: false
+      required: [dispute_id, field, label, code, message, can_confirm]
+      properties:
+        dispute_id: {type: string, pattern: '^d_[0-9a-f]{64}$'}
+        field: {type: string}
+        label: {type: string}
+        code: {type: string}
+        message: {type: string}
+        can_confirm: {type: boolean, description: 已保存值可由人工确认；缺少明确候选值、医疗结果关联或诊断未选定时为false，历史确认不能隐藏此类异议}
+
     ExportBlocker:
       type: object
       additionalProperties: false
       required: [field, code]
-      description: 导出presence检查的匿名字段路径与缺失代码。必填按当前profile条件解析，户口本须有成员且各成员必填齐全；GENERIC有reviewed_generic就使用该版本（空值不回退），否则使用识别正文。None、空串、纯空白缺失；0与False有效。
+      description: 导出检查的匿名字段路径与代码（MISSING、DISPUTED及表格结构代码）。必填按当前profile条件解析，户口本须有成员且各成员必填齐全；GENERIC有reviewed_generic就使用该版本（空值不回退），否则使用识别正文。None、空串、纯空白缺失；0与False有效。
       properties:
         field: {type: string}
         code: {type: string}
@@ -3539,7 +3567,7 @@ components:
         not:
           required:
           - batch_id
-      description: batch_id与task_ids二选一。若传versions必须精确覆盖整个选择；任一无保存结果或必填值缺失则409 EXPORT_BLOCKED且不导出任何部分。仅operator/admin可导出，viewer返回403；无额外理由门槛。NEED_REVIEW/FAILED已有结果且必填齐全也可导出；格式/校验位失败、低或无置信度、冲突和coverage问题不额外阻止，不修改审核/识别状态。XLSX按材料类型输出已保存的中文业务字段和来源文件；体检分为体检汇总、体检异常指标，后者含检测结果和异常诊断，排除身高、体重、小结并保留BMI。内部状态、UUID和识别/审核元数据仅留在应用中。
+      description: batch_id与task_ids二选一。若传versions必须精确覆盖整个选择；任一无保存结果、必填值缺失或明确异议未处理则409 EXPORT_BLOCKED且不导出任何部分。仅operator/admin可导出，viewer返回403；无额外理由门槛。NEED_REVIEW/FAILED已有结果、必填齐全且无未处理明确异议也可导出；明确格式/校验失败及冲突会阻止导出；未标定置信度、未联网核验、规则未覆盖和通用覆盖提醒不单独阻止，不修改审核/识别状态。XLSX按材料类型输出已保存的中文业务字段和来源文件；体检使用18列审核记录台账，异常指标包含检测结果和异常诊断，排除身高、体重、小结并保留BMI。内部状态、UUID和识别/审核元数据仅留在应用中。
 
     PassportInfo:
       type: object

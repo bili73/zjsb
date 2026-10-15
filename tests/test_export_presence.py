@@ -1,4 +1,4 @@
-"""Presence-only export checks use synthetic values and never change review state."""
+"""Presence checks with valid synthetic formats, independent of review status."""
 import copy
 import io
 import unittest
@@ -11,7 +11,7 @@ from ocr_app.exporting import required_export_blockers, workbook_bytes
 
 
 def complete(kind):
-    return dict(doc_type=kind, status='NEED_REVIEW', fields=[dict(key=f['key'], value='synthetic')
+    return dict(doc_type=kind, status='NEED_REVIEW', fields=[dict(key=f['key'], value='2020-06-01' if f['type']=='date' else 'synthetic')
                 for f in profile(kind) if f['required']], review_issues=[dict(code='INCOMPLETE_OUTPUT')])
 
 

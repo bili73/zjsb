@@ -29,6 +29,8 @@ PROFILES = {
 MEMBER_PROFILE = _fields('name:姓名:required|gender:性别:enum|birth_date:出生日期:date|ethnicity:民族|birth_place:出生地|native_place:籍贯|id_number:公民身份号码|relation_to_householder:与户主关系|education:文化程度|marital_status:婚姻状况|occupation:职业|workplace:服务处所|migration_address:迁入地址')
 LABELS = dict(zip(PROFILES, ['身份证人像面','身份证国徽面','毕业证','学位证','体检报告','银行卡','营业执照','学历证书电子注册备案表','护照','户口本','通用识别']))
 LABELS['TABLE'] = '表格'
+PROFILES['INTERVIEW_FORM'] = _fields('name:姓名:required|gender:性别:required:enum|age:年龄:required:integer|id_number:身份证号:required|mobile_number:手机号:required')
+LABELS['INTERVIEW_FORM'] = '面试登记表'
 SUPPORTED = frozenset(PROFILES)
 
 

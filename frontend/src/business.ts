@@ -2,10 +2,11 @@ import { safeCode, safeId, safeStage } from './diagnostics.ts'
 import type { ErrorCode, Stage } from './diagnostics.ts'
 import type { PhotoTable, TableDraft } from './table-review.ts'
 import { validTableResponse } from './table-review.ts'
+import { numberLengthHint } from './numberLength.ts'
 import type { GenericDraft, GenericResult } from './generic-review.ts'
 
 export const docTypes = {
-  TABLE: '表格', MEDICAL_REPORT: '体检报告', DIPLOMA: '毕业证', DEGREE_CERT: '学位证',
+  INTERVIEW_FORM: '面试登记表', TABLE: '表格', MEDICAL_REPORT: '体检报告', DIPLOMA: '毕业证', DEGREE_CERT: '学位证',
   BANK_CARD: '银行卡', ID_CARD_FRONT: '身份证人像面', ID_CARD_BACK: '身份证国徽面', PASSPORT: '护照',
   HOUSEHOLD_REGISTER: '户口本', BUSINESS_LICENSE: '营业执照', GENERIC: '通用识别', XUEXIN_DIPLOMA_TABLE: '学历证书电子注册备案表',
 } as const
@@ -38,19 +39,21 @@ export const isPersonPackage = (batch: Batch) => batch.is_person_package === tru
 export const pairingLabels: Record<IdCardPairing, string> = { unassigned: '未指定人员', not_provided: '尚未上传身份证', missing_front: '缺少身份证人像面', missing_back: '国徽面未上传（可选，可仅识别人像面）', both_present: '身份证两面已上传，仍需核对是否属于同一人' }
 export function sampleQualification(kind: UploadDocType): string {
   if (kind === 'TABLE') return '上传JPG/PNG/HEIC表格照片，自动摆正并识别主体；请核对标题、表头、划除行及表外手写补录。每张独立导出，暂不接收PDF或自动拼接续表。'
+  if (kind === 'INTERVIEW_FORM') return '已测试8张同版式登记表；请核对手写姓名、号码和性别勾选。错栏或冲突内容需人工采用候选或补填。'
   return ['DIPLOMA', 'DEGREE_CERT', 'BANK_CARD', 'XUEXIN_DIPLOMA_TABLE', 'MEDICAL_REPORT'].includes(kind)
     ? '已有有限真实样本测试，尚不代表所有版式准确率；请对照原件核对。'
     : '规则已接入，尚缺真实样本验收；请逐项对照原件核对。'
 }
 export interface BatchList { items: Batch[]; total: number; page: number; page_size: number }
 export interface TaskError { code: ErrorCode; error_id: string | null; stage: Stage | null }
-export interface ExportEligibility { export_ready?: boolean; export_blockers?: { field: string; code: string }[]; required_fields_revision?: number; required_field_keys?: string[] }
+export interface ExportDispute { dispute_id: string; field: string; label: string; code: string; message: string; can_confirm: boolean }
+export interface ExportEligibility { export_ready?: boolean; export_blockers?: { field: string; code: string }[]; export_disputes?: ExportDispute[]; required_fields_revision?: number; required_field_keys?: string[] }
 export interface Task extends ExportEligibility { task_id: string; batch_id?: string; run_id: string; result_revision: number; cancel_requested: boolean; status: TaskStatus; file_name?: string; doc_type?: string; progress?: number; page_count: number; actual_source_page_count?: number | null; content_hash?: string; expires_at?: string; pages: { page_id: string; page_index: number; extraction_method: string; regions?: { region_id: string }[] }[]; error?: TaskError | null; extract_options?: { abnormal_only?: boolean }; progress_detail?: ProgressDetail }
 // 进度明细：以已完成的物理 OCR 区域为计量单位。total_* 在区域计划未知（准备中/历史任务）时为 null，
 // 不提供估计分母；processed_regions 表示重试策略结束后到达终态的区域数，不保证识别正确。
 export interface ProgressDetail { stage: TaskStatus; prepared_pages: number; total_pages: number | null; processed_regions: number; recognized_regions: number; incomplete_regions: number; total_regions: number | null }
 export type ItemsFilter = 'all' | 'abnormal' | 'unknown'
-export interface ReviewIssue { issue_id: string; code: string; message: string; can_accept: boolean }
+export interface ReviewIssue { issue_id: string; code: string; message: string; can_accept: boolean; rule_id?: string }
 export interface FieldSource { page?: number; region_id?: string; extraction_method?: 'pdf_text' | 'ocr'; bbox?: [number, number, number, number]; bbox_kind?: 'region' | 'block' | 'row' | 'cell'; raw_text?: string }
 export interface ReportFinding { finding_id: string; reported_number: string | null; text: string; sources: FieldSource[]; project_name?: string | null; result_item_id?: string | null; risk_grade?: string | null; diagnosis?: string | null; result_raw?: string | null; result_sources?: FieldSource[]; need_review?: boolean; review_issues?: ReviewIssue[] }
 export interface ReportSummary { scope: 'follow_up_required' | 'overall_conclusion' | 'unidentified'; declared_count: number | null; findings: ReportFinding[]; count_check: 'match' | 'mismatch' | 'unverified'; sources: FieldSource[] }
@@ -78,7 +81,19 @@ export const householdMemberLabels: Record<string, string> = { name: '姓名', g
 type RequiredTask = Pick<Task, 'status' | 'doc_type' | 'export_ready' | 'export_blockers'>
 export function hasMissingRequiredFields(task: RequiredTask): boolean {
   return hasResult(task) && task.export_ready === false &&
-    !task.export_blockers?.some(blocker => ['task', 'doc_type'].includes(blocker.field))
+    !task.export_blockers?.some(blocker => ['task', 'doc_type'].includes(blocker.field) && blocker.code === 'MISSING') &&
+    (task.doc_type === 'TABLE' || !!task.export_blockers?.some(blocker => blocker.code === 'MISSING'))
+}
+export const hasExportDisputes = (task: RequiredTask): boolean => !!task.export_blockers?.some(b => b.code === 'DISPUTED')
+export function disputedFieldLabels(task: RequiredTask, catalogue: readonly DocProfile[]): string[] {
+  const labels = new Map(catalogue.find(p => p.doc_type === task.doc_type)?.fields.map(f => [f.key, f.label]))
+  return [...new Set((task.export_blockers ?? []).filter(b => b.code === 'DISPUTED').map(b => {
+    const member = /^members\[(\d+)\]\.([a-z_]+)$/.exec(b.field)
+    if (member) return `成员 ${Number(member[1]) + 1} / ${householdMemberLabels[member[2]!] ?? member[2]}`
+    if (b.field.startsWith('items[')) return '检测项目'
+    if (b.field.startsWith('report_summary.')) return '报告清单'
+    return b.field === 'task' ? '材料一致性' : labels.get(b.field) ?? b.field
+  }))]
 }
 export function requiredFieldLabels(task: RequiredTask, catalogue: readonly DocProfile[]): string[] {
   if (!hasMissingRequiredFields(task)) return []
@@ -107,6 +122,9 @@ function exportEligibilityValid(value: Record<string, unknown>): boolean {
   return (value.required_fields_revision === undefined || integer(value.required_fields_revision)) &&
     (value.required_field_keys === undefined || Array.isArray(value.required_field_keys) && value.required_field_keys.every(key => typeof key === 'string')) &&
     (value.export_ready === undefined || typeof value.export_ready === 'boolean') &&
+    (value.export_disputes === undefined || Array.isArray(value.export_disputes) && value.export_disputes.every(d =>
+      isRecord(d) && typeof d.dispute_id === 'string' && /^d_[0-9a-f]{64}$/.test(d.dispute_id) &&
+      ['field', 'label', 'code', 'message'].every(k => typeof d[k] === 'string') && typeof d.can_confirm === 'boolean')) &&
     (value.export_blockers === undefined || (Array.isArray(value.export_blockers) && value.export_blockers.every(b =>
       isRecord(b) && typeof b.field === 'string' && /^[a-zA-Z_][a-zA-Z0-9_.\[\]]{0,127}$/.test(b.field) &&
       typeof b.code === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(b.code))))
@@ -284,4 +302,9 @@ export const isGenderKey = (key: string) => key === 'gender' || key === 'sex'
 export function genderText(value: unknown): string {
   if (typeof value === 'string' && genderLabels[value]) return genderLabels[value]
   return value === null || value === undefined ? '' : String(value)
+}
+
+// Display-only: never normalize or repair a saved value or an operator's draft.
+export function idNumberLengthWarning(value: unknown): string {
+  return numberLengthHint('', 'id_number', value)?.message ?? ''
 }

@@ -109,7 +109,7 @@ class BankPhotocopyTests(unittest.TestCase):
         self.assertIsNone(number['value'])
         self.assertEqual([c['reason'] for c in number['candidates']],['卡面识别','补充文字识别'])
         self.assertTrue(all(c['source']['region_id'] for c in number['candidates']))
-        self.assertEqual(required_export_blockers(result),[dict(field='card_number',code='MISSING')])
+        self.assertEqual(required_export_blockers(result),[dict(field='card_number',code='MISSING'),dict(field='card_number',code='DISPUTED')])
         fixed=apply_review(result,{'fields':{'card_number':'4111111111111112'}},actor='synthetic')
         self.assertFalse(required_export_blockers(fixed))
         self.assertEqual(len(fields(fixed)['card_number']['candidates']),2)

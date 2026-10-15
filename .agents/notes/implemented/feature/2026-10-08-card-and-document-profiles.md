@@ -10,6 +10,8 @@ The UI offers material families which the production backend rejects. The user a
 
 ## Decision
 
+[Result projection repair](../bug-fix/2026-10-15-review-integrity-and-table-performance.md) limits bank-profile completion to actual result objects. Task summaries do not acquire fabricated empty fields; legacy results retain current profile fields and labels.
+
 A backend document catalogue owns field names, editability, conditional applicability and required fields. GET /doc-types supplies that catalogue to the UI. Pure versioned validation distinguishes FORMAT, CHECKSUM and OFFICIAL outcomes; unknown rule coverage is not failure or authenticity. Identifiers remain strings. Extraction retains evidence and conflicting candidates, never repairs characters to satisfy a checksum. Reliable native PDF labels and coordinates precede OCR.
 
 Canonical types are ID_CARD_FRONT, ID_CARD_BACK, BANK_CARD, DIPLOMA, DEGREE_CERT, MEDICAL_REPORT, BUSINESS_LICENSE, XUEXIN_DIPLOMA_TABLE, PASSPORT, HOUSEHOLD_REGISTER and GENERIC. Passport scope is TD3 data pages and MRZ, compatible with old and revised document codes. Licence applicability follows entity type and printed fields; household applicability distinguishes collective households. Generic text and editable key/value pairs require explicit review, not an empty-template automatic completion.
@@ -76,3 +78,7 @@ The [adjacent document field repair](../bug-fix/2026-10-12-adjacent-document-fie
 
 
 复印件分区与手写补充见[银行卡复印件](../../implemented/feature/2026-10-14-bank-photocopy-handwriting.md)，其余普通卡片与证据约束保留。
+
+The [interview and shared-upright extension](../feature/2026-10-14-interview-registration-and-shared-upright.md) adds the five-field profile and raises the shared entry capacity to13; the original rule and scope owned here remain in force.
+
+The [number-length presentation](2026-10-14-number-length-review-hints.md) reuses the pinned BIN data for frontend length hints and adds conservative academic-number references. It preserves the backend validators, source values and export policy; unknown or historical formats are not automatically repaired or rejected.

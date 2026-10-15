@@ -50,17 +50,18 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     bank_roles = {}
     planning_complete = False
     stage, stop_code = 'PREPROCESSING', None
-    preprocessing = {'doc_type': doc_type} if doc_type in UPRIGHT_DOCUMENT_TYPES and not content.lstrip().startswith(b'%PDF-') else None
+    preprocessing = {'doc_type': doc_type} if doc_type in UPRIGHT_DOCUMENT_TYPES else None
     bank_admission = options.get('bank_admission') if doc_type == 'BANK_CARD' else None
     if not isinstance(bank_admission, dict) or not bank_admission.get('text') or bank_admission.get('termination_reason') != 'eos':
         bank_admission = None
     medical = doc_type == 'MEDICAL_REPORT'
     generic = doc_type == 'GENERIC'
-    paddle_primary = medical or generic
+    interview = doc_type == 'INTERVIEW_FORM'
+    paddle_primary = medical or generic or interview
     model = 'paddleocr_vl' if paddle_primary else 'glm_ocr'
     alternate = 'glm_ocr' if paddle_primary else 'paddleocr_vl'
     attempt_models = (model, alternate) if paddle_primary else (model, model, alternate)
-    generation_timeout = 20.0 if medical else 40.0 if generic or doc_type == 'BANK_CARD' else None
+    generation_timeout = 20.0 if medical or interview else 40.0 if generic or doc_type == 'BANK_CARD' else None
     revisions = model_revisions if model_revisions is not None else {}
     cache = {}  # Successful predictions only; never shared with another Task or rerun.
     signature = inspect.signature(recognize)
@@ -140,7 +141,11 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
             warnings.extend(dict(code=code, message='PDF文字或布局需通过识别补充。') for code in page.warnings)
             plans=[]
             for box in page.ocr_boxes:
-                if doc_type == 'BANK_CARD':
+                if interview:
+                    from .interview_form import plan_interview_regions
+                    regions, notes = plan_interview_regions(page.image, box, check)
+                    plans.extend(regions); limitations.extend(notes)
+                elif doc_type == 'BANK_CARD':
                     from .bank_photocopy import plan_bank_regions
                     bank_plans, notes = plan_bank_regions(page.image, box, check)
                     plans.extend(bank_plans); limitations.extend(notes)
@@ -186,6 +191,10 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 region_models = (model, alternate) if bank_roles.get(region_id) in {'front','supplement','ambiguous_front'} else attempt_models
                 for attempt_index, used_model in enumerate(region_models):
                     check()
+                    if interview:
+                        selected = None
+                    if interview and attempt_index:
+                        task = 'ocr'  # Alternate text recognition retains out-of-cell handwriting.
                     image = page.image.crop(box)
                     transform = 'original'
                     if attempt_index and not paddle_primary:
@@ -235,11 +244,16 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                         termination = prediction.get('termination_reason', prediction.get('termination'))
                         successful = isinstance(text, str) and bool(text.strip()) and not prediction.get('error_code') and termination not in {
                             'token_limit', 'length', 'repetition_stop', 'truncated', 'timeout', 'time_limit'}
-                        if generic and termination != 'eos':successful=False
+                        if (generic or interview) and termination != 'eos':successful=False
                         if isinstance(text, str) and text.strip():
                             selected = dict(text=text, page=page.index, region_id=region_id,
                                             bbox=location, extraction_method='ocr')
                             if doc_type == 'BANK_CARD':selected['_bank_role']=bank_roles.get(region_id,'whole')
+                            if interview:
+                                from .interview_form import needs_alternate
+                                selected['_interview_complete'] = successful
+                                if attempt_index == 0 and successful and needs_alternate(selected):
+                                    successful = False
                             if generic:
                                 selected['_layout_lines']=form_lines.get(region_id,[])
                                 if task == 'table' and successful:
@@ -266,7 +280,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                         raise _Stop('EXTRACT_TIMEOUT')
                     # Persist text before budget/cancel check so completed partial work survives timeout.
                     if selected:
-                        existing = next((i for i, block in enumerate(evidence) if block['region_id'] == region_id), None)
+                        existing = None if interview else next((i for i, block in enumerate(evidence) if block['region_id'] == region_id), None)
                         if existing is None:
                             evidence.append(selected)
                         else:

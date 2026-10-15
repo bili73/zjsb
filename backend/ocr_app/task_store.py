@@ -93,10 +93,7 @@ def public_result(value, required_overrides=None):
             return [strip_private(val) for val in item]
         return item
     projected = strip_private(value)
-    if isinstance(projected, dict) and projected.get('doc_type') == 'BANK_CARD':
-        projected['fields'] = [field for field in projected.get('fields', [])
-                               if field.get('key') != 'card_number_masked']
-    if isinstance(projected, dict) and projected.get('doc_type') == 'BANK_CARD':
+    if isinstance(projected, dict) and projected.get('doc_type') == 'BANK_CARD' and 'fields' in projected:
         from .doc_profiles import profile
         from .extraction import _field
         fields = {field['key']:field for field in projected.get('fields', [])}
@@ -302,7 +299,10 @@ class TaskStore:
         progress_detail = dict(stage=row['status'], prepared_pages=len(pages), total_pages=total_pages,
                                processed_regions=recognized + incomplete, recognized_regions=recognized,
                                incomplete_regions=incomplete, total_regions=len(regions) if plan_known else None)
-        export_blockers = required_export_blockers(self.storage.unpack(row['result_enc']), policy['overrides'])
+        saved_result = self.storage.unpack(row['result_enc'])
+        if saved_result is not None:
+            saved_result['run_id'] = row['run_id']
+        export_blockers = required_export_blockers(saved_result, policy['overrides'])
         return public_result(dict(task_id=row['id'], batch_id=row['batch_id'], run_id=row['run_id'],
                            result_revision=row['revision'], cancel_requested=bool(row['cancel_requested']),
                            status=row['status'], progress=row['progress'], progress_detail=progress_detail, doc_type=row['doc_type'],
@@ -404,15 +404,17 @@ class TaskStore:
                     total=len(ids), page=page, page_size=page_size)
 
     def result(self, task_id, items_filter=None, include_normal_summary=True, *, user=None):
-        from .exporting import required_export_blockers
+        from .exporting import export_eligibility
         with self.engine.connect() as connection:
             policy = self.required_policy(connection)
             row = self._row(connection, task_id, user)
             result = self.storage.unpack(row['result_enc'])
             if result is None:
                 raise TaskError('INVALID_STATE', '当前任务尚无可用识别结果')
-            export_blockers = required_export_blockers(result, policy['overrides'])
-            result.update(export_ready=not export_blockers, export_blockers=export_blockers)
+            result['run_id'] = row['run_id']
+            export_blockers, disputes = export_eligibility(result, policy['overrides'])
+            result.update(export_ready=not export_blockers, export_blockers=export_blockers,
+                          export_disputes=disputes)
             result.update(task_id=task_id, run_id=row['run_id'], result_revision=row['revision'], status=row['status'])
             if result.get('doc_type') == 'DIPLOMA':
                 # Public profile only: retain encrypted history and original evidence.
@@ -569,9 +571,13 @@ class TaskStore:
                     from .extraction import extract_result
                     original = extract_result([], row['doc_type'])
                     original.update(pages=pages, review_issues=original.get('review_issues', []))
+                original['run_id'] = row['run_id']
+                confirmation_only = bool(body.get('confirmed_disputes')) or (
+                    body.get('confirm_export_disputes') is True and not any(value for key, value in body.items()
+                        if key not in {'run_id', 'expected_revision', 'confirm_export_disputes', 'accepted_issues', 'note'}))
                 coverage = body.get('coverage')
                 verified = False
-                if coverage is not None or row['status'] == 'FAILED':
+                if coverage is not None or row['status'] == 'FAILED' and not confirmation_only:
                     meta = self.storage.unpack(row['meta_enc'], {})
                     count = meta.get('actual_source_page_count')
                     if count is None:
@@ -644,15 +650,21 @@ class TaskStore:
                                 if not linked:
                                     invalid('补录区域必须关联本次实际补正内容')
                         verified = True
-                if row['status'] == 'FAILED' and not verified:
+                if row['status'] == 'FAILED' and not verified and not confirmation_only:
                     invalid('失败任务须完整逐页补正后才能创建人工版本')
                 result = apply_review(original, body, actor=actor, coverage_verified=verified,
                                       required_overrides=self.required_policy(connection)['overrides'])
+                if confirmation_only:
+                    # Recovery may have FAILED the row after a partial snapshot.
+                    # Confirming an exception never rewrites execution outcome.
+                    result.update(status=row['status'], state=row['status'])
+                else:
+                    result['completion_origin'] = 'human_review'
                 result.setdefault('recognition_status', row['status'])
                 result.setdefault('recognition_error', json.loads(row['error_json']) if row['error_json'] else None)
                 result.update(task_id=task_id, run_id=row['run_id'], result_revision=row['revision'] + 1,
-                              reviewed_by=actor, reviewed_at=now(), completion_origin='human_review')
-                if result.get('error'):
+                              reviewed_by=actor, reviewed_at=now())
+                if result.get('error') and not confirmation_only:
                     result.pop('error')
                 history = dict(task_id=task_id, run_id=row['run_id'], base_revision=row['revision'],
                                result_revision=row['revision'] + 1, actor=actor, at=now(), request=body,
@@ -660,8 +672,9 @@ class TaskStore:
                 reference = self.storage.put(json.dumps(history, ensure_ascii=False, allow_nan=False).encode())
                 connection.execute(text("INSERT INTO artifacts(id,task_id,run_id,kind,reference) VALUES (:id,:task,:run,'review_revision',:ref)"),
                                    dict(id=identity(), task=task_id, run=row['run_id'], ref=reference))
-                connection.execute(text('UPDATE tasks SET result_enc=:result,pages_enc=:pages,status=:status,revision=revision+1,error_json=NULL,updated_at=:at WHERE id=:id'),
-                                   dict(result=self.storage.pack(result), pages=self.storage.pack(pages), status=result['status'], at=now(), id=task_id))
+                connection.execute(text('UPDATE tasks SET result_enc=:result,pages_enc=:pages,status=:status,revision=revision+1,error_json=:error,updated_at=:at WHERE id=:id'),
+                                   dict(result=self.storage.pack(result), pages=self.storage.pack(pages), status=result['status'],
+                                        error=row['error_json'] if confirmation_only else None, at=now(), id=task_id))
                 self._audit(connection, 'human_review', actor, row, result_revision=row['revision'] + 1,
                             status=result['status'])
             return self.task(task_id)

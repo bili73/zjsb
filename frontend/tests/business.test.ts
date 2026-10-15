@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  confidenceText, docTypes, fieldValueText, genderText, isRecord, medicalFlag, parseBatches, parseCreated, parseResult, parseTask, parseTasks, parseUser,
+  confidenceText, docTypes, fieldValueText, genderText, idNumberLengthWarning, isRecord, medicalFlag, parseBatches, parseCreated, parseResult, parseTask, parseTasks, parseUser,
   validateUpload, hasResult, resultKey, matchesMedicalFilter,
 } from '../src/business.ts'
 
@@ -9,6 +9,21 @@ const id = '11111111-2222-4333-8444-555555555555'
 const other = '99999999-8888-4777-8666-555555555555'
 
 const user = { user_id: 'u1', display_name: '操作员', role: 'operator', permissions: ['tasks:write'] }
+
+test('ID length hints count X and whitespace without changing saved values or drafts', () => {
+  const extra = '110105194912310002X'
+  assert.equal(extra.length, 19)
+  assert.equal(idNumberLengthWarning(extra), '身份证号当前为19位，比18位多1位。请对照原件人工核对，系统不会自动改号。')
+  assert.equal(idNumberLengthWarning('11010519491231002'), '身份证号当前为17位，比18位少1位。请对照原件人工核对，系统不会自动改号。')
+  assert.match(idNumberLengthWarning('110105491231002'), /15位，比18位少3位/)
+  for (const value of [null, undefined, '', '  ', '11010519491231002X', '11010519491231002x', '110105194912310021', ' 110105 19491231 002X\n']) {
+    assert.equal(idNumberLengthWarning(value), '')
+  }
+  const field = { key: 'id_number', value: extra, source: { raw_text: '1 1 0 1 0 5 1 9 4 9 1 2 3 1 0 0 0 2 X' } }
+  const before = structuredClone(field)
+  assert.match(idNumberLengthWarning(field.value), /多1位/)
+  assert.deepEqual(field, before)
+})
 
 test('batch owner descriptor accepts explicit historical nulls and rejects malformed attribution', () => {
   const batch = { batch_id: id, status: 'PROCESSING', owner: { user_id: id, username: 'alice', display_name: '张三', account_exists: true } }
@@ -201,7 +216,7 @@ test('validateUpload covers count, type, size and batch limits', () => {
 })
 
 test('docTypes includes the independent photo-table entry and canonical identifiers', () => {
-  assert.equal(Object.keys(docTypes).length, 12)
+  assert.equal(Object.keys(docTypes).length, 13)
   assert.equal(docTypes.TABLE, '表格')
   assert.equal(docTypes.MEDICAL_REPORT, '体检报告')
   assert.equal(docTypes.BANK_CARD, '银行卡')

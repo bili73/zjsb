@@ -7,7 +7,7 @@ import UploadPanel from './UploadPanel.vue'
 import PersonNameEditor from './PersonNameEditor.vue'
 import type { BusinessApi } from '../api.ts'
 import { ApiFailure, shouldRefreshResult, isAbort } from '../api.ts'
-import { batchLabels, docTypes, pairingLabels, isPersonPackage, hasResult, hasMissingRequiredFields, requiredFieldLabels, runningStatuses, taskLabels } from '../business.ts'
+import { batchLabels, docTypes, pairingLabels, isPersonPackage, hasResult, hasMissingRequiredFields, requiredFieldLabels, hasExportDisputes, disputedFieldLabels, runningStatuses, taskLabels } from '../business.ts'
 import type { Batch, BatchStatus, DocProfile, IdCardPairing, Task, TaskStatus } from '../business.ts'
 import { errorMessages } from '../diagnostics.ts'
 import { entryNeedsReview, entryRunning } from '../monitor.ts'
@@ -26,6 +26,7 @@ const emit = defineEmits<{
 
 const selected = reactive<Record<string, Task[]>>({})
 const missingOnly = reactive<Record<string, boolean>>({})
+const disputedOnly = reactive<Record<string, boolean>>({})
 const loadingMore = ref(false)
 const acting = ref('')
 const appendTarget = ref<Batch | null>(null)
@@ -52,6 +53,9 @@ const entries = computed(() => props.monitor.state.order
   .filter((item): item is { id: string; entry: BatchEntry } => item.entry !== undefined))
 const groups = computed(() => groupBatchEntries(entries.value, period.value))
 const missingTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, entry.tasks.filter(hasMissingRequiredFields)])))
+const disputedTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, entry.tasks.filter(hasExportDisputes)])))
+const visibleTasks = (id: string, tasks: Task[]) => tasks.filter(t =>
+  !missingOnly[id] && !disputedOnly[id] || !!missingOnly[id] && hasMissingRequiredFields(t) || !!disputedOnly[id] && hasExportDisputes(t))
 const isTableEntry = (entry: BatchEntry) => entry.tasks.some(task => task.doc_type === 'TABLE')
 const hasMore = computed(() => props.monitor.state.listedIds.length < props.monitor.state.serverTotal)
 
@@ -253,6 +257,7 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
             <el-tag v-if="entryNeedsReview(entry)" size="small" type="warning" effect="plain">有待核对</el-tag>
             <el-tag v-if="entry.tasksLoaded && missingTasks[id]?.length" size="small" type="danger" effect="light">{{ missingTasks[id]?.length }} 个任务缺必填</el-tag>
             <el-tag v-else-if="!entry.tasksLoaded" size="small" type="info" effect="plain">必填检查中</el-tag>
+            <el-tag v-if="entry.tasksLoaded && disputedTasks[id]?.length" size="small" type="warning" effect="light">{{ disputedTasks[id]?.length }} 个任务有异议</el-tag>
             <span class="batch-meta">{{ batchMeta(id) }}</span>
             <span v-if="entry.batch" class="batch-meta batch-owner">上传人：{{ batchOwnerLabel(entry.batch.owner) }}</span>
           </span>
@@ -274,10 +279,11 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
         <div class="required-toolbar">
           <el-checkbox v-if="entry.tasksLoaded" v-model="missingOnly[id]">{{ isTableEntry(entry) ? '只看导出待处理' : '只看必填未填' }}（{{ missingTasks[id]?.length ?? 0 }}）</el-checkbox>
           <span v-else class="poll-hint">正在获取任务，检查必填信息…</span>
+          <el-checkbox v-if="entry.tasksLoaded && !isTableEntry(entry)" v-model="disputedOnly[id]">只看有异议（{{ disputedTasks[id]?.length ?? 0 }}）</el-checkbox>
           <span class="poll-hint">{{ isTableEntry(entry) ? '完整表格可直接导出；有修改时才需保存。' : '补齐并保存后标记自动更新；' }}筛选不改变“本批次全部”的导出范围。</span>
         </div>
-        <el-table :data="missingOnly[id] ? missingTasks[id] ?? [] : entry.tasks" row-key="task_id" :row-class-name="({ row }) => hasMissingRequiredFields(row as Task) ? 'required-missing-row' : ''" @selection-change="rows => selected[id] = rows" @row-click="row => onRowClick(id, row)">
-          <template #empty>{{ missingOnly[id] ? (isTableEntry(entry) ? '本批次没有导出待处理的任务' : '本批次没有必填未填的任务') : entry.tasksLoaded ? '暂无任务' : '正在获取任务…' }}</template>
+        <el-table :data="visibleTasks(id, entry.tasks)" row-key="task_id" :row-class-name="({ row }) => hasMissingRequiredFields(row as Task) || hasExportDisputes(row as Task) ? 'required-missing-row' : ''" @selection-change="rows => selected[id] = rows" @row-click="row => onRowClick(id, row)">
+          <template #empty>{{ missingOnly[id] || disputedOnly[id] ? '本批次没有符合筛选条件的任务' : entry.tasksLoaded ? '暂无任务' : '正在获取任务…' }}</template>
           <el-table-column type="selection" width="45" :reserve-selection="true" />
           <el-table-column label="文件" min-width="220">
             <template #default="{ row }">
@@ -300,13 +306,17 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
               </span>
             </template>
           </el-table-column>
-          <el-table-column :label="isTableEntry(entry) ? '导出检查' : '必填信息'" min-width="220">
+          <el-table-column label="导出检查" min-width="220">
             <template #default="{ row }">
               <span v-if="runningStatuses.has(row.status)" class="poll-hint">识别中，尚未检查</span>
-              <div v-else-if="hasMissingRequiredFields(row as Task)" class="required-fields-cell">
+              <template v-else-if="hasMissingRequiredFields(row as Task) || hasExportDisputes(row as Task)"><div v-if="hasMissingRequiredFields(row as Task)" class="required-fields-cell">
                 <el-tag size="small" type="danger" effect="light">{{ row.doc_type === 'TABLE' ? '导出待处理' : '必填未填' }}</el-tag>
                 <span class="missing-field-names">{{ requiredFieldLabels(row as Task, catalogue).join('、') || '请打开结果查看缺失项' }}</span>
               </div>
+              <div v-if="hasExportDisputes(row as Task)" class="required-fields-cell">
+                <el-tag size="small" type="warning" effect="light">有异议</el-tag>
+                <span class="missing-field-names">{{ disputedFieldLabels(row as Task, catalogue).join('、') }}</span>
+              </div></template>
               <el-tag v-else-if="row.export_ready === true" size="small" type="success" effect="plain">{{ row.doc_type === 'TABLE' ? '可直接导出' : '必填已齐' }}</el-tag>
               <span v-else-if="row.export_blockers?.some((blocker: { field: string }) => ['task', 'doc_type'].includes(blocker.field))" class="poll-hint">暂无识别结果</span>
               <span v-else class="poll-hint">尚未检查</span>
@@ -331,7 +341,7 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
           </el-table-column>
           <el-table-column label="操作" width="210" align="left">
             <template #default="{ row }">
-              <el-button v-if="hasResult(row as Task)" link type="primary" :icon="View" @click.stop="openResult(row as Task, id)">{{ canWrite && hasMissingRequiredFields(row as Task) ? '补填' : '查看' }}</el-button>
+              <el-button v-if="hasResult(row as Task)" link type="primary" :icon="View" @click.stop="openResult(row as Task, id)">{{ canWrite && hasMissingRequiredFields(row as Task) ? '补填' : canWrite && hasExportDisputes(row as Task) ? '核对' : '查看' }}</el-button>
               <el-button
                 v-if="canCancel(row as Task)"
                 link

@@ -37,3 +37,5 @@ Default changes intentionally affect multiple accounts after refresh/login; conf
 
 
 Final regression passes763 backend tests in260.493s and182 frontend tests, with typecheck/build and DDE verification. The final parser/controller subset passes11 tests after adding invalid-default contract assertions. [Local activation evidence](../../../../output/account-layout-activation-20261014-v1/verified.json) confirms schema0009, both supervised model warmups, unchanged10 pre-existing business tables,283 tasks,2 accounts and2881 material/key files. The served static tree matches the eight-group browser-tested build; anonymous personal/default endpoints remain401. No production preference was assigned during activation. The Mac deployment and Git push are not part of this change.
+
+The [interview and shared-upright extension](../feature/2026-10-14-interview-registration-and-shared-upright.md) adds the five-field profile and raises the shared entry capacity to13; the original rule and scope owned here remain in force.

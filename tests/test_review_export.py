@@ -47,13 +47,15 @@ class ReviewTests(unittest.TestCase):
         self.assertTrue(any(cell.value == '0012345678901234567' and cell.data_type == 's' for cell in cells))
         self.assertFalse(any(cell.data_type == 'f' for cell in cells))
 
-    def test_format_exception_stays_accepted_but_cross_field_conflict_cannot(self):
+    def test_format_exception_needs_explicit_confirmation_and_legacy_accept_cannot_clear_conflict(self):
         result = apply_review(self.result(), {'fields': {'graduate_date': '2020-99'}}, actor='human')
         field = next(f for f in result['fields'] if f['key'] == 'graduate_date')
         problem = next(p for p in field['review_issues'] if p['code'] == 'VALIDATION_FAILED')
-        result = apply_review(result, {'accepted_issues': [{'issue_id': problem['issue_id'], 'reason': '原件确实如此，保留例外'}]}, actor='human')
+        from ocr_app.export_disputes import export_disputes
+        result = apply_review(result, {'confirmed_disputes': [d['dispute_id'] for d in export_disputes(result)]}, actor='human')
         again = apply_review(result, {}, actor='human')
-        self.assertFalse(next(f for f in again['fields'] if f['key'] == 'graduate_date')['review_issues'])
+        self.assertFalse(export_disputes(again))
+        self.assertTrue(next(f for f in again['fields'] if f['key'] == 'graduate_date')['review_issues'])
         identity = extract_result([], 'ID_CARD_FRONT')
         identity = apply_review(identity, {'fields': {'id_number': '11010519491231002X', 'birth_date': '2000-01-01', 'gender': 'F'}}, actor='human')
         target = next(f for f in identity['fields'] if f['key'] == 'id_number')

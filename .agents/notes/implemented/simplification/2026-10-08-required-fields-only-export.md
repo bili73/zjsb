@@ -52,3 +52,9 @@ The actual local service was updated only after confirming0 active/queued tasks.
 ## Generic form extension (2026-10-14)
 
 [Adaptive generic forms](../../implemented/feature/2026-10-14-adaptive-generic-forms.md) extends the existing implementation: GENERIC uses the Paddle document lane, reuses CPU upright/geometry, and retains optional source-bound dynamic pairs. Existing document rules, one request per model, human-result precedence and required-value export gates remain applicable.
+
+The [interview and shared-upright extension](../feature/2026-10-14-interview-registration-and-shared-upright.md) adds the five-field profile and raises the shared entry capacity to13; the original rule and scope owned here remain in force.
+
+## Partial supersession: explicit export disputes (2026-10-14)
+
+The approved [explicit-dispute gate](../../implemented/feature/2026-10-14-disputed-results-export-gate.md) supersedes the presence-only permission for concrete number-length warnings, format/checksum failures and conflicts. Ordinary save cannot waive these disputes; an explicit per-dispute original-document confirmation needs no reason. Informational uncertainty remains nonblocking; required-field profiles, original evidence, atomic selection, version/ownership checks and historical verification here remain applicable. This note is not fully superseded.

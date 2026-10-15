@@ -187,6 +187,9 @@ def extract_document_fields(evidence, doc_type):
     from .extraction import _field, issue, plain
     texts='\n'.join(b['text'] for b in evidence)
     out={'fields':[]}
+    if doc_type == 'INTERVIEW_FORM':
+        from .interview_form import extract_interview_fields
+        return dict(fields=extract_interview_fields(evidence))
     if doc_type in {'DIPLOMA','DEGREE_CERT','MEDICAL_REPORT'}:
         from .extraction import extract_fields
         out['fields']=extract_fields(evidence,doc_type)

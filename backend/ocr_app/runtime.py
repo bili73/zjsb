@@ -212,8 +212,8 @@ class ModelManager:
         elif ready == 2:
             self.view.update(effective_mode='dual_resident', state='ready')
         else:
-            self.view['effective_mode'] = 'single_resident'
-            self.view['state'] = 'degraded' if self.view['reason_code'] else 'ready'
+            self.view['effective_mode'] = self.config.mode
+            self.view['state'] = 'degraded' if self.config.mode == 'dual_resident' or self.view['reason_code'] else 'ready'
         if self.starting:
             self.view['state'] = 'starting'
         self._emit()
@@ -255,7 +255,7 @@ class ModelManager:
         self.diag.event('model_failed', model=key, error_code=code)
         self._unload(key, expected_client)
         with self._state:
-            if code == 'RESOURCE_LIMIT' and not self._parallel_session:
+            if code == 'RESOURCE_LIMIT' and self.config.mode == 'single_resident':
                 self.view['effective_mode'] = 'single_resident'
                 if not self.recovery_used[key]:
                     self.pending_recovery.add(key)
@@ -330,7 +330,7 @@ class ModelManager:
             except RuntimeFailure as error:
                 if error.code == 'SUPERVISION_FAILED':
                     raise
-                if error.code == 'RESOURCE_LIMIT':
+                if error.code == 'RESOURCE_LIMIT' and self.config.mode == 'single_resident':
                     # A surviving model stays resident; deferred switch gets one recovery.
                     if not self.clients:
                         try:
@@ -346,6 +346,18 @@ class ModelManager:
             self._settle()
 
     def check_processes(self):
+        # Internal serial benchmarks may intentionally close a peer while its
+        # execution lock is free. A health poll must not report that as a crash.
+        serial = not self._parallel_session
+        if serial and not self._serial_execution.acquire(blocking=False):
+            return
+        try:
+            self._check_processes_idle()
+        finally:
+            if serial:
+                self._serial_execution.release()
+
+    def _check_processes_idle(self):
         with self._state:
             if self.fatal:
                 raise RuntimeFailure('SUPERVISION_FAILED')
@@ -461,7 +473,7 @@ class ModelManager:
             if self.view['models'][key] in {'stopping', 'failed'}:
                 raise RuntimeFailure('MODEL_LOAD_FAILED')
         if key not in self.clients:
-            if self._parallel_session or self.view['models'][key] == 'failed':
+            if self.config.mode == 'dual_resident' or self.view['models'][key] == 'failed':
                 raise RuntimeFailure('MODEL_LOAD_FAILED')
             # Dual after startup never gains an unplanned extra model. Missing means switch/recovery.
             for other in list(self.clients):

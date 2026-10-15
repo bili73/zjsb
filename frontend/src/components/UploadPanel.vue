@@ -65,6 +65,7 @@ onBeforeUnmount(() => {
 })
 
 const typeMeta: Partial<Record<UploadDocType, { icon: Component; desc: string }>> = {
+  INTERVIEW_FORM: { icon: User, desc: '自动摆正，提取姓名、性别、年龄、身份证号和手机号。' },
   TABLE: { icon: Grid, desc: '照片自动摆正、定位表格，核对后导出 Excel。' },
   MEDICAL_REPORT: { icon: FirstAidKit, desc: '检测项目与报告清单分开核对。' },
   DIPLOMA: { icon: Reading, desc: '毕业证字段与来源核对。' }, DEGREE_CERT: { icon: Medal, desc: '学位级别与授予信息。' },
@@ -373,7 +374,7 @@ async function submit() {
       </div>
       <div v-if="editMode && tuckedOpen && hiddenProfiles.length" class="type-tucked-pop">
         <div class="tucked-pop-head">
-          <span>收纳箱 · 点击卡片添加到工作台</span>
+          <span>{{ visibleKeys.length >= WORKBENCH_MAX_ENTRIES ? '工作台已满12张，请先收纳一张再添加' : '收纳箱 · 点击卡片添加到工作台' }}</span>
           <button type="button" class="tucked-pop-close" aria-label="关闭收纳箱" @click="tuckedOpen = false">×</button>
         </div>
         <div class="type-cards is-pop">

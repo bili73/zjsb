@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/app-1.25.0-0f9d8f?style=flat-square" alt="app 1.25.0">
+  <img src="https://img.shields.io/badge/app-1.26.0-0f9d8f?style=flat-square" alt="app 1.26.0">
   <img src="https://img.shields.io/badge/SPEC-v1.31-0c7e72?style=flat-square" alt="SPEC v1.31">
   <img src="https://img.shields.io/badge/platform-Windows%2010%2B-0078d4?style=flat-square" alt="Windows 10+">
   <img src="https://img.shields.io/badge/Python-3.12-3776ab?style=flat-square" alt="Python 3.12">
@@ -87,7 +87,7 @@ backend/launch.py → ocr_app/launcher.py（单实例执行锁 · 业务准备 �
            └─ PaddleOCR-VL   .venvs/paddleocr-vl
 ```
 
-- **并发模型**：默认 `dual_resident`——两模型各自 FIFO 队列，同模型同时最多一个推理请求，跨模型可重叠；`single_resident` 全串行降级。会话内故障模型本会话禁用，不自动重载
+- **并发模型**：默认 `dual_resident`——两模型各自 FIFO 队列，同模型同时最多一个推理请求，跨模型可重叠；正式服务不再提供单模型切换，故障明确提示，健康模型保持驻留。会话内故障模型本会话禁用，不自动重载
 - **预算**：每个模型加载/预热 120 秒（dual_resident 串行启动，两模型合计最长约 240 秒）；单任务共享 180 秒（含排队与换模），watchdog 约 181 秒定向停止；医疗报告生成 20 秒软预算、主备各一次
 - **数据层**：SQLite（WAL、外键、FULL 同步）位于 `.runtime/data/`，Alembic 迁移随启动执行；敏感产物 AES-GCM 加密，密钥由 Windows DPAPI 用户级保护；任务自创建起 **7 天到期清理**（重跑不延期）
 - **乐观并发**：`run_id` / `result_revision` 保护发布、取消、重跑与人工修正，旧执行不能覆盖新结果
@@ -127,7 +127,7 @@ cd ..
 
 # 5. 启动（API + 模型串行加载预热；默认端口 8765、dual_resident，自动打开浏览器）
 ./start.ps1          # 或双击 start.cmd
-# 变体：./start.ps1 -Mode dual_resident|single_resident -Port 8766 -NoBrowser
+# 变体：./start.ps1 -Mode dual_resident -Port 8766 -NoBrowser
 ```
 
 浏览器访问 `http://127.0.0.1:8765/`，登录后即可使用。日常账号管理（创建 / 启用禁用 / 重置密码 / 删除）由管理员在网页端「账号管理」完成，`manage_account.py` 保留为恢复工具。
@@ -186,7 +186,7 @@ cd ..
 │                      # paddleocr-vl-1.6、image-upright 离线对照环境；gitignore）
 ├─ .runtime/           # SQLite 数据、加密密钥、诊断日志（gitignore，运行态）
 ├─ SPEC.md             # 业务契约与验收基线（v1.31）
-├─ openapi.yaml        # 接口契约（/api/v1，版本 1.25.0）
+├─ openapi.yaml        # 接口契约（/api/v1，版本 1.26.0）
 ├─ ARCHITECTURE.md     # 技术决策与实现边界
 ├─ RUNTIME.md          # 启动/运行方式与各轮验收记录
 ├─ LOCAL_OCR.md        # 模型环境与离线测试方法

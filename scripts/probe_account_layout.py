@@ -42,6 +42,22 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'C:/Users/JBS
     stage='legacy isolation';
     const defaults=await keys(page); assert.equal(defaults.length,12); assert.equal((await saved(page)).layout,null);
     checks.push('legacy_shared_key_not_imported');
+    stage='twelve card limit and hidden type';
+    await page.locator('.type-more summary').click();
+    await page.locator('.type-more .type-card').filter({hasText:'面试登记表'}).click();
+    assert.equal((await keys(page)).length,12);
+    await edit(page); assert.equal(await page.locator('[data-plus-slot]').count(),0);
+    await page.getByRole('button',{name:'收纳箱(1)',exact:true}).click();
+    await page.getByText('工作台已满12张，请先收纳一张再添加',{exact:true}).waitFor();
+    await page.locator('.type-tucked-pop .type-card').filter({hasText:'面试登记表'}).click();
+    assert.deepEqual(await keys(page),defaults);
+    await tuck(page,'TABLE');
+    await page.locator('.type-tucked-pop .type-card').filter({hasText:'面试登记表'}).click();
+    const swapped=await keys(page);assert.equal(swapped.length,12);assert.ok(swapped.includes('INTERVIEW_FORM'));assert.ok(!swapped.includes('TABLE'));
+    await finish(page);await page.reload();await ready(page);assert.deepEqual(await keys(page),swapped);
+    await edit(page);await page.getByRole('button',{name:'恢复默认',exact:true}).click();await finish(page);
+    assert.deepEqual(await keys(page),defaults);assert.equal((await saved(page)).layout,null);
+    checks.push('twelve_default_hidden_access_and_tuck_before_add');
     stage='drag and tuck';
     await edit(page);
     const first=await cards(page).nth(0).boundingBox(), second=await cards(page).nth(1).boundingBox();
@@ -128,12 +144,15 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'C:/Users/JBS
 
 
 def main():
+    import argparse
     import uvicorn
     from test_business_api import FakeRuntime
     from ocr_app.api import create_app
     from ocr_app.business import Business
     from ocr_app.winjob import JobProcess
-    base = ROOT / 'output/account-layout-20261014-v3'
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--base', type=Path, default=ROOT / 'output/account-layout-20261014-v3')
+    base = parser.parse_args().base.resolve()
     out = base / ('browser-' + time.strftime('%H%M%S'))
     out.mkdir(parents=True, exist_ok=False)
     business = Business(out / 'private/data', key=secrets.token_bytes(32))

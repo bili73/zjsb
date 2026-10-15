@@ -26,7 +26,7 @@
 | 数据库 | SQLite，本地磁盘 | 单机低写入并发，减少服务管理；正式部署也可使用，不限定为开发环境 |
 | 数据访问 | SQLAlchemy，同步访问 | 保留事务、类型映射与明确的数据访问边界；不为低吞吐场景增加异步数据库栈 |
 | 数据迁移 | Alembic | 升级保留已有数据，不靠删库重建；SQLite迁移需验证所选操作及batch迁移方式 |
-| 排队执行 | SQLite任务表 + 独立协调器 + 最多两个文件进程 | 成功双驻留时证书/体检各一个处理进程；GLM/Paddle各自FIFO，单模型排队，单驻留一个文件 |
+| 排队执行 | SQLite任务表 + 独立协调器 + 最多两个文件进程 | 成功双驻留时证书/体检各一个处理进程；GLM/Paddle各自FIFO，单模型排队，启动部分失败时一个文件 |
 | 识别 | GLM-OCR + 原版PaddleOCR-VL-0.9B | 使用已验证的独立模型环境；路由、限额及恢复规则见SPEC |
 | 文件 | 本地受控加密产物目录 | 当前启动器使用 `.runtime/data/`；输入、页图等以加密文件保存，状态、哈希和业务关联存入 SQLite；没有目录配置界面 |
 | 前端 | Vue 3 + TypeScript + Vite + Element Plus | 已重构，目录驱动字段、源页对照、人工审核与Excel下载 |
@@ -53,7 +53,7 @@ API 负责上传、权限、查询、复核、预览、导出、取消及重跑�
 
 runtime worker是唯一模型调度者。默认`dual_resident`：轻量服务和界面先可用，再依次加载、预热GLM-OCR和PaddleOCR-VL。成功后两个模型驻留复用，各自FIFO队列最多一个推理请求，允许跨模型重叠；同一区域备用模型也必须排队。证书与体检各一个文件进程，在私有管道向协调器请求推理；隔离PyMuPDF及全局stdout重定向，不用两条线程同时解析PDF。API/UI进程不导入模型运行库，不因页面轮询触发加载。
 
-备用`single_resident`启动时只加载、预热GLM，需要另一模型时先确认旧模型进程树退出再加载。以下有界资源恢复只适用于单驻留或启动降级：OOM/明确资源不足时保留健康模型，失败模型在另一模型退出后最多单独加载一次，仍失败则本会话禁用。成功进入双模型并发后，硬超时/OOM/进程失败的模型直接禁用本会话，保留健康模型，不自动卸载健康模型切换恢复。保存模式与会话能力分别记录。依赖/权重错误不冒充资源不足；所有模型不可用时明确OCR不可用，不承诺CPU回退。
+生产固定双驻留，启动器忽略旧单驻留偏好且不再接受该选项。按顺序加载预热，两模型独立FIFO；任一启动/推理故障直接标记本会话不可用，健康模型保持驻留，不自动卸载切换恢复。启动不完整仍串行派发任务；健康的双模型会话保留跨模型并发。内部single_resident仅供离线串行基准，对应健康轮询与切换共用串行锁，避免将主动卸载误判为崩溃。依赖/权重错误不冒充资源不足，所有模型不可用时明确OCR不可用。
 
 会话启动加载/预热采用独立有界预算，启动期间上传持久化为QUEUED，待启动状态稳定后按路由能力处理；不能无限排队等待失败模型。Task领取后发生的加载/切换仍计入SPEC既有180秒整Task活动预算。分别记录启动、预热、空闲、识别峰值和切换；现有串行单驻留实测不能证明双驻留能在16GB或未知GPU机器上运行。
 
@@ -94,7 +94,7 @@ Windows 采用 Job Object 与 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`，由生命�
 ## 5. 持久化任务与恢复
 
 1. 验证输入并保存合规文件，记录文件关联与QUEUED任务后返回202。文件写入和数据库无法组成一个普通事务，需使用暂存/发布及启动清理等简单机制处理中间失败。
-2. worker按文件类型原子领取任务：双驻留成功时证书和体检各一个进程，单驻留/启动降级时一个。短事务记录当前run进入处理；适当粒度保存进度和尝试，避免逐token刷库。
+2. worker按文件类型原子领取任务：双驻留成功时证书和体检各一个进程，启动部分失败时一个。短事务记录当前run进入处理；适当粒度保存进度和尝试，避免逐token刷库。
 3. 完成时校验run_id、revision及取消状态，再原子发布结果。工作目录先写完整产物再发布引用，避免数据库指向半写文件。
 4. 重启恢复前确认旧执行已停止。原QUEUED有取消请求则转CANCELLED，否则继续等待；执行中任务按SPEC标为FAILED/WORKER_INTERRUPTED，已请求取消的转CANCELLED；其余状态保留。
 5. 中断结果可保留供诊断；不把断电间隔算为推理耗时。首版由操作员显式重跑创建新run，不自动无限重试，不从不可靠的生成位置续推。
@@ -111,7 +111,7 @@ Task轮询只读取当前页面需要的批次/任务状态，不每次重新下
 
 当前版本不包含`/events/stream`。如未来需要推送，在新增接口时再明确鉴权、重连、事件顺序和脱敏约束，不将推送作为唯一状态来源。
 
-`/health`的status仍检查db、worker、storage；worker能响应调度即为ok，不要求模型已加载或全部可用。新增可选runtime包含configured_mode、effective_mode、state、models及reason_code，枚举以OpenAPI为准。runtime缺失表示状态未提供，不能当作ready；models.ready表示已加载预热可调度，不代表空闲。runtime.state与组件健康独立，界面须同时显示启动、自动降级和模型失败，不能以status=ok掩盖OCR不可用。启动阶段继续轮询runtime，即使尚无Task；稳定后停止无必要轮询。公开响应只返回白名单枚举，不输出路径、PID、异常全文、密钥或材料信息；不新增公开模型管理接口。
+`/health`的status仍检查db、worker、storage；worker能响应调度即为ok，不要求模型已加载或全部可用。新增可选runtime包含configured_mode、effective_mode、state、models及reason_code，枚举以OpenAPI为准。runtime缺失表示状态未提供，不能当作ready；models.ready表示已加载预热可调度，不代表空闲。runtime.state与组件健康独立，界面须同时显示启动、部分不可用和模型失败，不能以status=ok掩盖OCR不可用。启动阶段继续轮询runtime，即使尚无Task；稳定后停止无必要轮询。公开响应只返回白名单枚举，不输出路径、PID、异常全文、密钥或材料信息；不新增公开模型管理接口。
 
 浏览器改用部署创建的账号密码与30天绝对有效Cookie会话。SQLite migration0003新增web_users、web_sessions及login_attempts，不重写原任务或密文；Argon2id保存密码哈希，随机256bit会话只保存SHA-256摘要。HttpOnly/SameSite=Strict/host-only Cookie由auth/me恢复，HTTPS加Secure；仅当前loopback HTTP测试省略Secure。unsafe请求同源Origin+会话派生CSRF头，直接客户端五分钟最多五次登录尝试。退出撤销当前会话；本地改密/停用原子撤销全部会话，验证凭据后在会话创建事务内再次确认凭据与启用状态。旧Key仅在没有任何web_users记录时供本机CLI过渡，创建过账号即永久关闭。前端不再输入Key；首个管理员本地设置，之后管理员可通过网页查询/创建账号（默认operator，可选viewer/admin，大小写等价重复名返回409而不覆盖旧账号）；密码最低8字符，网页支持重置/停用，CLI保留为恢复工具，无公开注册/邮箱恢复；Windows启动器禁用自动代理头信任，网络边界仍为loopback。Mac远程托管、TLS代理、原生推理及数据密钥迁移尚待实机资格验证。
 
@@ -185,7 +185,7 @@ HR字段版API1.12.0曾按[字段说明](FRONTEND_FIELDS.md)返回：毕业证�
 
 `review.py`验证字段/项目/清单/成员/通用正文，`task_store.py`用run/revision CAS短事务发布人工结果，并保存加密review_revision。原runs/原始尝试/source不改；人工完成FAILED保留recognition_status/error，完整源页和未完成区域必须实际核对。户成员完整覆盖和医疗异常判断分别记录；原件未载明选填的缺省理由不生成诊断。
 
-用户明确授权内部完整显示；public_result去除私有元数据并返回完整值，旧遮盖工具不再进入业务公开投影。`preview.py`鉴权访问绑定版本，记录安全访问事件。`exporting.py`先原子读取所有所选未筛选结果，按当前profile检查必填值/成员/GENERIC正文和版本，再用openpyxl 3.1.5内存生成XLSX：证件按保存的业务字段输出，户成员/通用全文另表，医疗按业务台账18列一份报告一行。导出不调用apply_review、不改变保存状态或确认问题；没有保存结果或任一必填缺失则整次409，格式/置信度/冲突/coverage不额外阻止。Task/TaskResult的可选export_ready/export_blockers来自同一未筛选结果判定，实际状态保留在应用。字符串始终文本单元格，不执行公式；通用长正文分块，超长结构字段明确拒绝，不能静默截断。
+用户明确授权内部完整显示；public_result去除私有元数据并返回完整值，旧遮盖工具不再进入业务公开投影。`preview.py`鉴权访问绑定版本，记录安全访问事件。`exporting.py`先原子读取所有所选未筛选结果，按当前profile检查必填值/成员/GENERIC正文和版本，再用openpyxl 3.1.5内存生成XLSX：证件按保存的业务字段输出，户成员/通用全文另表，医疗按业务台账18列一份报告一行。导出不调用apply_review、不改变保存状态或确认问题；没有保存结果或任一必填缺失则整次409，明确的格式/校验失败和识别冲突会阻止导出；未标定置信度、未联网核验和规则未覆盖不单独阻止。Task/TaskResult的可选export_ready/export_blockers来自同一未筛选结果判定，实际状态保留在应用。字符串始终文本单元格，不执行公式；通用长正文分块，超长结构字段明确拒绝，不能静默截断。
 
 `medical_ledger.py`只整理已有报告证据：按实际检查标题、表体、来源归属形成六组结论/异常摘要，按“本次体检项目意义”清单派生只读大项count；缺来源不默认正常。提取、历史公开投影、人工保存和导出共用该整理逻辑，保留人工覆盖与原始加密历史。身高/体重是可选台账字段，仍不进入异常/item复核；小结只作为结论来源。该模块不调用模型或公司录取标准，决定与限制见[体检台账笔记](.agents/notes/implemented/feature/2026-10-09-medical-ledger-template.md)。
 
@@ -196,7 +196,7 @@ HR字段版API1.12.0曾按[字段说明](FRONTEND_FIELDS.md)返回：毕业证�
 `required_fields.py`通过migration0004的单行设置表持久保存按材料类型的必填覆盖及全局revision。管理员GET/PUT受现有Cookie/CSRF/Origin权限保护，保存按expected_revision在BEGIN IMMEDIATE内比较更新并审计；空集合表示全选填，null恢复默认，不允许派生字段必填。当前设置在任务/批次/结果读取、补填及原子整选导出处统一应用，不批量改写旧结果或人工值。`required_fields_revision`独立于任务版本，前端用它刷新终态行并保护过期草稿。默认未设置时保留原字典及条件必填，细节见[共享必填设置](.agents/notes/implemented/feature/2026-10-10-configurable-required-fields.md)。
 
 
-用户于2026-10-08明确确认内部全部号码、电话、原文、原图和Excel完整显示，一键确认可省略理由；鉴权、加密原始历史、置信度未标定与审核完成规则保持；按用户后续授权，导出门槛仅为保存结果必填有值，缺必填仍整次阻止，冲突/覆盖问题保留但不额外阻止导出。决策见[完整显示与确认](.agents/notes/implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md)。
+用户于2026-10-08明确确认内部全部号码、电话、原文、原图和Excel完整显示，一键确认可省略理由；鉴权、加密原始历史、置信度未标定与审核完成规则保持；按用户后续授权，导出门槛为保存结果必填有值且无未处理的明确异议；缺必填或识别有异议均整次阻止，普通保存按钮同时完成当前内容的异议核对，无需另行确认。决策见[完整显示与确认](.agents/notes/implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md)。
 
 
 ## 2026-10-09 自动银行卡与批次日历

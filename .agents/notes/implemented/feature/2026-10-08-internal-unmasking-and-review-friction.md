@@ -48,3 +48,7 @@ The [required-fields-only decision](../simplification/2026-10-08-required-fields
 ## Current refinement
 
 The [batch calendar](2026-10-09-batch-calendar-browser.md) extends the fixedUTC+8 descending presentation with day/week/month grouping and date-range filtering. The [automatic bank recovery](2026-10-09-bank-auto-recognition.md) changes photo input/retry interaction; existing authenticated complete values and human corrections remain active.
+
+## Partial supersession: explicit export disputes (2026-10-14)
+
+The approved [explicit-dispute gate](../../implemented/feature/2026-10-14-disputed-results-export-gate.md) supersedes the presence-only permission for concrete number-length warnings, format/checksum failures and conflicts. Ordinary save cannot waive these disputes; an explicit per-dispute original-document confirmation needs no reason. Informational uncertainty remains nonblocking; required-field profiles, original evidence, atomic selection, version/ownership checks and historical verification here remain applicable. This note is not fully superseded.

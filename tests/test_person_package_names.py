@@ -33,7 +33,7 @@ class PersonPackageNameTests(unittest.TestCase):
     def saved(self, task_id, kind, name):
         result = extract_result([], kind)
         for field in result['fields']:
-            field.update(value=name if field['key'] == 'name' else '合成字段', need_review=False, review_issues=[])
+            field.update(value=name if field['key'] == 'name' else '2020-06-01' if field['key'].endswith('_date') else '合成字段', need_review=False, review_issues=[])
         with self.business.store.transaction() as c:
             c.execute(text("UPDATE tasks SET status='NEED_REVIEW',result_enc=:value WHERE id=:id"),
                       dict(id=task_id, value=self.business.storage.pack(result)))
@@ -57,6 +57,26 @@ class PersonPackageNameTests(unittest.TestCase):
         self.assertEqual(response.status_code, 202, response.text)
         self.assertEqual(self.business.store.batch(created['batch_id'])['id_card_pairing'], 'both_present')
         self.assertEqual(self.confirm(created['batch_id'], headers).status_code, 409)
+
+    def test_interview_package_suggests_name_and_exports_all_five_fields(self):
+        from test_interview_form import form, block
+        _, headers, _ = self.account('alice')
+        created = self.create(headers, ('INTERVIEW_FORM',))
+        result = extract_result([block(form('☑女 □男'))], 'INTERVIEW_FORM')
+        with self.business.store.transaction() as c:
+            c.execute(text("UPDATE tasks SET status='NEED_REVIEW',result_enc=:value WHERE id=:id"),
+                      dict(id=created['task_ids'][0], value=self.business.storage.pack(result)))
+        batch = self.business.store.batch(created['batch_id'])
+        self.assertEqual(batch['name_suggestions'][0]['name'], '测试甲')
+        self.assertEqual(self.confirm(created['batch_id'], headers, name='测试甲').status_code, 200)
+        response = self.client.post('/api/v1/export', headers=headers, json=dict(batch_id=created['batch_id']))
+        self.assertEqual(response.status_code, 200)
+        book = load_workbook(io.BytesIO(response.content))
+        self.assertEqual(book.sheetnames[0], '人员信息总表')
+        values = list(book.worksheets[0].values)
+        row = dict(zip(values[0], values[1]))
+        self.assertEqual([row['面试登记表·'+label] for label in ['姓名','性别','年龄','身份证号','手机号']],
+                         ['测试甲','女',43,'11010519491231002X','13800138000'])
 
     def test_suggestions_sources_conflict_and_manual_label_are_independent(self):
         _, headers, _ = self.account('alice')

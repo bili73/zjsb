@@ -54,7 +54,7 @@ class RuntimeAPITests(unittest.TestCase):
         with self.client() as client:
             self.assertEqual(self.runtime.started, 1)
             data = client.get('/api/v1/health').json()
-            self.assertEqual(data['version'], '1.25.0')
+            self.assertEqual(data['version'], '1.26.0')
             self.assertEqual(data['status'], 'ok')
             self.assertEqual(data['queue_depth'], 0)
             self.assertEqual(data['components'], {'db': 'ok', 'worker': 'ok', 'storage': 'ok'})

@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('dual_resident', 'single_resident')][string]$Mode,
+    [ValidateSet('dual_resident')][string]$Mode,
     [int]$Port = 8765,
     [switch]$NoBrowser
 )

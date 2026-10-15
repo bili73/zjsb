@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import type { FieldSource, TaskResult } from '../business.ts'
 import type { ReviewBody } from '../review.ts'
-import { cellSpan, copyDraft, editAxis, mergeSelection, rowWindow, supportedHeaderSuggestion, tableDraft, validateGrid } from '../table-review.ts'
+import { buildSpanIndex, cellSpan, copyDraft, editAxis, mergeSelection, rowWindow, supportedHeaderSuggestion, tableDraft, validateGrid } from '../table-review.ts'
 
 const props=defineProps<{ result: TaskResult; canWrite: boolean; busy: boolean }>()
 const emit=defineEmits<{ (e:'dirty', value:boolean):void; (e:'save', body:ReviewBody):void; (e:'locate', source:FieldSource):void }>()
@@ -21,7 +21,9 @@ const headerMissing=computed(() => !!draft.value && draft.value.header_rows === 
 const partialMissing=computed(() => !!draft.value && !!original?.incomplete && !draft.value.partial_acknowledged)
 const windowRows=computed(() => draft.value ? rowWindow(draft.value,page.value) : [0,0])
 const startRow=computed(()=>windowRows.value[0] ?? 0)
-const visibleRows=computed(() => draft.value?.rows.slice(startRow.value,windowRows.value[1]) ?? [])
+const mergeSpans=computed(() => buildSpanIndex(draft.value?.merges ?? []))
+const visibleRows=computed(() => draft.value?.rows.slice(startRow.value,windowRows.value[1])
+  .map((row,ri)=>row.map((_,ci)=>cellSpan(mergeSpans.value,startRow.value+ri,ci))) ?? [])
 function dirty() { error.value=''; emit('dirty',edited.value) }
 function choose(row:number,column:number) { selected.value={row,column};endRow.value=row+1;endColumn.value=column+1 }
 async function change(axis:'row'|'column',remove=false,after=false) {
@@ -82,7 +84,7 @@ function save() {
       <p>共 {{ draft.rows.length }} 行 × {{ draft.rows[0]?.length }} 列（含表头）。点击单元格选择位置；Tab 或 Alt + 方向键换格。</p>
       <div class="table-tools"><span>当前：第 {{ selected.row+1 }} 行、第 {{ selected.column+1 }} 列</span><el-button :disabled="disabled" @click="change('row')">上方插行</el-button><el-button :disabled="disabled" @click="change('row',false,true)">下方插行</el-button><el-button :disabled="disabled" @click="change('column')">左侧插列</el-button><el-button :disabled="disabled" @click="change('column',false,true)">右侧插列</el-button><el-button :disabled="disabled" @click="change('row',true)">删除行</el-button><el-button :disabled="disabled" @click="change('column',true)">删除列</el-button></div>
       <div class="table-tools"><span>从选中格合并到</span><el-input-number v-model="endRow" :min="selected.row+1" :max="draft.rows.length" :precision="0" :disabled="disabled" aria-label="合并结束行" /><span>行</span><el-input-number v-model="endColumn" :min="selected.column+1" :max="draft.rows[0]!.length" :precision="0" :disabled="disabled" aria-label="合并结束列" /><span>列</span><el-button :disabled="disabled" @click="merge">合并</el-button><el-button :disabled="disabled" @click="unmerge">拆分当前格</el-button></div>
-      <div class="grid-scroll"><table class="photo-grid"><tbody><tr v-for="(row,ri) in visibleRows" :key="`${page}-${ri}`" :class="{header: startRow+ri<(draft.header_rows??0)}"><th>{{ startRow+ri+1 }}</th><template v-for="(_,ci) in row" :key="ci"><td v-if="cellSpan(draft,startRow+ri,ci)" :rowspan="cellSpan(draft,startRow+ri,ci)!.rowspan" :colspan="cellSpan(draft,startRow+ri,ci)!.colspan"><textarea :id="`table-cell-${startRow+ri}-${ci}`" v-model="draft.rows[startRow+ri]![ci]" :readonly="disabled" :aria-label="`第${startRow+ri+1}行第${ci+1}列`" @focus="choose(startRow+ri,ci)" @input="dirty" @keydown="navigate($event,startRow+ri,ci)" /></td></template></tr></tbody></table></div>
+      <div class="grid-scroll"><table class="photo-grid"><tbody><tr v-for="(row,ri) in visibleRows" :key="`${page}-${ri}`" :class="{header: startRow+ri<(draft.header_rows??0)}"><th>{{ startRow+ri+1 }}</th><template v-for="(span,ci) in row" :key="ci"><td v-if="span" :rowspan="span.rowspan" :colspan="span.colspan"><textarea :id="`table-cell-${startRow+ri}-${ci}`" v-model="draft.rows[startRow+ri]![ci]" :readonly="disabled" :aria-label="`第${startRow+ri+1}行第${ci+1}列`" @focus="choose(startRow+ri,ci)" @input="dirty" @keydown="navigate($event,startRow+ri,ci)" /></td></template></tr></tbody></table></div>
       <el-pagination v-if="draft.rows.length>50" v-model:current-page="page" :page-size="50" :total="draft.rows.length" layout="prev, pager, next" />
       <el-checkbox v-if="original.incomplete" :class="{ 'field-missing': partialMissing }" v-model="draft.partial_acknowledged" :disabled="disabled" @change="dirty">我已对照原图补正，或明确仅导出当前保留的部分内容。</el-checkbox>
       <p v-if="error" role="alert">{{ error }}</p>

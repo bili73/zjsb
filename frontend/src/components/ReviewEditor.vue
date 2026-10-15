@@ -3,6 +3,7 @@ import { householdMemberLabels as memberLabels } from '../business.ts'
 import { memberFieldRequired } from '../requiredFields.ts'
 import { computed, reactive, ref, watch } from 'vue'
 import { genderText, isGenderKey, isMedicalReviewItem, medicalProjectCount } from '../business.ts'
+import { numberLengthHint } from '../numberLength.ts'
 import type { DocProfile, FieldSource, TaskResult } from '../business.ts'
 import { addedMember, buildReview, canAcceptIssue, changedValues, collectIssues, looksMasked, memberFields, summaryPatch } from '../review.ts'
 import type { AbsenceReason, ReviewBody, Scalar } from '../review.ts'
@@ -11,6 +12,7 @@ const props = defineProps<{ result: TaskResult; profile?: DocProfile; canWrite: 
 const emit = defineEmits<{ (e: 'save', body: ReviewBody): void; (e: 'dirty', value: boolean): void; (e: 'locate', source: FieldSource): void }>()
 const fields = computed(() => props.result.fields ?? Object.values(props.result.basic_info ?? {}))
 const values = reactive<Record<string, Scalar>>(Object.fromEntries(fields.value.map(f => [f.key, f.value])))
+const lengthHints = computed(() => Object.fromEntries(fields.value.map(field => [field.key, numberLengthHint(props.result.doc_type, field.key, values[field.key])])))
 const absence = reactive<Record<string, AbsenceReason | ''>>({})
 const projectCount = computed(() => medicalProjectCount(values.exam_projects))
 const editable = (key: string) => (props.profile?.fields.find(f => f.key === key)?.editable ?? fields.value.find(f => f.key === key)?.editable) !== false
@@ -49,7 +51,7 @@ watch([values, absence, items, added, findings, members, generic, coverageEnable
 function save() {
   message.value = ''
   try {
-    const body = buildReview(props.result, { fields: values, absence_reasons: absenceObject(absence), accepted_issues: issues.value.filter(row => canAcceptIssue(row.issue)).map(row => ({ issue_id: row.issue.issue_id })) })
+    const body = buildReview(props.result, { fields: values, absence_reasons: absenceObject(absence), confirm_export_disputes: true, accepted_issues: issues.value.filter(row => canAcceptIssue(row.issue)).map(row => ({ issue_id: row.issue.issue_id })) })
     body.items = items.filter(i => !i.removed).flatMap(i => {
       const old = props.result.items!.find(o => o.item_id === i.item_id)!
       const changed = changedValues(old as unknown as Record<string, unknown>, i.values)
@@ -105,22 +107,23 @@ function save() {
   <section class="review-editor">
     <h3>人工核对与修正</h3>
     <p v-if="result.doc_type === 'MEDICAL_REPORT'" class="conf">体检项目数量由“本次体检项目意义”的大项清单计数；修正下方体检项目清单即可更新。身高、体重可作为台账字段修正，仍不计异常；小结只作结论证据，BMI照常核对。</p>
-    <el-alert type="info" :closable="false">只提交实际修改的业务字段，原始识别证据保留。可确认的核对问题会在保存时自动确认；掩码不是原始值，置信度不会因人工确认提高。必填缺值和冲突须修正。</el-alert>
+    <el-alert type="info" :closable="false">请核对当前内容后点击下方“保存修正并重新校验”，即可保存修改并完成异议核对，无需另行确认。必填缺值须补齐，原始识别证据保留。</el-alert>
     <el-form label-position="top" :disabled="!canWrite || busy">
       <div class="field-grid">
         <el-form-item v-for="field in fields" :key="field.key" :class="{ 'field-missing': missingRequired(field.key) }" :label="`${field.label}${required(field.key) ? '（必填）' : ''}`">
           <el-select v-if="fieldKind(field.key) === 'boolean'" v-model="values[field.key]"><el-option label="是" :value="true"/><el-option label="否" :value="false"/></el-select>
           <el-select v-else-if="isGenderKey(field.key)" :model-value="genderText(values[field.key])" placeholder="未识别" clearable @update:model-value="v => setField(field.key, v ?? '')"><el-option label="男" value="男" /><el-option label="女" value="女" /></el-select>
           <el-input v-else :type="['exam_projects','blood_routine','urine_routine','ecg','dr_imaging','abdominal_ultrasound','liver_function'].includes(field.key) ? 'textarea' : 'text'" :rows="3" :model-value="String((field.key === 'exam_project_count' ? projectCount : values[field.key]) ?? '')" :disabled="!editable(field.key)" @update:model-value="v => setField(field.key,v)" />
+          <p v-if="lengthHints[field.key]" role="status" :class="['number-length-hint', lengthHints[field.key]?.level]">{{ lengthHints[field.key]?.message }}</p>
           <el-select v-if="!required(field.key) && editable(field.key)" v-model="absence[field.key]" placeholder="缺省原因（可选）" clearable><el-option label="原件未记载" value="NOT_ON_DOCUMENT" /><el-option label="不适用" value="NOT_APPLICABLE" /></el-select>
-          <div v-if="result.doc_type === 'BANK_CARD' && field.candidates?.length" class="bank-candidates">
+          <div v-if="['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type) && field.candidates?.length" class="bank-candidates">
             <p class="conf">{{ field.review_issues.some(issue => issue.code === 'CONFLICT') ? '识别结果不一致，请对照原件选择；选择后仍需保存修正。' : '原始识别候选保留供对照；再次修改后仍需保存。' }}</p>
             <div v-for="(candidate,index) in field.candidates" :key="index">
               <el-button @click="setField(field.key, String(candidate.value ?? ''))">采用{{ candidate.reason ? '（' + candidate.reason + '）' : '' }}：{{ candidate.value }}</el-button>
               <el-button v-if="candidate.source" link @click="emit('locate',candidate.source)">查看来源</el-button>
             </div>
           </div>
-          <el-button v-if="result.doc_type === 'BANK_CARD' && field.source" link @click="emit('locate', field.source)">查看来源</el-button>
+          <el-button v-if="['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type) && field.source" link @click="emit('locate', field.source)">查看来源</el-button>
           <el-button v-if="result.doc_type === 'MEDICAL_REPORT'" link @click="emit('locate', field.source ?? {})">查看来源 / 整页</el-button>
         </el-form-item>
       </div>
@@ -156,9 +159,13 @@ function save() {
   </section>
 </template>
 <style scoped>
+.number-length-hint { width:100%; margin:6px 0 0; color:var(--el-color-danger); line-height:1.5; }
+.number-length-hint.info { color:var(--el-text-color-secondary); }
 .review-editor { margin-top:20px; } .field-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px; } .edit-row,.issue-row { border:1px solid var(--el-border-color);padding:12px;margin:10px 0;border-radius:6px; } .generic-row { display:flex;gap:8px;margin:8px 0; } .el-select { margin:5px 0; } .issue-row .el-checkbox { display:block; } @media(max-width:750px){.field-grid{grid-template-columns:1fr}}
 /* 缺失必填：红边 + 浅红底一眼定位；填上值立即恢复普通样式。 */
 .field-missing :deep(.el-input__wrapper), .field-missing :deep(.el-select__wrapper) { box-shadow: 0 0 0 1px var(--el-color-danger) inset; background-color: var(--el-color-danger-light-9); }
 .field-missing :deep(.el-textarea__inner) { box-shadow: 0 0 0 1px var(--el-color-danger) inset; background-color: var(--el-color-danger-light-9); }
 .field-missing :deep(.el-form-item__label) { color: var(--el-color-danger); }
+.bank-candidates { max-width: 100%; min-width: 0; }
+.bank-candidates :deep(.el-button) { max-width: 100%; height: auto; white-space: normal; overflow-wrap: anywhere; text-align: left; }
 </style>

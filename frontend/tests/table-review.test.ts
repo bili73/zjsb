@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { reactive } from 'vue'
-import { cellSpan, editAxis, mergeSelection, responseFilename, rowWindow, tableDraft, validTableResponse, validateGrid } from '../src/table-review.ts'
+import { buildSpanIndex, cellSpan, editAxis, mergeSelection, responseFilename, rowWindow, tableDraft, validTableResponse, validateGrid } from '../src/table-review.ts'
 import type { PhotoTable, TableDraft } from '../src/table-review.ts'
 
 const make=():PhotoTable=>({table_id:'00000000-0000-4000-8000-000000000001',title:'',title_candidates:[{text:'标题建议',box:[1,2,3,4]}],header_rows:null,header_suggestion:1,rows:[['编号','备注'],['001',''],['001','=1+1']],merges:[],partial_acknowledged:false,source:{page:1,bbox:[0,0,1,1],extraction_method:'ocr'},candidates:[],outside_text:[],quality_warnings:[],incomplete:false,confidence:null})
@@ -49,7 +49,7 @@ test('merge edits preserve topology and reject silent text loss',()=>{
   let draft:TableDraft=tableDraft(make());draft.header_rows=1
   assert.throws(()=>mergeSelection(draft,0,0,0,1),/覆盖/)
   draft=mergeSelection(draft,1,0,1,1)
-  assert.equal(cellSpan(draft,1,1),null)
+  assert.equal(cellSpan(buildSpanIndex(draft.merges),1,1),null)
   draft=editAxis(draft,'column',1)
   assert.deepEqual(draft.merges,[{row:1,column:0,rowspan:1,colspan:3}])
   draft=editAxis(draft,'row',0)
@@ -62,6 +62,19 @@ test('row pages include complete merged spans and validate malformed grids',()=>
   assert.deepEqual(rowWindow(draft,1),[0,53]);assert.deepEqual(rowWindow(draft,2),[48,100])
   assert.equal(validateGrid(draft),null)
   draft.rows[50]![0]='hidden';assert.match(validateGrid(draft)!,/覆盖/)
+})
+test('indexed spans preserve anchors, covered cells and ordinary cells at the supported grid limit',()=>{
+  const draft=tableDraft(make())
+  draft.rows=Array.from({length:1000},()=>Array<string>(10).fill(''))
+  draft.merges=Array.from({length:5000},(_,i)=>({row:Math.floor(i/5),column:(i%5)*2,rowspan:1,colspan:2}))
+  assert.equal(validateGrid(draft),null)
+  const spans=buildSpanIndex(draft.merges)
+  assert.equal(spans.size,10000)
+  for (let row=0;row<1000;row++) for(let column=0;column<10;column++)
+    assert.deepEqual(cellSpan(spans,row,column),column%2===0?{rowspan:1,colspan:2}:null)
+  const unmerged=buildSpanIndex([])
+  assert.deepEqual(cellSpan(unmerged,0,0),{rowspan:1,colspan:1})
+  assert.deepEqual(cellSpan(unmerged,999,9),{rowspan:1,colspan:1})
 })
 test('table response validation and download filenames reject malformed payloads',()=>{
   const original=make();assert.ok(validTableResponse({tables:[original]}))

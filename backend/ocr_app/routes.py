@@ -24,7 +24,7 @@ class Version(BaseModel):
 
 class WorkbenchLayoutBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    layout: list[Annotated[str, Field(strict=True, min_length=1, max_length=64)]] | None = Field(max_length=12)
+    layout: list[Annotated[str, Field(strict=True, min_length=1, max_length=64)]] | None = Field(max_length=13)
     expected_revision: int = Field(ge=0, le=9007199254740991, strict=True)
 
 
@@ -32,6 +32,8 @@ class ReviewBody(Version):
     fields: dict = Field(default_factory=dict)
     absence_reasons: dict = Field(default_factory=dict)
     accepted_issues: list[dict] = Field(default_factory=list)
+    confirm_export_disputes: bool = Field(default=False, strict=True)
+    confirmed_disputes: list[Annotated[str, Field(pattern=r'^d_[0-9a-f]{64}$')]] = Field(default_factory=list, max_length=10000)
     items: list[dict] = Field(default_factory=list)
     added_items: list[dict] = Field(default_factory=list)
     removed_item_ids: list[str] = Field(default_factory=list)

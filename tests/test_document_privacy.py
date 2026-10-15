@@ -15,6 +15,17 @@ def field(key,value,**extra): return dict(key=key,value=value,**extra)
 class DocumentPrivacyTests(unittest.TestCase):
     def mask(self,value):return masked(value,sensitive_patterns(value))
 
+    def test_bank_task_summary_is_deterministic_and_does_not_acquire_result_fields(self):
+        from ocr_app.task_store import public_result
+        summary = dict(doc_type='BANK_CARD', task_id='synthetic', result_revision=1,
+                       status='NEED_REVIEW', export_ready=False)
+        original = copy.deepcopy(summary)
+        first = public_result(summary)
+        self.assertEqual(first, summary)
+        self.assertEqual(first, public_result(summary))
+        self.assertNotIn('fields', first)
+        self.assertEqual(summary, original)
+
     def test_passport_and_alphanumeric_code_mask_every_copy(self):
         result=dict(doc_type='PASSPORT',fields=[field('passport_number','E12345678'),field('online_verification_code','AB12 CD34 EF56 GH78')],
             generic=dict(full_text='E12345678 AB12CD34EF56GH78',blocks=[dict(text='Ｅ１２３４５６７８ AB12-CD34-EF56-GH78')]),

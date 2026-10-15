@@ -52,3 +52,5 @@ Both models share the same GPU. Contention can increase latency, soft stops or O
 ## Generic form extension (2026-10-14)
 
 [Adaptive generic forms](../../implemented/feature/2026-10-14-adaptive-generic-forms.md) extends the existing implementation: GENERIC uses the Paddle document lane, reuses CPU upright/geometry, and retains optional source-bound dynamic pairs. Existing document rules, one request per model, human-result precedence and required-value export gates remain applicable.
+
+The [fixed production residency decision](2026-10-14-production-dual-residency.md) removes the production single-resident preference and resource-switch fallback. Successful dual-model independent queues and serial startup-degraded dispatch remain; internal serial mode is benchmark-only.

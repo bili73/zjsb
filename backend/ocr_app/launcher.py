@@ -10,7 +10,7 @@ import time
 import uuid
 import webbrowser
 
-from .config import MODES, ROOT, RuntimeConfig
+from .config import ROOT, RuntimeConfig
 from .diagnostics import init_diagnostics, DEFAULT_ROOT
 
 
@@ -35,7 +35,7 @@ def main():
 
 def launch(diagnostic):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', choices=MODES)
+    parser.add_argument('--mode', choices=('dual_resident',), help='Production always keeps both models resident')
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args()
@@ -45,12 +45,6 @@ def launch(diagnostic):
     runtime_root.mkdir(exist_ok=True)
     preference = runtime_root / 'settings.json'
     mode = 'dual_resident'
-    if preference.exists():
-        mode = json.loads(preference.read_text(encoding='utf-8'))['mode']
-    if args.mode:
-        mode = args.mode
-    if mode not in MODES:
-        parser.error('Invalid saved mode')
     # Shared with offline experiment runners. Process exit releases this Windows byte lock.
     (ROOT / 'output').mkdir(exist_ok=True)
     with (ROOT / 'output/two-model-retest-gpu.lock').open('a+b') as lease:
@@ -62,10 +56,9 @@ def launch(diagnostic):
             msvcrt.locking(lease.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
             parser.exit(2, 'OCR runtime or benchmark already owns the GPU execution channel.\n')
-        if args.mode:
-            temporary = preference.with_suffix('.tmp')
-            temporary.write_text(json.dumps({'mode': mode}), encoding='utf-8')
-            temporary.replace(preference)
+        temporary = preference.with_suffix('.tmp')
+        temporary.write_text(json.dumps({'mode': mode}), encoding='utf-8')
+        temporary.replace(preference)
         session = runtime_root / (time.strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8])
         from .api import create_app
         from .client import RuntimeClient

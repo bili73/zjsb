@@ -129,7 +129,7 @@ class ImageUprightTests(unittest.TestCase):
 
     def test_pipeline_saves_and_recognizes_same_prepared_pixels(self):
         kinds = ['DIPLOMA', 'DEGREE_CERT', 'ID_CARD_FRONT', 'ID_CARD_BACK', 'BANK_CARD',
-                 'BUSINESS_LICENSE', 'XUEXIN_DIPLOMA_TABLE', 'PASSPORT', 'HOUSEHOLD_REGISTER']
+                 'BUSINESS_LICENSE', 'XUEXIN_DIPLOMA_TABLE', 'PASSPORT', 'HOUSEHOLD_REGISTER', 'MEDICAL_REPORT', 'INTERVIEW_FORM', 'GENERIC']
         upright = document()
         for kind in kinds:
             for rotation, transpose in [(90, Image.Transpose.ROTATE_270),
@@ -144,7 +144,7 @@ class ImageUprightTests(unittest.TestCase):
                         saved.append(Image.open(io.BytesIO(content)).convert('RGB'))
                         self.assertEqual((width, height), upright.size)
                         return '9fd1a42b-95fd-4c78-b946-907f15b2093d'
-                    with patch('ocr_app.image_preprocessing.classify_orientation', return_value=(rotation, .99, .9)) as classifier, patch('ocr_app.image_preprocessing.estimate_skew', return_value=(0., 'already_level')):
+                    with patch('ocr_app.image_preprocessing.classify_orientation', return_value=(rotation, .99, .9)) as classifier, patch('ocr_app.image_preprocessing.estimate_skew', return_value=(0., 'already_level')), patch('ocr_app.generic_layout.plan_form_regions', return_value=([dict(box=(0, 0, *upright.size), task='ocr', lines=[])], [])):
                         result = process_document(png_bytes(upright.transpose(transpose)), kind, recognize=recognize,
                             progress=lambda *args: None, save_page=save, record_attempt=attempts.append,
                             cancelled=lambda: False, deadline=time.monotonic() + 20)
@@ -186,7 +186,36 @@ class ImageUprightTests(unittest.TestCase):
         self.assertEqual(result['pages'][0]['image_preprocessing']['status'], 'insufficient_text')
         self.assertEqual(next(f for f in result['fields'] if f['key'] == 'card_number')['value'], '4111111111111111')
 
-    def test_medical_photos_and_all_pdf_paths_keep_existing_decoding(self):
+    def test_scanned_pdf_decisions_are_cached_per_page_with_matching_preview(self):
+        pdf = fitz.open()
+        for im in [document(), document().transpose(Image.Transpose.ROTATE_90)]:
+            page = pdf.new_page(width=im.width/2, height=im.height/2)
+            page.insert_image(page.rect, stream=png_bytes(im))
+        cache={'doc_type':'MEDICAL_REPORT'}
+        with patch('ocr_app.image_preprocessing.classify_orientation',side_effect=[(90,.99,.9),(180,.99,.9)]) as classify, patch('ocr_app.image_preprocessing.estimate_skew',return_value=(0.,'already_level')):
+            first=list(decode_pages(pdf.tobytes(),preprocessing=cache))
+            second=list(decode_pages(pdf.tobytes(),preprocessing=cache))
+        self.assertEqual(classify.call_count,2)
+        self.assertEqual(set(cache['page_decisions']),{1,2})
+        for before,after in zip(first,second):
+            self.assertEqual(before.image.tobytes(),after.image.tobytes())
+            self.assertEqual(before.ocr_boxes,[(0,0,*before.image.size)])
+            self.assertFalse(before.evidence)
+            self.assertEqual(before.image_preprocessing,after.image_preprocessing)
+
+    def test_mixed_pdf_keeps_native_coordinates(self):
+        pdf=fitz.open();page=pdf.new_page(width=400,height=500)
+        page.insert_text((40,40),'Applicant information remains native and upright.')
+        page.insert_image(fitz.Rect(40,100,300,400),stream=png_bytes(document()))
+        before=next(decode_pages(pdf.tobytes()))
+        with patch('ocr_app.image_preprocessing.prepare_image') as prepare:
+            after=next(decode_pages(pdf.tobytes(),preprocessing={'doc_type':'INTERVIEW_FORM'}))
+        prepare.assert_not_called()
+        self.assertEqual(before.image.tobytes(),after.image.tobytes())
+        self.assertEqual(before.ocr_boxes,after.ocr_boxes)
+        self.assertEqual([b['bbox'] for b in before.evidence],[b['bbox'] for b in after.evidence])
+
+    def test_native_pdf_paths_keep_existing_decoding(self):
         native = fitz.open()
         native.new_page().insert_text((50, 50), 'Native PDF text must remain unchanged.')
         content = native.tobytes()
@@ -196,8 +225,7 @@ class ImageUprightTests(unittest.TestCase):
             self.assertIsNone(page.image_preprocessing)
             sources = [(kind, content) for kind in ['DIPLOMA', 'DEGREE_CERT', 'ID_CARD_FRONT',
                 'ID_CARD_BACK', 'BANK_CARD', 'BUSINESS_LICENSE', 'XUEXIN_DIPLOMA_TABLE',
-                'PASSPORT', 'HOUSEHOLD_REGISTER', 'MEDICAL_REPORT', 'GENERIC']]
-            sources.append(('MEDICAL_REPORT', png_bytes(document())))
+                'PASSPORT', 'HOUSEHOLD_REGISTER', 'MEDICAL_REPORT', 'GENERIC', 'INTERVIEW_FORM']]
             for kind, source in sources:
                 process_document(source, kind, recognize=lambda *a: dict(text='测试文字', termination_reason='eos'),
                     progress=lambda *args: None, save_page=lambda *args: '9fd1a42b-95fd-4c78-b946-907f15b2093d',

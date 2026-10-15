@@ -29,7 +29,7 @@ class BatchOwnershipTests(unittest.TestCase):
         task = self.business.store.task(created['task_ids'][0])
         result = extract_result([], 'DIPLOMA')
         for field in result['fields']:
-            field.update(value='synthetic value', need_review=False, review_issues=[])
+            field.update(value='2020-06-01' if field['key'].endswith('_date') else 'synthetic value', need_review=False, review_issues=[])
         result.update(status=status, review_issues=[])
         with self.business.store.transaction() as c:
             c.execute(text('UPDATE tasks SET status=:status,result_enc=:result WHERE id=:id'),

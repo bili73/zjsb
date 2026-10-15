@@ -20,17 +20,17 @@ def _missing(value):
     return value is None or isinstance(value, str) and not value.strip()
 
 
-def required_export_blockers(result, required_overrides=None):
-    """Check only required value presence in a saved, unfiltered result."""
+def export_eligibility(result, required_overrides=None):
+    """Return blockers and their disputes from one saved, unfiltered snapshot."""
     from .doc_profiles import profile, member_profile, generic_required, SUPPORTED
     if not result:
-        return [dict(field='task', code='MISSING')]
+        return [dict(field='task', code='MISSING')], []
     kind = result.get('doc_type')
     if kind == 'TABLE':
         from .table_recognition import table_blockers
-        return table_blockers(result)
+        return table_blockers(result), []
     if kind not in SUPPORTED:
-        return [dict(field='doc_type', code='MISSING')]
+        return [dict(field='doc_type', code='MISSING')], []
     values = _field_values(result)
     context = {key: value.strip() if isinstance(value, str) else value for key, value in values.items()}
     missing = [field['key'] for field in profile(kind, context, required_overrides)
@@ -45,7 +45,16 @@ def required_export_blockers(result, required_overrides=None):
                            if field['required'] and _missing(member_values.get(field['key'])))
     if kind == 'GENERIC' and generic_required(required_overrides) and _missing((_generic(result) or {}).get('full_text')):
         missing.append('generic.full_text')
-    return [dict(field=key, code='MISSING') for key in missing]
+    from .export_disputes import export_disputes
+    disputes = export_disputes(result)
+    disputed = dict.fromkeys(d['field'] for d in disputes)
+    blockers = [dict(field=key, code='MISSING') for key in missing] + [dict(field=key, code='DISPUTED') for key in disputed]
+    return blockers, disputes
+
+
+def required_export_blockers(result, required_overrides=None):
+    """Check required presence and explicit disputes in a saved, unfiltered result."""
+    return export_eligibility(result, required_overrides)[0]
 
 
 def workbook_bytes(results, packages=()):
@@ -267,6 +276,8 @@ def export_results(store, request, actor, role, *, user=None, authorize=None, wi
                 version = version_map[row['id']]
                 store._expected(row, version['run_id'], version['result_revision'])
             result = store.storage.unpack(row['result_enc'])
+            if result is not None:
+                result['run_id'] = row['run_id']
             problems = required_export_blockers(result, policy['overrides'])
             if problems:
                 blocked.append(dict(task_id=row['id'], status=row['status'], blockers=problems))
@@ -281,7 +292,7 @@ def export_results(store, request, actor, role, *, user=None, authorize=None, wi
                     person_name=store.storage.unpack(batch['person_name_enc']), results=[]))
                 package['results'].append(snapshot)
         if blocked:
-            raise TaskError('EXPORT_BLOCKED', '所选任务缺少必填值，或表格的标题、表头、结构及完整性需处理，未导出任何任务', 409, {'tasks': blocked})
+            raise TaskError('EXPORT_BLOCKED', '所选任务必填未填、识别有异议，或表格结构及完整性需处理，未导出任何任务', 409, {'tasks': blocked})
         table_export = any(snapshot['doc_type'] == 'TABLE' for snapshot in snapshots)
         if table_export and (packages or any(snapshot['doc_type'] != 'TABLE' for snapshot in snapshots)):
             invalid('表格请单独导出，不能与证件或人员材料包混合')

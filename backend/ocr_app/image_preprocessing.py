@@ -13,10 +13,8 @@ MODEL_URL = f'https://huggingface.co/PaddlePaddle/PP-LCNet_x1_0_doc_ori_onnx/res
 MODEL_PATH = Path(__file__).resolve().parents[2] / 'models/pp-lcnet-doc-ori/inference.onnx'
 VERSION = 'certificate-upright-v1'
 MAX_CORRECTED_PIXELS = 40_000_000
-UPRIGHT_DOCUMENT_TYPES = frozenset({
-    'DIPLOMA', 'DEGREE_CERT', 'ID_CARD_FRONT', 'ID_CARD_BACK', 'BANK_CARD',
-    'BUSINESS_LICENSE', 'XUEXIN_DIPLOMA_TABLE', 'PASSPORT', 'HOUSEHOLD_REGISTER', 'GENERIC',
-})
+from .doc_profiles import SUPPORTED
+UPRIGHT_DOCUMENT_TYPES = SUPPORTED
 
 
 @lru_cache(maxsize=1)

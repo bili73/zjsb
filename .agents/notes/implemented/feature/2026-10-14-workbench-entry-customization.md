@@ -31,3 +31,5 @@ Frontend typecheck, node tests and production build pass; `npm run verify` passe
 ## Consequences
 
 The layout is per browser profile, not per account: switching machines or clearing site data resets to the full grid. New types land tucked for customized browsers, so release notes should mention where to find them. `splitEntries` silently drops unknown keys, so a retired doc type cannot break rendering. No API, permission or server-storage change.
+
+The [twelve-visible-card correction](../bug-fix/2026-10-14-workbench-twelve-visible-cards.md) enforces12 visible entries for every layout independently of the13-type catalogue. Existing13-key preferences remain readable; excess cards are hidden rather than removed. This supersedes the interview extension display-cap increase, retaining the wire compatibility and original account rules.

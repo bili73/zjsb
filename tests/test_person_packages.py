@@ -86,7 +86,7 @@ class PersonPackagesTests(unittest.TestCase):
         _, headers, _ = self.account('alice')
         created = self.upload(headers, 'ID_CARD_FRONT').json()
         result = extract_result([], 'ID_CARD_FRONT')
-        values = dict(name='合成人员', gender='M', ethnicity='汉', birth_date='2000-01-01',
+        values = dict(name='合成人员', gender='F', ethnicity='汉', birth_date='1949-12-31',
                       address='合成测试地址', id_number='11010519491231002X')
         for field in result['fields']:
             field.update(value=values[field['key']], value_origin='manual')

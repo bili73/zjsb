@@ -8,6 +8,15 @@ test('review submits only changed values and never copied masked display values'
   assert.throws(() => buildReview(result, { fields: { certificate_no: '****9999' } }), /MASKED/)
   assert.throws(() => buildReview(result, { fields: { age: Number.NaN } }), /INVALID_NUMBER/)
 })
+test('save acknowledgment is explicit and bound to the edited revision', () => {
+  const body = buildReview(result, { fields: { name: '合成测试' }, confirm_export_disputes: true })
+  assert.equal(body.confirm_export_disputes, true)
+  assert.equal(body.expected_revision, result.result_revision)
+  assert.equal(body.run_id, result.run_id)
+  assert.deepEqual(body.fields, { name: '合成测试' })
+  assert.equal(body.confirmed_disputes, undefined)
+  assert.equal(buildReview(result, {}).confirm_export_disputes, undefined)
+})
 test('absence and explicit acceptance are distinct and version bound', () => {
   const r = { ...result, review_issues: [{ issue_id: 'i', code: 'CONFIDENCE_UNAVAILABLE', message: '未标定', can_accept: true }] }
   const body = buildReview(r, { absence_reasons: { name: 'NOT_ON_DOCUMENT' }, accepted_issues: [{ issue_id: 'i', reason: ' ' }] })
@@ -16,7 +25,7 @@ test('absence and explicit acceptance are distinct and version bound', () => {
   assert.equal(body.accepted_issues?.length, 1)
   assert.equal(body.accepted_issues?.[0]?.reason, undefined)
   assert.throws(() => buildReview(r, { accepted_issues: [{ issue_id: 'old', reason: '逐页核对' }] }))
-  for (const code of ['MISSING','CONFLICT','INCOMPLETE_OUTPUT','MULTI_CANDIDATES']) assert.throws(()=>buildReview({...r,review_issues:[{...r.review_issues[0]!,code}]},{accepted_issues:[{issue_id:'i'}]}))
+  for (const code of ['MISSING','CONFLICT','INCOMPLETE_OUTPUT','MULTI_CANDIDATES','VALIDATION_FAILED','LOW_CONFIDENCE']) assert.throws(()=>buildReview({...r,review_issues:[{...r.review_issues[0]!,code}]},{accepted_issues:[{issue_id:'i'}]}))
 })
 test('issues include field, medical row and finding scopes without duplicates', () => {
   const issue = { issue_id: 'i', code: 'MISSING', message: '待补', can_accept: false }
@@ -25,7 +34,7 @@ test('issues include field, medical row and finding scopes without duplicates', 
 })
 test('export uses saved required-field eligibility independently of review status', () => {
   assert.ok(exportBlockReason([]))
-  assert.match(exportBlockReason([{ status: 'COMPLETED', export_ready: false }])!, /必填字段未填写完整/)
+  assert.match(exportBlockReason([{ status: 'COMPLETED', export_ready: false }])!, /必填未填、识别有异议/)
   assert.equal(exportBlockReason([{ status: 'NEED_REVIEW', export_ready: true }, { status: 'FAILED', export_ready: true }]), null)
   assert.ok(exportBlockReason([{ status: 'NEED_REVIEW', export_ready: true }, { status: 'NEED_REVIEW', export_ready: false }]))
   // Old servers remain authoritative when they omit the new optional flag.

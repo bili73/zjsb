@@ -210,7 +210,7 @@ def build_bank_fields(evidence, fields):
                 candidate['reason'] = ' / '.join(dict.fromkeys('补充文字识别' if b.get('_bank_role')=='supplement' else '卡面识别' for b,_ in hits))
         field['validation_checks'] = validate_field('BANK_CARD',key,field['value'])
         if key == 'card_number' and field['value'] is not None:
-            field['review_issues'].append(issue('VALIDATION_FAILED','离线匹配不验证账户或Luhn适用性，请对照原件确认卡号。',True))
+            field['review_issues'].append(issue('UNKNOWN','离线匹配不验证账户或Luhn适用性，请对照原件确认卡号。',True))
         if any(c['status']=='FAIL' for c in field['validation_checks']):
             field['review_issues'].append(issue('VALIDATION_FAILED','本地格式校验失败，请核对原件。'))
         if choices and key in {'holder_name','branch_name'} and not field['review_issues']:

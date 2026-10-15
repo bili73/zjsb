@@ -8,6 +8,8 @@ export type Scalar = string | number | boolean | null
 export interface ReviewBody {
   run_id: string; expected_revision: number; fields?: Record<string, Scalar>;
   absence_reasons?: Record<string, AbsenceReason>; accepted_issues?: { issue_id: string; reason?: string }[];
+  confirmed_disputes?: string[];
+  confirm_export_disputes?: boolean;
   items?: Record<string, unknown>[]; added_items?: Record<string, unknown>[]; removed_item_ids?: string[];
   findings?: Record<string, unknown>[]; members?: { index: number; fields: Record<string, Scalar>; absence_reasons?: Record<string, AbsenceReason> }[];
   added_members?: { fields: Record<string, Scalar>; source_page: number }[]; removed_member_indexes?: number[]; added_member_indexes?: number[];
@@ -18,7 +20,8 @@ export interface ReviewBody {
   tables?: TableDraft[];
 }
 export type ReviewDraft = Omit<ReviewBody, 'run_id' | 'expected_revision'>
-export const canAcceptIssue = (issue: ReviewIssue) => issue.can_accept === true && !['MISSING','CONFLICT','INCOMPLETE_OUTPUT','MULTI_CANDIDATES'].includes(issue.code)
+export const canAcceptIssue = (issue: ReviewIssue) => issue.can_accept === true && !['MISSING','CONFLICT','INCOMPLETE_OUTPUT','MULTI_CANDIDATES','LOW_CONFIDENCE'].includes(issue.code) &&
+  (issue.code !== 'VALIDATION_FAILED' || issue.rule_id?.startsWith('bin_reference_') === true)
 export function collectIssues(result: TaskResult): { scope: string; issue: ReviewIssue }[] {
   const rows: { scope: string; issue: ReviewIssue }[] = []
   const append = (scope: string, issues?: ReviewIssue[]) => issues?.forEach(issue => rows.push({ scope, issue }))
@@ -80,7 +83,7 @@ export function buildReview(result: TaskResult, draft: ReviewDraft): ReviewBody 
 export function exportBlockReason(tasks: readonly Pick<Task, 'status' | 'export_ready'>[]): string | null {
   if (!tasks.length) return '请先选择需要导出的任务。'
   const missing = tasks.filter(t => t.export_ready === false).length
-  return missing ? `有 ${missing} 个任务尚不能导出：识别结果未生成、必填字段未填写完整，或表格的标题、表头、结构及完整性需处理。` : null
+  return missing ? `有 ${missing} 个任务尚不能导出：必填未填、识别有异议、结果未生成，或表格结构及完整性需处理。请在任务详情中改正后点击「保存修正」，保存成功后即可导出。` : null
 }
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)

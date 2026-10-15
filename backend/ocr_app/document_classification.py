@@ -25,6 +25,9 @@ def content_types(text):
     """Closed headers/features, never a best-effort GENERIC assignment."""
     t = _compact(text)
     kinds = set()
+    if any(word in t for word in ('应聘登记表', '面试登记表')):
+        kinds.add('INTERVIEW_FORM')
+        t = ''  # Form labels may mention other documents without containing them.
     if '教育部学历证书电子注册备案表' in t:
         kinds.add('XUEXIN_DIPLOMA_TABLE')
         # These reports contain school/degree/certificate words as data.
@@ -59,6 +62,7 @@ def filename_types(name):
     t = _compact(PureWindowsPath(name.replace('/', '\\')).stem)
     kinds = set()
     for kind, words in {
+        'INTERVIEW_FORM': ('面试登记表', '应聘登记表'),
         'DIPLOMA': ('毕业证',), 'DEGREE_CERT': ('学位证',), 'BANK_CARD': ('银行卡', '储蓄卡', '借记卡'),
         'MEDICAL_REPORT': ('体检报告', '体检表'), 'BUSINESS_LICENSE': ('营业执照',),
         'PASSPORT': ('护照',), 'HOUSEHOLD_REGISTER': ('户口本', '户口簿'),

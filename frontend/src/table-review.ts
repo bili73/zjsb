@@ -58,9 +58,19 @@ export function mergeSelection(draft: TableDraft, row: number, column: number, e
   const error=validateGrid(next); if (error) throw new Error(error)
   return next
 }
-export function cellSpan(table: TableDraft, row: number, column: number) {
-  const merge=table.merges.find(m => row>=m.row && row<m.row+m.rowspan && column>=m.column && column<m.column+m.colspan)
-  return merge ? row===merge.row && column===merge.column ? {rowspan:merge.rowspan,colspan:merge.colspan} : null : {rowspan:1,colspan:1}
+type CellSpan = {rowspan: number; colspan: number} | null
+export function buildSpanIndex(merges: TableMerge[]): Map<string, CellSpan> {
+  const spans=new Map<string, CellSpan>()
+  for (const m of merges) {
+    const {row,column,rowspan,colspan}=m
+    for (let r=row;r<row+rowspan;r++) for (let c=column;c<column+colspan;c++)
+      spans.set(`${r}:${c}`,r===row && c===column ? {rowspan,colspan} : null)
+  }
+  return spans
+}
+export function cellSpan(spans: ReadonlyMap<string, CellSpan>, row: number, column: number): CellSpan {
+  const span=spans.get(`${row}:${column}`)
+  return span === undefined ? {rowspan:1,colspan:1} : span
 }
 
 export function copyDraft(draft: TableDraft): TableDraft {
