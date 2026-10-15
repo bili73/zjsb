@@ -29,6 +29,8 @@ def _process_task(store, manager, task, logger, *, deadline=None):
     began = time.monotonic()
     current_stage = 'PREPROCESSING'
     context = dict(task_id=task['id'], run_id=task['run_id'])
+    if task.get('batch_id'):
+        context['batch_id'] = task['batch_id']
     logger.event('task_claimed', **context)
     model_revisions = {}
     def refresh_revisions():

@@ -13,13 +13,18 @@ import time
 import traceback
 import uuid
 import zipfile
+from tempfile import TemporaryFile
 from datetime import datetime, timezone
+
+from .diagnostic_messages import describe
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ROOT = ROOT / '.runtime' / 'diagnostics'
 MAX_BYTES = 10 * 1024 * 1024
 FILE_COUNT = 5
 RETENTION_SECONDS = 7 * 86400
+APP_VERSION = '1.26.0'
+LEVELS = {'DEBUG': 10, 'INFO': 20, 'WARNING': 30, 'ERROR': 40, 'CRITICAL': 50}
 OWNER = 'local-ocr-safe-diagnostics-v1'
 COMPONENTS = {'bootstrap', 'launcher', 'api', 'client', 'runtime', 'model', 'collector', 'frontend'}
 EVENTS = set('''event initialized bootstrap_started bootstrap_failed launcher_started launcher_failed
@@ -38,11 +43,21 @@ SUPERVISION_FAILED MODEL_REQUEST_TIMEOUT INPUT_INVALID INVALID_REQUEST RUNTIME_S
 RUNTIME_BUSY CUDA_UNAVAILABLE CONNECTION_FAILED INVALID_HEALTH DIAGNOSTICS_UNAVAILABLE
 EXTRACT_TIMEOUT WORKER_INTERRUPTED DECODE_FAILED UNSUPPORTED_DOC_TYPE UNSUPPORTED_FORMAT FILE_TOO_LARGE
 INTERNAL_ERROR RETENTION_VERSION_CONFLICT WORKBENCH_DEFAULT_VERSION_CONFLICT WORKBENCH_VERSION_CONFLICT RESULT_VERSION_CONFLICT INVALID_STATE FORBIDDEN_REVEAL
+UNAUTHORIZED FORBIDDEN NOT_FOUND LOGIN_THROTTLED AUTH_NOT_CONFIGURED USERNAME_EXISTS ACCOUNT_PROTECTED
+CURRENT_PASSWORD_INCORRECT SETTINGS_VERSION_CONFLICT DIAGNOSTICS_BUSY DIAGNOSTICS_UNAVAILABLE DIAGNOSTICS_RATE_LIMITED
+CLIENT_ERROR NETWORK_ERROR REQUEST_TIMEOUT INVALID_RESPONSE
 UNSAFE_CARD_INPUT CARD_ADMISSION_FAILED EXPORT_BLOCKED EXPORT_VALUE_TOO_LONG PREVIEW_MASK_UNAVAILABLE'''.split())
 ENUMS = {
     'model': {'glm_ocr', 'paddleocr_vl', 'glm-ocr', 'paddleocr-vl'},
     'phase': {'loading', 'warming', 'ready', 'starting', 'stopping', 'recognize', 'unloaded', 'failed'},
-    'operation': {'load', 'recognize', 'statistics', 'shutdown', 'stop_task', 'startup', 'close'},
+    'operation': {'load', 'recognize', 'statistics', 'shutdown', 'stop_task', 'startup', 'close',
+                  'health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete',
+                  'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save',
+                  'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks',
+                  'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun',
+                  'interface', 'catalogue', 'review', 'preview', 'export', 'diagnostics'},
+    'http_method': {'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'},
+    'origin': {'vue', 'window', 'promise', 'http'},
     'configured_mode': {'dual_resident', 'single_resident'},
     'effective_mode': {'dual_resident', 'single_resident', 'ocr_unavailable'},
     'state': {'starting', 'ready', 'degraded', 'stopping'},
@@ -50,12 +65,12 @@ ENUMS = {
     'error_code': ERROR_CODES, 'reason_code': ERROR_CODES,
     'stage': {'BOOTSTRAP', 'QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING', 'PUBLISHING', 'CLEANUP'},
 }
-IDS = {'task_id', 'run_id', 'batch_id', 'page_id', 'region_id', 'request_id', 'process_instance_id'}
+IDS = {'task_id', 'run_id', 'batch_id', 'page_id', 'region_id', 'request_id', 'process_instance_id', 'actor_id', 'client_error_id'}
 NUMBERS = {'pid', 'child_pid', 'exit_code', 'duration_seconds', 'timeout_seconds', 'output_tokens',
            'stderr_characters', 'stderr_lines', 'page', 'region', 'errno', 'winerror', 'http_status',
            'load_seconds', 'warmup_seconds', 'recognition_seconds', 'elapsed_seconds', 'gpu_peak_allocated_gib',
            'gpu_peak_reserved_gib', 'gpu_allocated_gib', 'gpu_reserved_gib', 'rss_gib', 'warmup_tokens',
-           'generation_timeout_seconds', 'max_new_tokens', 'queue_wait_seconds'}
+           'generation_timeout_seconds', 'max_new_tokens', 'queue_wait_seconds', 'frontend_line', 'frontend_column'}
 EXCEPTION_TYPES = set('''Exception BaseException RuntimeError ValueError TypeError KeyError OSError
 PermissionError FileNotFoundError FileExistsError TimeoutError MemoryError ImportError ModuleNotFoundError
 BrokenPipeError UnicodeError UnicodeDecodeError JSONDecodeError AssertionError RuntimeFailure JobError TaskError DocumentError
@@ -138,6 +153,22 @@ def _regular(path):
     return stat.S_ISREG(info.st_mode) and not (getattr(info, 'st_file_attributes', 0) & 0x400)
 
 
+def severity(event, context, exceptional=False):
+    status = context.get('http_status')
+    if isinstance(status, int) and 400 <= status < 500:
+        return 'WARNING'
+    if event in {'storage_failed', 'storage_probe_failed', 'migration_failed', 'runtime_start_failed',
+                 'runtime_failed', 'bootstrap_failed', 'launcher_failed', 'server_failed'}:
+        return 'CRITICAL'
+    if exceptional or event.endswith(('_failed', '_timeout', '_interrupted')) or event == 'frontend_error' or (isinstance(status, int) and status >= 500):
+        return 'ERROR'
+    if context.get('termination_reason') in {'token_limit', 'repetition_stop', 'time_limit'} or event == 'upload_rejected':
+        return 'WARNING'
+    if event == 'stderr_drained':
+        return 'DEBUG'
+    return 'INFO'
+
+
 class DiagnosticLogger:
     def __init__(self, root, component, session_id=None):
         self.root = Path(root)
@@ -148,47 +179,71 @@ class DiagnosticLogger:
         self.lock = threading.Lock()
         self.available = True
         self.closed = False
+        self.failure_at = None
+        self.retry_at = 0
+        configured = os.environ.get('OCR_LOG_LEVEL', 'ERROR').upper()
+        self.minimum_level = LEVELS.get(configured, LEVELS['ERROR'])
         try:
-            self.root.mkdir(parents=True, exist_ok=True)
-            if self.root.is_symlink() or getattr(self.root.stat(), 'st_file_attributes', 0) & 0x400:
-                raise OSError('Unsafe diagnostic root')
-            # Direct owned files only; never recurse or touch legacy stderr/materials.
-            for path in self.root.iterdir():
-                try:
-                    if FILE_PATTERN.fullmatch(path.name) and _regular(path):
-                        if path.stat().st_mtime < time.time() - RETENTION_SECONDS:
-                            path.unlink()
-                except FileNotFoundError:
-                    pass
+            from .diagnostic_archive import safe_directory
+            safe_directory(self.root)
+            # Error-only operation must still detect an unwritable directory at startup.
+            with TemporaryFile(dir=self.root) as probe:
+                probe.write(b'0')
+                probe.flush()
             self.event('initialized')
         except Exception:
-            self.available = False
-            _warning()
+            self._failed()
+
+    def _failed(self):
+        from .diagnostic_archive import atomic_json
+        self.available = False
+        self.failure_at = datetime.now(timezone.utc).isoformat()
+        self.retry_at = time.monotonic() + 30
+        try:
+            atomic_json(self.root / ('failure-' + self.instance + '.json'),
+                        dict(timestamp=self.failure_at, component=self.component, session_id=self.session_id))
+        except Exception:
+            pass
+        _warning()
 
     def _write(self, record):
-        if self.closed or not self.available:
+        if self.closed or LEVELS[record['level']] < self.minimum_level or (not self.available and time.monotonic() < self.retry_at):
             return
         try:
+            from .diagnostic_archive import archive_file, locked
             encoded = (json.dumps(record, ensure_ascii=True, allow_nan=False) + '\n').encode('utf-8')
-            with self.lock:
+            with self.lock, locked(self.root):
+                if self.path.exists() and not _regular(self.path):
+                    raise OSError('Unsafe diagnostic file')
                 if self.path.exists() and self.path.stat().st_size + len(encoded) > MAX_BYTES:
+                    oldest = Path(str(self.path) + f'.{FILE_COUNT - 1}')
+                    if oldest.exists():
+                        archive_file(self.root, oldest)
                     for number in range(FILE_COUNT - 1, 0, -1):
                         source = self.path if number == 1 else Path(str(self.path) + f'.{number - 1}')
                         target = Path(str(self.path) + f'.{number}')
                         if source.exists():
+                            if not _regular(source) or (target.exists() and not _regular(target)):
+                                raise OSError('Unsafe diagnostic segment')
                             source.replace(target)
                 with self.path.open('ab') as stream:
                     stream.write(encoded)
                     stream.flush()
+                    if LEVELS[record['level']] >= LEVELS['ERROR']:
+                        os.fsync(stream.fileno())
+                self.available = True
+                (self.root / ('failure-' + self.instance + '.json')).unlink(missing_ok=True)
         except Exception:
-            self.available = False
-            _warning()
+            self._failed()
 
     def _record(self, event, context):
-        return dict(owner=OWNER, version=1, timestamp=datetime.now(timezone.utc).isoformat(),
+        record = dict(owner=OWNER, version=1, app_version=APP_VERSION, level=severity(event, context),
+                    record_id='l_' + uuid.uuid4().hex, timestamp=datetime.now(timezone.utc).isoformat(),
                     component=self.component, session_id=self.session_id, pid=os.getpid(),
                     process_instance_id=opaque_id(self.instance), event=event if isinstance(event, str) and event in EVENTS else 'event',
                     context=safe_context(context))
+        record['description'] = describe(record['event'], record['context'])
+        return record
 
     def event(self, event, **context):
         self._write(self._record(event, context))
@@ -197,6 +252,7 @@ class DiagnosticLogger:
         error_id = 'e_' + uuid.uuid4().hex
         try:
             record = self._record(event, {**context, 'error_id': error_id})
+            record['level'] = severity(event, context, exceptional=True)
             record['exceptions'] = safe_exception(error)
             self._write(record)
         except Exception:
@@ -234,6 +290,10 @@ def _export_record(record):
     if type(record.get('pid')) is int and 0 < record['pid'] < 2**32:
         result['pid'] = record['pid']
     result['context'] = safe_context(record.get('context', {}) if isinstance(record.get('context'), dict) else {})
+    level = record.get('level')
+    result['level'] = level if isinstance(level, str) and level in LEVELS else severity(record['event'], result['context'], bool(record.get('exceptions')))
+    version = record.get('app_version')
+    result['app_version'] = version if isinstance(version, str) and re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][\w.-]+)?', version) else 'unknown'
     exceptions = []
     for error in record.get('exceptions', [])[:4] if isinstance(record.get('exceptions'), list) else []:
         if not isinstance(error, dict):
@@ -253,6 +313,10 @@ def _export_record(record):
         exceptions.append(entry)
     if exceptions:
         result['exceptions'] = exceptions
+    identity = record.get('record_id')
+    result['record_id'] = identity if isinstance(identity, str) and re.fullmatch(r'l_[0-9a-f]{32}', identity) else 'l_' + hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()[:32]
+    # Keep legacy identities stable and ignore any untrusted persisted explanation.
+    result['description'] = describe(result['event'], result['context'])
     return result
 
 
@@ -293,8 +357,22 @@ def collect_diagnostics(root, destination):
                     counts['events'] += len(records)
                 except (OSError, UnicodeError):
                     counts['skipped_files'] += 1
+            from .diagnostic_archive import archive_content, owned_archives, ARCHIVE_RETENTION, decoded
+            for path in owned_archives(root):
+                try:
+                    content, metadata = archive_content(path)
+                    if time.time() - metadata['created_at'] > ARCHIVE_RETENTION:
+                        continue
+                    values = list(decoded(content))
+                    counts['skipped_lines'] += sum(value is None for value in values)
+                    safe = [json.dumps(value, ensure_ascii=True) for value in values if value is not None]
+                    archive.writestr('archives/' + path.stem + '.jsonl', '\n'.join(safe) + ('\n' if safe else ''))
+                    counts['events'] += len(safe)
+                    counts['files'] += 1
+                except (OSError, ValueError, KeyError, zipfile.BadZipFile):
+                    counts['skipped_files'] += 1
         manifest = dict(schema_version=1, created_at=datetime.now(timezone.utc).isoformat(),
-                        python_version=platform.python_version(), **counts,
+                        python_version=platform.python_version(), app_version=APP_VERSION, **counts,
                         scope='Allowlisted technical events only; no materials, raw stderr, settings or credentials')
         archive.writestr('manifest.json', json.dumps(manifest, indent=2))
     return manifest

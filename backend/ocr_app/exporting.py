@@ -119,8 +119,7 @@ def workbook_bytes(results, packages=()):
             multiplicity[kind] = max(multiplicity.get(kind, 0), number)
             current = public_result(result) if kind == 'MEDICAL_REPORT' else result
             fields = profile(kind)
-            pairs = [('来源文件', result.get('_source_filename'))]
-            pairs.extend(zip([f['label'] for f in fields], field_values(current, fields)))
+            pairs = list(zip([f['label'] for f in fields], field_values(current, fields)))
             if kind == 'MEDICAL_REPORT':
                 pairs.append(('异常指标', abnormal_cell(current)))
             for index, member in enumerate(current.get('members', []), 1):
@@ -146,14 +145,13 @@ def workbook_bytes(results, packages=()):
         metadata = [name or '姓名待确认', ('已确认；识别姓名有差异，需核对' if conflict else '已确认') if name else
                 ('待确认；识别姓名有差异，需核对' if conflict else '待确认'),
                 '\n'.join(f'{LABELS[k]} × {sum(r["doc_type"] == k for r in selected)}' for k in kinds), len(selected),
-                '\n'.join(f'{c["name"]}：' + '；'.join(f'{LABELS[s["doc_type"]]} / {s["file_name"]}' for s in c['sources']) for c in candidates),
-                '\n'.join(r.get('_source_filename') or '未提供文件名' for r in selected)]
+                '\n'.join(f'{c["name"]}：' + '；'.join(dict.fromkeys(LABELS[s['doc_type']] for s in c['sources'])) for c in candidates)]
         package_rows.append((metadata, data))
     kind_order = {kind: index for index, kind in enumerate(LABELS)}
     columns = sorted(column_keys, key=lambda key: (kind_order[key[0]], key[1]))
     headers = ['人员姓名', '姓名状态'] + [
         f'{LABELS[kind]}{number if multiplicity[kind] > 1 else ""}·{label}'
-        for kind, number, label in columns] + ['材料类型及数量', '材料份数', '姓名候选及来源', '来源文件']
+        for kind, number, label in columns] + ['材料类型及数量', '材料份数', '姓名候选']
     for metadata, data in package_rows:
         append('人员信息总表', headers, metadata[:2] + [data.get(key) for key in columns] + metadata[2:])
 
@@ -161,7 +159,6 @@ def workbook_bytes(results, packages=()):
     for result in results:
         values = _field_values(result)
         kind = result['doc_type']
-        filename = result.get('_source_filename')
         fields = profile(kind)
         if kind == 'MEDICAL_REPORT':
             medical_sequence += 1
@@ -180,19 +177,19 @@ def workbook_bytes(results, packages=()):
                         '仅基于已识别明细，不代表整组检查或整份报告已完整识别；请对照原件核对检查范围与完整性。',
                         'HRSSC识别工作台')
         elif kind != 'GENERIC':
-            append(LABELS[kind], ['来源文件'] + [f['label'] for f in fields], [filename] + field_values(result, fields))
+            append(LABELS[kind], [f['label'] for f in fields], field_values(result, fields))
         for index, member in enumerate(result.get('members', [])):
             fields = member.get('fields', []) if isinstance(member.get('fields'), list) else [v for v in member.values() if isinstance(v, dict) and 'key' in v]
             field_map = {field['key']: field for field in fields}
-            append('户口成员', ['来源文件', '成员序号'] + [f['label'] for f in MEMBER_PROFILE],
-                   [filename, index + 1] + [field_map.get(f['key'], {}).get('value') for f in MEMBER_PROFILE])
+            append('户口成员', ['成员序号'] + [f['label'] for f in MEMBER_PROFILE],
+                   [index + 1] + [field_map.get(f['key'], {}).get('value') for f in MEMBER_PROFILE])
         if kind == 'GENERIC' and _generic(result):
             generic = _generic(result)
             value = generic.get('full_text') or ''
             for index in range(0, max(1, len(value)), 500):
-                append('通用识别文本', ['来源文件', '分段序号', '文本'], [filename, index // 500 + 1, value[index:index + 500]])
+                append('通用识别文本', ['分段序号', '文本'], [index // 500 + 1, value[index:index + 500]])
             for pair in generic.get('key_values', []):
-                append('通用识别字段', ['来源文件', '字段', '内容'], [filename, pair['key'], pair.get('value')])
+                append('通用识别字段', ['字段', '内容'], [pair['key'], pair.get('value')])
     for sheet in sheets.values():
         medical = sheet.title == '审核记录台账'
         sheet.freeze_panes = 'C2' if sheet.title == '人员信息总表' else 'A2'
@@ -205,15 +202,22 @@ def workbook_bytes(results, packages=()):
         sheet.print_title_rows = '1:1'
         sheet.print_options.horizontalCentered = True
         widths = []
+        row_count = sheet.max_row
         for index, cell in enumerate(sheet[1], 1):
             label = cell.value.rsplit('·', 1)[-1]
             width = (64 if label == '文本' or label.startswith('正文') else 55 if label in {'体检项目', '经营范围'} else
                      42 if label in {'异常诊断', '异常指标', '检测结果', '内容'} else
-                     50 if label in {'材料类型及数量', '姓名候选及来源'} else
-                     34 if label in {'来源文件', '学校名称', '名称', '住址', '住所'} else
-                     27 if any(term in label for term in ('编号', '号码', '卡号', '代码', '验证码', '异常项目')) else 18)
+                     50 if label in {'材料类型及数量', '姓名候选'} else
+                     34 if label in {'学校名称', '名称', '住址', '住所'} else
+                     27 if any(term in label for term in ('编号', '号码', '身份证号', '卡号', '代码', '验证码', '异常项目')) else 18)
             if medical:
                 width = [8,12,8,8,14,30,14,12,12,20,40,48,40,40,48,40,18,90][index-1]
+            else:
+                longest = max((max((sum(2 if ord(c) > 255 else 1 for c in line)
+                                    for line in str(value if value is not None else '').splitlines()), default=0)
+                               for value, in sheet.iter_rows(min_col=index, max_col=index, max_row=row_count, values_only=True)), default=0)
+                # Leave room for 12-point text; bound long prose and retain wrapping.
+                width = max(width, min(64, ceil(longest * 1.3) + 3))
             sheet.column_dimensions[get_column_letter(index)].width = width
             widths.append(width)
         for index, row in enumerate(sheet, 1):

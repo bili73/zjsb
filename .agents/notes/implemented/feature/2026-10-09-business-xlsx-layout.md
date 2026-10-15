@@ -59,3 +59,13 @@ The [biochemistry/export refinement](../bug-fix/2026-10-09-biochemistry-ledger-e
 ## Current refinement
 
 The [workbench filename policy](2026-10-09-material-time-download-names.md) adds Chinese type plus Shanghai export time to single, batch and selected download names. Workbook layout, saved-value gates and backend API bytes remain unchanged.
+
+## Export metadata refinement
+
+The [source filename removal](../../implemented/simplification/2026-10-15-export-without-source-filenames.md) partially supersedes the source filename columns and filename-bearing candidate descriptions in exported workbooks. Full business values, repeated-document groups, application source evidence, naming, snapshot gates and the medical template remain active.
+
+## Column-width refinement
+
+On2026-10-15, nonmedical worksheets retain their existing minimum widths and expand to the longest visible line of the header or exported values, capped at64 Excel width units. 身份证号 receives the identifier minimum27; twelve-point fonts, wrapped long content, text identifiers, colors, frozen panes and the medical18-column template remain. This is a local styling refinement, with no new schema, business rule or decision note. Existing44 relevant tests pass. Synthetic export checks compare actual Microsoft YaHei12-point text metrics against the assigned column widths for identity/card/phone numbers and long school names, including personnel fields. Read-only Artifact Tool previews verify the changed views; numeric-only strings need display-only restoration after import, while the production XLSX remains unchanged with exact string values. Evidence: output/export-widths-20261015/.
+
+Independent review also identified repeated max-row scans in wide personnel tables; cache the row bound once per sheet before measuring columns. Eight affected workbook regressions pass after this refinement. Local idle backup/restart preserves all14 database tables,271 tasks,2 accounts and3000 material/key files;16 static files remain identical, public health is healthy, and anonymous business access is denied. Both owned model processes are present; warmup was not independently measured. Evidence: output/export-widths-20261015/activation/verified.json. Mac deployment is unchanged.

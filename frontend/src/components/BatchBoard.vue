@@ -5,6 +5,7 @@ import { CircleClose, Delete, RefreshRight, UploadFilled, User, View, WarningFil
 import ExportControls from './ExportControls.vue'
 import UploadPanel from './UploadPanel.vue'
 import PersonNameEditor from './PersonNameEditor.vue'
+import OperationGuide from './OperationGuide.vue'
 import type { BusinessApi } from '../api.ts'
 import { ApiFailure, shouldRefreshResult, isAbort } from '../api.ts'
 import { batchLabels, docTypes, pairingLabels, isPersonPackage, hasResult, hasMissingRequiredFields, requiredFieldLabels, hasExportDisputes, disputedFieldLabels, runningStatuses, taskLabels } from '../business.ts'
@@ -16,7 +17,7 @@ import { batchOwnerLabel, expiryText, formatTime, taskProgressView } from '../pr
 import { groupBatchEntries, periodBounds } from '../batchCalendar.ts'
 import type { BatchPeriod } from '../batchCalendar.ts'
 
-const props = defineProps<{ monitor: Monitor; canWrite: boolean; isAdmin: boolean; api: BusinessApi | null; uploadReset: number; catalogue: DocProfile[] }>()
+const props = defineProps<{ monitor: Monitor; canWrite: boolean; isAdmin: boolean; api: BusinessApi | null; uploadReset: number; catalogue: DocProfile[]; active?: boolean }>()
 const emit = defineEmits<{
   (e: 'open-result', task: Task, batchId: string): void
   (e: 'unauthorized'): void
@@ -213,15 +214,17 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
   <section class="batch-board">
     <div class="calendar-toolbar">
       <span>按时间分组</span>
-      <el-radio-group v-model="period" aria-label="批次时间分组">
-        <el-radio-button value="day">日</el-radio-button>
-        <el-radio-button value="week">周</el-radio-button>
-        <el-radio-button value="month">月</el-radio-button>
-      </el-radio-group>
-      <el-date-picker v-model="anchor" :key="period" :type="period === 'day' ? 'date' : period"
-        value-format="YYYY-MM-DD" :format="period === 'month' ? 'YYYY年MM月' : period === 'week' ? 'YYYY-MM-DD [所在周]' : 'YYYY-MM-DD'"
-        :placeholder="period === 'day' ? '选择日期' : period === 'week' ? '选择周' : '选择月份'" clearable />
-      <el-button v-if="anchor" link type="primary" @click="anchor = null">全部日期</el-button>
+      <span class="calendar-controls" data-guide="batch-calendar">
+        <el-radio-group v-model="period" aria-label="批次时间分组">
+          <el-radio-button value="day">日</el-radio-button>
+          <el-radio-button value="week">周</el-radio-button>
+          <el-radio-button value="month">月</el-radio-button>
+        </el-radio-group>
+        <el-date-picker v-model="anchor" :key="period" :type="period === 'day' ? 'date' : period"
+          value-format="YYYY-MM-DD" :format="period === 'month' ? 'YYYY年MM月' : period === 'week' ? 'YYYY-MM-DD [所在周]' : 'YYYY-MM-DD'"
+          :placeholder="period === 'day' ? '选择日期' : period === 'week' ? '选择周' : '选择月份'" clearable />
+        <el-button v-if="anchor" link type="primary" @click="anchor = null">全部日期</el-button>
+      </span>
       <span class="poll-hint">{{ dateRange ? `${dateRange.date_from} 至 ${dateRange.date_to}` : '全部日期' }}（UTC+8，周一至周日）</span>
     </div>
     <div class="board-toolbar">
@@ -229,8 +232,10 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
       <el-tag v-else-if="monitor.state.lastCheckedAt" type="info" effect="plain" round>暂无进行中的任务，已停止轮询</el-tag>
       <span v-if="monitor.state.lastCheckedAt" class="poll-hint">上次检查 {{ formatTime(monitor.state.lastCheckedAt) }}</span>
       <div class="toolbar-spacer" />
-      <el-button :icon="RefreshRight" @click="monitor.start()">刷新</el-button>
-      <el-button v-if="hasMore" :loading="loadingMore" @click="loadMore">加载更早的批次</el-button>
+      <span class="board-actions" data-guide="batch-refresh">
+        <el-button :icon="RefreshRight" @click="monitor.start()">刷新</el-button>
+        <el-button v-if="hasMore" :loading="loadingMore" @click="loadMore">加载更早的批次</el-button>
+      </span>
     </div>
 
     <el-alert
@@ -242,6 +247,7 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
       :title="`与服务连接中断，正在自动重试（第 ${monitor.state.failureCount} 次，间隔逐次加长）…`"
     />
 
+    <div data-guide="batch-list" class="guide-batch-hint">展开批次查看文件、导出检查与本批次指引。</div>
     <el-empty v-if="entries.length === 0" :description="anchor ? '该时间段暂无批次，可更换日期或查看全部日期。' : '暂无批次；切换到「上传识别」提交第一批文件。'" />
 
     <el-collapse v-else v-model="expandedNames" class="batch-collapse">
@@ -263,25 +269,30 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
           </span>
         </template>
 
+        <div :data-guide-scope="`batch-${id}`">
+        <OperationGuide label="本批次指引" :context="entry.batch && isPersonPackage(entry.batch) ? 'package' : 'batch'" :scope="`batch-${id}`" :can-write="canWrite" :is-admin="isAdmin" :active="active !== false && expandedNames.includes(id) && !appendTarget" />
         <ExportControls :api="api" :tasks="entry.tasks" :selected="entry.tasks.filter(t => (selected[id] ?? []).some(s => s.task_id === t.task_id))" :batch-id="id" :batch="entry.batch ?? undefined" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
         <PersonNameEditor v-if="entry.batch && isPersonPackage(entry.batch)" :batch="entry.batch" :monitor="monitor" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
-        <div v-if="entry.batch && isPersonPackage(entry.batch)" class="package-toolbar" :class="{ 'has-warning': entry.batch.warnings?.length }">
+        <div v-if="entry.batch && isPersonPackage(entry.batch)" class="package-toolbar" data-guide="package-pairing" :class="{ 'has-warning': entry.batch.warnings?.length }">
           <el-icon class="package-icon"><User /></el-icon>
           <el-tag size="small" :type="pairingTagTypes[entry.batch.id_card_pairing ?? 'not_provided']" effect="light">{{ pairingLabels[entry.batch.id_card_pairing ?? 'not_provided'] }}</el-tag>
           <span class="poll-hint">配套仅检查两面材料是否存在；请人工核对归属，不影响必填导出条件。</span>
           <span class="toolbar-spacer" />
-          <el-button v-if="canWrite" type="primary" plain :icon="UploadFilled" @click="appendTarget = { ...entry.batch }">补充上传</el-button>
+          <el-button v-if="canWrite" data-guide="package-append" type="primary" plain :icon="UploadFilled" @click="appendTarget = { ...entry.batch }">补充上传</el-button>
         </div>
         <div v-if="isAdmin" class="required-toolbar">
           <el-button type="danger" plain :icon="Delete" :loading="acting === `delete:${id}`" :disabled="!!acting || !entry.tasksLoaded || !entry.tasks.length || entryRunning(entry)" @click="deleteBatch(id)">删除批次</el-button>
           <span class="poll-hint">{{ entryRunning(entry) ? '请等待排队及识别任务停止后再删除。' : '永久删除本批次及关联文件；待人工核对的记录也可删除。' }}</span>
         </div>
         <div class="required-toolbar">
-          <el-checkbox v-if="entry.tasksLoaded" v-model="missingOnly[id]">{{ isTableEntry(entry) ? '只看导出待处理' : '只看必填未填' }}（{{ missingTasks[id]?.length ?? 0 }}）</el-checkbox>
-          <span v-else class="poll-hint">正在获取任务，检查必填信息…</span>
-          <el-checkbox v-if="entry.tasksLoaded && !isTableEntry(entry)" v-model="disputedOnly[id]">只看有异议（{{ disputedTasks[id]?.length ?? 0 }}）</el-checkbox>
+          <span class="filter-checks" data-guide="batch-filter">
+            <el-checkbox v-if="entry.tasksLoaded" v-model="missingOnly[id]">{{ isTableEntry(entry) ? '只看导出待处理' : '只看必填未填' }}（{{ missingTasks[id]?.length ?? 0 }}）</el-checkbox>
+            <el-checkbox v-if="entry.tasksLoaded && !isTableEntry(entry)" v-model="disputedOnly[id]">只看有异议（{{ disputedTasks[id]?.length ?? 0 }}）</el-checkbox>
+          </span>
+          <span v-if="!entry.tasksLoaded" class="poll-hint">正在获取任务，检查必填信息…</span>
           <span class="poll-hint">{{ isTableEntry(entry) ? '完整表格可直接导出；有修改时才需保存。' : '补齐并保存后标记自动更新；' }}筛选不改变“本批次全部”的导出范围。</span>
         </div>
+        <p data-guide="batch-tasks" class="guide-batch-hint">点击文件行或操作列中的按钮查看识别结果。</p>
         <el-table :data="visibleTasks(id, entry.tasks)" row-key="task_id" :row-class-name="({ row }) => hasMissingRequiredFields(row as Task) || hasExportDisputes(row as Task) ? 'required-missing-row' : ''" @selection-change="rows => selected[id] = rows" @row-click="row => onRowClick(id, row)">
           <template #empty>{{ missingOnly[id] || disputedOnly[id] ? '本批次没有符合筛选条件的任务' : entry.tasksLoaded ? '暂无任务' : '正在获取任务…' }}</template>
           <el-table-column type="selection" width="45" :reserve-selection="true" />
@@ -362,6 +373,7 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
             </template>
           </el-table-column>
         </el-table>
+        </div>
       </el-collapse-item>
       </section>
     </el-collapse>
@@ -372,6 +384,7 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
 </template>
 
 <style scoped>
+.guide-batch-hint { margin: 8px 16px; font-size: 13px; color: var(--el-text-color-secondary); }
 .board-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .calendar-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .group-heading { margin: 0; padding: 12px 16px; font-size: 14px; background: var(--el-fill-color-light); }
@@ -385,6 +398,8 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
 .status-cell { display: inline-flex; align-items: center; gap: 6px; }
 .status-warn { color: var(--el-color-danger); }
 .required-toolbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 0 16px 10px; }
+/* 指引锚点的控件组包裹：框住具体控件而非整条工具栏。 */
+.calendar-controls, .board-actions, .filter-checks { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .package-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 16px 10px; padding: 10px 14px; background: var(--el-color-primary-light-9); border: 1px solid var(--el-color-primary-light-8); border-radius: 10px; }
 .package-toolbar.has-warning { background: var(--el-color-warning-light-9); border-color: var(--el-color-warning-light-8); }
 .package-icon { color: var(--el-color-primary); font-size: 16px; flex: none; }

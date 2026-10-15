@@ -401,6 +401,106 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
 
+  /admin/diagnostics/status:
+    get:
+      tags: [system]
+      summary: 管理员读取日志写入与备份状态
+      description: 仅有效admin，返回前复验会话。普通账号403，未登录401。状态由独立维护线程约30秒刷新；null表示首次检查未完成，不代表正常。不暴露磁盘路径或业务内容。
+      responses:
+        '200':
+          description: 记录/备份/扫描状态、最近检查与成功备份时间、近24小时错误记录数、日志及归档占用
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DiagnosticStatus'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {description: DIAGNOSTICS_UNAVAILABLE}
+
+  /admin/diagnostics/events:
+    get:
+      tags: [system]
+      summary: 管理员查询历史技术日志
+      description: 原始及归档日志按record_id去重，timestamp/record_id降序；读取结束后复验会话。默认近30天，最大31天日期范围（UTC+8）。与业务审计及材料保留设置独立。
+      parameters:
+        - {$ref: '#/components/parameters/DiagnosticLevel'}
+        - {$ref: '#/components/parameters/DiagnosticDateFrom'}
+        - {$ref: '#/components/parameters/DiagnosticDateTo'}
+        - {$ref: '#/components/parameters/DiagnosticErrorId'}
+        - {$ref: '#/components/parameters/DiagnosticTaskId'}
+        - {name: cursor, in: query, schema: {type: string, maxLength: 160}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        '200':
+          description: 一页安全日志，next_cursor为空表示没有下一页
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/DiagnosticRecord'}}
+                  next_cursor: {type: string, nullable: true}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {description: DIAGNOSTICS_BUSY，已有查询或打包进行中}
+        '422': {description: 无效筛选或游标}
+        '503': {description: DIAGNOSTICS_UNAVAILABLE，历史记录读取失败}
+
+  /admin/diagnostics/bundle:
+    get:
+      tags: [system]
+      summary: 管理员下载筛选后的安全诊断包
+      description: 打包后复验有效管理员会话。仅events.jsonl和manifest.json，不包含材料、密钥或原始stderr。最多64MiB未压缩记录；超限时X-Diagnostics-Truncated=true且manifest.truncated=true，需要缩小筛选范围。
+      parameters:
+        - {$ref: '#/components/parameters/DiagnosticLevel'}
+        - {$ref: '#/components/parameters/DiagnosticDateFrom'}
+        - {$ref: '#/components/parameters/DiagnosticDateTo'}
+        - {$ref: '#/components/parameters/DiagnosticErrorId'}
+        - {$ref: '#/components/parameters/DiagnosticTaskId'}
+      responses:
+        '200':
+          description: ZIP诊断包
+          headers:
+            X-Diagnostics-Truncated: {schema: {type: string, enum: ['true', 'false']}}
+          content:
+            application/zip:
+              schema: {type: string, format: binary}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {description: DIAGNOSTICS_BUSY}
+        '422': {description: 无效日期范围或筛选}
+        '503': {description: DIAGNOSTICS_UNAVAILABLE}
+
+  /diagnostics/frontend:
+    post:
+      tags: [system]
+      summary: 已登录账号上报安全前端故障
+      description: 所有有效角色允许，同源Origin及CSRF；正文不超过8192字节，每账号每分钟最多10次。仅枚举、编号、代码行列，不接受message、URL、身份或材料。读取正文后复验会话，操作者由服务端填写。失败不递归上报，前端保留本页卡片。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [origin, operation, code, client_error_id]
+              properties:
+                origin: {type: string, enum: [vue, window, promise, http]}
+                operation: {type: string, description: 现有业务操作枚举，如interface、health、result、upload；任意自由文本不接受}
+                code: {type: string, enum: [CLIENT_ERROR, NETWORK_ERROR, REQUEST_TIMEOUT, INVALID_RESPONSE]}
+                client_error_id: {type: string, pattern: '^[A-Za-z0-9_-]{1,80}$'}
+                request_id: {type: string, nullable: true, pattern: '^[a-fA-F0-9-]{36}$'}
+                line: {type: integer, nullable: true, minimum: 0, maximum: 10000000}
+                column: {type: integer, nullable: true, minimum: 0, maximum: 10000000}
+      responses:
+        '202': {description: accepted=true，已写入安全记录}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '413': {description: 请求过大}
+        '422': {description: 非法字段或类型}
+        '429': {description: DIAGNOSTICS_RATE_LIMITED}
+        '503': {description: DIAGNOSTICS_UNAVAILABLE，不能确认保存}
+
   /health:
     get:
       tags: [system]
@@ -1392,7 +1492,7 @@ paths:
       tags:
       - export
       summary: 所选结果必填齐全且识别异议处理后导出XLSX
-      description: batch_id与task_ids二选一，versions须精确覆盖整个选择；任一无保存结果、必填缺值或明确异议未处理则409 EXPORT_BLOCKED且整次阻止。仅operator/admin可导出，无额外理由；NEED_REVIEW/FAILED已有结果、必填齐全且无未处理明确异议也可导出，明确的格式/校验失败和识别冲突增加导出门禁，但不改识别状态；未标定置信度、未联网核验和规则未覆盖仅提示。人员包第一张人员信息总表一包一行，包含所选材料类型的全部业务字段（含选填与空值），类型前缀区分同名字段，同类多份编号分组并附来源文件；体检总表保留全部17个profile字段及异常指标，户口成员和通用正文/键值完整保留。后附分类明细。普通批次格式不变。证件输出已保存业务字段；体检明细为单个18列审核记录台账，每报告一行，大项数量为本次体检项目意义清单count，异常原名/结果/诊断汇总一格；身高/体重记录测量而不计异常，小结不算项目，BMI保留，不默认正常、不自动分级/录取。内部状态、UUID和详情留在应用。
+      description: batch_id与task_ids二选一，versions须精确覆盖整个选择；任一无保存结果、必填缺值或明确异议未处理则409 EXPORT_BLOCKED且整次阻止。仅operator/admin可导出，无额外理由；NEED_REVIEW/FAILED已有结果、必填齐全且无未处理明确异议也可导出，明确的格式/校验失败和识别冲突增加导出门禁，但不改识别状态；未标定置信度、未联网核验和规则未覆盖仅提示。人员包第一张人员信息总表一包一行，包含所选材料类型的全部业务字段（含选填与空值），类型前缀区分同名字段，同类多份编号分组，不附加来源文件列，姓名候选不包含文件名；体检总表保留全部17个profile字段及异常指标，户口成员和通用正文/键值完整保留。后附分类明细。普通批次格式不变。证件输出已保存业务字段；体检明细为单个18列审核记录台账，每报告一行，大项数量为本次体检项目意义清单count，异常原名/结果/诊断汇总一格；身高/体重记录测量而不计异常，小结不算项目，BMI保留，不默认正常、不自动分级/录取。内部状态、UUID和详情留在应用。
       requestBody:
         required: true
         content:
@@ -1436,6 +1536,29 @@ components:
       description: 仅尚未创建任何web_users账号的旧本机CLI兼容；创建过账号后永久关闭该认证入口，浏览器不再使用Key。当前loopback/Host边界未放宽，远程部署另行资格验证。
 
   parameters:
+    DiagnosticLevel:
+      name: level
+      in: query
+      schema: {type: string, enum: [DEBUG, INFO, WARNING, ERROR, CRITICAL]}
+    DiagnosticDateFrom:
+      name: date_from
+      in: query
+      schema: {type: string, format: date}
+      description: 北京时间起始日，含当天
+    DiagnosticDateTo:
+      name: date_to
+      in: query
+      schema: {type: string, format: date}
+      description: 北京时间截止日，含当天
+    DiagnosticErrorId:
+      name: error_id
+      in: query
+      schema: {type: string, pattern: '^(?:e_[a-f0-9]{32}|l_[a-f0-9]{32}|[a-fA-F0-9-]{36})$'}
+      description: 错误编号、请求UUID或日志record_id
+    DiagnosticTaskId:
+      name: task_id
+      in: query
+      schema: {type: string, format: uuid}
     BatchId:
       name: batch_id
       in: path
@@ -1480,6 +1603,37 @@ components:
           schema: {$ref: '#/components/schemas/Error'}
 
   schemas:
+    DiagnosticStatus:
+      type: object
+      required: [recording_ok, backup_ok, scan_ok, last_check_at, last_backup_at, raw_bytes, archive_bytes, error_count_24h, latest_error_at, latest_error_id, raw_retention_days, backup_retention_days, raw_limit_bytes, archive_limit_bytes]
+      properties:
+        recording_ok: {type: boolean}
+        backup_ok: {type: boolean, nullable: true}
+        scan_ok: {type: boolean, nullable: true}
+        last_check_at: {type: string, format: date-time, nullable: true}
+        last_backup_at: {type: string, format: date-time, nullable: true}
+        raw_bytes: {type: integer, minimum: 0}
+        archive_bytes: {type: integer, minimum: 0}
+        raw_limit_bytes: {type: integer, minimum: 0}
+        archive_limit_bytes: {type: integer, minimum: 0}
+        error_count_24h: {type: integer, minimum: 0}
+        latest_error_at: {type: string, format: date-time, nullable: true}
+        latest_error_id: {type: string, nullable: true}
+        raw_retention_days: {type: integer, enum: [7]}
+        backup_retention_days: {type: integer, enum: [30]}
+    DiagnosticRecord:
+      type: object
+      required: [record_id, timestamp, level, app_version, component, event, description, context]
+      properties:
+        record_id: {type: string, pattern: '^l_[a-f0-9]{32}$'}
+        timestamp: {type: string, format: date-time}
+        level: {type: string, enum: [DEBUG, INFO, WARNING, ERROR, CRITICAL]}
+        app_version: {type: string, description: 旧日志为unknown}
+        component: {type: string}
+        event: {type: string}
+        description: {type: string, description: 根据固定事件及错误码生成的中文说明，不包含任意异常正文；旧记录读取时补充，不改变record_id}
+        context: {type: object, description: 白名单技术编号、阶段、操作、错误码和数值}
+        exceptions: {type: array, items: {type: object}, description: 有界异常类型与受控代码位置，不包含异常正文}
     WorkbenchPreferences:
       type: object
       additionalProperties: false
@@ -3633,7 +3787,7 @@ components:
         not:
           required:
           - batch_id
-      description: batch_id与task_ids二选一。若传versions必须精确覆盖整个选择；任一无保存结果、必填值缺失或明确异议未处理则409 EXPORT_BLOCKED且不导出任何部分。仅operator/admin可导出，viewer返回403；无额外理由门槛。NEED_REVIEW/FAILED已有结果、必填齐全且无未处理明确异议也可导出；明确格式/校验失败及冲突会阻止导出；未标定置信度、未联网核验、规则未覆盖和通用覆盖提醒不单独阻止，不修改审核/识别状态。XLSX按材料类型输出已保存的中文业务字段和来源文件；体检使用18列审核记录台账，异常指标包含检测结果和异常诊断，排除身高、体重、小结并保留BMI。内部状态、UUID和识别/审核元数据仅留在应用中。
+      description: batch_id与task_ids二选一。若传versions必须精确覆盖整个选择；任一无保存结果、必填值缺失或明确异议未处理则409 EXPORT_BLOCKED且不导出任何部分。仅operator/admin可导出，viewer返回403；无额外理由门槛。NEED_REVIEW/FAILED已有结果、必填齐全且无未处理明确异议也可导出；明确格式/校验失败及冲突会阻止导出；未标定置信度、未联网核验、规则未覆盖和通用覆盖提醒不单独阻止，不修改审核/识别状态。XLSX按材料类型输出已保存的中文业务字段，不附加来源文件列；体检使用18列审核记录台账，异常指标包含检测结果和异常诊断，排除身高、体重、小结并保留BMI。内部状态、UUID和识别/审核元数据仅留在应用中。
 
     PassportInfo:
       type: object

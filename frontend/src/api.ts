@@ -1,4 +1,6 @@
-import { recordDiagnostic, safeCode } from './diagnostics.ts'
+import { makeDiagnostic, recordDiagnostic, safeCode } from './diagnostics.ts'
+import { logQuery, parseLogPage, parseLogStatus } from './serverDiagnostics.ts'
+import type { LogFilters } from './serverDiagnostics.ts'
 import { responseFilename } from './table-review.ts'
 import type { DiagnosticCard, Operation } from './diagnostics.ts'
 import { isRecord, parseBatches, parseCatalogue, parseCreated, parseResult, parseTask, parseTasks, parseUser, parseManagedUser, parseManagedUsers, parseClassification } from './business.ts'
@@ -42,13 +44,14 @@ export class BusinessApi {
   private csrfToken: string | undefined
   private readonly fetcher: typeof fetch
   constructor(fetcher: typeof fetch = fetch) { this.fetcher = fetcher }
-  private async request<T>(path: string, operation: Operation, decoder: (body: unknown) => T, signal: AbortSignal, init: RequestInit = {}, binary = false): Promise<T> {
+  private async request<T>(path: string, operation: Operation, decoder: (body: unknown) => T, signal: AbortSignal, init: RequestInit = {}, binary = false, quiet = false): Promise<T> {
+    const diagnostic = quiet ? makeDiagnostic : recordDiagnostic
     const controller = new AbortController()
     const abort = () => controller.abort()
     signal.addEventListener('abort', abort, { once: true })
     if (signal.aborted) controller.abort()
     let timedOut = false
-    const timeout = setTimeout(() => { timedOut = true; controller.abort() }, operation === 'upload' ? 180000 : operation === 'classify' ? 30000 : operation === 'region_ocr' ? 20000 : operation === 'export' || operation === 'preview' ? 60000 : 15000)
+    const timeout = setTimeout(() => { timedOut = true; controller.abort() }, operation === 'upload' ? 180000 : operation === 'classify' ? 30000 : operation === 'region_ocr' ? 20000 : operation === 'export' || operation === 'preview' || operation === 'diagnostics' ? 60000 : 15000)
     let status: number | undefined
     let requestId: unknown
     try {
@@ -58,20 +61,40 @@ export class BusinessApi {
       const response = await this.fetcher.call(globalThis, `/api/v1${path}`, { ...init, headers, signal: controller.signal, credentials: 'same-origin', cache: 'no-store' })
       status = response.status
       requestId = response.headers.get('X-Request-ID')
-      const body: unknown = response.ok && binary ? { blob: await response.blob(), filename: responseFilename(response.headers.get('Content-Disposition')), stage: response.headers.get('X-Preview-Stage'), revision: response.headers.get('X-Result-Revision') } : await response.json().catch(() => null)
+      const body: unknown = response.ok && binary ? { blob: await response.blob(), filename: responseFilename(response.headers.get('Content-Disposition')), stage: response.headers.get('X-Preview-Stage'), revision: response.headers.get('X-Result-Revision'), truncated: response.headers.get('X-Diagnostics-Truncated') === 'true' } : await response.json().catch(() => null)
       signal.throwIfAborted()
       if (!response.ok) {
         const error = isRecord(body) && isRecord(body.error) ? body.error : isRecord(body) ? body : {}
         const fallback = status === 401 ? 'UNAUTHORIZED' : status === 403 ? 'FORBIDDEN' : status === 404 ? 'NOT_FOUND' : 'UNKNOWN_ERROR'
         const code = status === 401 ? fallback : safeCode(error.code) === 'UNKNOWN_ERROR' ? fallback : error.code
-        throw new ApiFailure(recordDiagnostic({ origin: 'http', operation, code, status, request_id: requestId, error_id: error.error_id, stage: error.stage }))
+        throw new ApiFailure(diagnostic({ origin: 'http', operation, code, status, request_id: requestId, error_id: error.error_id, stage: error.stage }))
       }
-      try { return decoder(body) } catch { throw new ApiFailure(recordDiagnostic({ origin: 'http', operation, code: 'INVALID_RESPONSE', status, request_id: requestId })) }
+      try { return decoder(body) } catch { throw new ApiFailure(diagnostic({ origin: 'http', operation, code: 'INVALID_RESPONSE', status, request_id: requestId })) }
     } catch (error) {
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
       if (error instanceof ApiFailure) throw error
-      throw new ApiFailure(recordDiagnostic({ origin: 'http', operation, code: timedOut ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR', status, request_id: requestId }))
+      throw new ApiFailure(diagnostic({ origin: 'http', operation, code: timedOut ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR', status, request_id: requestId }))
     } finally { clearTimeout(timeout); signal.removeEventListener('abort', abort) }
+  }
+  diagnosticStatus(signal: AbortSignal) {
+    return this.request('/admin/diagnostics/status', 'diagnostics', parseLogStatus, signal, {}, false, true)
+  }
+  diagnosticEvents(filters: LogFilters, cursor: string | null, signal: AbortSignal) {
+    return this.request('/admin/diagnostics/events?' + logQuery(filters, cursor), 'diagnostics', parseLogPage, signal, {}, false, true)
+  }
+  diagnosticBundle(filters: LogFilters, signal: AbortSignal) {
+    return this.request('/admin/diagnostics/bundle?' + logQuery(filters), 'diagnostics', value => {
+      if (!isRecord(value) || !(value.blob instanceof Blob)) throw new Error('INVALID_RESPONSE')
+      return { blob: value.blob, truncated: value.truncated === true }
+    }, signal, {}, true, true)
+  }
+  reportDiagnostic(card: DiagnosticCard, signal: AbortSignal) {
+    return this.request('/diagnostics/frontend', 'diagnostics', () => undefined, signal, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        origin: card.origin, operation: card.operation, code: card.code, client_error_id: card.error_id,
+        request_id: card.request_id, line: card.stack_frames[0]?.line ?? null, column: card.stack_frames[0]?.column ?? null,
+      }),
+    }, false, true)
   }
   async auth(signal: AbortSignal) {
     const user = await this.request('/auth/me', 'auth', parseUser, signal)

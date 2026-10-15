@@ -14,6 +14,8 @@ Preserve the concurrent HelpDrawer integration and qualify the current build wit
 
 The later [closable manual-image viewer](../bug-fix/2026-10-10-help-image-viewer-close.md) operates locally inside this iframe and preserves its reading position. It does not change the outer drawer or workbench draft ownership.
 
+The [contextual operation guide](2026-10-15-contextual-operation-guide.md) adds manual-start highlights beside the real controls. It retains this help drawer and draft ownership, and closes its own overlay on Esc without dismissing a result drawer or submitting edits.
+
 ## Alternatives considered
 
 - Restore the separate-tab entry: its earlier qualification proves state preservation and it needs no drawer state, but restoration would overwrite the concurrent frontend owner's working changes even though the current request only requires an accessible manual button. Preserve and verify the compatible integration instead.

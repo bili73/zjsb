@@ -27,7 +27,7 @@ const models: { key: 'glm_ocr' | 'paddleocr_vl'; name: string; role: string }[] 
 <template>
   <section class="engine-status">
     <el-card shadow="never" class="status-card">
-      <div class="status-head">
+      <div class="status-head" data-guide="engine-status">
         <el-tag :type="engine.summary.value.tone" size="large" effect="light">{{ engine.summary.value.label }}</el-tag>
         <span v-if="state.auto" class="conf">启动/停止过程中 · 每秒自动刷新</span>
         <span class="conf">上次检查 {{ formatTime(state.lastCheckedAt) }}</span>
@@ -51,7 +51,7 @@ const models: { key: 'glm_ocr' | 'paddleocr_vl'; name: string; role: string }[] 
 
     <template v-else-if="health">
       <el-card shadow="never" class="status-card">
-        <template #header>服务组件</template>
+        <template #header><span data-guide="engine-components">服务组件</span></template>
         <el-descriptions :column="3" border>
           <el-descriptions-item label="数据库">
             <el-tag :type="componentTag(health.components.db)" effect="plain">{{ health.components.db === 'ok' ? '正常' : '不可用' }}</el-tag>
@@ -93,7 +93,7 @@ const models: { key: 'glm_ocr' | 'paddleocr_vl'; name: string; role: string }[] 
           {{ reasonDescriptions[runtime.reason_code] }}
         </el-alert>
 
-        <div class="model-grid">
+        <div class="model-grid" data-guide="engine-models">
           <div v-for="model in models" :key="model.key" class="model-card">
             <div class="model-head">
               <span class="model-name">{{ model.name }}</span>

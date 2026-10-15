@@ -16,10 +16,14 @@ import EngineStatus from './components/EngineStatus.vue'
 import TaskResultDrawer from './components/TaskResultDrawer.vue'
 import DiagnosticsPanel from './components/DiagnosticsPanel.vue'
 import HelpDrawer from './components/HelpDrawer.vue'
+import OperationGuide from './components/OperationGuide.vue'
+import type { GuideContext } from './guide.ts'
 import AccountManagement from './components/AccountManagement.vue'
 import RequiredFieldSettings from './components/RequiredFieldSettings.vue'
 import RetentionSettings from './components/RetentionSettings.vue'
 import PasswordDialog from './components/PasswordDialog.vue'
+import { clearDiagnosticCards, setDiagnosticReporter } from './diagnostics.ts'
+import { createDiagnosticMonitor } from './serverDiagnostics.ts'
 
 const api = shallowRef<BusinessApi | null>(null)
 const user = shallowRef<User | null>(null)
@@ -39,6 +43,12 @@ const uploadReset = ref(0)
 const diagnosticsOpen = ref(false)
 const helpOpen = ref(false)
 const passwordOpen = ref(false)
+const logMonitor = createDiagnosticMonitor(handleUnauthorized)
+const logStatus = logMonitor.state
+let reportController = new AbortController()
+const logAttention = computed(() => logStatus.unseen || !!logStatus.error || !!logStatus.status &&
+  (!logStatus.status.recording_ok || logStatus.status.backup_ok === false || logStatus.status.scan_ok === false))
+function openDiagnostics() { diagnosticsOpen.value = true; logMonitor.acknowledge() }
 const drawerInfo = reactive({ open: false, batchId: '', taskId: '' })
 
 const canWrite = computed(() => user.value?.role === 'operator' || user.value?.role === 'admin')
@@ -51,8 +61,16 @@ const liveTask = computed<Task | null>(() => {
 })
 
 async function handleAuthenticated(client: BusinessApi, verified: User) {
+  reportController.abort(); reportController = new AbortController(); clearDiagnosticCards()
+  const reportingSignal = reportController.signal
+  let reportStart = Date.now(), reportCount = 0
+  setDiagnosticReporter(card => {
+    if (Date.now() - reportStart >= 60000) { reportStart = Date.now(); reportCount = 0 }
+    if (reportCount++ < 10) void client.reportDiagnostic(card, reportingSignal).catch(() => { /* Keep local download; no recursive report. */ })
+  })
   api.value = client
   user.value = verified
+  logMonitor.start(client, verified.role === 'admin')
   engine.setAuthenticated(true)
   void engine.refresh()
   monitor.start()
@@ -75,6 +93,7 @@ function profileChanged(updated: ManagedUser) {
 function endSession(message?: string) {
   // 多路 401（后台轮询与组件请求）可能同时汇聚；会话已结束时不再重复提示。
   if (!user.value && !api.value) return
+  setDiagnosticReporter(null); reportController.abort(); clearDiagnosticCards(); logMonitor.stop(); diagnosticsOpen.value = false
   catalogue.value = []
   api.value = null
   user.value = null
@@ -120,7 +139,7 @@ async function requiredFieldsSaved() {
   monitor.start()
 }
 
-const onVisibility = () => { monitor.onVisible(!document.hidden) }
+const onVisibility = () => { monitor.onVisible(!document.hidden); if (!document.hidden) void logMonitor.refresh() }
 onMounted(async () => {
   engine.install()
   void engine.refresh()
@@ -131,6 +150,7 @@ onMounted(async () => {
   finally { restoring.value = false }
 })
 onBeforeUnmount(() => {
+  setDiagnosticReporter(null); reportController.abort(); logMonitor.stop()
   sessionController.abort()
   document.removeEventListener('visibilitychange', onVisibility)
   engine.dispose()
@@ -160,8 +180,9 @@ onBeforeUnmount(() => {
           {{ engineSummary.label }}
         </el-tag>
         <div class="header-actions">
+          <OperationGuide :key="user.user_id" :context="activeTab as GuideContext" :scope="`page-${activeTab}`" :can-write="canWrite" :is-admin="user.role === 'admin'" :active="!drawerInfo.open && !helpOpen && !diagnosticsOpen && !passwordOpen" />
           <el-button :icon="Reading" text class="header-text-btn" @click="helpOpen = true">使用说明</el-button>
-          <el-button :icon="Tools" text class="header-text-btn" @click="diagnosticsOpen = true">诊断</el-button>
+          <el-badge is-dot :hidden="!logAttention"><el-button :icon="Tools" text class="header-text-btn" @click="openDiagnostics">诊断</el-button></el-badge>
         </div>
         <el-divider direction="vertical" />
         <el-dropdown @command="onHeaderCommand">
@@ -184,23 +205,23 @@ onBeforeUnmount(() => {
 
     <main class="app-main">
       <el-tabs v-model="activeTab">
-        <el-tab-pane label="上传识别" name="upload">
+        <el-tab-pane label="上传识别" name="upload" data-guide-scope="page-upload">
           <el-alert v-if="catalogueError" :closable="false" type="error">{{ catalogueError }}</el-alert>
           <UploadPanel :key="user.user_id" :api="api" :catalogue="catalogue" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" @submitted="handleSubmitted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
-        <el-tab-pane label="任务批次" name="batches">
-          <BatchBoard :api="api" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" :upload-reset="uploadReset" :catalogue="catalogue" @open-result="openResult" @batch-deleted="batchDeleted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
+        <el-tab-pane label="任务批次" name="batches" data-guide-scope="page-batches">
+          <BatchBoard :active="activeTab === 'batches' && !drawerInfo.open && !helpOpen && !diagnosticsOpen && !passwordOpen" :api="api" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" :upload-reset="uploadReset" :catalogue="catalogue" @open-result="openResult" @batch-deleted="batchDeleted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
-        <el-tab-pane label="引擎状态" name="engine">
+        <el-tab-pane label="引擎状态" name="engine" data-guide-scope="page-engine">
           <EngineStatus :engine="engine" />
         </el-tab-pane>
-        <el-tab-pane v-if="user.role === 'admin'" label="账号管理" name="accounts" lazy>
+        <el-tab-pane v-if="user.role === 'admin'" label="账号管理" name="accounts" data-guide-scope="page-accounts" lazy>
           <AccountManagement v-if="api" :api="api" :current-user="user" @change-password="passwordOpen = true" @unauthorized="handleUnauthorized" @profile-changed="profileChanged" />
         </el-tab-pane>
-        <el-tab-pane v-if="user.role === 'admin'" label="必填字段设置" name="required" lazy>
+        <el-tab-pane v-if="user.role === 'admin'" label="必填字段设置" name="required" data-guide-scope="page-required" lazy>
           <RequiredFieldSettings v-if="api" :api="api" @saved="requiredFieldsSaved" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
-        <el-tab-pane v-if="user.role === 'admin'" label="文件保留设置" name="retention" lazy>
+        <el-tab-pane v-if="user.role === 'admin'" label="文件保留设置" name="retention" data-guide-scope="page-retention" lazy>
           <RetentionSettings v-if="api" :api="api" @saved="monitor.start()" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
       </el-tabs>
@@ -211,7 +232,7 @@ onBeforeUnmount(() => {
     <TaskResultDrawer v-model:open="drawerInfo.open" :task="liveTask" :api="api" :monitor="monitor" :previews="previews" :can-write="canWrite" :catalogue="catalogue" @reviewed="reviewed" @bank-retried="drawerInfo.open = false; handleSubmitted()" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
     <PasswordDialog v-if="passwordOpen && api" :api="api" @close="passwordOpen = false" @saved="passwordChanged" @unauthorized="handleUnauthorized" />
   </div>
-  <DiagnosticsPanel v-model:open="diagnosticsOpen" />
+  <DiagnosticsPanel :key="user?.user_id ?? 'anonymous'" v-model:open="diagnosticsOpen" :api="api" :is-admin="user?.role === 'admin'" :status="logStatus.status" :status-error="logStatus.error" @unauthorized="handleUnauthorized" @refresh-status="logMonitor.refresh" />
   <HelpDrawer v-model:open="helpOpen" />
 </template>
 

@@ -16,6 +16,8 @@ import SourcePreview from './SourcePreview.vue'
 import ReviewEditor from './ReviewEditor.vue'
 import TableReview from './TableReview.vue'
 import GenericSources from './GenericSources.vue'
+import OperationGuide from './OperationGuide.vue'
+import { detailGuideContext } from '../guide.ts'
 import BankCardRecovery from './BankCardRecovery.vue'
 import { needsBankCrop } from '../bankCrop.ts'
 import { sourceSelection } from '../sourceLocation.ts'
@@ -188,7 +190,7 @@ async function runExport() {
 </script>
 
 <template>
-  <el-drawer
+  <el-drawer data-guide-scope="task-result"
     :model-value="open"
     size="90%"
     :close-on-click-modal="true"
@@ -200,14 +202,15 @@ async function runExport() {
     <template #header>
       <div class="drawer-head">
         <span class="drawer-title">{{ task?.file_name ?? (task ? `任务 ${task.task_id.slice(0, 8)}` : '识别结果') }}</span>
+        <OperationGuide label="本页指引" :context="detailGuideContext(result?.doc_type)" scope="task-result" :can-write="canWrite" :active="open && !!result && !loading && !saving" :reset-key="taskKey" />
         <el-tooltip
           v-if="result && task && exportBlocked"
           :content="exportBlocked"
           placement="bottom"
         >
-          <span><el-button :icon="Download" disabled>导出 Excel</el-button></span>
+          <span data-guide="detail-export"><el-button :icon="Download" disabled>导出 Excel</el-button></span>
         </el-tooltip>
-        <span v-else-if="result && task" class="drawer-actions">
+        <span v-else-if="result && task" class="drawer-actions" data-guide="detail-export">
           <el-button type="primary" :icon="Download" :loading="exporting" @click="runExport()">导出 Excel</el-button>
         </span>
       </div>

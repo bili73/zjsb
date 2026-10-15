@@ -60,7 +60,7 @@ def main():
         process_task(store, manager, task, logger, deadline=initial['deadline'])
         emit(dict(event='done', task_id=task['id'], run_id=task['run_id']))
     except Exception as error:
-        logger.exception('pipeline_failed', error)
+        logger.exception('pipeline_failed', error, task_id=initial.get('task_id'), run_id=initial.get('run_id'))
         raise SystemExit(1) from None
     finally:
         store.engine.dispose()

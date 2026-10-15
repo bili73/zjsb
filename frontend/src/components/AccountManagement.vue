@@ -124,7 +124,7 @@ onBeforeUnmount(() => { controller.abort(); form.password = ''; form.confirmatio
 <template>
   <div class="accounts">
     <el-card shadow="never">
-      <template #header><strong>创建账号</strong></template>
+      <template #header><strong data-guide="account-create">创建账号</strong></template>
       <el-alert v-if="error" :title="error" type="error" :closable="false" />
       <el-alert v-if="success" :title="success" type="success" :closable="false" />
       <el-form label-position="top" @submit.prevent="create">
@@ -139,7 +139,7 @@ onBeforeUnmount(() => { controller.abort(); form.password = ''; form.confirmatio
       </el-form>
     </el-card>
     <el-card shadow="never">
-      <template #header><div class="list-title"><strong>已有账号</strong><el-button :loading="loading" :disabled="busy" @click="refresh">刷新列表</el-button></div></template>
+      <template #header><div class="list-title" data-guide="account-list"><strong>已有账号</strong><el-button :loading="loading" :disabled="busy" @click="refresh">刷新列表</el-button></div></template>
       <el-table :data="users" v-loading="loading">
         <el-table-column label="账号" min-width="160"><template #default="{ row }">{{ row.username }} <el-tag v-if="row.user_id === currentUser.user_id" size="small">当前账号</el-tag></template></el-table-column>
         <el-table-column prop="display_name" label="姓名" min-width="160" />
@@ -152,7 +152,7 @@ onBeforeUnmount(() => { controller.abort(); form.password = ''; form.confirmatio
           <el-button link type="danger" :disabled="busy || protectedAccount(row as ManagedUser)" @click="change(row as ManagedUser, 'delete')">删除</el-button>
         </template></el-table-column>
       </el-table>
-      <p class="account-hint">当前登录账号和最后一个启用的管理员不能禁用或删除。删除账号会保留历史识别记录。</p>
+      <p class="account-hint" data-guide="account-protection">当前登录账号和最后一个启用的管理员不能禁用或删除。删除账号会保留历史识别记录。</p>
     </el-card>
     <PasswordDialog v-if="passwordTarget" :api="api" :target="passwordTarget" @close="passwordTarget = undefined" @saved="passwordSaved" @unauthorized="emit('unauthorized')" />
     <el-dialog :model-value="!!editing" title="编辑账号姓名" width="420px" :close-on-click-modal="false" :close-on-press-escape="!savingName" :show-close="!savingName" @close="editing = undefined">

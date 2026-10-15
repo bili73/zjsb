@@ -213,7 +213,7 @@ void (async () => {
       <span class="tools-spacer" />
       <el-button size="small" :disabled="!canWrite" @click="reloadAll()">重新读取</el-button>
       <el-tooltip :content="ocrTip" placement="left" effect="dark">
-        <span class="ocr-entry"><el-button size="small" type="primary" :icon="Crop" :disabled="!api || !canWrite || !active || !ocrEnabled" @click="openOcr">框选识别文字</el-button></span>
+        <span class="ocr-entry" data-guide="source-tools"><el-button size="small" type="primary" :icon="Crop" :disabled="!api || !canWrite || !active || !ocrEnabled" @click="openOcr">框选识别文字</el-button></span>
       </el-tooltip>
     </div>
     <p v-if="task.doc_type === 'MEDICAL_REPORT'" class="conf">无可靠定位框时显示整页。来源框仅叠加在版本一致的校正页，不能证明模型已读完整页。</p>

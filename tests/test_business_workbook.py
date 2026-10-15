@@ -35,7 +35,9 @@ class BusinessWorkbookTests(unittest.TestCase):
         book=self.book(r)
         self.assertEqual(book.sheetnames,['毕业证'])
         row=records(book['毕业证'])[0]
-        self.assertEqual(row['来源文件'],'毕业证.jpg')
+        self.assertNotIn('来源文件',row)
+        self.assertNotIn('毕业证.jpg',str(list(book.active.values)))
+        self.assertEqual(book.active['A2'].value,'修正姓名')
         self.assertEqual(row['姓名'],'修正姓名')
         self.assertEqual(row['学校名称'],'修正大学')
         self.assertEqual(row['毕业日期'],'2024-06')
@@ -79,15 +81,25 @@ class BusinessWorkbookTests(unittest.TestCase):
 
     def test_household_members_generic_chunks_and_layout(self):
         household=extract_result([], 'HOUSEHOLD_REGISTER')
+        household['_source_filename']='household-source.png'
         household['members']=[dict(name=dict(key='name',value='成员'),id_number=dict(key='id_number',value='001234567890123456'))]
-        generic=dict(doc_type='GENERIC',generic=dict(full_text='旧文本',key_values=[]),
-                     reviewed_generic=dict(full_text='文本'*18000,key_values=[dict(key='键',value='=1+2')]))
+        generic=dict(doc_type='GENERIC',_source_filename='generic-source.png',generic=dict(full_text='旧文本',key_values=[]),
+                     reviewed_generic=dict(full_text='文本'*18000,key_values=[dict(key='键',value='=1+2'),
+                         dict(key='来源文件',value='原表业务内容')]))
         book=self.book(household,generic)
         self.assertEqual(''.join(row[-1] for row in list(book['通用识别文本'].values)[1:]),generic['reviewed_generic']['full_text'])
         self.assertEqual(records(book['户口成员'])[0]['公民身份号码'],'001234567890123456')
+        self.assertEqual([c.value for c in book['通用识别文本'][1]],['分段序号','文本'])
+        self.assertEqual([c.value for c in book['通用识别字段'][1]],['字段','内容'])
+        self.assertEqual(records(book['通用识别字段'])[1],dict(字段='来源文件',内容='原表业务内容'))
+        self.assertEqual(book['户口成员']['A1'].value,'成员序号')
+        self.assertEqual(book['户口成员']['A2'].value,1)
         for sheet in book:
+            self.assertNotIn('来源文件',[c.value for c in sheet[1]])
+            self.assertNotIn('household-source.png',str(list(sheet.values)))
+            self.assertNotIn('generic-source.png',str(list(sheet.values)))
             self.assertEqual(sheet.freeze_panes,'A2')
-            self.assertTrue(sheet.auto_filter.ref)
+            self.assertEqual(sheet.auto_filter.ref,sheet.dimensions)
             self.assertEqual(sheet['A1'].font.bold,True)
             self.assertTrue(all(c.fill.fgColor.rgb[-6:]=='EF760E' for c in sheet[1]))
             self.assertTrue(sheet.column_dimensions['A'].width>=8)

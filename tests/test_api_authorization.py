@@ -17,9 +17,10 @@ class APIAuthorizationTests(unittest.TestCase):
     # This inventory deliberately fails when an endpoint is added without an access decision.
     protected = {
         'GET': ['health', 'auth/me', 'auth/me/workbench', 'admin/users', 'admin/required-fields', 'admin/retention', 'doc-types',
+                'admin/diagnostics/status', 'admin/diagnostics/events', 'admin/diagnostics/bundle',
                 'batches', 'batches/{batch_id}', 'batches/{batch_id}/tasks', 'tasks',
                 'tasks/{task_id}', 'tasks/{task_id}/result', 'tasks/{task_id}/preview'],
-        'POST': ['auth/logout', 'auth/password', 'admin/users', 'admin/users/{user_id}/password',
+        'POST': ['auth/logout', 'auth/password', 'diagnostics/frontend', 'admin/users', 'admin/users/{user_id}/password',
                  'classify', 'batches', 'batches/{batch_id}/append', 'export',
                  'tasks/{task_id}/review', 'tasks/{task_id}/ocr-region',
                  'tasks/{task_id}/preview', 'tasks/{task_id}/reveal',
@@ -94,7 +95,7 @@ class APIAuthorizationTests(unittest.TestCase):
         self.assert_denied_everywhere(operator, 403, lambda m, p: '/admin/' in p or m == 'DELETE')
         _, viewer, _ = self.account('viewer', 'viewer')
         self.assert_denied_everywhere(viewer, 403, lambda m, p:
-            '/admin/' in p or '/preview' in p or (m != 'GET' and '/auth/' not in p))
+            '/admin/' in p or '/preview' in p or (m != 'GET' and '/auth/' not in p and p != '/api/v1/diagnostics/frontend'))
 
     def test_health_is_redacted_publicly_and_full_only_after_login(self):
         self.assertEqual(self.client.get('/health').json(), {'status': 'ok'})

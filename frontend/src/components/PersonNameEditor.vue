@@ -36,7 +36,7 @@ async function save() {
 </script>
 <template>
   <div class="person-name-editor">
-    <div class="name-row"><strong>材料归属：{{ batch.person_name || '姓名待确认' }}</strong>
+    <div class="name-row" data-guide="package-name"><strong>材料归属：{{ batch.person_name || '姓名待确认' }}</strong>
       <el-button v-if="canWrite && !editing" size="small" @click="edit()">{{ batch.person_name ? '修改姓名' : '填写 / 确认姓名' }}</el-button>
     </div>
     <div v-if="editing" class="name-row">

@@ -315,7 +315,7 @@ async function submit() {
     </el-alert>
 
     <div v-else class="mode-bar" role="group" aria-label="上传方式">
-      <div class="mode-switch">
+      <div class="mode-switch" data-guide="upload-mode">
         <button type="button" class="mode-option" :class="{ active: personPackage }" :disabled="submitting" :aria-pressed="personPackage" @click="personPackage = true">
           <el-icon><User /></el-icon>按人员整理
         </button>
@@ -334,7 +334,7 @@ async function submit() {
         <span class="type-cards-tools">
           <template v-if="!editMode">
             <span v-if="hiddenProfiles.length" class="type-cards-note">已收纳 {{ hiddenProfiles.length }} 个类型</span>
-            <el-button link type="primary" :disabled="!preferenceState.loaded || preferenceState.loading" @click="enterEditMode">{{ preferenceState.loading ? '读取个人布局…' : '自定义入口' }}</el-button>
+            <el-button link type="primary" data-guide="upload-layout" :disabled="!preferenceState.loaded || preferenceState.loading" @click="enterEditMode">{{ preferenceState.loading ? '读取个人布局…' : '自定义入口' }}</el-button>
           </template>
           <template v-else>
             <span class="type-cards-note">长按拖动交换 · 点 ✕ 收纳 · 点「+」从收纳箱点选添加</span>
@@ -347,7 +347,7 @@ async function submit() {
           </template>
         </span>
       </div>
-      <div class="type-cards">
+      <div class="type-cards" data-guide="upload-types">
         <button
           v-for="profile in visibleProfiles"
           :key="profile.doc_type"
@@ -422,7 +422,7 @@ async function submit() {
         <span>无需先填写姓名，识别后会显示姓名建议；请只放入同一人的材料。</span>
       </div>
       <el-alert type="info" :closable="false" class="upload-tip">{{ mixed ? '自动分类只是建议，可以直接修改下方类型。每个文件应是一种材料；混合了不同证件的PDF请先拆分。部分类型尚缺真实样本验收，识别结果仍需对照原件核对。' : sampleQualification(docType) }}</el-alert>
-      <el-upload
+      <el-upload data-guide="upload-files"
         v-model:file-list="fileList"
         drag
         multiple
@@ -440,7 +440,7 @@ async function submit() {
         </template>
       </el-upload>
 
-      <div v-if="mixed && entries.length" class="package-summary" aria-label="已选材料统计">
+      <div v-if="mixed && entries.length" class="package-summary" data-guide="upload-classification" aria-label="已选材料统计">
         <el-tag v-for="[type, count] in typeCounts" :key="type" size="small" effect="plain">{{ docTypes[type] }} × {{ count }}</el-tag>
         <el-tag v-if="unknownCount" size="small" type="warning" effect="plain">待选择类型 × {{ unknownCount }}</el-tag>
       </div>
@@ -476,7 +476,7 @@ async function submit() {
         <div class="upload-actions">
           <el-button v-if="selectedFiles.length && !submitting" @click="clearFiles">一键清除</el-button>
           <el-button v-if="submitting" @click="cancelSubmit">取消上传</el-button>
-          <el-button type="primary" :loading="submitting" :disabled="!canWrite || !catalogue.length || !!unknownCount || !!invalidReason" @click="submit">
+          <el-button type="primary" data-guide="upload-submit" :loading="submitting" :disabled="!canWrite || !catalogue.length || !!unknownCount || !!invalidReason" @click="submit">
             {{ submitting ? '正在上传…' : `${mixed ? (targetBatch ? '统一追加' : '整包提交') : '开始识别'}（${selectedFiles.length || ''}）` }}
           </el-button>
         </div>

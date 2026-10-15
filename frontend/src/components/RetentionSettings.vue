@@ -45,15 +45,15 @@ onBeforeUnmount(() => controller.abort())
     <template #header><div class="retention-heading"><strong>文件保留设置</strong><el-button :disabled="saving || loading" @click="refresh">重新读取</el-button></div></template>
     <el-alert type="info" :closable="false">全平台统一生效，包含已有文件。每份文件从原上传时间计算；追加上传、重新识别和保存修改不会延长原有文件的期限。</el-alert>
     <el-alert v-if="error" type="error" :closable="false">{{ error }}</el-alert>
-    <p v-if="settings">当前设置：<strong>{{ retentionLabel(settings.days) }}</strong>；影响数量统计于 {{ formatTime(settings.assessed_at) }}（UTC+8）。</p>
+    <p v-if="settings" data-guide="retention-current">当前设置：<strong>{{ retentionLabel(settings.days) }}</strong>；影响数量统计于 {{ formatTime(settings.assessed_at) }}（UTC+8）。</p>
     <el-form label-position="top" @submit.prevent="save">
-      <el-form-item label="文件保留时长">
+      <el-form-item label="文件保留时长" data-guide="retention-options">
         <el-radio-group v-model="selected" :disabled="saving || loading || !settings">
           <el-radio :value="7">7天</el-radio><el-radio :value="15">15天</el-radio><el-radio :value="30">30天</el-radio><el-radio value="never">永不清除</el-radio>
         </el-radio-group>
       </el-form-item>
       <p>到期清理包含原件、识别结果和修改历史；正在处理的文件延后清理。永不清除时仍可手动删除。已清理的数据不能通过延长期限恢复。</p>
-      <el-button type="primary" native-type="submit" :disabled="!settings || loading" :loading="saving">保存设置</el-button>
+      <el-button data-guide="retention-save" type="primary" native-type="submit" :disabled="!settings || loading" :loading="saving">保存设置</el-button>
     </el-form>
   </el-card>
 </template>

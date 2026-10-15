@@ -53,12 +53,12 @@ onBeforeUnmount(() => controller?.abort())
     <el-alert type="info" :closable="false">设置按材料类型统一生效，包括已识别的历史任务；仅影响必填标记和导出条件，不改识别内容。自定义时选中项必填，未选中项选填；恢复默认会恢复原有的条件必填规则。</el-alert>
     <el-alert v-if="error" type="error" :closable="false">{{ error }}</el-alert>
     <el-form label-position="top" @submit.prevent="save()">
-      <el-form-item label="材料类型"><el-select :model-value="kind" :disabled="saving || loading" aria-label="设置材料类型" @update:model-value="changeType"><el-option v-for="item in settings?.items ?? []" :key="item.doc_type" :label="item.label" :value="item.doc_type" /></el-select></el-form-item>
+      <el-form-item label="材料类型" data-guide="required-type"><el-select :model-value="kind" :disabled="saving || loading" aria-label="设置材料类型" @update:model-value="changeType"><el-option v-for="item in settings?.items ?? []" :key="item.doc_type" :label="item.label" :value="item.doc_type" /></el-select></el-form-item>
       <template v-if="profile">
         <p><el-tag :type="profile.uses_defaults ? 'info' : 'warning'">{{ profile.uses_defaults ? '使用默认规则' : '使用自定义规则' }}</el-tag> 已选 {{ selected.length }} 项必填</p>
-        <el-checkbox-group v-model="selected" :disabled="saving" class="field-options"><el-checkbox v-for="field in profile.fields" :key="field.key" :value="field.key" :disabled="!field.editable">{{ field.label }}{{ field.editable ? '' : '（自动计算，不可设为必填）' }}</el-checkbox></el-checkbox-group>
+        <el-checkbox-group v-model="selected" :disabled="saving" class="field-options" data-guide="required-fields"><el-checkbox v-for="field in profile.fields" :key="field.key" :value="field.key" :disabled="!field.editable">{{ field.label }}{{ field.editable ? '' : '（自动计算，不可设为必填）' }}</el-checkbox></el-checkbox-group>
         <el-alert v-if="!selected.length" type="warning" :closable="false">未选择任何必填项：保存后，该类型的空白业务字段不会阻止导出；仍需有已保存的识别结果。</el-alert>
-        <div class="settings-actions"><el-button :disabled="saving" @click="selected = editable.map(field => field.key)">全选可填写项</el-button><el-button :disabled="saving" @click="selected = []">清空选择</el-button><el-button type="primary" native-type="submit" :loading="saving">保存设置</el-button><el-button :disabled="saving" @click="save(true)">恢复默认</el-button></div>
+        <div class="settings-actions"><el-button :disabled="saving" @click="selected = editable.map(field => field.key)">全选可填写项</el-button><el-button :disabled="saving" @click="selected = []">清空选择</el-button><el-button type="primary" data-guide="required-save" native-type="submit" :loading="saving">保存设置</el-button><el-button :disabled="saving" @click="save(true)">恢复默认</el-button></div>
       </template>
     </el-form>
   </el-card>

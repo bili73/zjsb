@@ -23,6 +23,7 @@ from ocr_app.runtime import ModelManager, ModelProcess
 
 class DiagnosticTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(patch.dict(os.environ, {'OCR_LOG_LEVEL': 'INFO'}))
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
@@ -76,7 +77,10 @@ class DiagnosticTests(unittest.TestCase):
         material.write_text('private', encoding='utf-8')
         os.utime(material, (old, old))
         d.init_diagnostics(self.root, 'client')
+        from ocr_app.diagnostic_archive import maintenance, owned_archives
+        maintenance(self.root)
         self.assertFalse(logger.path.exists())
+        self.assertEqual(len(owned_archives(self.root)), 1)
         self.assertTrue(legacy.exists())
         self.assertTrue(material.exists())
 
@@ -143,7 +147,7 @@ class DiagnosticTests(unittest.TestCase):
         self.assertEqual(len(files), 2)
         content = '\n'.join(path.read_text(encoding='utf-8') for path in files)
         self.assertNotIn('RAW_MATERIAL_SECRET', content)
-        self.assertIn('stderr_drained', content)
+        self.assertIn('spawn_completed', content)
         self.assertFalse(list(self.root.glob('*.stderr.log')))
 
     def test_manager_forwards_memory_image_and_safe_correlation(self):

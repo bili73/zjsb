@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 
 export const errorMessages = {
+  DIAGNOSTICS_BUSY: '日志正在读取，请稍后重试。', DIAGNOSTICS_UNAVAILABLE: '日志记录或读取暂不可用，请下载本页诊断信息并联系管理员。', DIAGNOSTICS_RATE_LIMITED: '诊断上报过于频繁，请稍后重试。',
   REGION_OCR_BUSY: '框选识别正在处理中，请稍后再试。', REGION_OCR_TIMEOUT: '框选识别超时，请缩小选区重试或手工填写。',
   REGION_OCR_EMPTY: '选区没有读出文字，请重新框选或手工填写。', REGION_OCR_UNAVAILABLE: '框选识别暂不可用，请手工填写；持续不可用时请联系管理员检查或重启后端。',
   EXPORT_BLOCKED: '选择中有任务必填未填、识别有异议或表格待处理，整份导出已阻止；请查看任务提示并处理。', EXPORT_VALUE_TOO_LONG: '导出内容超过 Excel 的单元格或列数上限，请拆分过长字段或减少本次选择的材料。', PREVIEW_MASK_UNAVAILABLE: '当前服务的预览合同已变化，请刷新或确认服务版本。', BANK_CROP_REQUIRED: '请裁选完整卡号一行，去除其他内容。', BANK_UNSAFE_CONTENT: '卡号区域含其他内容，请重新紧裁剪。',
@@ -32,12 +33,12 @@ export const errorMessages = {
   CLIENT_ERROR: '界面发生错误，请复制诊断信息交给维护人员。', UNKNOWN_ERROR: '操作未完成，请查看错误编号。',
 } as const
 export type ErrorCode = keyof typeof errorMessages
-export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'retention_read' | 'retention_save' | 'required_settings_read' | 'required_settings_save' | 'workbench_layout_read' | 'workbench_layout_save' | 'workbench_default_save' | 'batch_list' | 'batch_tasks' | 'batch_delete' | 'person_update' | 'upload' | 'classify' | 'region_ocr' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export'
+export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'retention_read' | 'retention_save' | 'required_settings_read' | 'required_settings_save' | 'workbench_layout_read' | 'workbench_layout_save' | 'workbench_default_save' | 'batch_list' | 'batch_tasks' | 'batch_delete' | 'person_update' | 'upload' | 'classify' | 'region_ocr' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export' | 'diagnostics'
 export type Stage = 'BOOTSTRAP' | 'QUEUED' | 'PREPROCESSING' | 'OCR' | 'EXTRACTING' | 'VALIDATING' | 'PUBLISHING' | 'CLEANUP'
 export type DiagnosticOrigin = 'http' | 'task' | 'vue' | 'window' | 'promise'
 const stages = new Set(['BOOTSTRAP', 'QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING', 'PUBLISHING', 'CLEANUP'])
 const origins = new Set(['http', 'task', 'vue', 'window', 'promise'])
-const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save', 'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks', 'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export'])
+const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save', 'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks', 'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export', 'diagnostics'])
 const exceptionNames = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'URIError', 'EvalError', 'DOMException'])
 export function safeId(value: unknown): string | null {
   return typeof value === 'string' && (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) || /^e_[A-Za-z0-9]{1,80}$/.test(value)) ? value : null
@@ -62,6 +63,9 @@ export interface DiagnosticCard {
   stack_frames: { module: 'frontend'; line: number; column: number }[]
 }
 export const diagnosticCards = ref<DiagnosticCard[]>([])
+let reporter: ((card: DiagnosticCard) => void) | null = null
+export function setDiagnosticReporter(value: typeof reporter) { reporter = value }
+export function clearDiagnosticCards() { diagnosticCards.value = [] }
 let appVersion = 'unknown'
 export function setDiagnosticVersion(value: string) { appVersion = /^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(value) ? value : 'unknown' }
 
@@ -92,6 +96,9 @@ export function recordDiagnostic(input: Parameters<typeof makeDiagnostic>[0]): D
   const existing = diagnosticCards.value.find(item => item.error_id === card.error_id)
   if (existing) return existing
   diagnosticCards.value = [card, ...diagnosticCards.value].slice(0, 20)
+  if (reporter && (['vue', 'window', 'promise'].includes(card.origin) || ['NETWORK_ERROR', 'REQUEST_TIMEOUT', 'INVALID_RESPONSE'].includes(card.code))) {
+    try { reporter(card) } catch { /* Reporting must never fail the user's operation. */ }
+  }
   return card
 }
 export function installGlobalDiagnostics() {

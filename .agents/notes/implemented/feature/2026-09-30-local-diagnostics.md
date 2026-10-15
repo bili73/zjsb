@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend, scripts, tests, collect-diagnostics.cmd, SPEC.md, openapi.yaml, RUNTIME.md
-Last-verified: 2026-10-08
+Last-verified: 2026-10-15
 
 ## Problem
 
@@ -10,7 +10,7 @@ Model reloads overwrite current stderr files. Caught errors lack stack locations
 
 ## Decision
 
-Diagnostics initialize before launcher configuration and business imports. One structured JSONL writer per process instance rotates at 10 MiB across five files; startup/export enforce seven-day retention. Records associate session, request, error and optional task/run/page/region IDs. Safe exception types, bounded codes and code-frame locations exclude locals, source text and raw exception/request bodies. First failure and cleanup failure remain distinct. Unreviewed third-party stderr is drained rather than exported; parser stdout is redirected away from the private JSON protocol.
+Diagnostics initialize before launcher configuration and business imports. One structured JSONL writer per process instance rotates at 10 MiB across five files. The [verified automatic archive extension](2026-10-15-diagnostic-levels-and-backup.md) provides severity, administrator search, seven-day raw retention and thirty-day verified backups; maintenance replaces destructive startup cleanup, and rotation archives before discarding a segment. Records associate session, request, error and optional task/run/page/region IDs. Safe exception types, bounded codes and code-frame locations exclude locals, source text and raw exception/request bodies. First failure and cleanup failure remain distinct. Unreviewed third-party stderr is drained rather than exported; parser stdout is redirected away from the private JSON protocol.
 
 A standalone collector exports only revalidated diagnostic records and a safe runtime manifest, independently of HTTP and model dependencies. Frontend HTTP, network and render failures have safe copy/download summaries; their backend error/request IDs correlate to persisted records. Screenshots are auxiliary: no continuous desktop capture; document evidence stays in encrypted business storage outside diagnostic bundles. Logging failure prints DIAGNOSTICS_UNAVAILABLE and never prevents process cleanup.
 

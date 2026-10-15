@@ -38,7 +38,7 @@ class PersonWorkbookTests(unittest.TestCase):
     def test_all_profile_fields_including_blank_optional_and_medical_catalogue(self):
         selected = [document(kind, gender='F', school_name='修正学校',
                     certificate_no='00123456789012345678', exam_projects='内科；眼科',
-                    age=0, major='=1+2') for kind in LABELS if kind != 'GENERIC']
+                    age=0, major='=1+2') for kind in LABELS if kind not in {'GENERIC','TABLE'}]
         package = dict(person_name='人工姓名', results=selected)
         before = copy.deepcopy(package)
         book = exported(package)
@@ -51,7 +51,15 @@ class PersonWorkbookTests(unittest.TestCase):
             kind = result['doc_type']
             for field in profile(kind):
                 self.assertIn(LABELS[kind] + '·' + field['label'], row)
-            self.assertEqual(row[LABELS[kind] + '·来源文件'], result['_source_filename'])
+        for worksheet in book:
+            headers=[c.value for c in worksheet[1]]
+            self.assertTrue(all(h and not h.endswith('来源文件') for h in headers))
+            self.assertEqual(worksheet.auto_filter.ref,worksheet.dimensions)
+            for result in selected:
+                self.assertNotIn(result['_source_filename'],str(list(worksheet.values)))
+        self.assertIn('合成姓名：',row['姓名候选'])
+        self.assertIn('毕业证',row['姓名候选'])
+        self.assertIn('差异',row['姓名状态'])
         self.assertIsNone(row['毕业证·发证日期'])
         self.assertEqual(row['毕业证·学校名称'], '修正学校')
         self.assertEqual(row['毕业证·证书编号'], '00123456789012345678')
@@ -83,9 +91,9 @@ class PersonWorkbookTests(unittest.TestCase):
         self.assertEqual(a['毕业证1·专业'], '专业一')
         self.assertEqual(a['毕业证2·学校名称'], '乙校')
         self.assertIsNone(a['毕业证2·专业'])
-        self.assertEqual(a['毕业证2·来源文件'], '硕士.png')
+        self.assertNotIn('毕业证2·来源文件',a)
         self.assertEqual(b['毕业证1·学校名称'], '丙校')
-        self.assertIsNone(b['毕业证2·来源文件'])
+        self.assertIsNone(b['毕业证2·学校名称'])
         self.assertIsNone(a['银行卡·卡号'])
         self.assertEqual(b['银行卡·卡号'], '0001234567890123456')
         self.assertEqual(book['毕业证'].max_row, 4)
@@ -132,7 +140,9 @@ class PersonWorkbookTests(unittest.TestCase):
         with self.assertRaises(TaskError) as caught:
             exported(dict(person_name=None, results=[document('DIPLOMA', major='x' * 32768)]))
         self.assertEqual(caught.exception.code, 'EXPORT_VALUE_TOO_LONG')
-        documents = [document('BUSINESS_LICENSE', filename=str(i)) for i in range(1100)]
+        # Cross the actual business-column limit without relying on removed metadata.
+        count = 16384 // len(profile('BUSINESS_LICENSE')) + 1
+        documents = [document('BUSINESS_LICENSE', filename=str(i)) for i in range(count)]
         with self.assertRaises(TaskError) as caught:
             exported(dict(person_name=None, results=documents))
         self.assertEqual(caught.exception.code, 'EXPORT_VALUE_TOO_LONG')

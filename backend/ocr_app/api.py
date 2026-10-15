@@ -36,10 +36,31 @@ class RuntimeSnapshot(BaseModel):
 def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logger=None) -> FastAPI:
     storage_ready = False
     startup_failed = False
+    from .diagnostic_service import DiagnosticService
+    diagnostic_service = DiagnosticService(logger) if logger else None
+
+    def request_context(request):
+        endpoint = getattr(request.scope.get('endpoint'), '__name__', '')
+        operations = {'upload': 'upload', 'append_upload': 'upload', 'export': 'export', 'review': 'review',
+                      'result': 'result', 'preview': 'preview', 'cancel': 'cancel', 'rerun': 'rerun',
+                      'login': 'auth', 'logout': 'auth', 'me': 'auth', 'batches': 'batch_list', 'tasks': 'batch_tasks',
+                      'classify_upload': 'classify', 'region_ocr': 'region_ocr', 'delete_batch': 'batch_delete',
+                      'batch_tasks': 'batch_tasks', 'confirm_person': 'person_update', 'full_preview': 'preview',
+                      'users': 'account_list', 'create_user': 'account_create', 'update_user': 'account_update',
+                      'delete_user': 'account_delete', 'reset_user_password': 'password_change', 'change_password': 'password_change',
+                      'retention_settings': 'retention_read', 'update_retention_settings': 'retention_save',
+                      'required_fields': 'required_settings_read', 'update_required_fields': 'required_settings_save',
+                      'workbench_layout': 'workbench_layout_read', 'update_workbench_layout': 'workbench_layout_save',
+                      'update_workbench_default': 'workbench_default_save'}
+        return dict(request_id=getattr(request.state, 'request_id', None), http_method=request.method,
+                    operation=operations.get(endpoint, 'diagnostics' if 'diagnostic' in endpoint else 'interface'),
+                    **{key: str(value) for key, value in request.path_params.items() if key in {'task_id', 'batch_id'}})
 
     @asynccontextmanager
     async def lifespan(app):
         nonlocal storage_ready, startup_failed
+        if diagnostic_service:
+            diagnostic_service.start()
         try:
             storage_dir.mkdir(parents=True, exist_ok=True)
             with TemporaryFile(dir=storage_dir) as probe:
@@ -66,18 +87,23 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
             except Exception as error:
                 if logger:
                     logger.exception('runtime_close_failed', error)
-            if business:
-                business.close()
+            try:
+                if business:
+                    business.close()
+            finally:
+                if diagnostic_service:
+                    diagnostic_service.close()
 
     app = FastAPI(version='1.26.0', lifespan=lifespan, docs_url=None,
                   redoc_url=None, openapi_url=None)
+    app.state.diagnostics = diagnostic_service
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost', '127.0.0.1'],
                        www_redirect=False)
 
     @app.exception_handler(TaskError)
     async def task_error(request, error):
         request_id = getattr(request.state, 'request_id', str(uuid.uuid4()))
-        error_id = logger.exception('request_failed', error, request_id=request_id, error_code=error.code) if logger else str(uuid.uuid4())
+        error_id = logger.exception('request_failed', error, **request_context(request), http_status=error.status, error_code=error.code) if logger else str(uuid.uuid4())
         payload = dict(code=error.code, message=error.message, error_id=error_id, request_id=request_id)
         if getattr(error, 'details', None) is not None:
             payload['details'] = error.details
@@ -101,13 +127,14 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
         try:
             response = await call_next(request)
         except Exception as error:
-            error_id = logger.exception('request_failed', error, request_id=request.state.request_id) if logger else str(uuid.uuid4())
+            error_id = logger.exception('request_failed', error, **request_context(request), http_status=500, error_code='INTERNAL_ERROR') if logger else str(uuid.uuid4())
             response = JSONResponse(dict(code='INTERNAL_ERROR', message='处理失败，请保存错误编号和诊断记录',
                                          error_id=error_id, request_id=request.state.request_id), status_code=500)
         response.headers['X-Request-ID'] = request.state.request_id
         response.headers['Cache-Control'] = 'no-store'
-        if logger and not request.url.path.endswith('/health'):
-            logger.event('request_completed', request_id=request.state.request_id,
+        # Polling/read success and diagnostics reporting must not amplify log traffic.
+        if logger and response.status_code < 400 and request.method not in {'GET', 'HEAD', 'OPTIONS'} and not request.url.path.startswith('/api/v1/diagnostics'):
+            logger.event('request_completed', **request_context(request),
                          http_status=response.status_code, duration_seconds=time.monotonic()-begin)
         return response
 

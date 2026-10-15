@@ -89,6 +89,17 @@ class PersonBody(BaseModel):
     expected_revision: int = Field(ge=0, strict=True)
 
 
+class FrontendDiagnosticBody(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    origin: Literal['vue', 'window', 'promise', 'http']
+    operation: str = Field(pattern=r'^[a-z_]{1,40}$')
+    code: Literal['CLIENT_ERROR', 'NETWORK_ERROR', 'REQUEST_TIMEOUT', 'INVALID_RESPONSE']
+    client_error_id: str = Field(pattern=r'^[A-Za-z0-9_-]{1,80}$')
+    request_id: str | None = Field(default=None, pattern=r'^[a-fA-F0-9-]{36}$')
+    line: int | None = Field(default=None, ge=0, le=10000000)
+    column: int | None = Field(default=None, ge=0, le=10000000)
+
+
 async def bounded_json(request):
     import json
     data = bytearray()
@@ -211,6 +222,67 @@ def router(business, runtime, health):
                 raise TaskError('FORBIDDEN', '账号权限已变化，请刷新工作台后再试', 403)
             operator(current)
         return authorize
+
+    def diagnostics(request):
+        service = request.app.state.diagnostics
+        if service is None:
+            raise TaskError('DIAGNOSTICS_UNAVAILABLE', '诊断服务未配置', 503)
+        return service
+
+    def recheck_diagnostic_user(request, user, *, admin=True):
+        with business.engine.connect() as connection:
+            return business.accounts._acting_user(connection, user['user_id'], request.cookies.get(SESSION_COOKIE), administrator=admin)
+
+    def diagnostic_filters(
+        level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] | None = None,
+        date_from: date | None = None, date_to: date | None = None,
+        error_id: str | None = Query(default=None, pattern=r'^(?:e_[a-f0-9]{32}|l_[a-f0-9]{32}|[a-fA-F0-9-]{36})$'),
+        task_id: uuid.UUID | None = None,
+    ):
+        return dict(level=level, date_from=date_from.isoformat() if date_from else None,
+                    date_to=date_to.isoformat() if date_to else None, error_id=error_id, task_id=str(task_id) if task_id else None)
+
+    @routes.get('/admin/diagnostics/status')
+    def diagnostic_status(request: Request, user=Depends(administrator)):
+        value = diagnostics(request).status()
+        recheck_diagnostic_user(request, user)
+        return value
+
+    @routes.get('/admin/diagnostics/events')
+    def diagnostic_events(request: Request, filters=Depends(diagnostic_filters), user=Depends(administrator),
+                          cursor: str | None = Query(default=None, max_length=160), limit: int = Query(default=50, ge=1, le=100)):
+        value = diagnostics(request).query(cursor=cursor, limit=limit, **filters)
+        recheck_diagnostic_user(request, user)
+        return value
+
+    @routes.get('/admin/diagnostics/bundle')
+    def diagnostic_bundle(request: Request, filters=Depends(diagnostic_filters), user=Depends(administrator)):
+        data, truncated = diagnostics(request).bundle(**filters)
+        recheck_diagnostic_user(request, user)
+        return Response(data, media_type='application/zip', headers={
+            'Content-Disposition': 'attachment; filename="diagnostics.zip"',
+            'X-Diagnostics-Truncated': 'true' if truncated else 'false'})
+
+    @routes.post('/diagnostics/frontend', status_code=202)
+    async def diagnostic_frontend(request: Request, user=Depends(principal)):
+        service = diagnostics(request)
+        service.admit_report(user['user_id'])
+        raw = await bounded_json(request)
+        try:
+            body = FrontendDiagnosticBody.model_validate(raw)
+            from .diagnostics import ENUMS
+            if body.operation not in ENUMS['operation']:
+                raise ValueError()
+        except ValueError:
+            raise TaskError('INVALID_REQUEST', '诊断数据格式无效', 422) from None
+        # Recheck after reading the request body; attribution never comes from the client.
+        recheck_diagnostic_user(request, user, admin=False)
+        service.logger.event('frontend_error', origin=body.origin, operation=body.operation,
+                             error_code=body.code, actor_id=user['user_id'], client_error_id=body.client_error_id,
+                             request_id=body.request_id, frontend_line=body.line, frontend_column=body.column)
+        if not service.logger.available:
+            raise TaskError('DIAGNOSTICS_UNAVAILABLE', '诊断记录暂时无法写入，请下载本页诊断信息', 503)
+        return {'accepted': True}
 
     @routes.get('/health')
     def full_health():

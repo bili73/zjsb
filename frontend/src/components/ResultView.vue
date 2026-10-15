@@ -50,7 +50,8 @@ function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BAN
     <el-alert v-if="isMedical" type="info" :closable="false" show-icon class="summary-note">
       “已识别明细未见异常”仅基于已识别明细，不代表整组检查或整份报告已完整识别；请对照原件核对检查范围与完整性。
     </el-alert>
-    <el-descriptions v-if="certFields.length" :column="2" border :title="isMedical ? '体检台账字段' : '识别字段'">
+    <el-descriptions v-if="certFields.length" :column="2" border>
+      <template #title><span data-guide="result-fields">{{ isMedical ? '体检台账字段' : '识别字段' }}</span></template>
       <el-descriptions-item v-for="field in certFields" :key="field.key" :label="field.label" :span="isMedical && ['exam_projects','blood_routine','urine_routine','ecg','dr_imaging','abdominal_ultrasound','liver_function'].includes(field.key) ? 2 : 1">
         <span class="field-line">
           <span class="field-value">
@@ -102,7 +103,7 @@ function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BAN
       </div>
 
       <div class="result-toolbar">
-        <el-radio-group :model-value="filter" size="default" @update:model-value="onFilterChange">
+        <el-radio-group data-guide="medical-items" :model-value="filter" size="default" @update:model-value="onFilterChange">
           <el-radio-button value="all">全部项目</el-radio-button>
           <el-radio-button value="abnormal">仅异常</el-radio-button>
           <el-radio-button value="unknown">仅待判定</el-radio-button>
@@ -156,7 +157,7 @@ function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BAN
       </el-table>
 
       <template v-if="result.report_summary">
-        <h3 class="section-title">结论汇总 · {{ scopeLabels[result.report_summary.scope] }}</h3>
+        <h3 class="section-title" data-guide="medical-summary">结论汇总 · {{ scopeLabels[result.report_summary.scope] }}</h3>
         <el-alert v-if="result.report_summary.scope === 'unidentified'" type="info" :closable="false" show-icon>
           报告中未发现可识别的结论性清单。
         </el-alert>
