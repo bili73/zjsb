@@ -345,6 +345,20 @@ def router(business, runtime, health):
         from .required_fields import configuration
         return configuration(business.store.required_policy())
 
+    @routes.get('/admin/retention')
+    def retention_settings(user=Depends(administrator)):
+        from .retention import configuration
+        with business.engine.connect() as connection:
+            return configuration(connection)
+
+    @routes.put('/admin/retention')
+    async def update_retention_settings(request: Request, user=Depends(administrator)):
+        from .retention import save_configuration
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(save_configuration, business.store, await bounded_json(request), user['user_id'],
+            authorize=lambda connection: business.accounts._acting_user(
+                connection, user['user_id'], request.cookies.get(SESSION_COOKIE), administrator=True))
+
     @routes.put('/admin/required-fields')
     async def update_required_fields(request: Request, user=Depends(administrator)):
         from .required_fields import save_configuration

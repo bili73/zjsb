@@ -15,6 +15,7 @@ export const errorMessages = {
   EXTRACT_TIMEOUT: '识别超时，请检查任务状态后决定是否重跑。', WORKER_INTERRUPTED: '处理进程中断。',
   WORKBENCH_DEFAULT_VERSION_CONFLICT: '默认布局已被其他管理员修改，请重新读取后再调整。',
   WORKBENCH_VERSION_CONFLICT: '个人布局已在其他页面修改，请重新读取后再调整。',
+  RETENTION_VERSION_CONFLICT: '文件保留设置已被其他管理员修改，请重新读取并再次确认。',
   SETTINGS_VERSION_CONFLICT: '必填设置已被其他管理员修改；当前选择已保留，请重新读取后再保存。',
   RESULT_VERSION_CONFLICT: '任务版本已变化；草稿已保留，请明确刷新并重新核对。',
   OCR_TOKEN_LIMIT: '模型输出达到长度上限，结果可能不完整。', OCR_REPETITION: '模型输出出现重复，结果需核对。',
@@ -31,12 +32,12 @@ export const errorMessages = {
   CLIENT_ERROR: '界面发生错误，请复制诊断信息交给维护人员。', UNKNOWN_ERROR: '操作未完成，请查看错误编号。',
 } as const
 export type ErrorCode = keyof typeof errorMessages
-export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'required_settings_read' | 'required_settings_save' | 'workbench_layout_read' | 'workbench_layout_save' | 'workbench_default_save' | 'batch_list' | 'batch_tasks' | 'batch_delete' | 'person_update' | 'upload' | 'classify' | 'region_ocr' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export'
+export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'retention_read' | 'retention_save' | 'required_settings_read' | 'required_settings_save' | 'workbench_layout_read' | 'workbench_layout_save' | 'workbench_default_save' | 'batch_list' | 'batch_tasks' | 'batch_delete' | 'person_update' | 'upload' | 'classify' | 'region_ocr' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export'
 export type Stage = 'BOOTSTRAP' | 'QUEUED' | 'PREPROCESSING' | 'OCR' | 'EXTRACTING' | 'VALIDATING' | 'PUBLISHING' | 'CLEANUP'
 export type DiagnosticOrigin = 'http' | 'task' | 'vue' | 'window' | 'promise'
 const stages = new Set(['BOOTSTRAP', 'QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING', 'PUBLISHING', 'CLEANUP'])
 const origins = new Set(['http', 'task', 'vue', 'window', 'promise'])
-const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'required_settings_read', 'required_settings_save', 'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks', 'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export'])
+const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save', 'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks', 'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export'])
 const exceptionNames = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'URIError', 'EvalError', 'DOMException'])
 export function safeId(value: unknown): string | null {
   return typeof value === 'string' && (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) || /^e_[A-Za-z0-9]{1,80}$/.test(value)) ? value : null

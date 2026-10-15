@@ -1,4 +1,5 @@
 import copy
+from datetime import datetime, timedelta, timezone
 import io
 import sys
 import time
@@ -14,7 +15,7 @@ from PIL import Image, ImageDraw
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'backend'))
 from ocr_app.pipeline import process_document
 from ocr_app.review import apply_review
-from ocr_app.table_recognition import decode_table_output, infer_header_rows, validate_table_grid, table_blockers
+from ocr_app.table_recognition import decode_table_output, effective_tables, infer_header_rows, validate_table_grid, table_blockers
 from ocr_app.table_export import table_export_bundle, table_workbook_bytes
 from ocr_app.task_store import TaskError
 import test_business_api as api_fixtures
@@ -66,8 +67,8 @@ class PhotoTableTests(unittest.TestCase):
         self.assertEqual(result['status'],'NEED_REVIEW')
         d=draft(t);d['partial_acknowledged']=True;d['title']='';d['header_rows']=None
         result=apply_review(original,{'tables':[d]},actor='operator')
-        self.assertEqual([p['field'] for p in table_blockers(result)],['tables[0].title','tables[0].header_rows'])
-        d['title']='确认表格';d['header_rows']=0
+        self.assertEqual([p['field'] for p in table_blockers(result)],['tables[0].header_rows'])
+        d['header_rows']=0
         self.assertFalse(table_blockers(apply_review(original,{'tables':[d]},actor='operator')))
 
     def test_merge_cannot_destroy_values_and_grid_bounds_are_enforced(self):
@@ -137,7 +138,7 @@ class PhotoTableTests(unittest.TestCase):
         self.assertEqual(original,before)
         saved=dict(draft(t),title='',header_rows=None)
         result=dict(original,reviewed_tables=[saved])
-        self.assertEqual(table_blockers(result),[dict(field='tables[0].title',code='MISSING'),dict(field='tables[0].header_rows',code='MISSING')])
+        self.assertEqual(table_blockers(result),[dict(field='tables[0].header_rows',code='MISSING')])
         saved.update(title='人工标题',header_rows=0);saved['rows'][1][0]='人工编号'
         self.assertFalse(table_blockers(result))
         sheet=load_workbook(io.BytesIO(table_export_bundle([result])[0])).active
@@ -145,11 +146,9 @@ class PhotoTableTests(unittest.TestCase):
         self.assertEqual(sheet.freeze_panes,'A2')
         self.assertEqual(original,before)
 
-    def test_automatic_export_does_not_guess_missing_or_ambiguous_metadata(self):
+    def test_automatic_export_does_not_guess_headers_or_accept_invalid_output(self):
         base=dict(table(),title='',header_rows=None,title_candidates=[dict(text='候选',box=[0,0,10,10])])
-        cases=[({'title_candidates':[]},'tables[0].title','MISSING'),
-               ({'title_candidates':[dict(text='A'),dict(text='B')]},'tables[0].title','MISSING'),
-               ({'header_suggestion_source':None},'tables[0].header_rows','MISSING'),
+        cases=[({'header_suggestion_source':None},'tables[0].header_rows','MISSING'),
                ({'header_suggestion':99},'tables[0].header_rows','MISSING'),
                ({'incomplete':True},'tables[0]','INCOMPLETE_OUTPUT'),
                ({'rows':[['x'],['x','y']]},'tables[0]','INVALID_TABLE')]
@@ -160,6 +159,58 @@ class PhotoTableTests(unittest.TestCase):
                 with self.assertRaises(ValueError):table_export_bundle([result])
         for saved in ([],None):
             self.assertTrue(table_blockers(dict(tables=[base],reviewed_tables=saved)))
+
+    def test_ranked_valid_titles_are_suggestions_and_never_replace_saved_values(self):
+        candidates=[dict(text=text,box=[0,0,10,10]) for text in ['', 'x'*201, 'bad\x00title', '  优先标题  ', '另一标题']]
+        original=dict(tables=[dict(table(),title='',title_candidates=candidates)],_source_filename='原始图片.jpg')
+        before=copy.deepcopy(original)
+        self.assertEqual(effective_tables(original)[0]['title'],'优先标题')
+        self.assertEqual(table_export_bundle([original])[2],'优先标题.xlsx')
+        for title in ['', '   ', '人工填写']:
+            with self.subTest(title=title):
+                result=dict(original,reviewed_tables=[dict(draft(original['tables'][0]),title=title)])
+                self.assertEqual(effective_tables(result)[0]['title'],title)
+                self.assertFalse(table_blockers(result))
+                self.assertEqual(table_export_bundle([result])[2],('人工填写' if title.strip() else '原始图片')+'.xlsx')
+        self.assertEqual(original,before)
+
+    def test_untitled_workbooks_start_at_matrix_and_shift_all_row_metadata(self):
+        for count in (0,1,2):
+            for merged in (False,True):
+                with self.subTest(headers=count,merged=merged):
+                    t=dict(table(),title='   ',header_rows=count)
+                    if merged:
+                        t['rows'][0][1]='';t['merges']=[dict(row=0,column=0,rowspan=1,colspan=2)]
+                    original=dict(tables=[t],_source_filename='签到表照片.jpg')
+                    data,_,name=table_export_bundle([original])
+                    self.assertEqual(name,'签到表照片.xlsx')
+                    sheet=load_workbook(io.BytesIO(data)).active
+                    self.assertEqual([[c.value or '' for c in row] for row in sheet],t['rows'])
+                    self.assertEqual(sheet.freeze_panes,f'A{count+1}' if count else None)
+                    self.assertEqual(sheet.print_title_rows,f'$1:${count}' if count else None)
+                    self.assertEqual(sheet.auto_filter.ref,'A1:B3' if count==1 and not merged else None)
+                    self.assertEqual(str(sheet.merged_cells),'A1:B1' if merged else '')
+                    self.assertEqual(sheet['A1'].font.sz,12)
+                    self.assertEqual(sheet['A1'].fill.fgColor.rgb[-6:],'EF760E' if count else 'FFFFFF')
+                    self.assertEqual(sheet['A2'].value,'001');self.assertEqual(sheet['B2'].data_type,'s')
+
+    def test_untitled_names_use_safe_original_basename_or_timestamp_and_zip_dedup(self):
+        t=dict(table(),title='')
+        for original,expected in [('目录/签到.jpg','签到.xlsx'),('C:\\资料\\签到.PNG','签到.xlsx'),('a:b?.jpg','a-b-.xlsx')]:
+            with self.subTest(original=original):
+                self.assertEqual(table_export_bundle([dict(tables=[t],_source_filename=original)])[2],expected)
+        for original in (None,'','.jpg','NUL.png'):
+            with self.subTest(original=original):
+                name=table_export_bundle([dict(tables=[t],_source_filename=original)])[2]
+                self.assertRegex(name,r'^表格_\d{8}_\d{6}\.xlsx$')
+        inputs=[dict(tables=[t],_source_filename='Same.jpg'),dict(tables=[t],_source_filename='same.png'),dict(tables=[dict(t,title='Same')])]
+        data,_,_=table_export_bundle(inputs)
+        with ZipFile(io.BytesIO(data)) as archive:
+            self.assertEqual(archive.namelist(),['Same.xlsx','same (2).xlsx','Same (3).xlsx'])
+        with patch('ocr_app.table_export.datetime') as clock:
+            clock.now.return_value=datetime(2026,10,15,16,30,1,tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=8)))
+            self.assertEqual(table_export_bundle([dict(tables=[t])])[2],'表格_20261016_003001.xlsx')
+            clock.now.assert_called_once_with(timezone(timedelta(hours=8)))
 
     def test_pipeline_adds_header_evidence_without_extra_model_calls(self):
         stream=io.BytesIO();Image.new('RGB',(300,200),'white').save(stream,format='PNG')
@@ -247,13 +298,30 @@ class PhotoTableAPITests(unittest.TestCase):
         self.assertEqual(saved.status_code,200,saved.text)
         jsonschema.Draft7Validator(dict(document,**{'$ref':'#/components/schemas/TaskResult'})).validate(self.client.get(url+'/result',headers=self.headers).json())
 
-    def prepared(self):
+    def prepared(self,override=None):
         uploaded=self.upload('TABLE');self.assertEqual(uploaded.status_code,202,uploaded.text)
         task=self.business.store.claim_next();t=table()
+        t.update(override or {})
         page_id=self.business.store.save_page(task,1,self.image,16,12)
         self.business.store.publish(task,dict(doc_type='TABLE',status='NEED_REVIEW',fields=[],tables=[t],review_issues=[],
             pages=[dict(page_index=1,page_id=page_id,width=16,height=12,regions=[],extraction_method='ocr')]))
         return self.task(task['id']),t
+
+    def test_historical_ranked_and_untitled_results_export_without_any_review_write(self):
+        from urllib.parse import unquote
+        for candidates,expected in [([dict(text='最先候选',box=[0,0,1,1]),dict(text='次选候选',box=[0,0,1,1])],'最先候选'),([],None)]:
+            with self.subTest(candidates=candidates):
+                task,_=self.prepared(dict(title='',title_candidates=candidates))
+                url=f'/api/v1/tasks/{task["task_id"]}/result'
+                before=self.client.get(url,headers=self.headers).json()
+                self.assertTrue(before['export_ready']);self.assertEqual(before['export_blockers'],[])
+                response=self.client.post('/api/v1/export',headers=self.headers,json=dict(task_ids=[task['task_id']]))
+                self.assertEqual(response.status_code,200)
+                self.assertIn((expected or 'synthetic-0')+'.xlsx',unquote(response.headers['content-disposition']))
+                sheet=load_workbook(io.BytesIO(response.content)).active
+                self.assertEqual(sheet['A1'].value,expected or '编号')
+                self.assertEqual(self.client.get(url,headers=self.headers).json(),before)
+                self.assertNotIn('reviewed_tables',before)
 
     def test_review_export_revision_and_anonymous_boundaries(self):
         task,t=self.prepared();d=draft(t)
@@ -294,8 +362,16 @@ class PhotoTableAPITests(unittest.TestCase):
         self.client.post(f'/api/v1/tasks/{second["task_id"]}/review',headers=self.headers,
             json=dict(run_id=second['run_id'],expected_revision=second['result_revision'],tables=[d])).raise_for_status()
         response=self.client.post('/api/v1/export',json=body,headers=self.headers)
+        self.assertEqual(response.status_code,200)
+        with ZipFile(io.BytesIO(response.content)) as archive:
+            self.assertIn('synthetic-0.xlsx',archive.namelist())
+            self.assertEqual(load_workbook(io.BytesIO(archive.read('synthetic-0.xlsx'))).active['A1'].value,'编号')
+        second=self.task(second['task_id']);d['header_rows']=None
+        self.client.post(f'/api/v1/tasks/{second["task_id"]}/review',headers=self.headers,
+            json=dict(run_id=second['run_id'],expected_revision=second['result_revision'],tables=[d])).raise_for_status()
+        response=self.client.post('/api/v1/export',json=body,headers=self.headers)
         self.assertEqual(response.status_code,409)
-        self.assertIn('tables[0].title',response.text)
+        self.assertIn('tables[0].header_rows',response.text)
 
     def test_table_excluded_from_packages_pdf_and_required_configuration(self):
         for data in [dict(file_types='["TABLE"]'),dict(doc_type_hint='TABLE',person_name='合成人员')]:

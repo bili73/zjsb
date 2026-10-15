@@ -13,17 +13,20 @@ export function supportedHeaderSuggestion(table: PhotoTable): number | null {
   return !table.incomplete && ['model_tags','structure','data_rows'].includes(table.header_suggestion_source ?? '') &&
     typeof count==='number' && Number.isInteger(count) && count>=0 && count<table.rows.length ? count : null
 }
+export function titleSuggestions(table: PhotoTable): string[] {
+  return [...new Set(table.title_candidates.map(candidate=>candidate.text.trim())
+    .filter(title=>title && [...title].length<=200 && !/[\x00-\x1f]/.test(title)))]
+}
 export function tableDraft(table: PhotoTable, saved?: TableDraft): TableDraft {
   const source = saved ?? table
-  const titles=[...new Set(table.title_candidates.map(candidate=>candidate.text.trim()).filter(Boolean))]
-  return { table_id: source.table_id, title: source.title || (!saved && titles.length===1 ? titles[0]! : ''),
+  return { table_id: source.table_id, title: saved ? saved.title : source.title || titleSuggestions(table)[0] || '',
     header_rows: saved ? saved.header_rows : source.header_rows ?? supportedHeaderSuggestion(table), rows: source.rows.map(row => [...row]), merges: source.merges.map(m => ({ ...m })), partial_acknowledged: saved ? saved.partial_acknowledged : false }
 }
 export function validateGrid(table: TableDraft): string | null {
   const rows = table.rows, width = rows[0]?.length ?? 0
   if (!rows.length || rows.length > 1000 || !width || width > 200 || rows.length * width > 10000) return '表格上限为1000行、200列、10000格。'
   if (rows.some(row => row.length !== width || row.some(v => typeof v !== 'string' || v.length > 32767 || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(v))) || rows.reduce((n,r) => n+r.reduce((s,v) => s+v.length,0),0) > 1000000) return '单元格内容超限或包含无效字符。'
-  if (table.title.length > 200 || /[\x00-\x1f]/.test(table.title)) return '标题不超过200字，不能包含换行。'
+  if ([...table.title].length > 200 || /[\x00-\x1f]/.test(table.title)) return '标题不超过200字，不能包含换行。'
   if (table.header_rows !== null && (!Number.isInteger(table.header_rows) || table.header_rows < 0 || table.header_rows > rows.length)) return '请选择有效的表头行数；无表头可填0。'
   const occupied = new Set<string>()
   for (const m of table.merges) {

@@ -24,14 +24,13 @@ export function shanghaiDate(value = new Date()): string {
   return formatTime(value.toISOString()).slice(0, 10).replace(/-/g, '')
 }
 
-// 保留期遵循契约默认值：业务文件、结果与运行历史自任务创建起保留 7 天，到期清理。
-// 服务端未下发 expires_at 字段，按创建时间 +7 天推算；无法解析时返回空串由调用方省略展示。
-const RETENTION_MS = 7 * 24 * 60 * 60 * 1000
+// Only server deadlines determine retention. Null means automatic expiry is disabled.
 export function expiryText(iso?: string | null): string {
+  if (iso === null) return '永不自动清除'
   if (!iso) return ''
   const value = new Date(iso)
   if (!Number.isFinite(value.getTime())) return ''
-  return formatTime(new Date(value.getTime() + RETENTION_MS).toISOString()).slice(0, 10)
+  return `最近材料 ${formatTime(iso)} 到期清理`
 }
 
 const progressLabels: Record<TaskStatus, string> = {

@@ -18,6 +18,7 @@ import DiagnosticsPanel from './components/DiagnosticsPanel.vue'
 import HelpDrawer from './components/HelpDrawer.vue'
 import AccountManagement from './components/AccountManagement.vue'
 import RequiredFieldSettings from './components/RequiredFieldSettings.vue'
+import RetentionSettings from './components/RetentionSettings.vue'
 import PasswordDialog from './components/PasswordDialog.vue'
 
 const api = shallowRef<BusinessApi | null>(null)
@@ -198,6 +199,9 @@ onBeforeUnmount(() => {
         </el-tab-pane>
         <el-tab-pane v-if="user.role === 'admin'" label="必填字段设置" name="required" lazy>
           <RequiredFieldSettings v-if="api" :api="api" @saved="requiredFieldsSaved" @unauthorized="handleUnauthorized" />
+        </el-tab-pane>
+        <el-tab-pane v-if="user.role === 'admin'" label="文件保留设置" name="retention" lazy>
+          <RetentionSettings v-if="api" :api="api" @saved="monitor.start()" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
       </el-tabs>
     </main>

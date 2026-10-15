@@ -258,7 +258,7 @@ class PersonPackageMigrationTests(unittest.TestCase):
                     with upgraded.connect() as c:
                         self.assertEqual(c.execute(text('SELECT id,created_at,name_enc,owner_id,owner_snapshot_enc FROM batches')).all(), before)
                         self.assertEqual(c.execute(text('SELECT person_name_enc,package_revision FROM batches')).one(), (None, 0))
-                        self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0009')
+                        self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0010')
                 finally:
                     upgraded.dispose()
 

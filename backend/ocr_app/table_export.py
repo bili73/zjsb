@@ -1,5 +1,6 @@
 """Serialize effective photo tables without coercing source cells into formulas."""
 from io import BytesIO
+from datetime import datetime, timedelta, timezone
 from math import ceil
 import re
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -9,10 +10,10 @@ from .table_recognition import effective_tables, table_blockers, validate_table_
 XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 
-def safe_title(title):
+def safe_title(title, fallback='表格'):
     name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '-', title).strip(' .')[:120]
     if not name or re.fullmatch(r'(?i:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?', name):
-        return '表格'
+        return fallback
     return name
 
 
@@ -31,15 +32,17 @@ def table_workbook_bytes(table):
         width=max(12,min(55,desired));widths.append(width)
         sheet.column_dimensions[get_column_letter(c+1)].width=width
     border=Border(**{side:Side(style='thin',color='D9E0E5') for side in ('left','right','top','bottom')})
-    title=sheet.cell(1,1,table['title']);title.data_type='s';title.number_format='@'
-    title.font=Font(name='Microsoft YaHei',size=21,bold=True,color='243746')
-    title.alignment=Alignment(horizontal='center',vertical='center',wrap_text=True)
-    if len(widths)>1:
-        sheet.merge_cells(start_row=1,start_column=1,end_row=1,end_column=len(widths))
-    title_lines=max(1,ceil(sum(2 if ord(ch)>255 else 1 for ch in table['title'])*21/11/max(1,sum(widths)-2)))
-    sheet.row_dimensions[1].height=min(409,max(38,title_lines*28+10))
-    for r,row in enumerate(table['rows'],2):
-        is_header=r<=headers+1;size=12;lines=1
+    offset=int(bool(table['title'].strip()))
+    if offset:
+        title=sheet.cell(1,1,table['title']);title.data_type='s';title.number_format='@'
+        title.font=Font(name='Microsoft YaHei',size=21,bold=True,color='243746')
+        title.alignment=Alignment(horizontal='center',vertical='center',wrap_text=True)
+        if len(widths)>1:
+            sheet.merge_cells(start_row=1,start_column=1,end_row=1,end_column=len(widths))
+        title_lines=max(1,ceil(sum(2 if ord(ch)>255 else 1 for ch in table['title'])*21/11/max(1,sum(widths)-2)))
+        sheet.row_dimensions[1].height=min(409,max(38,title_lines*28+10))
+    for r,row in enumerate(table['rows'],offset+1):
+        is_header=r<=headers+offset;size=12;lines=1
         for c,value in enumerate(row,1):
             cell=sheet.cell(r,c,value);cell.data_type='s';cell.number_format='@'
             cell.font=Font(name='Microsoft YaHei',size=size,bold=is_header,color='FFFFFF' if is_header else '243746')
@@ -50,11 +53,12 @@ def table_workbook_bytes(table):
         sheet.row_dimensions[r].height=min(409,max(32,18*lines+10))
     for merge in table['merges']:
         r,c,h,w=(merge[k] for k in ('row','column','rowspan','colspan'))
-        sheet.merge_cells(start_row=r+2,start_column=c+1,end_row=r+h+1,end_column=c+w)
-    sheet.freeze_panes=f'A{headers+2}'
-    sheet.print_title_rows=f'1:{headers+1}'
+        sheet.merge_cells(start_row=r+offset+1,start_column=c+1,end_row=r+h+offset,end_column=c+w)
+    if headers+offset:
+        sheet.freeze_panes=f'A{headers+offset+1}'
+        sheet.print_title_rows=f'1:{headers+offset}'
     if headers==1 and not table['merges']:
-        sheet.auto_filter.ref=f'A2:{get_column_letter(len(widths))}{len(table["rows"])+1}'
+        sheet.auto_filter.ref=f'A{offset+1}:{get_column_letter(len(widths))}{len(table["rows"])+offset}'
     sheet.sheet_view.showGridLines=False
     sheet.page_setup.orientation='landscape';sheet.page_setup.fitToWidth=1;sheet.page_setup.fitToHeight=0
     sheet.sheet_properties.pageSetUpPr.fitToPage=True
@@ -65,12 +69,20 @@ def table_export_bundle(results):
     if any(table_blockers(result) for result in results):
         raise ValueError('TABLE_EXPORT_BLOCKED')
     tables=[effective_tables(result)[0] for result in results]
+    fallback='表格_'+datetime.now(timezone(timedelta(hours=8))).strftime('%Y%m%d_%H%M%S')
+    stems=[]
+    for table,result in zip(tables,results):
+        if table['title'].strip():
+            stems.append(safe_title(table['title']))
+        else:
+            original=(result.get('_source_filename') or '').replace('\\','/').rsplit('/',1)[-1]
+            stems.append(safe_title(original.rsplit('.',1)[0],fallback))
     if len(tables)==1:
-        return table_workbook_bytes(tables[0]), XLSX, safe_title(tables[0]['title'])+'.xlsx'
+        return table_workbook_bytes(tables[0]), XLSX, stems[0]+'.xlsx'
     output=BytesIO();used=set()
     with ZipFile(output,'w',ZIP_DEFLATED) as archive:
-        for table in tables:
-            stem=safe_title(table['title']);name=stem+'.xlsx';index=2
+        for table,stem in zip(tables,stems):
+            name=stem+'.xlsx';index=2
             while name.casefold() in used:
                 name=f'{stem} ({index}).xlsx';index+=1
             used.add(name.casefold());archive.writestr(name,table_workbook_bytes(table))

@@ -89,8 +89,8 @@ function batchMeta(batchId: string) {
   if (batch?.failed_count) parts.push(`失败 ${batch.failed_count}`)
   if (entryRunning(entry)) parts.push('执行中')
   parts.push(`创建于 ${formatTime(batch?.created_at)}（UTC+8）`)
-  const expiry = batch?.expires_at ? formatTime(batch.expires_at) : expiryText(batch?.created_at)
-  if (expiry) parts.push(`最近材料 ${expiry} 到期清理`)
+  const expiry = expiryText(batch?.expires_at)
+  if (expiry) parts.push(expiry)
   return parts.join(' · ')
 }
 

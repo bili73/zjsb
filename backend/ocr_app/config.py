@@ -10,7 +10,7 @@ MODES = ('dual_resident', 'single_resident')
 class RuntimeConfig:
     session_dir: Path
     mode: str = 'dual_resident'
-    load_timeout: float = 120.0
+    load_timeout: float = 300.0
     request_timeout: float = 180.0
     data_root: Path | None = None
 

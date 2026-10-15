@@ -238,7 +238,7 @@ class BatchOwnerMigrationTests(unittest.TestCase):
             upgraded = open_database(root)
             try:
                 with upgraded.connect() as c:
-                    self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0009')
+                    self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0010')
                     actual = dict(c.execute(text('SELECT id,owner_id FROM batches')).all())
                     self.assertEqual(actual, dict(known=owner, legacy=legacy, conflicting=None, missing=None, empty=None))
                     self.assertTrue(all(row[0] == b'unchanged batch cipher' for row in c.execute(text('SELECT name_enc FROM batches'))))

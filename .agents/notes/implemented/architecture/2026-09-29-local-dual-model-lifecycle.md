@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: ARCHITECTURE.md, SPEC.md, openapi.yaml, IMPLEMENTATION_PLAN.md, backend, tests, scripts/probe_runtime.py, RUNTIME.md, start.cmd, start.ps1, requirements-app.lock.txt
-Last-verified: 2026-10-08
+Last-verified: 2026-10-15
 
 ## Problem
 
@@ -24,7 +24,9 @@ The [process/package repairs](../../implemented/bug-fix/2026-10-13-region-ocr-an
 
 This note owns the launcher, independent worker, model adapters, Windows supervision and health snapshot. The [durable-task decision](../feature/2026-09-30-durable-document-tasks.md) adds SQLite, authenticated uploads, PDF/region routing, seven-day artifact cleanup and persisted recovery. Health reports actual database and queue state. Full review editing, export and broader document families remain later work.
 
-Each model load/warmup uses a bounded 120-second window. Private recognition caps calls at 180 seconds; business calls receive the remaining shared whole-task deadline, including required model switches. Independent supervision bounds native/GPU hangs. Closing callers share a bounded termination confirmation; failed cleanup never authorizes task recovery. The model adapter returns termination_reason and keeps allocator peaks separate from host-process measurements. [Local diagnostics](../feature/2026-09-30-local-diagnostics.md) adds persistent safe error locations and offline export.
+Each model load/warmup uses a bounded 300-second window. Private recognition caps calls at 180 seconds; business calls receive the remaining shared whole-task deadline, including required model switches. Independent supervision bounds native/GPU hangs. Closing callers share a bounded termination confirmation; failed cleanup never authorizes task recovery. The model adapter returns termination_reason and keeps allocator peaks separate from host-process measurements. [Local diagnostics](../feature/2026-09-30-local-diagnostics.md) adds persistent safe error locations and offline export.
+
+The 2026-10-15 cold startup exceeded the previous 120-second limit for both models; GLM entered warmup only after about113 seconds. Models and environments are on a mechanical E: drive, and the machine had rebooted; cold I/O is a plausible contributor, not a measured sole cause. The user authorizes more startup headroom. Keep separate per-model300-second budgets (up to600 seconds for two failed sequential starts, plus bounded cleanup), with true loading/warming states and bounded failure. This does not increase task180-second or medical20-second generation limits. Automatic retries and unlimited startup waits are not added.
 
 [Bounded medical recognition](../bug-fix/2026-10-08-bounded-medical-recognition.md) supplies a 20-second soft generation budget and limits the post-load RPC to soft plus ten seconds, clipped by Task time. A normal time_limit keeps the worker usable; hard timeout removes it, and unknown cleanup prevents further scheduling. Independent queues now isolate owners for concurrent inference; a failed parallel-session model stays disabled until restart rather than unloading the healthy model to recover it.
 
@@ -38,6 +40,8 @@ The [dual extraction diagnostic](../testing/2026-09-30-dual-certificate-extracti
 
 ## Alternatives considered
 
+- Keep120 seconds: reports a hung startup sooner, but already stops a legitimate cold load reaching warmup at113 seconds.300 seconds gives finite cold-start headroom without altering recognition timeouts.
+
 - On-demand single residency minimizes memory and broadens hardware compatibility. It remains the fallback, but is not the default because the user prioritizes avoiding interactive load/switch waits.
 - Concurrent loading could shorten startup on some hardware. Sequential loading bounds resource overlap while an already available page shows progress.
 - A shared intranet inference server reduces HR client requirements. The company has none, so deployment remains local.
@@ -50,6 +54,8 @@ Dual residency removes reloads during normal model switching but increases idle 
 Normal exit, crash cleanup and lightweight fault cases are tested. Task recovery, cancellation races, encryption and authentication have second-stage CPU tests and separate integration evidence. Full document resource qualification, CPU-only inference and actual HR hardware remain unverified. No promise is made for a 16 GB PC or instantaneous GPU release after a driver fault.
 
 ## Testing
+
+The2026-10-15 cold-start regression simulates150-second loading without sleeping: the old default leaves OCR unavailable, while300 seconds readies both models and recognition remains capped at180 seconds.30 focused runtime/launcher/queue/process tests pass. A data-preserving Windows restart confirms both model warmups, all13 database tables,302 tasks,2 accounts,3125 owned material/key files and15 served assets unchanged. [Activation evidence](../../../../output/startup-budget-medical-latency-20261015/activation/verified.json) is retained. This verifies the new configuration and normal startup, not another physical reboot or a guarantee against hardware hangs.
 
 Real serial probes use a nonsensitive 1000x300 synthetic image, GLM → Paddle → GLM. Dual v3 starts in 11.766 seconds and reuses both model PIDs across all requests. Single v1 starts in 5.828 seconds; calls requiring a switch take 6.531 and 6.547 seconds. All six predictions exactly match the synthetic text and end at EOS; all known process handles are signaled after shutdown. These are local cached-start measurements, not certificate accuracy or target hardware validation.
 

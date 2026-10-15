@@ -33,7 +33,7 @@ info:
     - 置信度与 need_review 由**后端**计算，只有经标定的 confidence 才可非 null；不可用时不得填固定分数
     - 登录鉴权后默认完整显示业务字段、证据原文、候选、通用全文及复核回显；完整原图与XLSX仍限operator/admin。内部密钥、私有历史和安全码不进入响应
     - 文件入库前必须不可恢复遮盖 CVV；不持久化带 CVV 的原图、OCR 输出或缓存，任何响应与导出均禁止 CVV
-    - 无法确认CVV已清理时拒绝保存并要求提供已遮盖文件；含敏感原值的历史审计仅保留7天，到期清理，仅保留脱敏审计
+    - 无法确认CVV已清理时拒绝保存并要求提供已遮盖文件；含敏感原值的历史审计按管理员业务保留设置保存（初始7天），到期清理，仅保留脱敏审计
     - 所有材料类型采用相同的鉴权后完整显示策略；此策略不解除CVV禁存、受控存储及访问鉴权
     - **单一入口**：仅网页人工上传，不提供自动接入入口；Batch/Task 不含接入来源 source，Field.source 保留为字段证据定位
     - **`XUEXIN_DIPLOMA_TABLE` 仅支持《教育部学历证书电子注册备案表》一种**，可靠 PDF 文字层优先，扫描或不可靠区域回退 OCR；
@@ -141,6 +141,50 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+  /admin/retention:
+    get:
+      tags: [system]
+      summary: 管理员读取全局文件保留设置及超期数量
+      responses:
+        '200':
+          description: 影响数量仅为assessed_at时的快照，活动文件延后清理
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RetentionSettings'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    put:
+      tags: [system]
+      summary: 管理员确认并保存文件保留时长
+      description: 对所有账号新旧文件统一生效，按每份文件原上传时间计算。前端每次保存前弹窗说明影响和超期数量，取消不发送请求。事务内重新验证管理员会话并核对expected_revision；冲突409 RETENTION_VERSION_CONFLICT，不能自动重试。原子保存设置和有限到期时间，不改识别结果、人工值或结果版本；保存本身不删除文件，下次启动或空闲周期清理。null为永不自动清除，仍可手动删除；已清理数据不会恢复。无变化不递增版本，仍需权限和confirmed校验。
+      parameters:
+      - in: header
+        name: X-CSRF-Token
+        required: true
+        schema: {type: string, pattern: '^[0-9a-f]{64}$'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [days, expected_revision, confirmed]
+              properties:
+                days: {type: integer, nullable: true, enum: [7, 15, 30, null]}
+                expected_revision: {type: integer, minimum: 0}
+                confirmed: {type: boolean, enum: [true]}
+      responses:
+        '200':
+          description: 已保存的设置及最新数量快照
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RetentionSettings'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/ErrorResponse'}
         '422': {$ref: '#/components/responses/UnprocessableEntity'}
   /admin/required-fields:
     get:
@@ -704,7 +748,7 @@ paths:
       tags:
       - batches
       summary: 向已有批次补充上传文件
-      description: 向is_person_package为true的材料包追加，姓名待确认也可操作。operator仅自己的包，admin可操作全部，viewer不可写；写事务内再次核验会话与归属。file_types支持一次补交多种材料，按files顺序绑定；doc_type_hint兼容单类型，两者不能同时提交。不按姓名自动关联。expected_revision必须匹配package_revision，否则409 RESULT_VERSION_CONFLICT。新任务独立排队，旧任务/结果/到期时间不变；新任务自追加起七天清理。相同文件同类型复用原任务，返回的新task_ids可为空；相同文件不同类型返回422。整次校验/写入原子失败，容量限制同首次上传。人员名称不可在此更改。
+      description: 向is_person_package为true的材料包追加，姓名待确认也可操作。operator仅自己的包，admin可操作全部，viewer不可写；写事务内再次核验会话与归属。file_types支持一次补交多种材料，按files顺序绑定；doc_type_hint兼容单类型，两者不能同时提交。不按姓名自动关联。expected_revision必须匹配package_revision，否则409 RESULT_VERSION_CONFLICT。新任务独立排队，旧任务/结果/到期时间不变；新任务自追加日起按管理员保留设置计算期限。相同文件同类型复用原任务，返回的新task_ids可为空；相同文件不同类型返回422。整次校验/写入原子失败，容量限制同首次上传。人员名称不可在此更改。
       requestBody:
         required: true
         content:
@@ -1358,11 +1402,11 @@ paths:
       responses:
         '404': {$ref: '#/components/responses/NotFound'}
         '200':
-          description: 业务材料为XLSX；TABLE单任务为标题命名XLSX，多任务为ZIP；不能混合TABLE与其他类型。表格须先保存有效标题、表头和矩阵；不完整结果须明确确认。全部内容按文本写入。
+          description: 业务材料为XLSX；TABLE单任务为XLSX，多任务为ZIP；不能混合TABLE与其他类型。表格标题选填，有效矩阵且表头明确可直接导出，无需首次保存；不完整结果须明确确认。全部内容按文本写入。
           headers:
             Content-Disposition:
               schema: {type: string}
-              description: UTF-8 filename*；单表使用有效标题（人工版本优先，否则唯一识别候选），多表为ZIP。完整表格无需先保存，修改后须保存；缺标题/表头或结构不完整仍阻止整次导出。
+              description: UTF-8 filename*；单表标题优先，无标题用原图片名去扩展名，原名不可用用表格_北京时间YYYYMMDD_HHMMSS，多表为ZIP且重名加序号。人工标题含主动清空均优先，否则按既有排名采用首个有效候选。完整表格无需先保存，修改后须保存；标题空缺不阻止导出，表头缺失或结构不完整仍阻止整次导出。
           content:
             application/zip:
               schema: {type: string, format: binary}
@@ -1456,6 +1500,26 @@ components:
       properties:
         layout: {$ref: '#/components/schemas/WorkbenchEntries'}
         revision: {type: integer, minimum: 0}
+    RetentionSettings:
+      type: object
+      additionalProperties: false
+      required: [days, revision, impact, assessed_at]
+      properties:
+        days: {type: integer, nullable: true, enum: [7, 15, 30, null], description: null表示永不自动清除，初始默认7天}
+        revision: {type: integer, minimum: 0}
+        assessed_at: {type: string, format: date-time}
+        impact:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            type: object
+            additionalProperties: false
+            required: [days, eligible_count, active_count]
+            properties:
+              days: {type: integer, enum: [7, 15, 30]}
+              eligible_count: {type: integer, minimum: 0, description: 此刻已超过期限且不在处理中的文件数}
+              active_count: {type: integer, minimum: 0, description: 此刻已超过期限但正在处理的文件数}
     RequiredFieldSettings:
       type: object
       additionalProperties: false
@@ -1485,7 +1549,7 @@ components:
           allOf:
           - {$ref: '#/components/schemas/DocTypeEnum'}
           - not: {enum: [TABLE]}
-          description: 照片表格使用独立标题/表头确认规则，不支持固定必填字段设置。
+          description: 照片表格标题选填，使用独立表头与结构校验规则，不支持固定必填字段设置。
         required_fields:
           type: array
           nullable: true
@@ -1590,6 +1654,7 @@ components:
             - WORKBENCH_DEFAULT_VERSION_CONFLICT
             - WORKBENCH_VERSION_CONFLICT
             - SETTINGS_VERSION_CONFLICT
+            - RETENTION_VERSION_CONFLICT
             - OCR_TOKEN_LIMIT
             - OCR_REPETITION
             - MODEL_CONFLICT
@@ -1823,7 +1888,7 @@ components:
         extract_options: {$ref: '#/components/schemas/ExtractOptions'}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
-        expires_at: {type: string, format: date-time, description: 本材料独立到期时间，上传或追加后七天}
+        expires_at: {type: string, format: date-time, nullable: true, description: 本材料独立到期时间，按原上传时间和管理员保留天数计算；null表示永不自动清除}
 
     TaskProgressDetail:
       type: object
@@ -2660,10 +2725,10 @@ components:
       type: object
       additionalProperties: false
       required: [table_id, title, header_rows, rows, merges, partial_acknowledged]
-      description: 仅修改当前任务已存在的table_id。矩阵最多10000格、总文本100万字符；合并不可越界/重叠/覆盖非空格。原始来源与初始识别不可由客户端改写。title或header_rows未确认时可保存草稿，但不能导出。
+      description: 仅修改当前任务已存在的table_id。矩阵最多10000格、总文本100万字符；合并不可越界/重叠/覆盖非空格。原始来源与初始识别不可由客户端改写。title可以为空；header_rows为null时可保存草稿，但不能导出。无标题的Excel不插标题行，矩阵从第一行开始。
       properties: &table_review_properties
         table_id: {type: string, format: uuid}
-        title: {type: string, maxLength: 200}
+        title: {type: string, maxLength: 200, description: 选填标题，空字符串表示无标题；已保存空值不使用候选回填}
         header_rows: {type: integer, minimum: 0, maximum: 1000, nullable: true, description: 从首行起的表头行数，0表示无表头，null表示待确认}
         rows:
           type: array
@@ -2694,6 +2759,7 @@ components:
             properties:
               bbox: {type: array, minItems: 4, maxItems: 4, items: {type: number, minimum: 0, maximum: 1}}
         title_candidates:
+          description: 保留既有匹配顺序；无人工版本且初始标题为空时采用首个有效非空候选，跳过超过200字或含控制字符的候选。原始候选不改写。
           type: array
           items: {$ref: '#/components/schemas/TableSnippet'}
         outside_text:
@@ -2753,7 +2819,7 @@ components:
           maxItems: 1
           items: {$ref: '#/components/schemas/PhotoTable'}
         reviewed_tables:
-          description: 人工保存版本；存在时完全优先。缺省时可直接导出完整的初始表格及可靠标题/表头建议，不写人工审核或改变状态/版本。
+          description: 人工保存版本；存在时完全优先，包括主动清空标题。缺省时可直接导出完整的初始表格及首个有效标题候选/有来源的表头建议。标题可空，不写人工审核或改变状态/版本。
           type: array
           minItems: 1
           maxItems: 1

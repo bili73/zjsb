@@ -19,11 +19,10 @@ test('display timestamps use Shanghai across UTC midnight and explicit offsets',
   for (const value of [undefined, null, '', 'broken']) assert.equal(formatTime(value), '—')
 })
 
-test('expiry date is creation plus the 7-day retention, dated in Shanghai', () => {
-  assert.equal(expiryText('2026-10-03T18:00:00Z'), '2026-10-11')
-  assert.equal(expiryText('2026-10-03T10:00:00+08:00'), '2026-10-10')
-  assert.equal(expiryText('2026-02-25T20:00:00+08:00'), '2026-03-04')
-  for (const value of [undefined, null, '', 'broken']) assert.equal(expiryText(value), '')
+test('expiry displays only server deadlines and never without a seven-day fallback', () => {
+  assert.equal(expiryText('2026-10-03T18:00:00Z'), '最近材料 2026-10-04 02:00:00 到期清理')
+  assert.equal(expiryText(null), '永不自动清除')
+  for (const value of [undefined, '', 'broken']) assert.equal(expiryText(value), '')
 })
 
 function progressTask(status: TaskStatus, detail: Partial<ProgressDetail> = {}) {

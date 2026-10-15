@@ -35,14 +35,18 @@ test('supported header suggestions populate only new drafts including zero, neve
   assert.equal(tableDraft({...old,header_suggestion_source:'structure',incomplete:true}).header_rows,null)
   assert.equal(tableDraft({...old,header_suggestion_source:null}).header_rows,null)
 })
-test('title defaults require one distinct candidate and never refill an intentionally empty saved title',()=>{
+test('title defaults use the first valid ranked candidate and never refill an intentionally empty saved title',()=>{
   const original={...make(),header_suggestion_source:'structure' as const}
   assert.equal(tableDraft(original).title,'标题建议')
   assert.equal(tableDraft({...original,title_candidates:[]}).title,'')
-  assert.equal(tableDraft({...original,title_candidates:[...original.title_candidates,{text:'另一候选',box:[1,2,3,4]}]}).title,'')
+  assert.equal(tableDraft({...original,title_candidates:[...original.title_candidates,{text:'另一候选',box:[1,2,3,4]}]}).title,'标题建议')
   assert.equal(tableDraft({...original,title_candidates:[...original.title_candidates,{text:' 标题建议 ',box:[1,2,3,4]}]}).title,'标题建议')
   const saved={...tableDraft(original),title:'',header_rows:null}
   assert.equal(tableDraft(original,saved).title,'')
+  assert.equal(tableDraft(original,{...saved,title:'  '}).title,'  ')
+  const candidates=['','x'.repeat(201),'bad\x00title','  优先标题  ','其他标题'].map(text=>({text,box:[1,2,3,4]}))
+  assert.equal(tableDraft({...original,title_candidates:candidates}).title,'优先标题')
+  assert.equal(tableDraft(original,{...saved,title:'人工标题'}).title,'人工标题')
   assert.equal(tableDraft({...original,partial_acknowledged:true}).partial_acknowledged,false)
 })
 test('merge edits preserve topology and reject silent text loss',()=>{

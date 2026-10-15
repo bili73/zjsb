@@ -16,7 +16,7 @@ class APIAuthorizationTests(unittest.TestCase):
 
     # This inventory deliberately fails when an endpoint is added without an access decision.
     protected = {
-        'GET': ['health', 'auth/me', 'auth/me/workbench', 'admin/users', 'admin/required-fields', 'doc-types',
+        'GET': ['health', 'auth/me', 'auth/me/workbench', 'admin/users', 'admin/required-fields', 'admin/retention', 'doc-types',
                 'batches', 'batches/{batch_id}', 'batches/{batch_id}/tasks', 'tasks',
                 'tasks/{task_id}', 'tasks/{task_id}/result', 'tasks/{task_id}/preview'],
         'POST': ['auth/logout', 'auth/password', 'admin/users', 'admin/users/{user_id}/password',
@@ -25,7 +25,7 @@ class APIAuthorizationTests(unittest.TestCase):
                  'tasks/{task_id}/preview', 'tasks/{task_id}/reveal',
                  'tasks/{task_id}/cancel', 'tasks/{task_id}/rerun'],
         'PATCH': ['admin/users/{user_id}', 'batches/{batch_id}/person'],
-        'PUT': ['admin/required-fields', 'auth/me/workbench', 'admin/workbench-default'],
+        'PUT': ['admin/required-fields', 'admin/retention', 'auth/me/workbench', 'admin/workbench-default'],
         'DELETE': ['admin/users/{user_id}', 'batches/{batch_id}'],
     }
 

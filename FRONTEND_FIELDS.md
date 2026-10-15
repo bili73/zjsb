@@ -340,11 +340,11 @@ id_card_pairing为unassigned/not_provided/missing_front/missing_back/both_presen
 
 `TaskResult.tables`保存初始主体（0或1个，失败可能无主体）；`reviewed_tables`保存人工版本。结构为`table_id,title,header_rows,rows:string[][],merges:[{row,column,rowspan,colspan}],partial_acknowledged`。行列下标从0起；被合并覆盖的格必须为空。原始主体另有`source,title_candidates,header_suggestion,candidates,outside_text,quality_warnings,incomplete,confidence:null`。候选文字box为校正图片像素，source/candidates的bbox为归一化xyxy；候选不直接视为已确认内容。
 
-审核接口提交`run_id,expected_revision,tables:[人工结构]`；禁止修改来源或混入fields/items等业务载荷。可保存未完成草稿，`export_ready/export_blockers`才是导出依据。没有人工版本时，页面与导出都采用唯一非空标题候选和带来源的完整表头建议，不强制首次保存；多个不同标题候选不自动选第一项。存在`reviewed_tables`时完全优先，包括空标题和null/0表头。表格标题、明确的表头行数和有效矩阵必需；0代表无表头，null尚未确认。原始不完整输出需要保存partial_acknowledged=true。所有空格仍可留空。导出不改变状态/版本，不生成虚假人工审核；未保存的修改阻止详情页导出。列表显示“可直接导出”或“导出待处理”，并区分标题、表头、无表格、结构或完整性问题。
+审核接口提交`run_id,expected_revision,tables:[人工结构]`；禁止修改来源或混入fields/items等业务载荷。可保存未完成草稿，`export_ready/export_blockers`才是导出依据。没有人工版本时，页面与导出都按原有匹配顺序采用首个有效非空标题候选和带来源的完整表头建议，不强制首次保存；空白、超过200字或含控制字符的标题候选跳过，保留其他候选供切换。存在`reviewed_tables`时完全优先，包括空标题和null/0表头。表格标题选填，明确的表头行数和有效矩阵必需；0代表无表头，null尚未确认。原始不完整输出需要保存partial_acknowledged=true。所有空格仍可留空。导出不改变状态/版本，不生成虚假人工审核；未保存的修改阻止详情页导出。列表显示“可直接导出”或“导出待处理”，并区分表头、无表格、结构或完整性问题；标题留空不标红、不阻止导出。
 
 详情编辑保持原始矩阵不可变；分页不裁掉导出行，插删按选中位置操作，非空删除确认、合并覆盖拒绝。保存冲突保留草稿。主体错误时复用裁剪入口创建新的TABLE批次；框选OCR只辅助复制文字。来源定位对TABLE可用。
 
-导出单TABLE返回XLSX，多TABLE返回ZIP；读取Content-Disposition的UTF-8文件名并过滤非法文件名，回退为表格.xlsx/表格.zip。不和其他材料/人员包混合导出。照片表格标题单独第一行21号，矩阵从第二行开始，表头/数据12号；所有现有Excel同样改为12号，数据区域统一白色底色，旧结构及表头配色不变。
+导出单TABLE返回XLSX，多TABLE返回ZIP；读取Content-Disposition的UTF-8文件名并过滤非法文件名，回退为表格.xlsx/表格.zip。不和其他材料/人员包混合导出。下载名优先使用标题；无标题用原图片名去扩展名，原名不可用则用“表格_北京时间YYYYMMDD_HHMMSS”，ZIP同名加序号。照片表格有标题时标题单独第一行21号，矩阵从第二行开始；无标题直接从第一行开始，不插空白标题行，冻结/筛选/打印表头/合并范围同步上移。表头/数据12号；所有现有Excel同样改为12号，数据区域统一白色底色，旧结构及表头配色不变。
 
 ## 通用表单动态字段（1.24.0）
 
@@ -394,3 +394,9 @@ Field.candidates可带reason和source，用于区分卡面与补充文字候选�
 必填缺失和明确识别异议分别提示：编号位数异常、明确的格式/校验失败、识别结果冲突会阻止单份、勾选、本批次全部及人员材料包导出；任一所选任务未处理则整次409 EXPORT_BLOCKED。置信度未标定、未联网核验、规则未覆盖只作信息提示。表格现有标题、表头、结构与完整性门禁不变。
 
 Task.export_blockers增加DISPUTED，批次显示“有异议”的任务数、字段名并支持筛选；筛选不改变本批次全部的导出范围，两个筛选同时选中时显示缺必填或有异议的任务并集。TaskResult.export_disputes提供当前未解决异议的dispute_id/field/label/code/message/can_confirm。操作员核对当前内容后，点击下方“保存修正并重新校验”即可保存并完成异议核对，不另设确认按钮。网页通过review的confirm_export_disputes=true提交；服务端先应用修正和重校验，再确认保存后所有可确认的异议，整个流程沿用同一run_id和expected_revision事务。省略该标记的接口调用仍只修正，不自动确认；既有confirmed_disputes接口保持兼容。无需填写理由，服务端保存确认账号和时间；来源证据、原值和置信度不变。没有明确值的候选冲突须先选择/填写，必填缺失不能确认跳过。后续修改相关值/上下文时旧确认失效；经保存按钮再次核对后记录新确认。重新识别须重新核对。历史结果实时应用，无需重新跑模型。此确认表示操作员核对原件，不代表官方真伪核验。
+
+## 文件保留设置
+
+管理员专用GET/PUT /admin/retention：days为7/15/30/null（永不清除），初始7天；revision独立于任务结果版本。GET包含assessed_at与三个有限选项的eligible_count/active_count快照。PUT发送days、expected_revision、confirmed:true，保存前必须弹窗说明新旧文件统一按原上传日期计时、超期数量、删除范围及不可恢复；取消不请求。409 RETENTION_VERSION_CONFLICT保留选择，重新读取后再次确认，不自动重放。所有账号共用服务端设置，禁止本地覆盖。保存后刷新批次。
+
+Task.expires_at和Batch.expires_at支持null，显示“永不自动清除”；有限时显示服务端日期（UTC+8），禁止前端按created_at+7天推算。批次日期为当前剩余文件最早到期时间。设置不会修改识别内容、人工修正、任务状态或结果版本。

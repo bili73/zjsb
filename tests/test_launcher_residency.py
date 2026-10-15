@@ -20,6 +20,8 @@ class LauncherResidencyTests(unittest.TestCase):
                 business.return_value.root = root/'.runtime/data'
                 launch(Mock())
             self.assertEqual(client.call_args.args[0].mode, 'dual_resident')
+            self.assertEqual(client.call_args.args[0].load_timeout, 300.0)
+            self.assertEqual(client.call_args.args[0].request_timeout, 180.0)
             self.assertEqual(json.loads(settings.read_text()), {'mode':'dual_resident'})
             client.return_value.close.assert_called_once()
 

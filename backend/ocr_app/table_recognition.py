@@ -321,9 +321,9 @@ def effective_tables(result):
     tables = deepcopy(result.get('tables', []))
     for table in tables:
         if not table.get('title'):
-            titles = {candidate['text'].strip() for candidate in table.get('title_candidates', [])
-                      if candidate['text'].strip()}
-            table['title'] = next(iter(titles)) if len(titles) == 1 else ''
+            titles = (candidate['text'].strip() for candidate in table.get('title_candidates', []))
+            table['title'] = next((title for title in titles
+                                   if title and len(title) <= 200 and not re.search(r'[\x00-\x1f]', title)), '')
         if table.get('header_rows') is None:
             count = table.get('header_suggestion')
             supported = (not table.get('incomplete')
@@ -348,9 +348,8 @@ def table_blockers(result):
         except ValueError:
             problems.append(dict(field=f'tables[{i}]', code='INVALID_TABLE'))
             continue
-        for key, valid in [('title',bool(table['title'].strip())), ('header_rows',table['header_rows'] is not None)]:
-            if not valid:
-                problems.append(dict(field=f'tables[{i}].{key}', code='MISSING'))
+        if table['header_rows'] is None:
+            problems.append(dict(field=f'tables[{i}].header_rows', code='MISSING'))
         original = next((t for t in result.get('tables',[]) if t['table_id']==table.get('table_id')),None)
         if not original or original.get('incomplete') and not table.get('partial_acknowledged'):
             problems.append(dict(field=f'tables[{i}]', code='INCOMPLETE_OUTPUT'))

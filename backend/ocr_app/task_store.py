@@ -156,7 +156,8 @@ class TaskStore:
         return row
 
     def _row(self, connection, task_id, user=None):
-        row = connection.execute(text('SELECT * FROM tasks WHERE id=:id'), {'id': task_id}).mappings().first()
+        row = connection.execute(text('SELECT t.*, CASE WHEN r.days IS NULL THEN NULL ELSE t.expires_at END AS cleanup_at '
+            'FROM tasks t CROSS JOIN retention_settings r WHERE t.id=:id AND r.id=1'), {'id': task_id}).mappings().first()
         if row is None:
             raise TaskError('INVALID_REQUEST', '任务或批次不存在或无权访问', 404)
         if user is not None:
@@ -208,6 +209,8 @@ class TaskStore:
             with self.transaction() as connection:
                 if authorize:
                     authorize(connection)
+                from .retention import load_policy, deadline
+                retention = load_policy(connection)
                 if batch_id:
                     row = self._batch_row(connection, batch_id, user)
                     if not row['is_person_package']:
@@ -244,7 +247,7 @@ class TaskStore:
                                                    {'hash': digest, 'owner': actor}).first()
                     warnings = [dict(code='DUPLICATE_FILE', message='其他批次存在相同文件，本批次独立处理')] if duplicate else []
                     params = dict(id=task_id, batch=batch, run=run_id, at=created,
-                                  expires=(datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+                                  expires=deadline(created, retention['days']),
                                   hash=digest, doc=kind, reference=reference,
                                   meta=self.storage.pack(dict(file_name=file['name'], file_size=len(file['data']), mime_type=file['mime'],
                                       actual_source_page_count=file.get('actual_source_page_count'), processed_content_hash=file.get('processed_content_hash'))),
@@ -308,7 +311,7 @@ class TaskStore:
                            status=row['status'], progress=row['progress'], progress_detail=progress_detail, doc_type=row['doc_type'],
                            doc_type_confidence=None, doc_type_confidence_method='unavailable',
                            page_count=len(pages), pages=pages, content_hash=row['content_hash'],
-                           created_at=row['created_at'], updated_at=row['updated_at'], expires_at=row['expires_at'],
+                           created_at=row['created_at'], updated_at=row['updated_at'], expires_at=row['cleanup_at'],
                            error=json.loads(row['error_json']) if row['error_json'] else None,
                            warnings=self.storage.unpack(row['warnings_enc'], []), summary=None,
                            export_ready=not export_blockers, export_blockers=export_blockers,
@@ -325,8 +328,9 @@ class TaskStore:
             if batch_id is not None and user is not None:
                 self._batch_row(connection, batch_id, user)
             policy = policy if policy is not None else self.required_policy(connection)
-            rows = connection.execute(text('SELECT t.* FROM tasks t JOIN batches b ON b.id=t.batch_id '
-                                           'WHERE (:batch IS NULL OR t.batch_id=:batch) '
+            rows = connection.execute(text('SELECT t.*, CASE WHEN r.days IS NULL THEN NULL ELSE t.expires_at END AS cleanup_at '
+                                           'FROM tasks t JOIN batches b ON b.id=t.batch_id CROSS JOIN retention_settings r '
+                                           'WHERE r.id=1 AND (:batch IS NULL OR t.batch_id=:batch) '
                                            'AND (:status IS NULL OR t.status=:status) '
                                            'AND (:unrestricted=1 OR b.owner_id=:owner) ORDER BY t.created_at,t.id'),
                                       dict(batch=batch_id, status=status, **self._owner_filter(user))).mappings()
@@ -383,7 +387,7 @@ class TaskStore:
                         status=state, task_count=len(tasks), file_count=len(tasks), total_count=len(tasks), completed_count=counts['COMPLETED'],
                         failed_count=counts['FAILED'], cancelled_count=counts['CANCELLED'], rejected_count=counts['REJECTED'],
                         need_review_count=counts['NEED_REVIEW'], created_at=row['created_at'],
-                        expires_at=min((t['expires_at'] for t in tasks), default=None),
+                        expires_at=min((t['expires_at'] for t in tasks if t['expires_at'] is not None), default=None),
                         updated_at=max((t['updated_at'] for t in tasks), default=row['created_at']), warnings=warnings)
 
     def batches(self, page=1, page_size=20, date_from=None, date_to=None, *, user=None):
@@ -831,8 +835,11 @@ class TaskStore:
         return dict(batch_id=batch_id, task_ids=[row['id'] for row in rows], cleanup_pending=cleanup_pending)
 
     def cleanup(self, at=None):
+        from .retention import load_policy
         references = []
         with self.transaction() as connection:
+            if load_policy(connection)['days'] is None:
+                return
             rows = connection.execute(text('SELECT * FROM tasks WHERE expires_at<=:at'), {'at': at or now()}).mappings().all()
             for row in rows:
                 if row['status'] in ACTIVE:

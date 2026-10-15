@@ -10,6 +10,8 @@ import type { RequiredFieldSave } from './requiredFields.ts'
 import { parseRegionText } from './regionOcr.ts'
 import type { RegionBox } from './regionOcr.ts'
 import { parseWorkbenchLayout, parseWorkbenchPreferences } from './workbenchEntries.ts'
+import { parseRetentionSettings } from './retention.ts'
+import type { RetentionDays } from './retention.ts'
 
 export class ApiFailure extends Error {
   readonly card: DiagnosticCard
@@ -107,6 +109,11 @@ export class BusinessApi {
     this.csrfToken = undefined
   }
   requiredFields(signal: AbortSignal) { return this.request('/admin/required-fields', 'required_settings_read', parseRequiredFieldSettings, signal) }
+  retention(signal: AbortSignal) { return this.request('/admin/retention', 'retention_read', parseRetentionSettings, signal) }
+  saveRetention(body: { days: RetentionDays; expected_revision: number; confirmed: true }, signal: AbortSignal) {
+    return this.request('/admin/retention', 'retention_save', parseRetentionSettings, signal,
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  }
   saveRequiredFields(body: RequiredFieldSave, signal: AbortSignal) {
     return this.request('/admin/required-fields', 'required_settings_save', parseRequiredFieldSettings, signal, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   }

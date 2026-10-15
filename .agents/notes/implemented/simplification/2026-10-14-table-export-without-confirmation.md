@@ -10,6 +10,8 @@ The table UI fills title and header drafts, but export requires reviewed_tables 
 
 ## Decision
 
+The [ranked optional-title decision](../../implemented/feature/2026-10-15-table-title-suggestions-and-untitled-export.md) supersedes this note's sole-candidate and mandatory-title rules. The historical rationale below explains the earlier choice; read-time projection, human precedence, header/structure/partial-output gates and state preservation continue to apply.
+
 Use one server effective-table helper for eligibility and serialization. An existing reviewed_tables value is authoritative, including intentionally blank titles, null/zero headers and an unfinished draft. Otherwise clone the original matrix, adopt a sole distinct nonempty title candidate and a supported complete header suggestion. Multiple distinct title candidates remain a visible choice; do not arbitrarily choose the first. Never persist this projection as a human review or change status, revision, source values or history. Current and historical tasks use the same read-time rule, without rerunning OCR.
 
 Valid title, header count and matrix permit direct export. Truncated/structurally incomplete originals still require a saved explicit partial acknowledgement. Empty source, invalid grids and uncertain metadata block the entire selection with precise reasons. Unsaved local edits still block drawer export. UI defaults follow the same selection rules; table-specific batch labels say export needs attention, not all missing required values. Unchanged tables do not need the save button.

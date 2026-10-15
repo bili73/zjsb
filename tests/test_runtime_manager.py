@@ -58,6 +58,29 @@ class ManagerTests(unittest.TestCase):
         self.assertEqual(factory.events, [('load', 'glm_ocr'), ('load', 'paddleocr_vl'),
                                           ('recognize', 'paddleocr_vl'), ('recognize', 'glm_ocr')])
 
+    def test_cold_start_budget_does_not_extend_recognition_budget(self):
+        budgets = []
+        class ColdFactory(FakeFactory):
+            def __call__(self, key, config, phase):
+                client = super().__call__(key, config, phase)
+                original = client.call
+                def call(operation, timeout, **payload):
+                    budgets.append((operation, timeout))
+                    # Simulate a cold load requiring 150 seconds, without sleeping.
+                    if operation == 'load' and timeout < 150:
+                        raise RuntimeFailure('MODEL_LOAD_FAILED')
+                    return original(operation, timeout, **payload)
+                client.call = call
+                return client
+        manager = ModelManager(RuntimeConfig(Path(self.temp.name)), factory=ColdFactory())
+        self.addCleanup(manager.close)
+        manager.start()
+        self.assertEqual(manager.snapshot()['effective_mode'], 'dual_resident')
+        manager.recognize('paddleocr_vl', 'unused')
+        self.assertEqual([op for op, _ in budgets], ['load', 'load', 'recognize'])
+        self.assertTrue(all(299 < budget <= 300 for _, budget in budgets[:2]))
+        self.assertTrue(179 < budgets[-1][1] <= 180)
+
     def test_single_switch_closes_old_tree_before_loading(self):
         manager, factory = self.make('single_resident')
         manager.start()
