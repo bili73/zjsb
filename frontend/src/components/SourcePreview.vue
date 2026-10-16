@@ -207,7 +207,7 @@ void (async () => {
   <section ref="previewEl" v-loading="loading" class="source-preview" @click="onSectionClick">
     <h3>原件对照 · 服务端校正页</h3>
     <div ref="pageToolsEl" class="page-tools">
-      <span>共 {{ maxPage }} 页 · 上下滚动连续浏览，{{ ocrEnabled ? '点击页面查看原图并框选识别' : '点击页面全屏缩放' }}<template v-if="source?.bbox">，点击空白处可取消红框</template></span>
+      <span>共 {{ maxPage }} 页 · {{ ocrEnabled ? '点击页面框选识别' : '点击页面放大查看' }}<template v-if="source?.bbox">，点击空白处取消红框</template></span>
       <el-input-number v-model="jumpPage" :min="1" :max="maxPage" :precision="0" size="small" controls-position="right" />
       <el-button size="small" @click="goTo(jumpPage)">跳页</el-button>
       <span class="tools-spacer" />
@@ -216,8 +216,6 @@ void (async () => {
         <span class="ocr-entry" data-guide="source-tools"><el-button size="small" type="primary" :icon="Crop" :disabled="!api || !canWrite || !active || !ocrEnabled" @click="openOcr">框选识别文字</el-button></span>
       </el-tooltip>
     </div>
-    <p v-if="task.doc_type === 'MEDICAL_REPORT'" class="conf">无可靠定位框时显示整页。来源框仅叠加在版本一致的校正页，不能证明模型已读完整页。</p>
-    <p v-else class="conf">{{ ['TABLE','GENERIC','BANK_CARD','INTERVIEW_FORM'].includes(task.doc_type ?? '') ? '可定位主体或已有来源，点击图片查看原图、框选识别文字。' : '证件提供整页原图对照，点击图片查看原图、框选识别。' }}</p>
     <el-alert v-if="failure" type="warning" :closable="false">{{ failure }}</el-alert>
     <ol ref="pageListEl" class="page-list">
       <li v-for="n in maxPage" :key="n" :ref="el => setPageRef(el, n)" :data-page="n" class="page-item">

@@ -69,7 +69,7 @@ Batch、Task及TaskResult可选携带`required_fields_revision`，独立于`resu
 | key / label | 稳定英文键 / 中文名称 |
 | value | 已整理值：string、number或null；返回完整值，直接显示返回值 |
 | value_masked | 可选，兼容旧字段；当前不作为显示值，优先value |
-| confidence / confidence_method | 当前null / unavailable；显示“置信度未标定”，不能当0分，也不能自填固定分 |
+| confidence / confidence_method | 当前null / unavailable；前端不再展示置信度，不能当0分，也不能自填固定分 |
 | required / editable | 当前类型及材料条件的必填与可编辑标记，优先于静态表 |
 | reviewed / value_origin / absence_reason | 人工确认、recognized/manual/derived、NOT_ON_DOCUMENT/NOT_APPLICABLE |
 | derivation | 可选派生说明；银行卡offline_bin标明输入字段、匹配号段、库版本/日期/来源及哈希，不是OCR来源 |
@@ -218,7 +218,7 @@ basis 为 `report_marker / report_grade / reference_comparison / unknown`。查�
 | count_check | match、mismatch或unverified；match只表示这张清单数对上，不证明全报告完整 |
 | sources | 标题/边界及清单来源 |
 
-finding 保留 `finding_id / reported_number / text / sources`；新增可选 `project_name / result_item_id / risk_grade / diagnosis / result_raw / result_sources / need_review / review_issues`。text是清单原文，sources是清单来源；result_sources独立指向唯一匹配的检测行。重复同名或分组项目无法唯一对应检测行时 result_raw=null，并给MISSING/CONFLICT，不让前端猜配。若检测行能唯一对应但诊断互相冲突，已对应的检测结果仍保留，诊断留空并保留冲突来源；结果对应与诊断一致性是两项检查。project_name来自明确清单项目列，result_item_id指向唯一对应检测行；人工修正/删除该检测行后同步结果及来源。历史finding可能只有原4项，须兼容。前端分开显示清单条数、已关联检测结果、未关联条数和结果来源；清单条目数吻合不证明检测表提取完整。
+finding 保留 `finding_id / reported_number / text / sources`；新增可选 `project_name / result_item_id / risk_grade / diagnosis / result_raw / result_sources / need_review / review_issues`。text是清单原文，sources是清单来源；result_sources独立指向唯一匹配的检测行。重复同名或分组项目无法唯一对应检测行时 result_raw=null，并给MISSING/CONFLICT，不让前端猜配。若检测行能唯一对应但诊断互相冲突，已对应的检测结果仍保留，诊断留空并保留冲突来源；结果对应与诊断一致性是两项检查。project_name来自明确清单项目列，result_item_id指向唯一对应检测行；人工修正/删除该检测行后同步结果及来源。历史finding可能只有原4项，须兼容。清单条目在表格逐行展示并附结果来源，未关联行标注“未关联检测结果”；清单条目数吻合不证明检测表提取完整。
 
 医疗 `stats.total/normal/abnormal/unknown` 当前在全量覆盖未证明时为null；显示“未确认”。`abnormal_summary` 是已经确认异常的检测行，不等同于 report_summary.findings。limitations 应可见。
 

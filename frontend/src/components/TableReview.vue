@@ -75,10 +75,9 @@ function save() {
       <el-form label-position="top" :disabled="disabled">
         <el-form-item data-guide="table-title" label="表格标题（选填，用作 Excel 文件名）"><el-input v-model="draft.title" maxlength="200" placeholder="没有标题可留空，将使用原图片名导出" @input="dirty" /></el-form-item>
         <div class="table-tools"><el-button v-for="title in titles" :key="title" size="small" @click="draft.title=title;dirty()">采用：{{ title }}</el-button></div>
-        <p class="conf">{{ props.result.reviewed_tables?.length ? '保留已保存的标题设置。' : titles.length ? '已优先采用最匹配的有效候选，可选择其他候选或修改。' : '没有标题也可以导出。' }}标题留空时使用原图片名（不可用时使用“表格_时间”），Excel 从表头或数据直接开始。</p>
         <el-form-item data-guide="table-headers" label="表头行数（从第一行起；无表头填0）" :class="{ 'field-missing': headerMissing }"><el-input-number v-model="draft.header_rows" :min="0" :max="draft.rows.length" :precision="0" aria-label="表头行数" @change="dirty" /></el-form-item>
-        <p v-if="headerSuggestion !== null" class="conf">根据{{ headerBasis }}，建议{{ headerSuggestion === 0 ? '无表头（0行）' : `前 ${headerSuggestion} 行为表头` }}。{{ props.result.reviewed_tables?.length ? '当前保留已保存的设置。' : '已自动填写，可对照高亮行修改。' }}有修改时再保存。</p>
-        <p v-else class="conf">无法可靠判断表头行数，请对照原图手动设置；无表头填0。</p>
+        <p v-if="headerSuggestion !== null" class="conf">根据{{ headerBasis }}，建议{{ headerSuggestion === 0 ? '无表头（0行）' : `前 ${headerSuggestion} 行为表头` }}。{{ props.result.reviewed_tables?.length ? '当前保留已保存的设置。' : '' }}</p>
+        <p v-else class="conf">无法可靠判断表头行数，请对照原图手动设置。</p>
       </el-form>
       <el-alert v-if="original.outside_text.length" type="warning" :closable="false"><b>表外识别到文字，请核对是否需要补成一行：</b><p v-for="(snippet,i) in original.outside_text" :key="i" class="outside-text">{{ snippet.text }}</p></el-alert>
       <p>共 {{ draft.rows.length }} 行 × {{ draft.rows[0]?.length }} 列（含表头）。点击单元格选择位置；Tab 或 Alt + 方向键换格。</p>
@@ -89,7 +88,6 @@ function save() {
       <el-checkbox v-if="original.incomplete" :class="{ 'field-missing': partialMissing }" v-model="draft.partial_acknowledged" :disabled="disabled" @change="dirty">我已对照原图补正，或明确仅导出当前保留的部分内容。</el-checkbox>
       <p v-if="error" role="alert">{{ error }}</p>
       <el-button data-guide="table-save" type="primary" :disabled="disabled || !edited" :loading="busy" @click="save">保存表格修正</el-button>
-      <p class="conf">完整结果且表头明确时可直接导出，标题选填；仅修改后需要保存。允许保存未完成草稿；识别不完整时需补正或确认。空白格无需填写，原始识别记录保留。</p>
       <details><summary>查看初始识别内容（只读）</summary><pre>{{ original.rows.map(row=>row.join('\t')).join('\n') }}</pre></details>
     </template>
   </section>

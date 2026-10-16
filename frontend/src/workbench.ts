@@ -82,12 +82,9 @@ export function sourcePage(value: unknown, pageCount: number, kind: LocalPreview
 
 // Local projection over the currently returned items only. It never claims
 // full-report coverage; the server-side items_filter stays the primary view switch.
-export function searchMedicalItems(items: readonly MedicalItem[], query: string, reviewOnly: boolean): MedicalItem[] {
+export function searchMedicalItems(items: readonly MedicalItem[], query: string): MedicalItem[] {
   const search = query.trim().toLocaleLowerCase()
-  return items.filter(item => {
-    const matches = [item.name, item.alias, item.category].some(label => (label ?? '').toLocaleLowerCase().includes(search))
-    return matches && (!reviewOnly || item.need_review)
-  })
+  return items.filter(item => [item.name, item.alias, item.category].some(label => (label ?? '').toLocaleLowerCase().includes(search)))
 }
 
 export interface PendingOperation { operation: 'cancel' | 'rerun'; task_id: string; run_id: string }

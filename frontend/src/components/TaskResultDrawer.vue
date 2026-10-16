@@ -7,7 +7,7 @@ import type { BusinessApi } from '../api.ts'
 import { resultKey } from '../business.ts'
 import type { DocProfile, ItemsFilter, Task, TaskResult, FieldSource } from '../business.ts'
 import type { ReviewBody } from '../review.ts'
-import { downloadBlob, exportBlockReason, spreadsheetName } from '../review.ts'
+import { canAcceptIssue, collectIssues, downloadBlob, exportBlockReason, spreadsheetName } from '../review.ts'
 import { errorMessages } from '../diagnostics.ts'
 import type { ErrorCode } from '../diagnostics.ts'
 import type { LocalPreviewBatch } from '../workbench.ts'
@@ -129,6 +129,24 @@ function onBodyClick(event: MouseEvent) {
 }
 const regions = computed(() => (props.task?.pages ?? []).flatMap(page => (page.regions ?? []).map(region => ({ region_id: region.region_id, page: page.page_index }))))
 
+// 字段/项目级"待核对/核对项"标签已按需求移除；这里是未自动接受问题文案的唯一汇总出口。
+// 字段级缺失有下方编辑区的红边+（必填）兜底，不重复列；项目/清单级缺失没有其他载体，照常列出。
+const blockingIssues = computed(() => {
+  if (!result.value) return []
+  const fieldLabels = new Set((result.value.fields ?? Object.values(result.value.basic_info ?? {})).map(field => field.label))
+  return collectIssues(result.value).filter(row => !canAcceptIssue(row.issue) && !(row.issue.code === 'MISSING' && fieldLabels.has(row.scope)))
+})
+const issueSummary = computed(() => {
+  const rows = blockingIssues.value
+  if (!rows.length) return ''
+  // scope 形如"项目：谷丙转氨酶"时直接取项目名，避免渲染出"项目：谷丙转氨酶：…"双冒号；余量附项目名便于搜索定位。
+  const label = (scope: string) => (scope.startsWith('项目：') ? scope.slice(3) : scope)
+  const head = rows.slice(0, 2).map(row => `${label(row.scope)}：${row.issue.message.replace(/。$/, '')}`).join('；')
+  const restNames = [...new Set(rows.slice(2).map(row => label(row.scope)))]
+  const tail = restNames.length ? `；另有${restNames.slice(0, 4).join('、')}${restNames.length > 4 ? `等${restNames.length}项` : ''}` : ''
+  return `（${head}${tail}）`
+})
+
 // 左右分栏宽度：可拖动的分隔条，双击复位；仅内存保存，不落任何存储。
 const leftWidth = ref(40)
 const dragging = ref(false)
@@ -228,7 +246,7 @@ async function runExport() {
       </el-result>
       <template v-else-if="result && task">
         <el-alert v-if="stale || reviewError" type="warning" :closable="false">{{ reviewError || '任务结果或必填设置已更新，当前草稿已保留；请明确刷新后重新核对。' }}<el-button @click="refreshDraft">读取最新版本</el-button></el-alert>
-        <p v-if="task.status === 'NEED_REVIEW'" class="drawer-notice" role="note">该任务包含需要人工核对的内容，请结合左侧原图核对后再使用。</p>
+        <p v-if="task.status === 'NEED_REVIEW'" class="drawer-notice" role="note">该任务包含需要人工核对的内容{{ issueSummary }}，请结合左侧原图核对后再使用。</p>
         <el-alert v-if="task.error" type="error" :closable="false" show-icon class="drawer-alert">
           {{ errorMessages[task.error.code] }}{{ task.error.error_id ? `（错误编号 ${task.error.error_id}）` : '' }}
         </el-alert>

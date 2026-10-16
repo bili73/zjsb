@@ -7,7 +7,7 @@ const emit=defineEmits<{(e:'locate',source:FieldSource):void}>()
 <template>
   <section class="generic-sources">
     <h3 data-guide="generic-result">通用表单识别</h3>
-    <p>已提取 {{ original.key_values.length }} 个键值、{{ original.tables?.length ?? 0 }} 个表格。字段可在下方修改；重复字段分别保留。位置和结构判断未经置信度标定，请对照原件核对。</p>
+    <p>已提取 {{ original.key_values.length }} 个键值、{{ original.tables?.length ?? 0 }} 个表格。重复字段分别保留；字段可在下方修改。</p>
     <details>
       <summary>初始识别内容与来源（只读）</summary>
       <article v-for="(block,index) in original.blocks ?? []" :key="index">

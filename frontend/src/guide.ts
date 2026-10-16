@@ -3,7 +3,7 @@ export type GuideContext = 'upload' | 'batches' | 'batch' | 'package' | 'review'
 export interface GuideStep { anchor: string; title: string; text: string; write?: boolean; optional?: boolean }
 const step = (anchor: string, title: string, text: string, extra: Partial<GuideStep> = {}): GuideStep => ({ anchor, title, text, ...extra })
 const source = step('source-tools', '对照原件，必要时再识别一小块', '这里可以跳到指定页、查看大图，或点“框选识别文字”裁出局部。识别后可复制原文或日期建议，再粘贴到修正框；不会自动覆盖已有字段。')
-const fields = step('result-fields', '先核对已识别字段', '对照原件看姓名、号码和日期。红色缺失项要补齐；位数不符、校验失败或候选冲突需要人工核对。置信度提示不等于识别正确。')
+const fields = step('result-fields', '先核对已识别字段', '对照原件看姓名、号码和日期。红色缺失项要补齐；位数不符、校验失败或候选冲突需要人工核对。')
 const save = step('review-save', '修正后保存', '在“人工核对与修正”填写或修改，再点击“保存修正并重新校验”。保存会提交当前修正及核对结果；请先核对原件。只打开或关闭指引不会保存。', { write: true })
 const exportDetail = step('detail-export', '最后导出 Excel', '必填字段齐全、明确异议已处理，且没有未保存的修正时可以导出。按钮不可用时悬停可查看原因；“待核对”状态本身不一定阻止导出。', { write: true })
 const filter = step('batch-filter', '先找需要处理的文件', '用“只看必填未填”和“只看有异议”快速找出问题任务。表格显示“导出待处理”。筛选仅影响列表，不改变“本批次全部”的导出范围。')
@@ -68,7 +68,7 @@ export function guideSteps(context: GuideContext, canWrite: boolean, isAdmin: bo
   if (['accounts', 'required', 'retention'].includes(context) && !isAdmin) return []
   const result = guides[context].filter(item => !item.write || canWrite)
   if (!canWrite) {
-    if (context === 'review') result.push(step('review-fields', '当前为只读查看', '可对照原件查看字段和核对提示。需要补填、保存或导出时，请联系有操作权限的账号处理。'))
+    if (context === 'review') result.push(step('review-fields', '当前为只读查看', '可对照原件查看字段和位数提示。需要补填、保存或导出时，请联系有操作权限的账号处理。'))
     if (context === 'generic') result.push(step('generic-edit', '查看正文与键值内容', '当前账号只能查看；需要修改正文、键值或导出时，请联系有操作权限的账号处理。'))
     if (context === 'batch') result.push(step('batch-export', '当前账号不能导出', '可以查阅本人的识别结果；下载 Excel 需要操作员或管理员处理。'))
     return result.map(item => item.anchor === 'source-tools'

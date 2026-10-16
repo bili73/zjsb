@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  confidenceText, docTypes, fieldValueText, genderText, idNumberLengthWarning, isRecord, medicalFlag, parseBatches, parseCreated, parseResult, parseTask, parseTasks, parseUser,
+  docTypes, fieldValueText, genderText, idNumberLengthWarning, isRecord, medicalFlag, parseBatches, parseCreated, parseResult, parseTask, parseTasks, parseUser,
   validateUpload, hasResult, resultKey, matchesMedicalFilter,
 } from '../src/business.ts'
 
@@ -226,12 +226,10 @@ test('docTypes includes the independent photo-table entry and canonical identifi
   assert.ok(docTypes.ID_CARD_FRONT && docTypes.ID_CARD_BACK && docTypes.XUEXIN_DIPLOMA_TABLE)
 })
 
-test('medicalFlag and confidenceText formatting', () => {
+test('medicalFlag formatting', () => {
   assert.equal(medicalFlag(makeItem()), '偏低')
   assert.equal(medicalFlag(makeItem({ abnormal_basis: 'unknown', abnormal_flag: 'UNKNOWN' })), '待判定')
   assert.equal(medicalFlag(makeItem({ abnormal_flag: 'ABNORMAL', abnormal_basis: 'report_grade' })), '异常')
-  assert.equal(confidenceText({ confidence: 0.873, confidence_method: 'calibrated' }), '87%')
-  assert.equal(confidenceText({ confidence: null, confidence_method: 'unavailable' }), '未标定')
 })
 
 test('genderText maps contract M/F values to 男/女 and passes others through', () => {

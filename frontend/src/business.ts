@@ -292,9 +292,6 @@ export function medicalFlag(item: MedicalItem): string {
   if (item.abnormal_basis === 'unknown') return item.abnormal_flag === 'POSITIVE' ? '阳性 · 待判定' : '待判定'
   return { NORMAL: '正常', HIGH: '偏高', LOW: '偏低', ABNORMAL: '异常', POSITIVE: '阳性', UNKNOWN: '待判定' }[item.abnormal_flag]
 }
-export function confidenceText(field: Pick<Field, 'confidence' | 'confidence_method'>): string {
-  return field.confidence_method === 'calibrated' && field.confidence !== null ? `${Math.round(field.confidence * 100)}%` : '未标定'
-}
 
 // 性别字段（契约值 M/F）按用户要求以中文展示与编辑；提交新值时写回中文。
 const genderLabels: Record<string, string> = { M: '男', F: '女', m: '男', f: '女', male: '男', female: '女', 男: '男', 女: '女' }

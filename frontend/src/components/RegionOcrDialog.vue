@@ -281,7 +281,6 @@ async function copyResult(value = text.value, input: { focus(): void; select(): 
         </div>
         <el-input ref="textInput" v-model="text" type="textarea" :autosize="{ minRows: 2, maxRows: 10 }" maxlength="4096" :disabled="copying" aria-label="选区识别文字，可修改或复制" />
         <div class="region-panel-foot">
-          <span class="region-panel-note">请对照原图核对；此分数不改变原字段置信度。</span>
           <el-button size="small" :type="copyDone === text ? 'success' : 'primary'" :loading="copying" :disabled="!text.trim()" @click="copyResult()">{{ copyDone === text ? '已复制' : '复制文字' }}</el-button>
         </div>
         <div v-if="dateSuggestions.length" class="date-suggestions" aria-label="日期复制建议">
@@ -327,7 +326,7 @@ async function copyResult(value = text.value, input: { focus(): void; select(): 
 .region-panel-head strong { flex: 1; font-size: 13px; }
 .region-panel-close { flex: none; border: 0; background: transparent; font-size: 18px; line-height: 1; color: var(--el-text-color-secondary); cursor: pointer; padding: 2px 6px; border-radius: 4px; }
 .region-panel-close:hover { background: var(--el-fill-color-light); color: var(--el-text-color-primary); }
-.region-panel-foot { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.region-panel-foot { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .region-panel-note { margin: 0; font-size: 12px; color: var(--el-text-color-secondary); flex: 1; }
 .region-error { margin-top: 12px; }
 /* 影院模式：还原“点击查看原图”的全屏大图观感，识别控件弱化为暗色背景上的浮动条。

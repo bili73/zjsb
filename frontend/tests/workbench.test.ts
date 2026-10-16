@@ -89,14 +89,14 @@ const item = (overrides: Partial<MedicalItem> = {}): MedicalItem => ({
   confidence: 0.9, confidence_method: 'calibrated', need_review: false, review_issues: [], ...overrides,
 })
 
-test('searchMedicalItems matches name, alias and category; reviewOnly filters', () => {
+test('searchMedicalItems matches name, alias and category', () => {
   const items = [item(), item({ item_id: 'i2', name: '谷丙转氨酶', alias: 'ALT', category: '肝功能', need_review: true })]
-  assert.equal(searchMedicalItems(items, '白细胞', false).length, 1)
-  assert.equal(searchMedicalItems(items, 'alt', false).length, 1)
-  assert.equal(searchMedicalItems(items, '肝功能', false).length, 1)
-  assert.equal(searchMedicalItems(items, 'WBC', true).length, 0)
-  assert.equal(searchMedicalItems(items, '', true).length, 1)
-  assert.equal(searchMedicalItems(items, '不存在', false).length, 0)
+  assert.equal(searchMedicalItems(items, '白细胞').length, 1)
+  assert.equal(searchMedicalItems(items, 'alt').length, 1)
+  assert.equal(searchMedicalItems(items, '肝功能').length, 1)
+  assert.equal(searchMedicalItems(items, 'WBC').length, 1)
+  assert.equal(searchMedicalItems(items, '').length, 2)
+  assert.equal(searchMedicalItems(items, '不存在').length, 0)
 })
 
 const task = (overrides: Partial<Task> = {}): Task => ({

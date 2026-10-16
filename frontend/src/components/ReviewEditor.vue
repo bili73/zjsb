@@ -106,8 +106,6 @@ function save() {
 <template>
   <section class="review-editor">
     <h3 data-guide="review-fields">人工核对与修正</h3>
-    <p v-if="result.doc_type === 'MEDICAL_REPORT'" class="conf">体检项目数量由“本次体检项目意义”的大项清单计数；修正下方体检项目清单即可更新。身高、体重可作为台账字段修正，仍不计异常；小结只作结论证据，BMI照常核对。</p>
-    <el-alert type="info" :closable="false">请核对当前内容后点击下方“保存修正并重新校验”，即可保存修改并完成异议核对，无需另行确认。必填缺值须补齐，原始识别证据保留。</el-alert>
     <el-form label-position="top" :disabled="!canWrite || busy">
       <div class="field-grid">
         <el-form-item v-for="field in fields" :key="field.key" :class="{ 'field-missing': missingRequired(field.key) }" :label="`${field.label}${required(field.key) ? '（必填）' : ''}`">
@@ -117,7 +115,7 @@ function save() {
           <p v-if="lengthHints[field.key]" role="status" :class="['number-length-hint', lengthHints[field.key]?.level]">{{ lengthHints[field.key]?.message }}</p>
           <el-select v-if="!required(field.key) && editable(field.key)" v-model="absence[field.key]" placeholder="缺省原因（可选）" clearable><el-option label="原件未记载" value="NOT_ON_DOCUMENT" /><el-option label="不适用" value="NOT_APPLICABLE" /></el-select>
           <div v-if="['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type) && field.candidates?.length" class="bank-candidates">
-            <p class="conf">{{ field.review_issues.some(issue => issue.code === 'CONFLICT') ? '识别结果不一致，请对照原件选择；选择后仍需保存修正。' : '原始识别候选保留供对照；再次修改后仍需保存。' }}</p>
+            <p v-if="field.review_issues.some(issue => issue.code === 'CONFLICT')" class="conf">识别结果不一致，请对照原件选择；选择后仍需保存修正。</p>
             <div v-for="(candidate,index) in field.candidates" :key="index">
               <el-button @click="setField(field.key, String(candidate.value ?? ''))">采用{{ candidate.reason ? '（' + candidate.reason + '）' : '' }}：{{ candidate.value }}</el-button>
               <el-button v-if="candidate.source" link @click="emit('locate',candidate.source)">查看来源</el-button>
@@ -154,7 +152,6 @@ function save() {
       <el-collapse><el-collapse-item title="全页覆盖确认（仅实际逐页核对后填写）" name="coverage"><el-checkbox v-model="coverageEnabled">我已逐页检查原件及遗漏内容</el-checkbox><template v-if="coverageEnabled"><p>原始材料共 {{ pageCount || '未知' }} 页；未知总页数时不能提交完整覆盖声明。</p><el-checkbox-group v-model="checkedPages"><el-checkbox v-for="page in pageCount" :key="page" :value="page">第 {{ page }} 页</el-checkbox></el-checkbox-group><el-input v-model="coverageReason" placeholder="说明人工补齐与完整性核对依据" type="textarea"/><article v-for="region in regions ?? []" :key="region.region_id" class="edit-row"><span>第 {{ region.page }} 页区域 {{ region.region_id.slice(0,8) }}</span><el-select v-model="regionActions[region.region_id]" clearable placeholder="未补充覆盖声明"><el-option value="TRANSCRIBED" label="已补录"/><el-option value="NO_CONTENT" label="已确认无业务文字"/></el-select><el-input v-if="regionActions[region.region_id]" v-model="regionReasons[region.region_id]" placeholder="该区域核对理由"/><el-select v-if="regionActions[region.region_id] === 'TRANSCRIBED'" v-model="regionItems[region.region_id]" multiple placeholder="对应已存在项目"><el-option v-for="item in result.items ?? []" :key="item.item_id" :label="item.name" :value="item.item_id"/></el-select><template v-if="regionActions[region.region_id] === 'TRANSCRIBED'"><el-select v-model="regionFields[region.region_id]" multiple placeholder="本次补录字段"><el-option v-for="f in fields" :key="f.key" :label="f.label" :value="f.key"/></el-select><el-select v-model="regionAdded[region.region_id]" multiple placeholder="本次新增检测项目"><el-option v-for="(item,index) in added" :key="index" :label="item.name || `新增 ${index+1}`" :value="index"/></el-select><el-select v-model="regionFindings[region.region_id]" multiple placeholder="本次修正清单"><el-option v-for="(f,index) in findings" :key="f.finding_id" :label="`清单 ${index+1}`" :value="f.finding_id"/></el-select><el-select v-model="regionMembers[region.region_id]" multiple placeholder="本次修正成员"><el-option v-for="(_,index) in members" :key="index" :label="`成员 ${index+1}`" :value="index"/></el-select><el-select v-if="result.doc_type === 'HOUSEHOLD_REGISTER'" v-model="regionAddedMembers[region.region_id]" multiple placeholder="本次新增成员"><el-option v-for="(member,index) in addedMembers" :key="index" :value="index" :label="String(member.fields.name || `新增成员 ${index+1}`)"/></el-select><el-checkbox v-if="result.doc_type === 'GENERIC'" v-model="regionGeneric[region.region_id]">本次补录通用全文</el-checkbox></template></article></template></el-collapse-item></el-collapse>
       <el-alert v-if="message" type="warning" :closable="false">{{ message }}</el-alert>
       <el-button data-guide="review-save" type="primary" :loading="busy" :disabled="!canWrite" @click="save">保存修正并重新校验</el-button>
-      <span class="conf">后端决定是否完成复核；提交成功不自动代表可导出。</span>
     </el-form>
   </section>
 </template>
