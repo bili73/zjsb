@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Download } from '@element-plus/icons-vue'
 import { ApiFailure, isAbort } from '../api.ts'
 import type { BusinessApi } from '../api.ts'
 import { errorMessages } from '../diagnostics.ts'
@@ -86,7 +87,7 @@ onBeforeUnmount(() => { generation++; controller.abort() })
       <el-form-item label="日期范围（最多31天）"><el-date-picker v-model="range" type="daterange" value-format="YYYY-MM-DD" start-placeholder="开始日期" end-placeholder="结束日期" /></el-form-item>
       <el-form-item label="错误 / 请求编号"><el-input v-model="errorId" clearable placeholder="粘贴错误编号或请求编号" /></el-form-item>
       <el-form-item label="任务编号"><el-input v-model="taskId" clearable placeholder="粘贴任务 UUID" /></el-form-item>
-      <div class="actions"><el-button type="primary" native-type="submit" :loading="busy" :disabled="downloading">查询</el-button><el-button :loading="downloading" :disabled="busy" @click="download">下载诊断包</el-button></div>
+      <div class="actions"><el-button type="primary" native-type="submit" :loading="busy" :disabled="downloading">查询</el-button><el-button :icon="Download" :loading="downloading" :disabled="busy" @click="download">下载诊断包</el-button></div>
     </el-form>
     <el-alert v-if="error" type="error" :closable="false" show-icon>{{ error }}</el-alert>
     <el-alert v-if="incomplete" type="warning" :closable="false" show-icon>日志结果不完整：扫描时跳过 {{ skippedFiles }} 个无法读取的文件和 {{ skippedRecords }} 条损坏记录，原文件已保留。下表仅展示可读取的匹配记录，不能据此判断没有其他错误；请联系维护人员。</el-alert>

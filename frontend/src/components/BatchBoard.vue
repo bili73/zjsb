@@ -208,6 +208,21 @@ function errorTip(task: Task): string {
 
 const canCancel = (task: Task) => props.canWrite && runningStatuses.has(task.status) && !task.cancel_requested
 const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.status)
+
+// 两个筛选互斥：点选其一清除另一个，再点一次取消，回到显示全部。
+function setMissingOnly(batchId: string, value: boolean) {
+  missingOnly[batchId] = value
+  if (value) disputedOnly[batchId] = false
+}
+function setDisputedOnly(batchId: string, value: boolean) {
+  disputedOnly[batchId] = value
+  if (value) missingOnly[batchId] = false
+}
+// 删除批次的禁用原因：不可用时悬停可见，可用时不占版面（后果在确认框里交代）。
+const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
+  ? '请等待排队及识别任务停止后再删除。'
+  : !entry.tasksLoaded ? '正在获取任务，稍后可删除。'
+    : !entry.tasks.length ? '本批次没有可删除的任务。' : ''
 </script>
 
 <template>
@@ -270,8 +285,15 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
         </template>
 
         <div :data-guide-scope="`batch-${id}`">
-        <OperationGuide label="本批次指引" :context="entry.batch && isPersonPackage(entry.batch) ? 'package' : 'batch'" :scope="`batch-${id}`" :can-write="canWrite" :is-admin="isAdmin" :active="active !== false && expandedNames.includes(id) && !appendTarget" />
-        <ExportControls :api="api" :tasks="entry.tasks" :selected="entry.tasks.filter(t => (selected[id] ?? []).some(s => s.task_id === t.task_id))" :batch-id="id" :batch="entry.batch ?? undefined" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
+        <div class="batch-actions">
+          <ExportControls :api="api" :tasks="entry.tasks" :selected="entry.tasks.filter(t => (selected[id] ?? []).some(s => s.task_id === t.task_id))" :batch-id="id" :batch="entry.batch ?? undefined" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
+          <OperationGuide label="本批次指引" :context="entry.batch && isPersonPackage(entry.batch) ? 'package' : 'batch'" :scope="`batch-${id}`" :can-write="canWrite" :is-admin="isAdmin" :active="active !== false && expandedNames.includes(id) && !appendTarget" />
+          <el-tooltip v-if="isAdmin" placement="top" :disabled="!deleteBlockReason(entry)" :content="deleteBlockReason(entry)">
+            <span>
+              <el-button type="danger" plain :icon="Delete" :loading="acting === `delete:${id}`" :disabled="!!acting || !!deleteBlockReason(entry)" @click="deleteBatch(id)">删除批次</el-button>
+            </span>
+          </el-tooltip>
+        </div>
         <PersonNameEditor v-if="entry.batch && isPersonPackage(entry.batch)" :batch="entry.batch" :monitor="monitor" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
         <div v-if="entry.batch && isPersonPackage(entry.batch)" class="package-toolbar" data-guide="package-pairing" :class="{ 'has-warning': entry.batch.warnings?.length }">
           <el-icon class="package-icon"><User /></el-icon>
@@ -280,14 +302,10 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
           <span class="toolbar-spacer" />
           <el-button v-if="canWrite" data-guide="package-append" type="primary" plain :icon="UploadFilled" @click="appendTarget = { ...entry.batch }">补充上传</el-button>
         </div>
-        <div v-if="isAdmin" class="required-toolbar">
-          <el-button type="danger" plain :icon="Delete" :loading="acting === `delete:${id}`" :disabled="!!acting || !entry.tasksLoaded || !entry.tasks.length || entryRunning(entry)" @click="deleteBatch(id)">删除批次</el-button>
-          <span class="poll-hint">{{ entryRunning(entry) ? '请等待排队及识别任务停止后再删除。' : '永久删除本批次及关联文件；待人工核对的记录也可删除。' }}</span>
-        </div>
         <div class="required-toolbar">
           <span class="filter-checks" data-guide="batch-filter">
-            <el-checkbox v-if="entry.tasksLoaded" v-model="missingOnly[id]">{{ isTableEntry(entry) ? '只看导出待处理' : '只看必填未填' }}（{{ missingTasks[id]?.length ?? 0 }}）</el-checkbox>
-            <el-checkbox v-if="entry.tasksLoaded && !isTableEntry(entry)" v-model="disputedOnly[id]">只看有异议（{{ disputedTasks[id]?.length ?? 0 }}）</el-checkbox>
+            <el-check-tag v-if="entry.tasksLoaded" class="tag-missing" :checked="!!missingOnly[id]" @change="value => setMissingOnly(id, value)">{{ isTableEntry(entry) ? '只看导出待处理' : '只看必填未填' }}（{{ missingTasks[id]?.length ?? 0 }}）</el-check-tag>
+            <el-check-tag v-if="entry.tasksLoaded && !isTableEntry(entry)" class="tag-disputed" :checked="!!disputedOnly[id]" @change="value => setDisputedOnly(id, value)">只看有异议（{{ disputedTasks[id]?.length ?? 0 }}）</el-check-tag>
           </span>
           <span v-if="!entry.tasksLoaded" class="poll-hint">正在获取任务，检查必填信息…</span>
           <span class="poll-hint">{{ isTableEntry(entry) ? '完整表格可直接导出；有修改时才需保存。' : '补齐并保存后标记自动更新；' }}筛选不改变“本批次全部”的导出范围。</span>
@@ -398,8 +416,14 @@ const canRerun = (task: Task) => props.canWrite && !runningStatuses.has(task.sta
 .status-cell { display: inline-flex; align-items: center; gap: 6px; }
 .status-warn { color: var(--el-color-danger); }
 .required-toolbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 0 16px 10px; }
+/* 展开批次的首行操作区：导出控件靠左，本批次指引与删除批次靠右成一排。 */
+.batch-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px 4px; }
 /* 指引锚点的控件组包裹：框住具体控件而非整条工具栏。 */
 .calendar-controls, .board-actions, .filter-checks { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* 筛选改为互斥的可点标签：选中即过滤，语义配色与任务行的必填/异议标记一致。 */
+.filter-checks .el-check-tag { cursor: pointer; }
+.filter-checks .el-check-tag.tag-missing.is-checked { background-color: var(--el-color-danger); color: #fff; }
+.filter-checks .el-check-tag.tag-disputed.is-checked { background-color: var(--el-color-warning); border-color: var(--el-color-warning); color: #fff; }
 .package-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 16px 10px; padding: 10px 14px; background: var(--el-color-primary-light-9); border: 1px solid var(--el-color-primary-light-8); border-radius: 10px; }
 .package-toolbar.has-warning { background: var(--el-color-warning-light-9); border-color: var(--el-color-warning-light-8); }
 .package-icon { color: var(--el-color-primary); font-size: 16px; flex: none; }

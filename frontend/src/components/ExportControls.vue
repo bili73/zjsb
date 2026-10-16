@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
+import { Download } from '@element-plus/icons-vue'
 import type { BusinessApi } from '../api.ts'
 import { ApiFailure, isAbort } from '../api.ts'
 import type { Batch, Task } from '../business.ts'
@@ -24,5 +25,5 @@ async function run(){
   }catch(error){if(isAbort(error)) return;if(error instanceof ApiFailure){message.value=`${errorMessages[error.card.code]}（错误编号 ${error.card.error_id}）`;if(error.card.http_status===401)emit('unauthorized')}else message.value='导出未完成，请重新检查任务状态。'}finally{busy.value=false}
 }
 </script>
-<template><div class="export-controls"><span class="export-actions" data-guide="batch-export"><el-radio-group v-model="mode"><el-radio value="batch">本批次全部</el-radio><el-radio value="selection">已勾选 {{ selected.length }} 项</el-radio></el-radio-group><el-button type="primary" :loading="busy" :disabled="!!blocked" @click="run">下载 Excel</el-button></span><span v-if="batch && isPersonPackage(batch)" class="conf">首张人员信息总表包含全部字段，附分类明细；姓名未确认不影响导出。</span><span v-if="blocked" class="conf">{{ blocked }}</span><el-alert v-if="message" type="warning" :closable="false">{{ message }}</el-alert></div></template>
-<style scoped>.export-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:12px 16px}.export-controls .el-input{max-width:360px}.export-actions{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}</style>
+<template><div class="export-controls"><span class="export-actions" data-guide="batch-export"><el-radio-group v-model="mode"><el-radio value="batch">本批次全部</el-radio><el-radio value="selection">已勾选 {{ selected.length }} 项</el-radio></el-radio-group><el-button type="primary" plain :icon="Download" :loading="busy" :disabled="!!blocked" @click="run">下载 Excel</el-button></span><span v-if="batch && isPersonPackage(batch)" class="conf">首张人员信息总表包含全部字段，附分类明细；姓名未确认不影响导出。</span><span v-if="blocked" class="conf">{{ blocked }}</span><el-alert v-if="message" type="warning" :closable="false">{{ message }}</el-alert></div></template>
+<style scoped>.export-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.export-controls .el-input{max-width:360px}.export-actions{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}</style>

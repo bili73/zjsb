@@ -112,7 +112,7 @@ onBeforeUnmount(close)
 </script>
 
 <template>
-  <el-button :icon="Guide" round class="operation-guide-entry" :disabled="!available" @click="start">{{ label }}</el-button>
+  <el-button type="primary" plain :icon="Guide" :disabled="!available" @click="start">{{ label }}</el-button>
   <ElTour v-if="open" :model-value="open" v-model:current="current" :target-area-clickable="false"
     :close-on-press-escape="false" :scroll-into-view-options="{ behavior: 'instant', block: 'nearest', inline: 'nearest' }"
     :mask="{ color: 'rgba(15, 23, 42, 0.55)' }" :gap="{ offset: 8, radius: 8 }"
@@ -133,10 +133,7 @@ onBeforeUnmount(close)
 .operation-guide-copy { line-height: 1.8; margin: 8px 0 14px; color: var(--el-text-color-primary); }
 .operation-guide-status { line-height: 1.6; color: var(--el-color-warning-dark-2); }
 .operation-guide-hint { font-size: 12px; line-height: 1.6; color: var(--el-text-color-secondary); }
-/* 指引入口：主色胶囊，在工具栏里一眼可辨；经 el-button 主题变量着色，跟随主题色与禁用态。 */
-.el-button.operation-guide-entry { --el-button-text-color: var(--el-color-primary); --el-button-bg-color: var(--el-color-primary-light-9); --el-button-border-color: var(--el-color-primary-light-7); font-weight: 600; padding: 8px 16px; }
-.el-button.operation-guide-entry:hover, .el-button.operation-guide-entry:focus-visible { --el-button-hover-text-color: var(--el-color-primary); --el-button-hover-bg-color: var(--el-color-primary-light-8); --el-button-hover-border-color: var(--el-color-primary-light-5); }
-.el-button.operation-guide-entry.is-disabled { --el-button-disabled-text-color: var(--el-text-color-placeholder); --el-button-disabled-bg-color: var(--el-fill-color-light); --el-button-disabled-border-color: var(--el-border-color-lighter); }
+/* 指引入口：普通默认按钮（带 Guide 图标），与所在工具栏的其他按钮同族，不做胶囊强调。 */
 /* 翻步过渡：换锚瞬间（is-gliding 窗口）面板滑向新目标；蒙层是 SVG 裁剪路径，保持瞬时切换。 */
 @media (prefers-reduced-motion: no-preference) {
   .el-tour__content.is-gliding { transition: top 0.3s cubic-bezier(0.3, 0.8, 0.3, 1), left 0.3s cubic-bezier(0.3, 0.8, 0.3, 1); }
