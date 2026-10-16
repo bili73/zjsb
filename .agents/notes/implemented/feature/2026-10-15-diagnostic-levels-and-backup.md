@@ -51,3 +51,5 @@ After the activation contention fix, 34 diagnostic/authorization regressions pas
 ## Consequences
 
 Large history scans consume I/O; serialize queries, bound returned pages/downloads and report truncation. Disk exhaustion cannot guarantee the final event; retain in-memory failure state and safe failure markers where possible, and show status separately. Daily snapshots can overlap live writers; shared locks and snapshot verification define the deletion boundary. No claim of remote alert delivery or Mac readiness without separate deployment verification.
+
+The [serious-query restriction](../../implemented/simplification/2026-10-15-serious-diagnostic-query.md) filters product pages and ZIPs before pagination without deleting historical evidence.

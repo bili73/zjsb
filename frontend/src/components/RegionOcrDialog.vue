@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { copyText } from '../browserCapabilities.ts'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { ApiFailure, isAbort } from '../api.ts'
@@ -238,8 +239,7 @@ async function copyResult(value = text.value, input: { focus(): void; select(): 
   const current = generation
   copying.value = true; copyDone.value = null; error.value = ''
   try {
-    if (!navigator.clipboard?.writeText) throw new Error('CLIPBOARD_UNAVAILABLE')
-    await navigator.clipboard.writeText(value)
+    await copyText(value, () => current === generation && !disposed && props.open && props.canWrite)
     if (current === generation && !disposed && props.open && props.canWrite) copyDone.value = value
   } catch {
     if (current !== generation || disposed || !props.open || !props.canWrite) return

@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { BusinessApi } from '../src/api.ts'
 import { clearDiagnosticCards, diagnosticCards, makeDiagnostic, recordDiagnostic, setDiagnosticReporter } from '../src/diagnostics.ts'
-import { createDiagnosticMonitor, logQuery, parseLogPage, parseLogStatus } from '../src/serverDiagnostics.ts'
+import { createDiagnosticMonitor, logLevels, logQuery, parseLogPage, parseLogStatus } from '../src/serverDiagnostics.ts'
 import type { LogStatus } from '../src/serverDiagnostics.ts'
 
 const status: LogStatus = { recording_ok: true, backup_ok: true, scan_ok: true,
@@ -12,6 +12,7 @@ const status: LogStatus = { recording_ok: true, backup_ok: true, scan_ok: true,
 const nextTurn = () => new Promise(resolve => setImmediate(resolve))
 
 test('diagnostic responses reject malformed levels, counters and pages', () => {
+  assert.deepEqual(logLevels, ['ERROR', 'CRITICAL'])
   assert.equal(parseLogStatus(status).backup_retention_days, 30)
   assert.throws(() => parseLogStatus({ ...status, raw_bytes: -1 }))
   assert.throws(() => parseLogStatus({ ...status, recording_ok: 'true' }))
@@ -24,6 +25,7 @@ test('diagnostic responses reject malformed levels, counters and pages', () => {
   const row = { record_id: 'l_' + 'b'.repeat(32), timestamp: '2026-10-15T04:00:00Z', level: 'ERROR', app_version: '1.26.0', component: 'api', event: 'request_failed', context: {} }
   assert.equal(parseLogPage({ items: [row], next_cursor: null }).items.length, 1)
   assert.throws(() => parseLogPage({ items: [{ ...row, level: 'PRIVATE' }], next_cursor: null }))
+  for (const level of ['DEBUG', 'INFO', 'WARNING']) assert.throws(() => parseLogPage({ items: [{ ...row, level }], next_cursor: null }))
   assert.throws(() => parseLogPage({ items: [{ ...row, timestamp: 'invalid' }], next_cursor: null }))
 })
 

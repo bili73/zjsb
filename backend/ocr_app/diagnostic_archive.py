@@ -28,10 +28,11 @@ FILE_ERRORS = (OSError, ValueError, OverflowError, EOFError, RuntimeError, zipfi
 class ReadIssues:
     skipped_files: int = 0
     skipped_records: int = 0
+    interrupted: bool = False
 
     @property
     def incomplete(self):
-        return bool(self.skipped_files or self.skipped_records)
+        return bool(self.skipped_files or self.skipped_records or self.interrupted)
 
     def metadata(self):
         return dict(incomplete=self.incomplete, skipped_files=self.skipped_files,
@@ -330,6 +331,7 @@ def iter_records(root, *, archives=True, since=None, until=None, stop=None, issu
         first = last = None
         for row in decoded(content):
             if stop and stop.is_set():
+                issues.interrupted = True
                 return
             if row is None:
                 issues.skipped_records += 1
@@ -345,3 +347,5 @@ def iter_records(root, *, archives=True, since=None, until=None, stop=None, issu
                 yield row
         if manifest is not None and index is not None and issues.skipped_records == skipped_before:
             index.put(path, signature, ArchiveMetadata(manifest['created_at'], first, last))
+    if stop and stop.is_set():
+        issues.interrupted = True

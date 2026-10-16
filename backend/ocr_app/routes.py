@@ -238,7 +238,7 @@ def router(business, runtime, health):
             return business.accounts._acting_user(connection, user['user_id'], request.cookies.get(SESSION_COOKIE), administrator=admin)
 
     def diagnostic_filters(
-        level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] | None = None,
+        level: Literal['ERROR', 'CRITICAL'] | None = None,
         date_from: date | None = None, date_to: date | None = None,
         error_id: str | None = Query(default=None, pattern=r'^(?:e_[a-f0-9]{32}|l_[a-f0-9]{32}|[a-fA-F0-9-]{36})$'),
         task_id: uuid.UUID | None = None,

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-15T08:11:45.379Z",
+  "generatedAt": "2026-10-16T01:20:02.095Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 104,
+    "activeNotes": 108,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 627,
+    "relations": 646,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 99,
+      "implemented": 103,
       "rejected": 3
     },
     "staleNotes": []
@@ -254,7 +254,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "The launcher exposes the lightweight local UI/service first and starts an independent runtime worker. It sequentially loads and warms GLM-OCR then PaddleOCR-VL in their existing isolated environments. Both remain resident in default dual_re",
-      "bodySha256": "1c5bd45d1f818bf2",
+      "bodySha256": "3b21acf28fdf423c",
       "lines": {
         "title": 1,
         "status": 3,
@@ -430,11 +430,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "When both models complete serial startup successfully, use two bounded document lanes: one certificate lane (DIPLOMA and DEGREE_CERT) and one medical lane, each with at most one supervised CPU task process. Single-resident or startup-degrad",
-      "bodySha256": "7f10e22be5b51f65",
+      "bodySha256": "dfc57b0d2ac68b3c",
       "lines": {
         "title": 1,
         "status": 3,
@@ -513,11 +513,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "The application launcher always selects dual_resident, accepts the old explicit dual flag for compatibility, rejects single, and replaces a saved single preference on launch. Load and warm both models sequentially. Failure of one model leav",
-      "bodySha256": "a61a384fdd5a9204",
+      "bodySha256": "9e25368aefeb4916",
       "lines": {
         "title": 1,
         "status": 3,
@@ -778,7 +778,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Dual-resident startup remains the default and loads serially. The later independent queues decision permits cross-model inference and targeted stop while retaining180-second Task and181-second supervision. Medical generation uses20 seconds;",
@@ -854,7 +854,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Upload and worker validation share backend/ocr_app/image_admission.py. The policy keeps JPEG/PNG/HEIF/HEIC single-image support and allows exactly two-image MPO only when the first MP entry is a baseline primary JPEG and the second is expli",
@@ -937,11 +937,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The same server-derived exact-name eligibility governs abnormal/statistical and medical item review scopes. abnormal_exclusion_reason includes SECTION_SUMMARY for exact 小结 (whitespace/trailing colon normalization only); HEIGHT_WEIGHT covers",
-      "bodySha256": "3283b1a416331d2e",
+      "bodySha256": "6c97d1e8e32ebd70",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1026,7 +1026,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep existing 生化检验报告单 source attribution and its liver-name/abbreviation whitelist; never treat every biochemical or hepatitis measurement as liver function. When liver_function has no abnormal summary or explicit conclusion, serialize the ",
-      "bodySha256": "f01806e2f9c2e3db",
+      "bodySha256": "dedf531fc89c8289",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1117,7 +1117,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Add observed signatory boundaries including 院长 with spaced-label forms; these delimiters do not restore removed signatory fields. Rank an explicit printed 校名/学校名称 field above an unlabelled cover/title candidate. Distinct equally authoritati",
-      "bodySha256": "23d226cb405da961",
+      "bodySha256": "a1a5cb2ab484f0b6",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1215,7 +1215,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Automatically populate liver_function only with confirmed abnormal source-backed measurements attributed to the liver group. Keep actual abnormal names, results, units and diagnoses; ignore normal/unknown measurements and normal or unclassi",
-      "bodySha256": "732fcaaebb538e25",
+      "bodySha256": "b6752f6fbf9098f1",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1303,7 +1303,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "When no explicit institution value or conflict already exists, accept the complete observed 普潓/普惠年华健康体检中心 branch line only on page one and within the observed lower-right personal-information band (normalized x-start at least .35, y-start .",
-      "bodySha256": "fd88e475cf387c94",
+      "bodySha256": "d2f369f556b879dd",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1395,7 +1395,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Summarize all six groups from measured rows, independently of a printed conclusion. Keep confirmed abnormal results and conflicts ahead of normal fallback. Allow a source-backed, nonempty A-grade UNKNOWN row as report-level normal evidence,",
-      "bodySha256": "514e8279552017e3",
+      "bodySha256": "98d67f727f7d4050",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1476,7 +1476,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "For blood_routine, urine_routine, ecg, dr_imaging and abdominal_ultrasound, derive 未见异常 when the observed group contains at least one eligible measured row, every group row has a real source and nonempty result, every row is NORMAL with a r",
-      "bodySha256": "b2f6dd5700b0c8a0",
+      "bodySha256": "4411ce12abf51b87",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1562,7 +1562,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The application has no experimental certificate helper, endpoint or added positioning dependencies. Field-level positioning/source controls appear only for medical reports; all document types retain whole-page image preview and manual editi",
-      "bodySha256": "e2f96968a3ec0334",
+      "bodySha256": "8fc1bfeccb39c513",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1648,7 +1648,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Extend native table recovery with one bounded adjacent-page context for an observed split header: a qualified medical header at the prior page bottom ends in 风险, and the aligned next-page top header contains only 等级 in its last cell. Requir",
-      "bodySha256": "0058e5b771493d6b",
+      "bodySha256": "d6d9ef1dbd203d87",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1732,7 +1732,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Initialize the calendar with today's Shanghai civil date and immediately filter the server-side batch list to that day. Day/week/month select the period containing the chosen anchor, so each view shows only that selected period. Clearing th",
-      "bodySha256": "a62c63747c15e437",
+      "bodySha256": "dbb0044c97bc8a47",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2321,7 +2321,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD uses a dedicated classifier path, selected by an optional internal doc_type keyword on prepare_image. Bounded CPU OpenCV contour analysis operates on a maximum1000-pixel thumbnail: blurred gray dark Otsu, saturation Otsu and Canny",
-      "bodySha256": "58f4e9a188b82d61",
+      "bodySha256": "0cb97de394409ecd",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2553,7 +2553,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "The user approves 已识别明细未见异常 only for normal summaries derived from measured rows without a printed conclusion. Explicit source conclusions and manual values keep their original meaning. Read/export projections apply the rule without rewriti",
-      "bodySha256": "671c5ca7e788e35e",
+      "bodySha256": "ec84514e8f6a4d24",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2653,7 +2653,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Require an authorization callback for save_configuration and execute it inside BEGIN IMMEDIATE before reading or changing policy, including no-op saves. The HTTP route supplies the existing live administrator-session check; trusted internal",
-      "bodySha256": "a8ef5503aa403820",
+      "bodySha256": "358f923226cb8417",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2747,7 +2747,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Business endpoints inherit a protected APIRouter default principal dependency, separate from the explicitly public login route. Keep administrator/operator/viewer and immutable batch ownership semantics. Reuse the existing session/legacy-ke",
-      "bodySha256": "e576983325360e9c",
+      "bodySha256": "d9f129c6e7f1c923",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2835,7 +2835,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Region OCR reuses the native JobProcess supervisor for the short-lived binary protocol. The ten-second execution budget, bounded output and one in-flight request remain; whole-job cleanup precedes slot release. Job cleanup has its existing ",
-      "bodySha256": "5d1c049d026e99c8",
+      "bodySha256": "975e1122a3915737",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2909,7 +2909,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Use positive issuer/card evidence and negative back-service evidence together. Keep nearby detected text pixels for visual recognition even when quick OCR cannot read the text. Recognize aligned side supplements when source cues connect the",
@@ -2986,11 +2986,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Cap splitEntries at twelve for default, inherited and personal layouts. Preserve order and put every remaining catalogue key in the hidden set, still selectable under More Types. Add-to-workbench cannot exceed twelve; explain the need to tu",
-      "bodySha256": "cd8b1934b9778f94",
+      "bodySha256": "11d8d518d3b21f4b",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3030,6 +3030,83 @@
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-14-workbench-twelve-visible-cards.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
+      "title": "Preserve browser operations on the approved HTTP deployment",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-15",
+      "scope": [
+        "frontend/src",
+        "frontend/tests",
+        "frontend/package.json",
+        "frontend/package-lock.json",
+        "scripts",
+        "SPEC.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+        "implemented/feature/2026-10-13-region-date-copy-suggestions.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/feature/2026-10-13-region-date-copy-suggestions.md",
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+        "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md"
+      ],
+      "lastVerified": "2026-10-15",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-15"
+      },
+      "summary": "Use the modern Clipboard API when available. Otherwise synchronously attempt selection-based copy inside the user click and active dialog, with temporary text removed and focus restored. A rejected modern write may attempt the same fallback",
+      "bodySha256": "ef950ed89221d6d2",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Testing",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 35
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-15-http-browser-capabilities.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
       "path": ".agents/notes/implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
       "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
@@ -3060,13 +3137,16 @@
         "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
         "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
         "implemented/feature/2026-10-15-contextual-operation-guide.md",
-        "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md"
+        "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
+        "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
         "implemented/feature/2026-10-15-admin-file-retention.md",
         "implemented/feature/2026-10-15-contextual-operation-guide.md",
-        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
+        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+        "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+        "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
       ],
       "lastVerified": "2026-10-15",
       "archivedDate": null,
@@ -3076,7 +3156,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Exclude QUEUED and active processing states from automatic expiry and use the same set for retention impact counts. Preserve original upload deadlines, explicit cancellation and eventual expiry after processing stops. Do not expand ACTIVE i",
-      "bodySha256": "9cf2d6d25473ab1d",
+      "bodySha256": "068316baa2efd18c",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3381,7 +3461,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The later administrator file retention decision replaces this note's fixed seven-day duration and client-side expiry fallback. Administrators select 7/15/30 days or never for existing and future files after a confirmation dialog; original u",
-      "bodySha256": "1e669ff606ab8ac8",
+      "bodySha256": "46dde71dba90c33a",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3473,30 +3553,34 @@
         "archived/feature/2026-10-08-temporary-recognition-workbench.md",
         "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
         "implemented/simplification/2026-10-08-retire-temporary-frontend.md",
-        "implemented/feature/2026-10-08-hr-document-field-profile.md"
+        "implemented/feature/2026-10-08-hr-document-field-profile.md",
+        "implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
+        "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md"
       ],
       "citedBy": [
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-08-hdr-jpeg-upload-admission.md",
+        "implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
         "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-08-hr-document-field-profile.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
         "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
         "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+        "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md"
       ],
-      "lastVerified": "2026-10-15",
+      "lastVerified": "2026-10-16",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
         "monthsSinceVerify": 0,
-        "rule": "最近复核 2026-10-15"
+        "rule": "最近复核 2026-10-16"
       },
       "summary": "Diagnostics initialize before launcher configuration and business imports. One structured JSONL writer per process instance rotates at 10 MiB across five files. The verified automatic archive extension provides severity, administrator searc",
-      "bodySha256": "464d12cca0c9a5e8",
+      "bodySha256": "b31a39bdc7763078",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3603,7 +3687,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Result projection repair limits bank-profile completion to actual result objects. Task summaries do not acquire fabricated empty fields; legacy results retain current profile fields and labels.",
-      "bodySha256": "9cd981275f796744",
+      "bodySha256": "c27c4582eb46bedb",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3722,7 +3806,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "- Stack: Vue 3.5 + TypeScript + Vite, Element Plus 2.14 full import with zh-cn locale, pinned exact dependency versions. Composables only (no Pinia, no vue-router), matching ARCHITECTURE.md's composable-first stance for this local tool. - C",
-      "bodySha256": "4c933892b56b4ca7",
+      "bodySha256": "fd860bd25cd60313",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3854,11 +3938,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "DIPLOMA returns11 structured fields instead of13, retaining six required keys and removing only principal/study_mode. DEGREE_CERT keeps study_mode. Deprecated diploma labels remain parsing boundaries so neighboring school, major and certifi",
-      "bodySha256": "1492f1c9afb8a2eb",
+      "bodySha256": "3c2c8ae5fae1445a",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3975,7 +4059,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Review binds task_id, run_id and expected_revision in a short atomic transaction. Patches accept only editable business fields, current item/finding/member IDs and explicit acceptance of currently acceptable issues. Keep raw OCR/source and ",
-      "bodySha256": "cd4a9953c518feaa",
+      "bodySha256": "efdbda297048cdfa",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4090,11 +4174,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Authenticated structured business results return complete stored values and original evidence; remove the masked projection and inherited value_masked display values. New bank profiles omit the redundant card_number_masked field. The public",
-      "bodySha256": "2d8c2c8e1e4ae646",
+      "bodySha256": "d34d1c7e7d31988c",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4192,11 +4276,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "exam_projects is an editable optional string Field containing ordered project names separated by the Chinese semicolon. Extraction preserves printed names such as 内科检查 and 心电图 without inventing a fixed department vocabulary. It accepts only",
-      "bodySha256": "826bfb9f4c5960c9",
+      "bodySha256": "e2810c7f4d583674",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4376,7 +4460,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD accepts decoded single photographs, including full front faces, and cropped rows. Upload does not call a recognizer; encrypted source persistence and independent per-file tasks match the other document families. PDF remains unsupp",
-      "bodySha256": "317f76cf79395014",
+      "bodySha256": "21ee6cdae0daaeff",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4472,7 +4556,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Default to day-grouped all-date browsing. Day/week/month controls change grouping, and a corresponding date/week/month picker selects a server-side creation-date range; clearing it restores all dates. Use Shanghai UTC+8 civil dates and Mond",
-      "bodySha256": "086ac3b1c363c7b1",
+      "bodySha256": "ddbeba43c5cce347",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4577,7 +4661,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Replace the technical workbook with business worksheets grouped by material type. A document row contains its latest saved field values in profile order with Chinese labels, plus a readable source filename to distinguish repeated names/mate",
-      "bodySha256": "074ac636b6f09a4c",
+      "bodySha256": "63eee38ababc91ba",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4671,7 +4755,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "All three workbench download actions use Chinese material labels and a Shanghai UTC+8 export-start timestamp: 体检报告_20261009_151530.xlsx. Combine distinct types with + for a mixed selection; unknown or missing types use 识别结果 without copying ",
-      "bodySha256": "f15de52f232feb5b",
+      "bodySha256": "e0a0d4086c9854ef",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4774,7 +4858,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "The user approves the field/extraction/review/export plan and explicitly defines the project count as the count of the body 本次体检项目意义 catalogue. Keep that editable catalogue as supporting evidence. Derive a read-only integer exam_project_cou",
-      "bodySha256": "8784828f13cdae03",
+      "bodySha256": "246f1c384b4cd0b7",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4886,7 +4970,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Add an additive SQLite migration for named users, hashed opaque sessions and login throttling. Deployment operators create/change/disable accounts with a masked-password CLI; no default password, registration or browser account administrati",
-      "bodySha256": "c4a012be4a064205",
+      "bodySha256": "d7467c289d79dfd0",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5070,7 +5154,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Persist an immutable owner ID on each batch, inherited by every task. New ownership comes only from the authenticated uploader. Backfill existing batches only when every surviving task has creation audit evidence with one shared actor; ambi",
-      "bodySha256": "dda869117ed6e44b",
+      "bodySha256": "bfe438cb36711e67",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5160,7 +5244,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "An administrator-only settings tab provides authenticated GET/PUT endpoints under /admin/required-fields. The application persists document-type overrides and one monotonic revision in a small SQLite settings table; default absence preserve",
-      "bodySha256": "55908eb95aa82e98",
+      "bodySha256": "57558e00884526c0",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5250,7 +5334,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "DELETE /batches/{batch_id} accepts a complete task/run/revision snapshot. Within the same BEGIN IMMEDIATE transaction, recheck the current administrator session, batch membership, allowed states and each version. Only NEED_REVIEW, COMPLETED",
-      "bodySha256": "c9d73e498ce95a31",
+      "bodySha256": "8507a86f315edcd0",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5395,7 +5479,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The later administrator file retention decision replaces this note's fixed seven-day duration and client-side expiry fallback. Administrators select 7/15/30 days or never for existing and future files after a confirmation dialog; original u",
-      "bodySha256": "063d9421b47a4fca",
+      "bodySha256": "fe52ee5e6d8379cc",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5561,7 +5645,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "The CPU helper uses the Apache-2.0 PaddlePaddle PP-LCNet_x1_0_doc_ori official ONNX export, pinned to revision 7330ab7039123e46af2dc03154b9969aa412c61d and SHA256 af9a0a4f317ff0709ce752067807f819cb15d883f8ecad89f28df1c6ee2d9c92. Each view f",
-      "bodySha256": "59ef97061c50e217",
+      "bodySha256": "ba26f46931f4f0da",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5640,7 +5724,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Treat the back as an optional material. Preserve independent ID_CARD_FRONT tasks and their own required fields; no back upload is needed for completion or export. Keep missing_back as a compatible presence state but display 国徽面未上传（可选，可仅识别人像",
-      "bodySha256": "148b2f69fcaa7466",
+      "bodySha256": "258e653fe7e4bf33",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5737,7 +5821,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "The later administrator file retention decision replaces this note's fixed seven-day duration and client-side expiry fallback. Administrators select 7/15/30 days or never for existing and future files after a confirmation dialog; original u",
-      "bodySha256": "c73e311e89cc9473",
+      "bodySha256": "23f45f9e7dbe65c3",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5822,7 +5906,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Person-package exports use 人员信息总表 instead of 人员材料总览 as their first sheet. Personnel name and naming status come first, followed by every current profile field of each selected material type, and then package source/count/candidate metadata.",
-      "bodySha256": "4707729f1b224a02",
+      "bodySha256": "fd892de60cad6703",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5937,7 +6021,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Represent package intent independently of the confirmed person name using an additive batch flag. Backfill existing explicitly named packages only; leave ordinary and historical unassigned batches unchanged. Mixed file_types creation means ",
-      "bodySha256": "3e424ccc6542d92d",
+      "bodySha256": "acb271c5c320770c",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6037,7 +6121,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Offer explicit 按人员整理 and 按类型批量 modes; the chosen primary workflow is the person mode, while preserving existing type-batch uploads. A person enters the name once, chooses mixed files together, reviews a list containing thumbnail/file name a",
-      "bodySha256": "07cce6b041a0dbd2",
+      "bodySha256": "9a4a8fccfe77ef9b",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6127,7 +6211,7 @@
         "rule": "最近复核 2026-10-12"
       },
       "summary": "New successful logins issue a random token with thirty-day absolute validity (30243600 seconds), with matching Cookie Max-Age. Polling/restoration does not extend expiry. Keep hashed server-side tokens, HttpOnly/SameSite/CSRF, secure HTTPS ",
-      "bodySha256": "ffe27aff990dd107",
+      "bodySha256": "5305d0406c54efc1",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6211,7 +6295,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "The field-button placement and automatic draft application described below are the original decision, partially replaced by source-region text copying. The current component is RegionOcrDialog.vue; the source toolbar opens general transcrip",
-      "bodySha256": "ac835da245b6f46c",
+      "bodySha256": "b93842cedd59786e",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6304,7 +6388,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "1. 先证明真实样本可以恢复，再接入业务",
-      "bodySha256": "8fc02b7e1b41ca23",
+      "bodySha256": "f532d508c666ef06",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6392,9 +6476,11 @@
       "supersededBy": [],
       "cites": [
         "implemented/feature/2026-10-13-source-region-ocr-copy.md",
-        "implemented/feature/2026-10-13-source-preview-click-ocr-entry.md"
+        "implemented/feature/2026-10-13-source-preview-click-ocr-entry.md",
+        "implemented/bug-fix/2026-10-15-http-browser-capabilities.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
         "implemented/feature/2026-10-13-source-preview-click-ocr-entry.md",
         "implemented/feature/2026-10-13-source-region-ocr-copy.md"
       ],
@@ -6406,7 +6492,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "A small deterministic browser helper extracts explicit four-digit-year Chinese dates from the current editable OCR text. Accept Arabic/full-width digits and common Chinese digit/year and ten-based month/day notation; whitespace between reco",
-      "bodySha256": "e3020aae534a1150",
+      "bodySha256": "ebbeb2b425f274bd",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6478,7 +6564,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "For materials with trusted corrected pages (ocrEnabled), clicking a source page image opens the region OCR dialog in a new cinema variant: a fullscreen dark backdrop (82% black modal mask, like the retired stock viewer) with the corrected p",
-      "bodySha256": "2828289e48633004",
+      "bodySha256": "78ee03d3dba5c1cf",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6541,11 +6627,13 @@
         "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
         "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
-        "implemented/feature/2026-10-13-region-date-copy-suggestions.md"
+        "implemented/feature/2026-10-13-region-date-copy-suggestions.md",
+        "implemented/bug-fix/2026-10-15-http-browser-capabilities.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
         "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
+        "implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
         "implemented/feature/2026-10-13-field-region-ocr.md",
         "implemented/feature/2026-10-13-region-date-copy-suggestions.md",
         "implemented/feature/2026-10-13-source-preview-click-ocr-entry.md"
@@ -6558,7 +6646,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Put a labelled camera button in SourcePreview's toolbar. It opens the existing bounded page/rectangle dialog at the most visible corrected page, with manual page selection. OCR text appears in the same dialog as an editable textarea. Copy a",
-      "bodySha256": "bf67e296505247cf",
+      "bodySha256": "51c3e8fb8d093b63",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6638,11 +6726,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Store one ordered nullable list plus revision per immutable named account in SQLite. Null means catalogue defaults; an empty list means all entries tucked. Retain a revision after restoring defaults to prevent stale writes. A self-only GET/",
-      "bodySha256": "1fbc40d03392b9d5",
+      "bodySha256": "333b01c9a396295f",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6727,11 +6815,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Retain reliable native PDF evidence, otherwise use the current Paddle model, with one GLM fallback per region and a 40-second generation soft budget inside the existing 180-second task budget. GENERIC shares the Paddle document lane with ME",
-      "bodySha256": "4bdfbcd224e85530",
+      "bodySha256": "0d8f3a3e2da8ca87",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6811,11 +6899,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Persist a singleton default layout and independent revision. Personal null now means inherit that default; default null means the system catalogue order. Personal arrays, including an empty array, override the shared default. Return both pe",
-      "bodySha256": "d9bd2b27a3ab7a36",
+      "bodySha256": "a22d6f5afa208627",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6892,7 +6980,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "标题选填与无标题导出进一步移除标题缺失门禁；本篇表头依据、人工优先和未知行数需处理的规则保持。",
@@ -6971,11 +7059,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "The profile reuses holder_name and bank_name with labels 姓名 and 开户行, adds optional branch_name, and puts these four business fields first. Existing required-field settings remain authoritative. The pipeline identifies front-card and supplem",
-      "bodySha256": "dcd1a4d8a8a66e95",
+      "bodySha256": "bfe6cae16ff66435",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7065,7 +7153,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Keep required-value and table-structure gates. Add one server projection for explicit number-length warnings, current format/checksum failures and unresolved recognition conflicts. Uncalibrated confidence, no official lookup and uncovered r",
-      "bodySha256": "62fcc50644f55cda",
+      "bodySha256": "30bacd6494b41ba5",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7135,11 +7223,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "The section, its confirmDispute handler (confirmed_disputes review path) and its scoped CSS are removed. The primary remedy for a dispute is unchanged and fully intact: fix the field (pick the candidate or fill the correct value) and save —",
-      "bodySha256": "345fe82f11b18036",
+      "bodySha256": "54a5c0ef9490d4be",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7235,7 +7323,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Add INTERVIEW_FORM with exactly five initial fields: name (姓名), gender (性别), age (年龄), id_number (身份证号) and mobile_number (手机号). All are required by default and remain editable through the existing administrator required-field policy. Prese",
-      "bodySha256": "3c78034420d9d7de",
+      "bodySha256": "33ad5977ed847483",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7309,11 +7397,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Use one pure frontend hint function in the saved-result and live-review views. Counts ignore whitespace; bank counts also accept full-width digits and grouping hyphens for display only. Keep values, leading zeros, source text, backend valid",
-      "bodySha256": "22bfbea18afb5346",
+      "bodySha256": "939c61f592edd4a7",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7402,7 +7490,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "The ordinary non-table review editor sends confirm_export_disputes=true with its existing version-bound save. Apply all edits and current validation first, then acknowledge every remaining confirmable dispute against that resulting value/co",
-      "bodySha256": "8775a6d3335edf24",
+      "bodySha256": "56ad0605ed683353",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7475,11 +7563,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Split the type-card grid into an ordered visible set plus a tucked set. Customization is an on-grid edit mode: 自定义入口 toggles it, and the actual workbench cards become directly manipulable — long-press (~280 ms, 10 px slop) picks a card up, ",
-      "bodySha256": "0c412712024925a3",
+      "bodySha256": "6211d325ab32dc2b",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7565,7 +7653,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Queued-work recovery clarifies automatic expiry: QUEUED and processing states are both protected and counted as deferred. Completion, failure or cancellation restores eligibility using the original upload deadline. ACTIVE remains reserved f",
-      "bodySha256": "589c9a9b80bb81e1",
+      "bodySha256": "5766487ac206c36b",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7707,13 +7795,16 @@
         "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
         "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
-        "implemented/feature/2026-10-15-contextual-operation-guide.md"
+        "implemented/feature/2026-10-15-contextual-operation-guide.md",
+        "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
-        "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md"
+        "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+        "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+        "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
       ],
       "lastVerified": "2026-10-15",
       "archivedDate": null,
@@ -7723,7 +7814,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Diagnostic recovery and scan bounds extends this design with awaited thread-pool HTTP logging, per-file maintenance isolation and explicit partial-query/ZIP metadata. Damaged sources remain intact while valid records/files remain accessible",
-      "bodySha256": "8ef6c9103d288764",
+      "bodySha256": "7069195b05ede19f",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7786,13 +7877,15 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/simplification/2026-10-15-serious-diagnostic-query.md",
         "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
         "implemented/feature/2026-09-30-local-diagnostics.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
-        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
+        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+        "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
       ],
       "lastVerified": "2026-10-15",
       "archivedDate": null,
@@ -7801,8 +7894,8 @@
         "monthsSinceVerify": 0,
         "rule": "最近复核 2026-10-15"
       },
-      "summary": "Default and invalid OCR_LOG_LEVEL values resolve to ERROR, retaining ERROR and CRITICAL. Explicit existing troubleshooting overrides remain available. Keep the five-level vocabulary for historical lookup; preserve existing raw logs and arch",
-      "bodySha256": "ae38b1b23b454a8e",
+      "summary": "Default and invalid OCR_LOG_LEVEL values resolve to ERROR, retaining ERROR and CRITICAL. Explicit existing troubleshooting overrides remain available. The original five-level product lookup is narrowed by the serious-query restriction; the ",
+      "bodySha256": "390ed206963621f8",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7923,6 +8016,72 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-15-table-title-suggestions-and-untitled-export.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-16-detail-page-declutter.md",
+      "path": ".agents/notes/implemented/feature/2026-10-16-detail-page-declutter.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-16-detail-page-declutter.md",
+      "title": "Detail page decluttered (tags, confidence, helper small text removed)",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-16",
+      "scope": [
+        "frontend/src/components",
+        "frontend/src/business.ts",
+        "frontend/src/workbench.ts",
+        "frontend/src/guide.ts",
+        "frontend/tests",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [
+        "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "- ResultView: field-line 待核对/核对项 tags and 置信度 span removed; medical summary-note alert removed (the medical guide step carries the same completeness caveat verbatim); items-table 置信度 and 核对 columns removed; 仅看待核对 checkbox and its BMI small ",
+      "bodySha256": "0ce9563cc28ffeca",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 22
+          },
+          {
+            "title": "Verification",
+            "line": 28
+          },
+          {
+            "title": "Consequences",
+            "line": 32
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-16-detail-page-declutter.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/process/2026-09-29-dde-project-workflow.md",
       "path": ".agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
       "anchor": "// Note: .agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
@@ -7950,7 +8109,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "NianLog/DDE is installed locally for Codex and Claude Code. The project copies the upstream scripts unchanged into scripts/ and retains their license in scripts/DDE-LICENSE.txt. A private package declares Node = 18, no runtime or developmen",
@@ -7992,6 +8151,88 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/process/2026-09-29-dde-project-workflow.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+      "path": ".agents/notes/implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+      "anchor": "// Note: .agents/notes/implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+      "title": "Bring portable deployment repairs back to main",
+      "lifecycle": "implemented",
+      "class": "process",
+      "date": "2026-10-16",
+      "scope": [
+        "backend/ocr_app/diagnostic_archive.py",
+        "backend/ocr_app/diagnostic_service.py",
+        "backend/ocr_app/diagnostic_offline.py",
+        "backend/ocr_app/task_errors.py",
+        "backend/ocr_app/task_store.py",
+        "scripts/collect_diagnostics.py",
+        "frontend/src",
+        "frontend/tests",
+        "tests",
+        "SPEC.md",
+        "RUNTIME.md",
+        "openapi.yaml"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
+        "implemented/simplification/2026-10-15-serious-diagnostic-query.md",
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+        "implemented/feature/2026-10-16-detail-page-declutter.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-09-30-local-diagnostics.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "Main includes the portable HTTP browser and serious-query commit 84a1045 with its tests and existing decision notes. It also includes only backend/scripts/tests from 7f32595: the dependency-free TaskError contract (still re-exported by task",
+      "bodySha256": "3fcd2491ea5f0bad",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 24
+          },
+          {
+            "title": "Testing",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 33
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/process/2026-10-16-portable-deployment-fixes-to-main.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/simplification/2026-10-08-required-fields-only-export.md",
@@ -8055,7 +8296,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Export current saved, unfiltered results when their business-required values are present. Resolve conditional top-level requirements through doc_profiles.profile(doc_type,current_values), include basic_info-compatible values, each household",
-      "bodySha256": "b8007ad8e0e3ea89",
+      "bodySha256": "fbd080ec245c4c3c",
       "lines": {
         "title": 1,
         "status": 3,
@@ -8140,7 +8381,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The complete old frontend tree is moved inside this workspace to output/frontend-retired-20261008-v1/frontend. Absolute paths and absence of reparse points are checked; all1287 file SHA256 values match before and after. The active frontend ",
@@ -8216,11 +8457,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "The 恢复系统默认 button and its confirmation branch are removed. Administrator saving of the visible layout and personal 恢复默认 inheritance remain unchanged. Persisted layouts and nullable API compatibility are preserved; this change does not reset",
-      "bodySha256": "5573ee7b9659d000",
+      "bodySha256": "5971b61086b07a1d",
       "lines": {
         "title": 1,
         "status": 3,
@@ -8300,7 +8541,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "The ranked optional-title decision supersedes this note's sole-candidate and mandatory-title rules. The historical rationale below explains the earlier choice; read-time projection, human precedence, header/structure/partial-output gates an",
@@ -8383,7 +8624,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Remove source filename headers and matching values from all business worksheets. Personnel tables keep every selected current business field, numbered repeated-document groups, names/status/counts and name candidates with their material typ",
-      "bodySha256": "0e5ea35443ba2ecb",
+      "bodySha256": "d631e28f93fb7b11",
       "lines": {
         "title": 1,
         "status": 3,
@@ -8423,6 +8664,86 @@
       "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-15-export-without-source-filenames.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/simplification/2026-10-15-serious-diagnostic-query.md",
+      "path": ".agents/notes/implemented/simplification/2026-10-15-serious-diagnostic-query.md",
+      "anchor": "// Note: .agents/notes/implemented/simplification/2026-10-15-serious-diagnostic-query.md",
+      "title": "Limit product diagnostic queries to serious events",
+      "lifecycle": "implemented",
+      "class": "simplification",
+      "date": "2026-10-15",
+      "scope": [
+        "backend/ocr_app/diagnostic_service.py",
+        "backend/ocr_app/routes.py",
+        "frontend/src/serverDiagnostics.ts",
+        "frontend/src/components/ServerDiagnostics.vue",
+        "frontend/tests",
+        "tests",
+        "SPEC.md",
+        "RUNTIME.md",
+        "openapi.yaml",
+        "frontend/public/help/index.html"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+        "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+        "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md"
+      ],
+      "lastVerified": "2026-10-15",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-15"
+      },
+      "summary": "Expose only ERROR and CRITICAL in product filters and records. The empty filter means both serious levels. Apply the restriction before pagination and ZIP construction in the shared service record iterator; reject low-level filter values in",
+      "bodySha256": "bdc7c72e1c97b32a",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 15
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Testing",
+            "line": 26
+          },
+          {
+            "title": "Consequences",
+            "line": 30
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-15-serious-diagnostic-query.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
       "path": ".agents/notes/implemented/testing/2026-09-29-automatic-layout-evaluation.md",
       "anchor": "// Note: .agents/notes/implemented/testing/2026-09-29-automatic-layout-evaluation.md",
@@ -8455,7 +8776,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.5,
+        "monthsSinceVerify": 0.6,
         "rule": "最近复核 2026-09-29"
       },
       "summary": "The diagnostic benchmark uses PP-DocLayoutV3 on CPU to detect regions in full-resolution source images. It preserves detected tables as separate regions and combines nearby text without crossing tables. Coordinates, omitted image regions an",
@@ -8537,7 +8858,7 @@
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The isolated paired diagnostic uses four encrypted certificate inputs and frozen visual references from the valid schema v2 experiment, plus three existing front-side bank-card samples scored only on card_number. Bank references are visuall",
-      "bodySha256": "d27ba34f741d02ef",
+      "bodySha256": "f64fbd31d0ce7785",
       "lines": {
         "title": 1,
         "status": 3,
@@ -8688,7 +9009,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The frozen corpus contains all four source hashes and encrypted copies, every page's existing decoder evidence, blank-page records and conservative raster regions. Native text/table evidence remains independent of OCR. Twelve table pages ar",
@@ -8770,11 +9091,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The already approved real-file acceptance uses a probe that starts the existing API, Business and RuntimeClient components with a new encrypted data root. A supervised child serves loopback HTTP, and its parent owns the existing GPU byte lo",
-      "bodySha256": "459a386f33e924c3",
+      "bodySha256": "b1c762c33f458a2e",
       "lines": {
         "title": 1,
         "status": 3,
@@ -8849,7 +9170,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Visually inspect original images before inference. Copy historical references into a new encrypted fixture and record study endpoints under the user's approved graduation semantics; preserve printed month precision. Add the three current or",
-      "bodySha256": "4ec47ffb43594230",
+      "bodySha256": "32350d2975dd7964",
       "lines": {
         "title": 1,
         "status": 3,
@@ -8936,7 +9257,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep GLM/Paddle as the business recognizers. Use pinned rapidocr-onnxruntime1.4.4 with its bundled PP-OCRv4 detector/recognizer and direction classifier as a CPU-only positioning helper. Independent line text is needed to match values relia",
-      "bodySha256": "7069233b7197a898",
+      "bodySha256": "681e6795968a1302",
       "lines": {
         "title": 1,
         "status": 3,
@@ -9019,7 +9340,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep the current business Excel layout until the business team supplies its template, but add reference-threshold review and a separately saved human hiring-opinion field after the user approves this narrowed contract. Automated output is l",
-      "bodySha256": "585a9102697fbd3c",
+      "bodySha256": "4c9a84a9c9cf84c0",
       "lines": {
         "title": 1,
         "status": 3,
@@ -9094,7 +9415,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "被撤回的方案使用OpenCV候选框、Paddle结构识别和GLM备用，保留原始矩阵与人工矩阵；一张照片一个标题命名的XLSX，多张ZIP。其优点是复用了现有模型、版本校验和加密存储，较少引入依赖。",
-      "bodySha256": "29d5cda87f3d7333",
+      "bodySha256": "6916f8651af5847c",
       "lines": {
         "title": 1,
         "status": 3,
@@ -10139,6 +10460,21 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
+      "to": "implemented/feature/2026-10-13-source-region-ocr-copy.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
+      "to": "implemented/feature/2026-10-13-region-date-copy-suggestions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-http-browser-capabilities.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
       "to": "implemented/feature/2026-10-15-admin-file-retention.md"
     },
@@ -10161,6 +10497,11 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
       "to": "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+      "to": "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
     },
     {
       "type": "cite",
@@ -10391,6 +10732,16 @@
       "type": "cite",
       "from": "implemented/feature/2026-09-30-local-diagnostics.md",
       "to": "implemented/feature/2026-10-08-hr-document-field-profile.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "implemented/bug-fix/2026-10-15-http-browser-capabilities.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-local-diagnostics.md",
+      "to": "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md"
     },
     {
       "type": "cite",
@@ -11609,6 +11960,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-13-region-date-copy-suggestions.md",
+      "to": "implemented/bug-fix/2026-10-15-http-browser-capabilities.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-13-source-preview-click-ocr-entry.md",
       "to": "implemented/feature/2026-10-13-source-region-ocr-copy.md"
     },
@@ -11646,6 +12002,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-13-source-region-ocr-copy.md",
       "to": "implemented/feature/2026-10-13-region-date-copy-suggestions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+      "to": "implemented/bug-fix/2026-10-15-http-browser-capabilities.md"
     },
     {
       "type": "cite",
@@ -11984,6 +12345,16 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+      "to": "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+      "to": "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
       "to": "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
     },
@@ -12011,6 +12382,36 @@
       "type": "cite",
       "from": "implemented/process/2026-09-29-dde-project-workflow.md",
       "to": "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+      "to": "implemented/bug-fix/2026-10-15-http-browser-capabilities.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+      "to": "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+      "to": "implemented/feature/2026-09-30-local-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+      "to": "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+      "to": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
+      "to": "implemented/feature/2026-10-16-detail-page-declutter.md"
     },
     {
       "type": "cite",
@@ -12116,6 +12517,21 @@
       "type": "cite",
       "from": "implemented/simplification/2026-10-15-export-without-source-filenames.md",
       "to": "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-15-serious-diagnostic-query.md",
+      "to": "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-15-serious-diagnostic-query.md",
+      "to": "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-15-serious-diagnostic-query.md",
+      "to": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
     },
     {
       "type": "cite",

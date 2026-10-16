@@ -15,7 +15,7 @@ from . import diagnostics as d
 from .diagnostic_archive import (ARCHIVE_BUDGET, FAILURE_PATTERN, RAW_BUDGET, ArchiveIndex, ReadIssues,
                                  atomic_json, iter_records, locked, maintenance,
                                  owned_archives, owned_raw)
-from .task_store import TaskError
+from .task_errors import TaskError
 
 SHANGHAI = timezone(timedelta(hours=8))
 MAX_DOWNLOAD = 64 * 1024 * 1024
@@ -120,11 +120,13 @@ class DiagnosticService:
         return dict(state, raw_retention_days=7, backup_retention_days=30,
                     raw_limit_bytes=RAW_BUDGET, archive_limit_bytes=ARCHIVE_BUDGET)
 
-    def records(self, *, level=None, date_from=None, date_to=None, error_id=None, task_id=None, issues=None):
+    def records(self, *, level=None, date_from=None, date_to=None, error_id=None, task_id=None, issues=None, stop=None):
+        if level is not None and level not in {'ERROR', 'CRITICAL'}:
+            raise TaskError('INVALID_REQUEST', '仅可查询 ERROR 和 CRITICAL 严重日志', 422)
         start, end = window(date_from, date_to)
-        for row in iter_records(self.root, since=start, until=end, issues=issues, index=self.archive_index):
+        for row in iter_records(self.root, since=start, until=end, issues=issues, index=self.archive_index, stop=stop):
             context = row['context']
-            if level and row['level'] != level:
+            if row['level'] not in {'ERROR', 'CRITICAL'} or (level and row['level'] != level):
                 continue
             if error_id and error_id not in {context.get('error_id'), context.get('client_error_id'), context.get('request_id'), row['record_id']}:
                 continue

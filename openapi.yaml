@@ -1546,7 +1546,7 @@ components:
     DiagnosticLevel:
       name: level
       in: query
-      schema: {type: string, enum: [DEBUG, INFO, WARNING, ERROR, CRITICAL]}
+      schema: {type: string, enum: [ERROR, CRITICAL]}
     DiagnosticDateFrom:
       name: date_from
       in: query
@@ -1634,7 +1634,7 @@ components:
       properties:
         record_id: {type: string, pattern: '^l_[a-f0-9]{32}$'}
         timestamp: {type: string, format: date-time}
-        level: {type: string, enum: [DEBUG, INFO, WARNING, ERROR, CRITICAL]}
+        level: {type: string, enum: [ERROR, CRITICAL]}
         app_version: {type: string, description: 旧日志为unknown}
         component: {type: string}
         event: {type: string}

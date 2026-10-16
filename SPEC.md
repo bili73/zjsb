@@ -1135,7 +1135,7 @@ Task.export_blockers增加DISPUTED，批次显示“有异议”的任务数、�
 
 ## 日志分级、备份与故障查看（2026-10-15）
 
-技术诊断与业务审计分开。诊断记录包含稳定record_id、UTC时间、程序版本、DEBUG/INFO/WARNING/ERROR/CRITICAL、组件、枚举事件及可用的request/error/task/run/batch标识、阶段和耗时。默认ERROR，仅记录ERROR/CRITICAL；4xx输入/复核问题分类为WARNING但默认不落盘，操作失败/超时为ERROR，存储及启动不可用为CRITICAL。每条记录附固定词典派生的中文description；旧记录补说明时保留record_id，不采信原日志中可能注入的description。旧记录读取时派生等级/ID，未知程序版本为unknown。禁止记录密码、令牌、材料正文、原件路径、原始请求URL或任意异常全文。页面显示UTC+8。
+技术诊断与业务审计分开。诊断记录包含稳定record_id、UTC时间、程序版本、DEBUG/INFO/WARNING/ERROR/CRITICAL、组件、枚举事件及可用的request/error/task/run/batch标识、阶段和耗时。默认ERROR，仅记录ERROR/CRITICAL；4xx输入/复核问题分类为WARNING但默认不落盘，操作失败/超时为ERROR，存储及启动不可用为CRITICAL。每条记录附固定词典派生的中文description；旧记录补说明时保留record_id，不采信原日志中可能注入的description。旧记录读取时派生等级/ID，未知程序版本为unknown。禁止记录密码、令牌、材料正文、原件路径、原始请求URL或任意异常全文。页面显示UTC+8。产品日志列表、分页和诊断ZIP只提供ERROR与CRITICAL，未选等级时包含这两档；其他等级筛选返回422。历史低等级文件、归档和稳定ID保留，离线收集兼容不变。
 
 每进程实例按10MiB×5段轮转；独立维护线程每天备份，原始日志7天、压缩快照自成功归档起30天，与材料保留期限无关。归档使用内容哈希去重、临时写入、ZIP校验和原子发布；轮转丢弃与过期删除前校验该原始段已归档，失败保留原段并显示异常。原始日志512MiB触发未活跃文件提前归档，压缩备份1GiB准入上限，未到期快照不静默淘汰。跨进程文件锁保护日志写入、轮转及清理。容量、写入和归档失败不得伪报成功；同设备备份不承诺磁盘故障容灾。
 
@@ -1148,3 +1148,7 @@ Task.export_blockers增加DISPUTED，批次显示“有异议”的任务数、�
 Vue错误、全局浏览器错误和未处理Promise拒绝进入同一安全采集链。代码位置优先取异常堆栈数字行列，缺失时取ErrorEvent的有效行列；不保存原始堆栈、文件名或URL。已知ResizeObserver通知与跨源Script error仅按精确消息映射固定browser_event分类，不保存消息且不屏蔽记录。前端上报可选exception_type、browser_event、frontend_build；后端以白名单验证并在导出时再次过滤。frontend_build取已加载入口代码包的哈希，开发环境或未知命名为null，与健康接口提供的服务版本分开展示；它用于关联代码包，不代表可信部署证明或源码映射。旧客户端省略新增字段仍可上报。
 
 数据库异常保留白名单DB-API/SQLAlchemy类型；原生SQLite异常另含整数sqlite_errorcode及固定database_error分类：missing_table、missing_column、busy、readonly、constraint、corrupt、other。缺表/缺列只用已知前缀判断，其他分类依据SQLite主错误码；不记录SQL、参数、表列名称、数据库路径或异常全文，也不额外查询业务库。历史日志缺失的信息不追溯补造。
+
+## 浏览器 HTTP 兼容（2026-10-15）
+
+复制优先使用Clipboard API，不可用或拒绝时在当前操作有效期间尝试选中文字复制；失败保留手动复制/下载提示，不自动保存识别值。前端错误编号在randomUUID不可用时使用getRandomValues生成UUIDv4；本地原件按SHA-256匹配，缺少Web Crypto时使用固定版本兼容实现，继续处理重名、去重及退出失效。

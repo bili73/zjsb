@@ -42,3 +42,5 @@ A format suggestion is not proof of OCR correctness or a decision about the targ
 ## Consequences
 
 The UI adds deterministic formatting and calendar validation only; it does not infer field roles or improve the OCR itself. Users retain editable text, independent selectable suggestions and manual save. Date precision is never increased beyond observed digits; missing only the day marker follows the user-approved certificate compatibility. Clipboard failure leaves the requested representation available. A long list scrolls inside the result card. No API, backend, model, schema or dependency change is introduced; concurrent source-view presentation changes remain intact.
+
+The [HTTP browser compatibility extension](../../implemented/bug-fix/2026-10-15-http-browser-capabilities.md) extends automatic copying without changing date precision, original text or draft ownership.

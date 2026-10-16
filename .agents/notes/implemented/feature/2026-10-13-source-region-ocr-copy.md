@@ -43,3 +43,5 @@ Clipboard APIs can be blocked or absent on nonsecure sites; leave selectable tex
 [API authorization boundaries](../bug-fix/2026-10-13-api-authorization-boundaries.md) extend the live transaction session check to material operations, add default route authentication and protect full health/slow responses; this note retains its remaining decisions.
 
 [Date clipboard suggestions](2026-10-13-region-date-copy-suggestions.md) extend the current result card with separate selectable date formats, preserve the editable OCR text and the current non-closing copy controls, and retain its existing request/permission/version fences. The earlier copy-and-close label does not describe the current result card.
+
+The [HTTP browser compatibility extension](../../implemented/bug-fix/2026-10-15-http-browser-capabilities.md) adds automatic selection-based copy while retaining the manual fallback and lifetime fences.

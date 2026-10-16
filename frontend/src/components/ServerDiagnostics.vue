@@ -58,7 +58,7 @@ async function download() {
   finally { if (revision === generation) downloading.value = false }
 }
 const size = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MiB`
-const tone = (value: LogLevel) => value === 'CRITICAL' || value === 'ERROR' ? 'danger' : value === 'WARNING' ? 'warning' : 'info'
+const levelLabel = (value: LogLevel) => value === 'CRITICAL' ? '严重故障' : '错误'
 watch(() => [props.open, props.api] as const, ([open]) => {
   generation++; controller.abort(); controller = new AbortController(); busy.value = false; downloading.value = false; rows.value = []; cursor.value = null; error.value = ''
   incomplete.value = false; skippedFiles.value = 0; skippedRecords.value = 0
@@ -79,10 +79,10 @@ onBeforeUnmount(() => { generation++; controller.abort() })
       <div><span>最近自动备份</span><strong>{{ status.last_backup_at ? formatTime(status.last_backup_at) : status.backup_ok === false ? '尚无成功备份' : '首次备份进行中' }}</strong></div>
       <div><span>自动备份状态</span><strong>{{ status.backup_ok === null ? '检查中' : status.backup_ok ? '正常' : '失败' }}</strong></div>
     </div>
-    <p class="help-line">按北京时间查询。默认只记录 ERROR（错误）和 CRITICAL（严重故障），正常运行和一般提醒不再新增记录；历史低等级日志仍可查询。运行日志保留7天，压缩备份保留30天，与材料保留设置分开。</p>
+    <p class="help-line">按北京时间查询。这里只显示和下载 ERROR（错误）与 CRITICAL（严重故障）。历史低等级日志文件仍保留。运行日志保留7天，压缩备份保留30天，与材料保留设置分开。</p>
     <p v-if="status" class="help-line">日志 {{ size(status.raw_bytes) }} / {{ size(status.raw_limit_bytes) }}；备份 {{ size(status.archive_bytes) }} / {{ size(status.archive_limit_bytes) }}。状态检查于 {{ status.last_check_at ? formatTime(status.last_check_at) : '检查中' }}。<el-button link @click="emit('refresh-status')">刷新状态</el-button></p>
     <el-form label-position="top" class="filters" @submit.prevent="query()">
-      <el-form-item label="等级"><el-select v-model="level" clearable placeholder="全部等级（含历史）"><el-option v-for="item in logLevels" :key="item" :label="item" :value="item" /></el-select></el-form-item>
+      <el-form-item label="等级"><el-select v-model="level" clearable placeholder="全部严重问题"><el-option v-for="item in logLevels" :key="item" :label="`${item}（${levelLabel(item)}）`" :value="item" /></el-select></el-form-item>
       <el-form-item label="日期范围（最多31天）"><el-date-picker v-model="range" type="daterange" value-format="YYYY-MM-DD" start-placeholder="开始日期" end-placeholder="结束日期" /></el-form-item>
       <el-form-item label="错误 / 请求编号"><el-input v-model="errorId" clearable placeholder="粘贴错误编号或请求编号" /></el-form-item>
       <el-form-item label="任务编号"><el-input v-model="taskId" clearable placeholder="粘贴任务 UUID" /></el-form-item>
@@ -93,7 +93,7 @@ onBeforeUnmount(() => { generation++; controller.abort() })
     <el-table :data="rows" v-loading="busy" stripe border empty-text="没有符合条件的日志" class="log-table">
       <el-table-column type="expand"><template #default="{ row }"><div class="log-description"><strong>问题说明：</strong>{{ row.description }}</div><pre class="log-details">{{ JSON.stringify(row, null, 2) }}</pre></template></el-table-column>
       <el-table-column label="时间（UTC+8）" min-width="175"><template #default="{ row }">{{ formatTime(row.timestamp) }}</template></el-table-column>
-      <el-table-column label="等级" width="110"><template #default="{ row }"><el-tag :type="tone(row.level)" size="small">{{ row.level }}</el-tag></template></el-table-column>
+      <el-table-column label="等级" width="180"><template #default="{ row }"><el-tag type="danger" size="small">{{ row.level }}（{{ levelLabel(row.level) }}）</el-tag></template></el-table-column>
       <el-table-column prop="description" label="问题说明" min-width="300" />
       <el-table-column prop="component" label="模块" width="100" />
       <el-table-column prop="event" label="技术事件" min-width="180" />

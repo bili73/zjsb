@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { randomId } from './browserCapabilities.ts'
 import type { App } from 'vue'
 
 export const errorMessages = {
@@ -100,7 +101,7 @@ export function makeDiagnostic(input: {
     frames.push({ module: 'frontend', line: input.line as number, column: input.column as number })
   }
   return {
-    schema_version: 1, error_id: safeId(input.error_id) ?? safeId(input.request_id) ?? crypto.randomUUID(),
+    schema_version: 1, error_id: safeId(input.error_id) ?? safeId(input.request_id) ?? randomId(),
     request_id: safeId(input.request_id), occurred_at: new Date().toISOString(), app_version: appVersion,
     origin: origins.has(input.origin) ? input.origin : 'window',
     operation: operations.has(input.operation) ? input.operation : 'interface', code: safeCode(input.code),

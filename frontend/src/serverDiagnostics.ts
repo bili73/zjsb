@@ -1,7 +1,7 @@
 import { reactive } from 'vue'
 import type { BusinessApi } from './api.ts'
 
-export const logLevels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] as const
+export const logLevels = ['ERROR', 'CRITICAL'] as const
 export type LogLevel = typeof logLevels[number]
 export interface LogStatus {
   recording_ok: boolean; backup_ok: boolean | null; scan_ok: boolean | null

@@ -96,6 +96,31 @@ class ArchiveTests(unittest.TestCase):
         self.logger = d.init_diagnostics(self.root, 'api')
         self.service = DiagnosticService(self.logger)
 
+    def test_product_queries_and_downloads_only_include_serious_levels_without_rewriting_history(self):
+        self.logger.event('request_completed')
+        self.logger.exception('request_failed', ValueError('PRIVATE'), http_status=422)
+        self.logger.event('request_timeout')
+        self.logger.exception('storage_failed', OSError('PRIVATE'))
+        self.service.tick()  # Exercise live/archive deduplication as well as filtering.
+        before = {p: p.read_bytes() for p in [self.logger.path, *a.owned_archives(self.root)]}
+        all_rows = list(a.iter_records(self.root))
+        expected = {r['record_id'] for r in all_rows if r['level'] in {'ERROR', 'CRITICAL'}}
+        self.assertTrue(any(r['level'] == 'INFO' for r in all_rows))
+        first = self.service.query(limit=1)
+        second = self.service.query(limit=1, cursor=first['next_cursor'])
+        self.assertEqual({r['record_id'] for r in first['items'] + second['items']}, expected)
+        self.assertIsNone(second['next_cursor'])
+        for level in ('ERROR', 'CRITICAL'):
+            self.assertEqual([r['level'] for r in self.service.query(level=level)['items']], [level])
+        for level in ('DEBUG', 'INFO', 'WARNING', 'invalid'):
+            with self.assertRaisesRegex(Exception, 'INVALID_REQUEST'):
+                self.service.query(level=level)
+        data, _ = self.service.bundle()
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            rows = [json.loads(line) for line in archive.read('events.jsonl').splitlines()]
+            self.assertEqual({r['record_id'] for r in rows}, expected)
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+
     def test_severity_legacy_identity_and_private_values(self):
         for status, expected in [(409, 'WARNING'), (422, 'WARNING'), (500, 'ERROR')]:
             self.logger.exception('request_failed', RuntimeError('SECRET'), http_status=status, raw_text='SECRET')
@@ -302,6 +327,8 @@ class DiagnosticAPITests(unittest.TestCase):
 
     def test_invalid_date_and_cursor_are_not_server_errors(self):
         _, headers, _ = self.account('reader', 'admin')
-        for query in ['cursor=invalid', 'date_from=2026-01-01&date_to=2026-10-15', 'level=secret', 'task_id=../secret']:
+        for query in ['cursor=invalid', 'date_from=2026-01-01&date_to=2026-10-15', 'level=secret', 'level=DEBUG', 'level=INFO', 'level=WARNING', 'task_id=../secret']:
             response = self.client.get('/api/v1/admin/diagnostics/events?' + query, headers=headers)
             self.assertEqual(response.status_code, 422, response.text)
+        for level in ('DEBUG', 'INFO', 'WARNING'):
+            self.assertEqual(self.client.get('/api/v1/admin/diagnostics/bundle?level=' + level, headers=headers).status_code, 422)

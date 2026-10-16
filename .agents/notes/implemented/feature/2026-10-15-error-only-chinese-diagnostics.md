@@ -10,7 +10,7 @@ The user explicitly narrows diagnostic capture to serious problems and asks for 
 
 ## Decision
 
-Default and invalid OCR_LOG_LEVEL values resolve to ERROR, retaining ERROR and CRITICAL. Explicit existing troubleshooting overrides remain available. Keep the five-level vocabulary for historical lookup; preserve existing raw logs and archives. Routine validation/permission conflicts remain WARNING and therefore are not captured by default. Failure/status alerts and business audit records keep their existing purpose.
+Default and invalid OCR_LOG_LEVEL values resolve to ERROR, retaining ERROR and CRITICAL. Explicit existing troubleshooting overrides remain available. The original five-level product lookup is narrowed by the [serious-query restriction](../../implemented/simplification/2026-10-15-serious-diagnostic-query.md); the five-level parsing/capture vocabulary, raw logs and archives remain. Routine validation/permission conflicts remain WARNING and therefore are not captured by default. Failure/status alerts and business audit records keep their existing purpose.
 
 Each new record and revalidated old record exposes a Chinese description derived only from fixed event/error/operation dictionaries. Never copy arbitrary exception messages or trust persisted descriptions. Derive legacy record IDs before adding the new display field so existing archive/live deduplication and pagination identities do not change. The UI, expanded details and diagnostic ZIP share the server-provided explanation and retain technical codes/locations.
 
@@ -40,3 +40,5 @@ The affected backend suites pass 37 tests, the complete frontend suite passes 21
 ## Consequences
 
 Normal timing/lifecycle evidence is absent by default, so explicit diagnostic overrides may be needed for performance investigations. The current running processes only adopt the new level after restart. This change does not deploy the Mac branch or rewrite/delete historical low-level logs.
+
+The [serious-query restriction](../../implemented/simplification/2026-10-15-serious-diagnostic-query.md) narrows product lookup and ZIPs to ERROR/CRITICAL. The original five-level lookup rationale remains historical; files, parsers and explicit capture overrides remain intact.

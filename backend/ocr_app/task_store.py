@@ -10,6 +10,7 @@ from time import monotonic
 from sqlalchemy import bindparam, text
 
 from .extraction import confirmed_abnormal, medical_exclusion_reason, medical_statistics
+from .task_errors import TaskError
 
 ACTIVE = {'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING'}
 RETENTION_PROTECTED = ACTIVE | {'QUEUED'}
@@ -23,13 +24,6 @@ def now():
 
 def identity():
     return str(uuid.uuid4())
-
-
-class TaskError(Exception):
-    def __init__(self, code, message, status=409, details=None):
-        super().__init__(code)
-        self.code, self.message, self.status = code, message, status
-        self.details = details
 
 
 def upload_types(doc_type, count):

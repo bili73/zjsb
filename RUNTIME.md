@@ -176,7 +176,7 @@ API进程不导入torch。runtime协调器在成功双驻留时为证书、体�
 
 单个文件损坏时继续读取有效记录，页面明确显示“不完整”和跳过文件/记录数量；下载包manifest记录incomplete、skipped_files、skipped_records，独立于容量截断truncated。原损坏文件保留，其他健康文件仍正常备份；备份或扫描状态异常时请联系维护人员，空列表不能证明没有错误。HTTP诊断写入在线程池中等待文件锁。归档元数据内存索引最多2048项，按文件签名失效，跳过日期不匹配的归档解压；重启需一次冷扫描，读取返回内容与删除前仍重新校验，近期错误统计采用流式计数。
 
-结构化日志含DEBUG/INFO/WARNING/ERROR/CRITICAL、程序版本、事件ID、请求/任务/运行/批次、处理阶段与可用耗时。默认ERROR，仅落盘ERROR/CRITICAL；DEBUG/INFO/WARNING默认不记录，已有历史记录保留。排查时可显式设置`OCR_LOG_LEVEL=INFO`或`DEBUG`，无效配置回退ERROR。每条日志的description提供固定词典生成的中文说明，列表、详情与下载包一致；不复制任意异常正文。4xx参数、复核冲突为WARNING；任务失败/超时为ERROR；存储和启动不可用为CRITICAL。正常查询轮询不逐次落日志。旧记录读取时补派生等级和稳定ID，版本未知显示unknown，不改写历史文件。仅保留安全编号、版本、枚举及代码位置，不记录密码、Key、请求正文、URL、材料文字或任意异常全文。
+结构化日志含DEBUG/INFO/WARNING/ERROR/CRITICAL、程序版本、事件ID、请求/任务/运行/批次、处理阶段与可用耗时。默认ERROR，仅落盘ERROR/CRITICAL；DEBUG/INFO/WARNING默认不记录，已有历史记录保留。排查时可显式设置`OCR_LOG_LEVEL=INFO`或`DEBUG`，无效配置回退ERROR。每条日志的description提供固定词典生成的中文说明，列表、详情与下载包一致；不复制任意异常正文。4xx参数、复核冲突为WARNING；任务失败/超时为ERROR；存储和启动不可用为CRITICAL。网页查询、分页和下载仅包含ERROR/CRITICAL；未选等级表示两档，旧低等级文件仍保留供离线排查。正常查询轮询不逐次落日志。旧记录读取时补派生等级和稳定ID，版本未知显示unknown，不改写历史文件。仅保留安全编号、版本、枚举及代码位置，不记录密码、Key、请求正文、URL、材料文字或任意异常全文。
 
 运行根目录 `collect-diagnostics.cmd` 导出服务端诊断，即使 HTTP 服务未启动也可使用。默认输出新的 `output/diagnostics-<时间>.zip`，包括近期运行日志与有效压缩归档，manifest报告跳过的文件/记录，不覆盖旧包。服务端日志位于 `.runtime/diagnostics/`，每进程实例按10MiB×5段轮转。每天自动制作内容去重快照，保存在`archives/`；运行日志保留7天、快照自归档成功起保留30天，与管理员的业务材料保留设置无关。轮转丢弃或过期清理前必须先归档并校验成功，失败保留原文件并告警。后台维护独立于识别任务看门狗，进程间文件锁保护写入、轮转和快照。服务关闭期间不执行维护，下次启动补做。
 
@@ -319,3 +319,11 @@ XLSX默认完整值，保留operator/admin权限，无额外揭示理由，导�
 ## 2026-10-14 简化默认布局入口
 
 按用户要求移除“恢复系统默认”按钮及相关前端分支，保留个人“恢复默认”和管理员“设为默认布局”，已有布局不变。typecheck、11项布局测试和8组隔离HTTP/Edge验收通过；证据位于`output/account-layout-20261014-v3/browser-151200/browser.json`。本机仅发布验证后的静态文件，先资产后入口，保留旧资产；13个服务端文件哈希一致，health正常，未重启模型或写入业务数据库。备份与验证见`output/layout-reset-removal-20261014-151417/verified.json`。
+
+## 浏览器 HTTP 兼容（2026-10-15）
+
+复制优先使用Clipboard API，不可用或拒绝时在当前操作有效期间尝试选中文字复制；失败保留手动复制/下载提示，不自动保存识别值。前端错误编号在randomUUID不可用时使用getRandomValues生成UUIDv4；本地原件按SHA-256匹配，缺少Web Crypto时使用固定版本兼容实现，继续处理重名、去重及退出失效。
+
+## 只读严重日志导出（2026-10-16）
+
+离线诊断脚本新增可选 `--serious-stream`：仅用 Python 标准库，以只读方式采集指定 `--root` 最近30天的 ERROR/CRITICAL，向 stdout 输出含 events.jsonl、manifest.json 的 ZIP。调用方负责将二进制输出写入新文件；脚本不创建源目录锁、检查点或归档，不需要业务服务、模型或密钥。损坏记录、读取期间源文件变化及容量截断通过 manifest 明示。原 `collect-diagnostics.cmd` 和脚本默认导出行为不变。

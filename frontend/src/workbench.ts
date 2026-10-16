@@ -1,4 +1,5 @@
 import { validateUpload } from './business.ts'
+import { sha256Hex } from './browserCapabilities.ts'
 import type { MedicalItem, Task } from './business.ts'
 
 export interface LocalPreview { url: string; name: string; kind: 'pdf' | 'image' | 'heic' }
@@ -27,7 +28,7 @@ export class LocalPreviewBatch {
     const matchedFiles: File[] = [], ids: string[] = []
     for (const file of files) {
       const bytes = await file.arrayBuffer()
-      const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), n => n.toString(16).padStart(2, '0')).join('')
+      const digest = await sha256Hex(bytes)
       const matches = tasks.filter(t => t.content_hash === digest)
       if (matches.length !== 1) return false
       if (!ids.includes(matches[0]!.task_id)) { matchedFiles.push(file); ids.push(matches[0]!.task_id) }

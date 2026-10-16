@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { onBeforeUnmount, watch } from 'vue'
+import { copyText } from '../browserCapabilities.ts'
 import { ElMessage } from 'element-plus'
 import { CopyDocument, Download } from '@element-plus/icons-vue'
 import { diagnosticCards, errorMessages } from '../diagnostics.ts'
@@ -8,8 +10,11 @@ import type { BusinessApi } from '../api.ts'
 import type { LogStatus } from '../serverDiagnostics.ts'
 import ServerDiagnostics from './ServerDiagnostics.vue'
 
-defineProps<{ open: boolean; api?: BusinessApi | null; isAdmin?: boolean; status?: LogStatus | null; statusError?: string }>()
+const props = defineProps<{ open: boolean; api?: BusinessApi | null; isAdmin?: boolean; status?: LogStatus | null; statusError?: string }>()
 const emit = defineEmits<{ (e: 'update:open', value: boolean): void; (e: 'unauthorized'): void; (e: 'refresh-status'): void }>()
+let generation = 0
+watch(() => [props.open, props.api], () => { generation++ }, { flush: 'sync' })
+onBeforeUnmount(() => { generation++ })
 
 const originLabels = { http: '接口请求', task: '任务', vue: '界面', window: '窗口', promise: '异步' } as const
 const operationLabels = {
@@ -19,11 +24,13 @@ const operationLabels = {
 } as const
 
 async function copy(card: DiagnosticCard) {
+  const revision = generation
+  const current = () => props.open && revision === generation && diagnosticCards.value.some(item => item.error_id === card.error_id)
   try {
-    await navigator.clipboard.writeText(JSON.stringify(card, null, 2))
-    ElMessage.success('诊断信息已复制。')
+    await copyText(JSON.stringify(card, null, 2), current)
+    if (current()) ElMessage.success('诊断信息已复制。')
   } catch {
-    ElMessage.error('复制失败，请改用下载按钮。')
+    if (current()) ElMessage.error('复制失败，请改用下载按钮。')
   }
 }
 

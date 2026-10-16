@@ -53,6 +53,7 @@ class ReportConcurrencyTests(unittest.TestCase):
 
     def test_partial_api_response_and_bundle_expose_incomplete_but_not_truncated(self):
         _, headers, _ = self.account('reader', 'admin')
+        self.logger.event('request_timeout')
         with self.logger.path.open('ab') as stream:
             stream.write(b'PRIVATE broken line\n')
         response = self.client.get('/api/v1/admin/diagnostics/events', headers=headers)
@@ -95,7 +96,9 @@ class ErrorResponseConcurrencyTests(unittest.TestCase):
 
 
 class PartialRecoveryTests(unittest.TestCase):
-    setUp = existing.ArchiveTests.setUp
+    def setUp(self):
+        existing.ArchiveTests.setUp(self)
+        self.logger.event('request_timeout')
 
     def test_damaged_segments_preserve_evidence_and_allow_other_backups_and_reads(self):
         damaged = self.logger.path
@@ -105,8 +108,8 @@ class PartialRecoveryTests(unittest.TestCase):
         broken_zip.write_bytes(b'broken archive PRIVATE')
         good = d.init_diagnostics(self.root, 'client')
         good.event('request_timeout')
-        expected = {r['record_id'] for r in a.decoded(original) if r}
-        expected.update(r['record_id'] for r in a.decoded(good.path.read_bytes()) if r)
+        expected = {r['record_id'] for r in a.decoded(original) if r and r['level'] in {'ERROR', 'CRITICAL'}}
+        expected.update(r['record_id'] for r in a.decoded(good.path.read_bytes()) if r and r['level'] in {'ERROR', 'CRITICAL'})
         for service in (self.service, DiagnosticService(self.logger)):
             service.tick()
             self.assertFalse(service.status()['backup_ok'])
@@ -143,6 +146,7 @@ class PartialRecoveryTests(unittest.TestCase):
         original = bad.read_bytes() + b'{"unfinished":'
         bad.write_bytes(original)
         healthy = d.init_diagnostics(self.root, 'client')
+        healthy.event('request_timeout')
         old = time.time() - 8 * 86400
         for path in (bad, healthy.path):
             os.utime(path, (old, old))

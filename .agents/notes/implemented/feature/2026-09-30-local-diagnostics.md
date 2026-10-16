@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend, scripts, tests, collect-diagnostics.cmd, SPEC.md, openapi.yaml, RUNTIME.md
-Last-verified: 2026-10-15
+Last-verified: 2026-10-16
 
 ## Problem
 
@@ -53,3 +53,7 @@ The [HDR JPEG admission repair](../bug-fix/2026-10-08-hdr-jpeg-upload-admission.
 The former frontend portion is retired by the [frontend retirement](../../implemented/simplification/2026-10-08-retire-temporary-frontend.md); current Scope covers surviving code. Old UI checks describe historical acceptance.
 
 The [HR field profile](2026-10-08-hr-document-field-profile.md) keeps added personal/diagnosis values in encrypted business evidence and out of safe diagnostics; anonymous native replay counts are separate from diagnostic logs.
+
+The [HTTP browser compatibility extension](../../implemented/bug-fix/2026-10-15-http-browser-capabilities.md) keeps frontend diagnostic ID creation and card copying available on the approved HTTP deployment.
+
+The [portable integration](../process/2026-10-16-portable-deployment-fixes-to-main.md) brings the reusable diagnostic core into main. DiagnosticService imports TaskError from a standard-library-only module; task_store re-exports the same class for existing callers. Cooperative scan cancellation marks incomplete results. The optional serious-stream offline export reads matching records without creating locks, checkpoints or archives and detects source changes/damaged records. Existing Windows collector defaults remain unchanged. Native service transport and deployment wiring are separate.
