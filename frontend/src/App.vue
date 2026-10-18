@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Reading, SwitchButton, Tools, User as UserIcon } from '@element-plus/icons-vue'
+import { Reading, SwitchButton, Tools, User as UserIcon, Bottom } from '@element-plus/icons-vue'
 import { ApiFailure, BusinessApi } from './api.ts'
 import { resultKey } from './business.ts'
 import type { DocProfile, ManagedUser, Task, User } from './business.ts'
@@ -140,10 +140,20 @@ async function requiredFieldsSaved() {
 }
 
 const onVisibility = () => { monitor.onVisible(!document.hidden); if (!document.hidden) void logMonitor.refresh() }
+// 右下角悬浮导航：滚过一屏出现「跳转到底部」，与 el-backtop 的「回到顶部」成对。
+const showJumpBottom = ref(false)
+function updateJumpBottom() {
+  const max = document.documentElement.scrollHeight - window.innerHeight
+  showJumpBottom.value = max > 240 && window.scrollY < max - 160
+}
+function scrollToBottom() { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }) }
 onMounted(async () => {
   engine.install()
   void engine.refresh()
   document.addEventListener('visibilitychange', onVisibility)
+  window.addEventListener('scroll', updateJumpBottom, { passive: true })
+  window.addEventListener('resize', updateJumpBottom, { passive: true })
+  updateJumpBottom()
   const client = new BusinessApi()
   try { await handleAuthenticated(client, await client.auth(sessionController.signal)) }
   catch { /* An expired/unavailable session returns to the login form. */ }
@@ -153,6 +163,8 @@ onBeforeUnmount(() => {
   setDiagnosticReporter(null); reportController.abort(); logMonitor.stop()
   sessionController.abort()
   document.removeEventListener('visibilitychange', onVisibility)
+  window.removeEventListener('scroll', updateJumpBottom)
+  window.removeEventListener('resize', updateJumpBottom)
   engine.dispose()
   monitor.dispose()
   previews.clear()
@@ -229,6 +241,13 @@ onBeforeUnmount(() => {
 
     <footer class="app-footer">登录有效期为 30 天；同一账号在其他浏览器登录后，当前登录失效。过期或退出后需重新登录。</footer>
 
+    <el-backtop :right="32" :bottom="48" />
+    <transition name="el-fade-in-linear">
+      <button v-if="showJumpBottom" class="jump-bottom" type="button" aria-label="跳转到底部" title="跳转到底部" @click="scrollToBottom">
+        <el-icon><Bottom /></el-icon>
+      </button>
+    </transition>
+
     <TaskResultDrawer v-model:open="drawerInfo.open" :task="liveTask" :api="api" :monitor="monitor" :previews="previews" :can-write="canWrite" :catalogue="catalogue" @reviewed="reviewed" @bank-retried="drawerInfo.open = false; handleSubmitted()" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
     <PasswordDialog v-if="passwordOpen && api" :api="api" @close="passwordOpen = false" @saved="passwordChanged" @unauthorized="handleUnauthorized" />
   </div>
@@ -243,4 +262,8 @@ onBeforeUnmount(() => {
 .header-actions { display: inline-flex; align-items: center; gap: 4px; }
 .header-text-btn { --el-button-text-color: var(--el-text-color-regular); font-weight: 500; }
 .header-text-btn:hover { --el-button-text-color: var(--el-color-primary); --el-button-hover-text-color: var(--el-color-primary); }
+/* 跳转到底部：与 el-backtop 同款圆形悬浮，垂直堆叠在其上方。 */
+.jump-bottom { position: fixed; right: 32px; bottom: 104px; z-index: 5; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--el-border-color-lighter); background: var(--el-bg-color); color: var(--el-color-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--el-box-shadow-light); transition: background-color .2s, color .2s; }
+.jump-bottom:hover { background: var(--el-color-primary-light-9); }
+.jump-bottom .el-icon { font-size: 18px; }
 </style>

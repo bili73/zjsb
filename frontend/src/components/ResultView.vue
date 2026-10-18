@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Lock } from '@element-plus/icons-vue'
+import { InfoFilled, Lock } from '@element-plus/icons-vue'
 import { abnormalBasisLabels, fieldValueText, matchesMedicalFilter, medicalFlag } from '../business.ts'
 import { numberLengthHint } from '../numberLength.ts'
 import type { Field, FieldSource, ItemsFilter, MedicalItem, TaskResult } from '../business.ts'
@@ -60,9 +60,11 @@ function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BAN
         </span>
         <p v-if="lengthHints[field.key]" role="status" :class="['number-length-hint', lengthHints[field.key]?.level]">{{ lengthHints[field.key]?.message }}</p>
         <div v-if="['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type) && field.candidates?.length">
-          <div v-for="(candidate,index) in field.candidates" :key="index">
-            {{ candidate.reason ?? '候选值' }}：{{ candidate.value }}
-            <el-button v-if="candidate.source" link type="primary" @click="locate(candidate.source)">查看来源</el-button>
+          <div v-for="(candidate,index) in field.candidates" :key="index" class="candidate-hint">
+            <el-icon class="candidate-icon"><InfoFilled /></el-icon>
+            <span>{{ candidate.reason ?? '候选值' }}：{{ candidate.value }}
+              <el-button v-if="candidate.source" link type="primary" @click="locate(candidate.source)">查看来源</el-button>
+            </span>
           </div>
         </div>
       </el-descriptions-item>
@@ -177,6 +179,10 @@ function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BAN
 <style scoped>
 .number-length-hint { margin:6px 0 0; color:var(--el-color-danger); line-height:1.5; }
 .number-length-hint.info { color:var(--el-text-color-secondary); }
+/* 候选提示：浅黄提示条（图标 + 文案 + 查看来源），和普通识别值一眼区分，比 el-alert 轻量。 */
+.candidate-hint { display:flex; align-items:flex-start; gap:6px; margin-top:6px; padding:6px 10px; border-radius:6px; background:var(--el-color-warning-light-9); font-size:13px; line-height:1.6; }
+.candidate-hint .candidate-icon { margin-top:4px; color:var(--el-color-warning); flex-shrink:0; }
+.candidate-hint .el-button { vertical-align:baseline; }
 .item-search { width: 240px; }
 .mask-icon { vertical-align: -2px; margin-right: 4px; color: var(--el-text-color-secondary); }
 .stat-abnormal { color: var(--el-color-danger); }

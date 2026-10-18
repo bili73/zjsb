@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import { ApiFailure, BusinessApi } from '../api.ts'
 import type { ManagedUser, User } from '../business.ts'
 import { errorMessages } from '../diagnostics.ts'
@@ -11,6 +12,14 @@ const emit = defineEmits<{ unauthorized: []; changePassword: []; profileChanged:
 const controller = new AbortController()
 const users = ref<ManagedUser[]>([])
 const loading = ref(false)
+// Full-list account data also powers last-administrator protection across pages.
+const page = ref(1), pageSize = ref(20)
+const pagedUsers = computed(() => users.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
+watch(users, () => {
+  const last = Math.max(1, Math.ceil(users.value.length / pageSize.value))
+  if (page.value > last) page.value = last
+})
+function resizePage(size: number) { pageSize.value = size; page.value = 1 }
 const creating = ref(false)
 const changing = ref('')
 const passwordTarget = ref<ManagedUser | undefined>()
@@ -22,6 +31,8 @@ const busy = computed(() => loading.value || creating.value || !!changing.value 
 const adminCount = computed(() => users.value.filter(user => user.enabled && user.role === 'admin').length)
 const error = ref('')
 const success = ref('')
+// 任何操作（创建/禁用/删除/重置/改名）的反馈都落在面板顶部同一条位置，避免散在各区块。
+const feedback = computed(() => error.value ? { type: 'error' as const, text: error.value } : success.value ? { type: 'success' as const, text: success.value } : null)
 const form = reactive({ username: '', display_name: '', password: '', confirmation: '', role: 'operator' as User['role'] })
 const roles = { operator: '操作员', viewer: '只读', admin: '管理员' }
 
@@ -123,28 +134,29 @@ onBeforeUnmount(() => { controller.abort(); form.password = ''; form.confirmatio
 
 <template>
   <div class="accounts">
-    <el-card shadow="never">
-      <template #header><strong data-guide="account-create">创建账号</strong></template>
-      <el-alert v-if="error" :title="error" type="error" :closable="false" />
-      <el-alert v-if="success" :title="success" type="success" :closable="false" />
-      <el-form label-position="top" @submit.prevent="create">
-        <div class="form-grid">
-          <el-form-item label="账号"><el-input v-model="form.username" maxlength="64" autocomplete="off" :disabled="creating" /></el-form-item>
-          <el-form-item label="姓名"><el-input v-model="form.display_name" maxlength="80" autocomplete="off" :disabled="creating" /></el-form-item>
-          <el-form-item label="密码"><el-input v-model="form.password" type="password" show-password maxlength="128" autocomplete="new-password" :disabled="creating" /></el-form-item>
-          <el-form-item label="确认密码"><el-input v-model="form.confirmation" type="password" show-password maxlength="128" autocomplete="new-password" :disabled="creating" /></el-form-item>
-          <el-form-item label="角色"><el-select v-model="form.role" :disabled="creating"><el-option v-for="(label, role) in roles" :key="role" :label="label" :value="role" /></el-select></el-form-item>
-        </div>
-        <el-button type="primary" native-type="submit" :loading="creating" :disabled="busy && !creating">创建账号</el-button>
-      </el-form>
-    </el-card>
-    <el-card shadow="never">
-      <template #header><div class="list-title" data-guide="account-list"><strong>已有账号</strong><el-button :loading="loading" :disabled="busy" @click="refresh">刷新列表</el-button></div></template>
-      <el-table :data="users" v-loading="loading">
-        <el-table-column label="账号" min-width="160"><template #default="{ row }">{{ row.username }} <el-tag v-if="row.user_id === currentUser.user_id" size="small">当前账号</el-tag></template></el-table-column>
-        <el-table-column prop="display_name" label="姓名" min-width="160" />
-        <el-table-column label="角色" width="120"><template #default="{ row }">{{ roles[row.role as User['role']] }}</template></el-table-column>
-        <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '禁用' }}</el-tag></template></el-table-column>
+    <el-alert v-if="feedback" :title="feedback.text" :type="feedback.type" :closable="false" show-icon />
+    <el-form class="create-bar" data-guide="account-create" @submit.prevent="create">
+      <strong class="bar-title">创建账号</strong>
+      <el-input v-model="form.username" maxlength="64" autocomplete="off" placeholder="登录账号" :disabled="creating" />
+      <el-input v-model="form.display_name" maxlength="80" autocomplete="off" placeholder="姓名" :disabled="creating" />
+      <el-input v-model="form.password" type="password" show-password maxlength="128" autocomplete="new-password" placeholder="密码（至少 8 位）" :disabled="creating" />
+      <el-input v-model="form.confirmation" type="password" show-password maxlength="128" autocomplete="new-password" placeholder="确认密码" :disabled="creating" />
+      <el-select v-model="form.role" :disabled="creating" aria-label="角色">
+        <el-option v-for="(label, role) in roles" :key="role" :label="label" :value="role" />
+      </el-select>
+      <el-button type="primary" native-type="submit" :icon="Plus" :loading="creating" :disabled="busy && !creating">创建账号</el-button>
+    </el-form>
+    <section class="list-section">
+      <div class="list-head" data-guide="account-list">
+        <strong>已有账号</strong>
+        <span class="count">{{ users.length }} 个</span>
+        <el-button :loading="loading" :disabled="busy" @click="refresh">刷新列表</el-button>
+      </div>
+      <el-table :data="pagedUsers" v-loading="loading" stripe>
+        <el-table-column label="账号" min-width="170"><template #default="{ row }">{{ row.username }} <el-tag v-if="row.user_id === currentUser.user_id" size="small" effect="plain">当前账号</el-tag></template></el-table-column>
+        <el-table-column prop="display_name" label="姓名" min-width="150" />
+        <el-table-column label="角色" width="110"><template #default="{ row }">{{ roles[row.role as User['role']] }}</template></el-table-column>
+        <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag size="small" effect="light" :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '禁用' }}</el-tag></template></el-table-column>
         <el-table-column label="操作" width="370" fixed="right"><template #default="{ row }">
           <el-button link type="primary" :disabled="busy" @click="editName(row as ManagedUser)">编辑姓名</el-button>
           <el-button link :type="row.enabled ? 'warning' : 'success'" :disabled="busy || (row.enabled && protectedAccount(row as ManagedUser))" @click="change(row as ManagedUser, 'enabled')">{{ row.enabled ? '禁用' : '启用' }}</el-button>
@@ -152,8 +164,10 @@ onBeforeUnmount(() => { controller.abort(); form.password = ''; form.confirmatio
           <el-button link type="danger" :disabled="busy || protectedAccount(row as ManagedUser)" @click="change(row as ManagedUser, 'delete')">删除</el-button>
         </template></el-table-column>
       </el-table>
+      <el-pagination v-model:current-page="page" :page-size="pageSize" @update:page-size="resizePage"
+        :disabled="busy" :total="users.length" :page-sizes="[20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" background class="list-pager" />
       <p class="account-hint" data-guide="account-protection">当前登录账号和最后一个启用的管理员不能禁用或删除。删除账号会保留历史识别记录。</p>
-    </el-card>
+    </section>
     <PasswordDialog v-if="passwordTarget" :api="api" :target="passwordTarget" @close="passwordTarget = undefined" @saved="passwordSaved" @unauthorized="emit('unauthorized')" />
     <el-dialog :model-value="!!editing" title="编辑账号姓名" width="420px" :close-on-click-modal="false" :close-on-press-escape="!savingName" :show-close="!savingName" @close="editing = undefined">
       <el-alert v-if="editError" :title="editError" type="error" :closable="false" />
@@ -169,10 +183,17 @@ onBeforeUnmount(() => { controller.abort(); form.password = ''; form.confirmatio
 </template>
 
 <style scoped>
-.accounts { display: grid; gap: 16px; }
-.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
-.list-title { display: flex; align-items: center; justify-content: space-between; }
-.el-alert { margin-bottom: 16px; }
-.account-hint { color: var(--el-text-color-secondary); font-size: 13px; line-height: 1.7; }
-@media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+.accounts { display: grid; gap: 14px; }
+/* 创建账号：单行工具条（窄屏自动换行），占位符代替常驻标签，与审计/批次工具栏同风格。 */
+.create-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 14px; background: var(--el-fill-color-lighter); border-radius: 10px; }
+.bar-title { font-size: 14px; margin-right: 4px; }
+.create-bar .el-input { width: 185px; }
+.create-bar .el-select { width: 130px; }
+.list-head { display: flex; align-items: center; gap: 10px; }
+.list-head strong { font-size: 15px; }
+.list-head .count { font-size: 12px; color: var(--el-text-color-secondary); }
+.list-head .el-button { margin-left: auto; }
+.list-section { display: grid; gap: 10px; }
+.list-pager { justify-content: flex-end; flex-wrap: wrap; row-gap: 8px; }
+.account-hint { margin: 0; color: var(--el-text-color-secondary); font-size: 12px; line-height: 1.7; }
 </style>

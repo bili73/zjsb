@@ -418,9 +418,6 @@ async function submit() {
     </div>
 
     <el-card shadow="never" class="upload-card">
-      <div v-if="mixed && !targetBatch" class="package-head">
-        <span>无需先填写姓名，识别后会显示姓名建议；请只放入同一人的材料。</span>
-      </div>
       <el-alert type="info" :closable="false" class="upload-tip">{{ mixed ? '自动分类只是建议，可以直接修改下方类型。每个文件应是一种材料；混合了不同证件的PDF请先拆分。部分类型尚缺真实样本验收，识别结果仍需对照原件核对。' : sampleQualification(docType) }}</el-alert>
       <el-upload data-guide="upload-files"
         v-model:file-list="fileList"
@@ -477,7 +474,7 @@ async function submit() {
           <el-button v-if="selectedFiles.length && !submitting" @click="clearFiles">一键清除</el-button>
           <el-button v-if="submitting" @click="cancelSubmit">取消上传</el-button>
           <el-button type="primary" data-guide="upload-submit" :loading="submitting" :disabled="!canWrite || !catalogue.length || !!unknownCount || !!invalidReason" @click="submit">
-            {{ submitting ? '正在上传…' : `${mixed ? (targetBatch ? '统一追加' : '整包提交') : '开始识别'}（${selectedFiles.length || ''}）` }}
+            {{ submitting ? '正在提交，请勿重复操作…' : `${mixed ? (targetBatch ? '统一追加' : '整包提交') : '开始识别'}（${selectedFiles.length || ''}）` }}
           </el-button>
         </div>
       </div>
@@ -517,9 +514,6 @@ async function submit() {
 .mode-option:disabled { cursor: not-allowed; opacity: .6; }
 .mode-option .el-icon { font-size: 15px; }
 .mode-hint { color: var(--el-text-color-secondary); font-size: 13px; }
-.package-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 12px 14px; background: var(--el-color-primary-light-9); border: 1px solid var(--el-color-primary-light-7); border-radius: 10px; }
-.package-head label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; white-space: nowrap; }
-.package-head label .el-icon { color: var(--el-color-primary); }
 .package-person-input { max-width: 320px; }
 .package-summary { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 10px; }
 .upload-footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--el-border-color-lighter); }

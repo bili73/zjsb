@@ -241,7 +241,7 @@ source 可含 `page`（从1起）、`region_id`、`extraction_method=pdf_text/oc
 
 ## 新材料字段与规则
 
-`GET /doc-types`返回FieldMeta数组（key/label/type/required/editable/required_when），界面据此建表单；结果Field.required给出当前条件。编号必须字符串，日期可能YYYY-MM，不补日期。原件未载明的选填可明确标记缺省；必填不能标缺省。
+`GET /doc-types`返回FieldMeta数组（key/label/type/required/editable/required_when），界面据此建表单；结果Field.required给出当前条件。编号必须字符串，日期可能YYYY-MM，不补日期。界面不再提供缺省原因下拉，原件未载明的选填留空即可；接口仍接受明确的缺省枚举，必填不能标缺省。
 
 | 类型 | 主要必填键 | 限制 |
 |---|---|---|
@@ -266,7 +266,7 @@ source 可含 `page`（从1起）、`region_id`、`extraction_method=pdf_text/oc
 
 Review body必须包含当前`run_id`、`expected_revision`；只提交变更字段。`fields`是key->完整值，`absence_reasons`是key->缺省枚举。号码直接显示；人工更正应对照原图输入完整值，仍拒绝把历史掩码作为号码写入。未改变值要确认时提交`accepted_issues:[{issue_id,reason?}]`（reason选填，可一键提交当前允许问题），只接受can_accept=true，MISSING/CONFLICT/INCOMPLETE_OUTPUT/MULTI_CANDIDATES必须补正。空提交或note不清问题。
 
-医疗按item_id改items，added_items新增，removed_item_ids删除；后端重算异常/数值/范围。findings按finding_id更正文本/等级/诊断，以result_item_id关联实际检测项；原件无等级/诊断/结果时明确absence_reasons，不编造检测值。report_summary可补源页、作用域、标题、数量以及新增/删除清单，原识别声明另保留。新增ID由服务端分配。
+医疗按item_id改items，added_items新增，removed_item_ids删除；后端重算异常/数值/范围。findings按finding_id更正文本/等级/诊断，以result_item_id关联实际检测项；原件无等级/诊断/结果时留空即可，不编造检测值（界面已不提供absence_reasons下拉，接口仍接受）。report_summary可补源页、作用域、标题、数量以及新增/删除清单，原识别声明另保留。新增ID由服务端分配。
 
 户成员按index+revision编辑，新增/删除成员使用独立列表并保留源页；GENERIC提交`generic:{full_text,key_values:[{key,value,source_pair_id?}]}`生成reviewed_generic，不改原文证据。
 

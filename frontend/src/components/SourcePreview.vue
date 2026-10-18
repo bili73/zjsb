@@ -207,7 +207,7 @@ void (async () => {
   <section ref="previewEl" v-loading="loading" class="source-preview" @click="onSectionClick">
     <h3>原件对照 · 服务端校正页</h3>
     <div ref="pageToolsEl" class="page-tools">
-      <span>共 {{ maxPage }} 页 · {{ ocrEnabled ? '点击页面框选识别' : '点击页面放大查看' }}<template v-if="source?.bbox">，点击空白处取消红框</template></span>
+      <span>共 {{ maxPage }} 页 · {{ ocrEnabled ? '点击页面框选识别' : '点击页面放大查看' }}</span>
       <el-input-number v-model="jumpPage" :min="1" :max="maxPage" :precision="0" size="small" controls-position="right" />
       <el-button size="small" @click="goTo(jumpPage)">跳页</el-button>
       <span class="tools-spacer" />
