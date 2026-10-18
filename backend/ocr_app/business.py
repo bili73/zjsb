@@ -75,7 +75,7 @@ class Business:
         self.storage = Storage(self.root, key)
         self.engine = open_database(self.root)
         self.store = TaskStore(self.engine, self.storage, logger)
-        self.accounts = Accounts(self.storage, self.engine)
+        self.accounts = Accounts(self.storage, self.engine, logger)
         self.stop_event = threading.Event()
         self.monitor = None
         self.watchdog_error_id = None

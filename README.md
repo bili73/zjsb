@@ -7,7 +7,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/app-1.26.0-0f9d8f?style=flat-square" alt="app 1.26.0">
-  <img src="https://img.shields.io/badge/SPEC-v1.31-0c7e72?style=flat-square" alt="SPEC v1.31">
+  <img src="https://img.shields.io/badge/SPEC-v1.33-0c7e72?style=flat-square" alt="SPEC v1.33">
   <img src="https://img.shields.io/badge/platform-Windows%2010%2B-0078d4?style=flat-square" alt="Windows 10+">
   <img src="https://img.shields.io/badge/Python-3.12-3776ab?style=flat-square" alt="Python 3.12">
   <img src="https://img.shields.io/badge/Vue-3.5-35495e?style=flat-square" alt="Vue 3">
@@ -20,11 +20,11 @@
 
 面向 HR 场景的**单机内部工具**：操作人员在网页上传证件照片、学历材料与体检报告，系统在本地完成 OCR 识别与结构化提取，经**人工核对补填**后导出为 Excel 台账。服务仅绑定 `127.0.0.1`，识别与存储全程不出本机。
 
-- **11 类材料**：身份证（人像面/国徽面）、毕业证、学位证、银行卡、体检报告、户口本、营业执照、护照、学信网备案表、通用识别
+- **13 类材料**：身份证（人像面/国徽面）、毕业证、学位证、银行卡、体检报告、户口本、营业执照、护照、学信网备案表、通用识别、面试登记表，另有表格照片转Excel（TABLE）独立入口
 - **表格**：单张照片自动摆正、建议主体/标题，有依据时自动填写单行或多行表头，无法判断时手选；对照原图编辑单元格、插删行列后保存。单份XLSX优先按标题命名，无标题用原图片名或“表格_时间”，多份ZIP；当前不支持PDF、人员包或跨照片续表拼接。复用现有模型，无新增模型。
 - **双模型主备**：GLM-OCR（证件语义理解）+ PaddleOCR-VL（体检版面识别），各自独立进程与虚拟环境
 - **人工复核优先**：识别成功一律进入「待人工核对」，置信度不造假、进度不造假、导出有门禁
-- **安全内建**：账号密码 + Cookie 会话、AES-GCM 加密存储、7 天到期清理、脱敏诊断
+- **安全内建**：账号密码 + Cookie 会话、AES-GCM 加密存储、到期清理（默认 7 天，管理员可设 7/15/30 天或永不清除）、脱敏诊断
 
 ## 支持的材料类型
 
@@ -35,7 +35,8 @@
 | 毕业证 | `DIPLOMA` | 护照 | `PASSPORT` |
 | 学位证 | `DEGREE_CERT` | 学信网备案表 | `XUEXIN_DIPLOMA_TABLE` |
 | 银行卡 | `BANK_CARD` | 通用识别 | `GENERIC` |
-| 体检报告 | `MEDICAL_REPORT` | 表格照片转Excel | `TABLE` |
+| 体检报告 | `MEDICAL_REPORT` | 面试登记表 | `INTERVIEW_FORM` |
+| 表格照片转Excel | `TABLE` | | |
 
 > 识别路由：证件 / 银行卡 / 未知类型默认 GLM-OCR，体检报告默认 PaddleOCR-VL，互为备用。银行卡只收图片（不收 PDF），支持单卡及带手写补充的复印件，提取姓名、卡号、开户行、开户支行；卡号冲突需人工选择，离线 BIN 不推断具体支行。
 
@@ -159,7 +160,7 @@ cd ..
 - **会话**：Argon2id 密码哈希；HttpOnly / SameSite=Strict Cookie 绝对有效 30 天；CSRF Token 仅存页面内存、随不安全请求以 `X-CSRF-Token` 发送；同客户端 5 分钟内最多 5 次登录尝试
 - **账号**：viewer / operator / admin 三级角色；批次按上传账号隔离（管理员可见全部，其余只见自己的），越权与不存在 ID 统一 404；当前登录账号与最后一个启用的管理员不可禁用/删除
 - **存储**：敏感产物 AES-GCM 加密；部署密钥 DPAPI 用户级保护，跨用户/电脑复制不可恢复（不把复制数据目录当作已验证迁移）
-- **留存**：业务文件、结果与含原始信息的运行历史保留 7 天到期清理；批次列表标注「到期清理」日期，需长期保存请及时导出
+- **留存**：业务文件、结果与含原始信息的运行历史默认保留 7 天到期清理（管理员可设 7/15/30 天或永不清除）；批次列表标注「到期清理」日期，需长期保存请及时导出
 - **诊断**：错误卡片只含错误码、编号与位置，绝不含密码、文件名、接口地址与识别内容；页面页脚明示
 - **导出**：XLSX 字符串始终按文本单元格写入，不执行公式；完整号码导出后由公司制度保管
 
@@ -187,7 +188,7 @@ cd ..
 ├─ .venvs/             # app / glm-ocr / paddleocr-vl 等多套 Python 环境（另含 chandra、
 │                      # paddleocr-vl-1.6、image-upright 离线对照环境；gitignore）
 ├─ .runtime/           # SQLite 数据、加密密钥、诊断日志（gitignore，运行态）
-├─ SPEC.md             # 业务契约与验收基线（v1.31）
+├─ SPEC.md             # 业务契约与验收基线（v1.33）
 ├─ openapi.yaml        # 接口契约（/api/v1，版本 1.26.0）
 ├─ ARCHITECTURE.md     # 技术决策与实现边界
 ├─ RUNTIME.md          # 启动/运行方式与各轮验收记录
@@ -215,7 +216,7 @@ cd ..
 - Mac / Mac Studio 集中部署、外网 / TLS / 远程访问入口——未接入
 - 整份体检报告的全量识别准确率、持续日吞吐——未验收（历史实测仅为固定子集）
 - 透视矫正、纸张弯曲校正、通用 CVV 检测——不处理 / 不承诺
-- 任务追加 / 拒绝 / 恢复 / 替换等生命周期接口——未开放
+- 任务重命名 / 重试 / 拒绝 / 恢复 / 替换文件等生命周期接口——未开放（人员包补充上传已开放）
 - 标定的置信度数值——一律返回「未标定」，不生成假分数；故障模型不自动重载
 
 ## 参与开发

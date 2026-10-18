@@ -1,5 +1,5 @@
 // Guide anchors are scoped to one page/batch. Never use business actions to reveal a target.
-export type GuideContext = 'upload' | 'batches' | 'batch' | 'package' | 'review' | 'medical' | 'table' | 'generic' | 'engine' | 'accounts' | 'required' | 'retention'
+export type GuideContext = 'upload' | 'batches' | 'batch' | 'package' | 'review' | 'medical' | 'table' | 'generic' | 'engine' | 'accounts' | 'required' | 'retention' | 'audit'
 export interface GuideStep { anchor: string; title: string; text: string; write?: boolean; optional?: boolean }
 const step = (anchor: string, title: string, text: string, extra: Partial<GuideStep> = {}): GuideStep => ({ anchor, title, text, ...extra })
 const source = step('source-tools', '对照原件，必要时再识别一小块', '这里可以跳到指定页、查看大图，或点“框选识别文字”裁出局部。识别后可复制原文或日期建议，再粘贴到修正框；不会自动覆盖已有字段。')
@@ -20,7 +20,7 @@ const guides: Record<GuideContext, GuideStep[]> = {
   ],
   batches: [
     step('batch-calendar', '按时间查找', '按日、周或月分组，再选择日期；时间均为北京时间。点“全部日期”清除筛选。每个批次标注上传账号，管理员能看到全部，普通账号只能看到自己的。'),
-    step('batch-refresh', '需要时读取最新结果', '进行中的任务自动刷新；空闲时可点击“刷新”，较早记录用“加载更早的批次”。刷新页面不会替你重跑识别。'),
+    step('batch-refresh', '需要时读取最新结果', '进行中的任务自动刷新；空闲时可点击“刷新”，较早记录可点击底部数字页码查找。翻页后其他批次的识别仍会继续；刷新不会替你重跑识别。'),
     step('batch-list', '展开要处理的批次', '批次标题提示缺必填或有异议的任务数。展开一个批次后，点“本批次指引”查看筛选、补充上传和导出说明。没有记录时先上传或调整日期。'),
   ],
   batch: [filter, tasks, exportBatch],
@@ -48,6 +48,11 @@ const guides: Record<GuideContext, GuideStep[]> = {
     step('engine-components', '区分服务与模型问题', '这里分别显示数据库、处理进程、存储和排队情况。网络断开时先确认服务连接，不要反复重跑同一份材料。'),
     step('engine-models', '向维护人员提供状态', '记录模型状态和报错。右上角“诊断”可提供错误信息，帮助维护人员定位；指引不会重启模型。'),
   ],
+  audit: [
+    step('audit-filter', '先筛选需要追查的操作', '仅管理员可用。默认最近7天，可按日期、账号、操作、结果和批次编号筛选；时间为北京时间。'),
+    step('audit-list', '查看哪个账号做了什么', '上传、追加、删除和导出按一次提交合并记录；设置变更直接显示中文说明。识别过程、查看原图和保存修正不进入此列表。导出成功表示服务端已生成文件，历史结果未知不代表成功。'),
+    step('audit-export', '按当前筛选导出记录', '导出全部匹配的摘要，不限当前页；最多10000条，超出时请缩小范围。审计无法在页面修改或删除，密码和登录凭据不会记录。'),
+  ],
   accounts: [
     step('account-create', '为每个人创建独立账号', '填写账号、姓名和密码，选择操作员、只读或管理员。不同操作员的任务和个人布局独立；管理员可以查看全部任务。'),
     step('account-list', '管理已有账号', '可编辑姓名、启用／禁用、删除账号或重置密码。姓名修改不改变登录账号或任务归属，删除账号仍保留历史识别记录。'),
@@ -65,7 +70,7 @@ const guides: Record<GuideContext, GuideStep[]> = {
   ],
 }
 export function guideSteps(context: GuideContext, canWrite: boolean, isAdmin: boolean): GuideStep[] {
-  if (['accounts', 'required', 'retention'].includes(context) && !isAdmin) return []
+  if (['accounts', 'required', 'retention', 'audit'].includes(context) && !isAdmin) return []
   const result = guides[context].filter(item => !item.write || canWrite)
   if (!canWrite) {
     if (context === 'review') result.push(step('review-fields', '当前为只读查看', '可对照原件查看字段和位数提示。需要补填、保存或导出时，请联系有操作权限的账号处理。'))

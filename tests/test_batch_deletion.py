@@ -70,7 +70,10 @@ class BatchDeletionTests(unittest.TestCase):
         self.assertEqual(list(self.business.storage.blobs.iterdir()), [])
         with self.business.engine.connect() as c:
             audit = c.execute(text("SELECT * FROM audit WHERE event IN ('task_deleted','batch_deleted')")).mappings().all()
-        self.assertEqual(len(audit), 6)
+        self.assertEqual(len([row for row in audit if row['outcome'] == 'success']), 1)
+        failures = [row for row in audit if row['outcome'] == 'failure']
+        self.assertEqual(len(failures), 1, 'the repeated delete is a failed attempt, not another deletion')
+        self.assertEqual((failures[0]['event'], failures[0]['batch_id']), ('batch_deleted', batch))
         self.assertNotIn('private-synthetic', str(audit))
 
     def test_legal_upload_and_append_can_delete_all_101_tasks_atomically(self):

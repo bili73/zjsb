@@ -120,7 +120,7 @@ test('older-page package metadata refreshes after append and after saved field c
   let fresh: Batch = before, visible = true
   const client = new BusinessApi(async input => {
     const url = String(input)
-    if (url.includes('/batches?')) return json({ items: url.includes('page=2') ? [fresh] : [], total: 1, page: url.includes('page=2') ? 2 : 1, page_size: 50 })
+    if (url.includes('/batches?')) return json({ items: url.includes('page=2') ? [fresh] : [], total: 51, page: url.includes('page=2') ? 2 : 1, page_size: 50 })
     if (url.endsWith('/tasks')) return json([task])
     if (url.endsWith(`/batches/${id}`)) return json(fresh)
     if (url.endsWith('/append')) { fresh = { ...fresh, package_revision: 1, name_suggestions: [{ name: '合成姓名', sources: [{ task_id: tid, doc_type: 'DIPLOMA', file_name: 'synthetic.png' }] }] }; return json({ batch_id: id, task_ids: [] }) }
@@ -129,7 +129,7 @@ test('older-page package metadata refreshes after append and after saved field c
   const monitor = createMonitor(() => client, { isVisible: () => visible })
   const signal = new AbortController().signal
   try {
-    await monitor.pollOnce(signal); await monitor.loadMore(signal); await monitor.loadTasks(id, signal)
+    await monitor.pollOnce(signal); await monitor.changePage(2, signal); await monitor.loadTasks(id, signal)
     visible = false
     await monitor.submitUpload([new File(['synthetic'], 'a.png')], 'DIPLOMA', false, signal, { targetBatch: before })
     visible = true

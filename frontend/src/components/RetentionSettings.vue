@@ -42,10 +42,10 @@ onBeforeUnmount(() => controller.abort())
 
 <template>
   <el-card shadow="never" v-loading="loading">
-    <template #header><div class="retention-heading"><strong>文件保留设置</strong><el-button :disabled="saving || loading" @click="refresh">重新读取</el-button></div></template>
+    <template #header><div class="retention-heading"><strong>文件保留设置</strong><el-tooltip content="放弃未保存的选择，从服务器重新加载" placement="top"><span><el-button :disabled="saving || loading" @click="refresh">重新读取</el-button></span></el-tooltip></div></template>
     <el-alert type="info" :closable="false">全平台统一生效，包含已有文件。每份文件从原上传时间计算；追加上传、重新识别和保存修改不会延长原有文件的期限。</el-alert>
     <el-alert v-if="error" type="error" :closable="false">{{ error }}</el-alert>
-    <p v-if="settings" data-guide="retention-current">当前设置：<strong>{{ retentionLabel(settings.days) }}</strong>；影响数量统计于 {{ formatTime(settings.assessed_at) }}（UTC+8）。</p>
+    <p v-if="settings" data-guide="retention-current">当前设置：<strong>{{ retentionLabel(settings.days) }}</strong>；<template v-if="settings.assessed_at">影响数量统计于 {{ formatTime(settings.assessed_at) }}（UTC+8）。</template><template v-else>影响数量尚未统计。</template></p>
     <el-form label-position="top" @submit.prevent="save">
       <el-form-item label="文件保留时长" data-guide="retention-options">
         <el-radio-group v-model="selected" :disabled="saving || loading || !settings">

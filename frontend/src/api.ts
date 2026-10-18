@@ -14,10 +14,15 @@ import type { RegionBox } from './regionOcr.ts'
 import { parseWorkbenchLayout, parseWorkbenchPreferences } from './workbenchEntries.ts'
 import { parseRetentionSettings } from './retention.ts'
 import type { RetentionDays } from './retention.ts'
+import { auditQuery, parseAuditDetail, parseAuditOptions, parseAuditPage, parseNumberedAuditPage } from './audit.ts'
+import type { AuditFilters } from './audit.ts'
 
 export class ApiFailure extends Error {
   readonly card: DiagnosticCard
-  constructor(card: DiagnosticCard) { super(card.code); this.name = 'ApiFailure'; this.card = card }
+  readonly retryAfterSeconds?: number
+  constructor(card: DiagnosticCard, retryAfterSeconds?: number) {
+    super(card.code); this.name = 'ApiFailure'; this.card = card; this.retryAfterSeconds = retryAfterSeconds
+  }
 }
 export function isAbort(error: unknown): boolean { return error instanceof DOMException && error.name === 'AbortError' }
 export const retryDelay = (failures: number) => Math.min(30000, 2000 * 2 ** Math.min(failures - 1, 4))
@@ -67,7 +72,9 @@ export class BusinessApi {
         const error = isRecord(body) && isRecord(body.error) ? body.error : isRecord(body) ? body : {}
         const fallback = status === 401 ? 'UNAUTHORIZED' : status === 403 ? 'FORBIDDEN' : status === 404 ? 'NOT_FOUND' : 'UNKNOWN_ERROR'
         const code = status === 401 ? fallback : safeCode(error.code) === 'UNKNOWN_ERROR' ? fallback : error.code
-        throw new ApiFailure(diagnostic({ origin: 'http', operation, code, status, request_id: requestId, error_id: error.error_id, stage: error.stage }))
+        const retryAfter = response.headers.get('Retry-After')
+        const seconds = retryAfter && /^\d{1,4}$/.test(retryAfter) ? Number(retryAfter) : undefined
+        throw new ApiFailure(diagnostic({ origin: 'http', operation, code, status, request_id: requestId, error_id: error.error_id, stage: error.stage }), seconds)
       }
       try { return decoder(body) } catch { throw new ApiFailure(diagnostic({ origin: 'http', operation, code: 'INVALID_RESPONSE', status, request_id: requestId })) }
     } catch (error) {
@@ -78,6 +85,24 @@ export class BusinessApi {
   }
   diagnosticStatus(signal: AbortSignal) {
     return this.request('/admin/diagnostics/status', 'diagnostics', parseLogStatus, signal, {}, false, true)
+  }
+  auditOptions(signal: AbortSignal) { return this.request('/admin/audit/options', 'audit', parseAuditOptions, signal) }
+  auditEvents(filters: AuditFilters, cursor: string | null, signal: AbortSignal) {
+    return this.request('/admin/audit/events?' + auditQuery(filters, cursor), 'audit', parseAuditPage, signal)
+  }
+  auditPage(filters: AuditFilters, page: number, pageSize: number, signal: AbortSignal) {
+    const query = new URLSearchParams(auditQuery(filters))
+    query.set('page', String(page)); query.set('page_size', String(pageSize))
+    return this.request('/admin/audit/events?' + query, 'audit', parseNumberedAuditPage, signal)
+  }
+  auditDetail(id: string, signal: AbortSignal) {
+    return this.request('/admin/audit/events/' + encodeURIComponent(id), 'audit', parseAuditDetail, signal)
+  }
+  auditExport(filters: AuditFilters, signal: AbortSignal) {
+    return this.request('/admin/audit/export?' + auditQuery(filters), 'export', value => {
+      if (!isRecord(value) || !(value.blob instanceof Blob)) throw new Error('INVALID_RESPONSE')
+      return value.blob
+    }, signal, {}, true)
   }
   diagnosticEvents(filters: LogFilters, cursor: string | null, signal: AbortSignal) {
     return this.request('/admin/diagnostics/events?' + logQuery(filters, cursor), 'diagnostics', parseLogPage, signal, {}, false, true)

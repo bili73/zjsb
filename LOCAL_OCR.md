@@ -13,6 +13,8 @@
 | PaddleOCR-VL-0.9B | `.venvs/paddleocr-vl` | `models/paddleocr-vl` | 官方 Transformers 核心模型，非完整版面解析流水线 |
 | Chandra OCR 2 | `.venvs/chandra` | `models/chandra` | Transformers + Chandra 的提示词及结果解析 |
 
+证件照片自动摆正使用的 CPU 方向模型（PP-LCNet doc-ori，`models/pp-lcnet-doc-ori`，经 `scripts/download_image_upright_model.py` 安装并 SHA256 核验）与 `.venvs/image-upright`、`.venvs/paddleocr-vl-1.6` 离线对照环境不参与上表三模型对照，见 `RUNTIME.md` 证件照片自动摆正章节与 `scripts/IMAGE-UPRIGHT-NOTICES.md`。
+
 模型下载来源及 commit revision 保存在各目录的 `download_manifest.json`。
 环境依赖版本保存在 `requirements-*.lock.txt`。GPU 运行时使用 PyTorch CUDA wheel，无需另外安装完整 CUDA Toolkit。
 

@@ -38,7 +38,9 @@ const progressLabels: Record<TaskStatus, string> = {
   NEED_REVIEW: '识别结束，待核对', COMPLETED: '已完成', FAILED: '处理失败', REJECTED: '已拒绝', CANCELLED: '已取消',
 }
 
-export function taskProgressView(task: Pick<Task, 'status' | 'progress_detail'>) {
+export const fairQueueHint = '同一识别通道按账号轮流处理，每次一份；正在处理的材料完成后继续调度。'
+
+export function taskProgressView(task: Pick<Task, 'status' | 'progress_detail' | 'queued_at' | 'active_started_at'>) {
   const detail = task.progress_detail
   const active = task.status !== 'QUEUED' && runningStatuses.has(task.status)
   // This measures OCR units only, never the completion time of the entire task.
@@ -51,8 +53,13 @@ export function taskProgressView(task: Pick<Task, 'status' | 'progress_detail'>)
     else if (detail.total_regions === 0) amount = '无需图像识别'
     else amount = `已处理 ${detail.processed_regions}${detail.total_regions === null ? ' 个区域（总数未知）' : `/${detail.total_regions} 个区域`}`
   }
-  const tooltip = detail
+  const times = [
+    task.queued_at ? `本次入队：${formatTime(task.queued_at)}（UTC+8）` : '',
+    task.active_started_at ? `实际开始：${formatTime(task.active_started_at)}（UTC+8）` : '',
+  ].filter(Boolean)
+  const explanation = task.status === 'QUEUED' ? fairQueueHint : detail
     ? `${pages}；已识别 ${detail.recognized_regions} 个区域；${detail.incomplete_regions} 个不完整。区域是文字或表格片段；处理量不代表准确率、剩余时间或人工核对通过。`
     : ''
+  const tooltip = [...times, explanation].filter(Boolean).join('；')
   return { label: progressLabels[task.status], active, percentage, amount, tooltip, incomplete: detail?.incomplete_regions ?? 0 }
 }

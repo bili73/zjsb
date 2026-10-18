@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { ApiFailure } from '../src/api.ts'
+import { makeDiagnostic } from '../src/diagnostics.ts'
 
 // Compile the real SFC and exercise its Vue lifecycle, including the await before upload.
 const require = createRequire(import.meta.url)
@@ -159,4 +161,26 @@ test('single-type upload succeeds without a person confirmation', async () => {
     assert.equal(h.submissions[0]!.type, 'MEDICAL_REPORT')
     assert.equal(h.submissions[0]!.options.fileTypes, undefined)
   } finally { h.app.unmount() }
+})
+
+test('busy or throttled uploads retain selected files and do not replay the submission', async () => {
+  for (const [status, code] of [[503, 'SERVICE_BUSY'], [429, 'OPERATION_THROTTLED']] as const) {
+    const h = harness()
+    let calls = 0
+    h.app._instance.props.monitor.submitUpload = async () => {
+      calls++
+      throw new ApiFailure(makeDiagnostic({ origin: 'http', operation: 'upload', code, status }), 2)
+    }
+    try {
+      const pending = h.exposed.submit()
+      h.confirmations[0]!.resolve('confirm')
+      await pending
+      await vue.nextTick()
+      assert.equal(calls, 1)
+      assert.equal(h.exposed.fileList.value.length, 1)
+      assert.equal(h.exposed.fileList.value[0].raw, h.file)
+      assert.equal(h.exposed.personPackage.value, true)
+      assert.equal(h.exposed.submitting.value, false)
+    } finally { h.app.unmount() }
+  }
 })

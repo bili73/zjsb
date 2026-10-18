@@ -30,10 +30,8 @@ class PersonPackagesTests(unittest.TestCase):
             data=dict(doc_type_hint=kind, expected_revision=str(revision)),
             files={'files': ('addition.png', content or self.image_bytes('blue'), 'image/png')})
 
-    def counts(self):
-        with self.business.engine.connect() as c:
-            return {t: c.execute(text('SELECT COUNT(*) FROM ' + t)).scalar_one()
-                    for t in ('batches', 'tasks', 'runs', 'artifacts', 'audit')}
+    snapshot = ownership.BatchOwnershipTests.snapshot
+    assert_business_unchanged = ownership.BatchOwnershipTests.assert_business_unchanged
 
     def test_explicit_person_is_encrypted_and_same_names_are_not_merged(self):
         account, headers, _ = self.account('alice')
@@ -112,10 +110,10 @@ class PersonPackagesTests(unittest.TestCase):
         self.assertEqual(reused.status_code, 202, reused.text)
         self.assertEqual(reused.json()['task_ids'], [])
         self.assertEqual(self.business.store.batch(created['batch_id'])['file_count'], 1)
-        before = self.counts()
+        before = self.snapshot()
         conflict = self.append(created['batch_id'], headers, 'ID_CARD_BACK', 1, self.image)
         self.assertEqual(conflict.status_code, 422)
-        self.assertEqual(self.counts(), before)
+        self.assert_business_unchanged(before)
 
     def test_owner_admin_viewer_and_revoked_session_boundaries(self):
         owner, headers, _ = self.account('alice')
@@ -123,11 +121,11 @@ class PersonPackagesTests(unittest.TestCase):
         _, foreign, _ = self.account('bob')
         _, viewer, _ = self.account('viewer', 'viewer')
         _, admin, _ = self.account('admin', 'admin')
-        before = self.counts()
+        before = self.snapshot()
         self.assertEqual(self.append(created['batch_id'], foreign).status_code, 404)
         self.assertEqual(self.append(created['batch_id'], viewer).status_code, 403)
         self.assertEqual(self.append(created['batch_id'], {}).status_code, 401)
-        self.assertEqual(self.counts(), before)
+        self.assert_business_unchanged(before)
         self.assertEqual(self.append(created['batch_id'], admin).status_code, 202)
         self.assertEqual(self.business.store.batch(created['batch_id'])['owner']['user_id'], owner['user_id'])
 
@@ -135,7 +133,7 @@ class PersonPackagesTests(unittest.TestCase):
         _, headers, token = self.account('alice')
         batch = self.upload(headers).json()['batch_id']
         from ocr_app.business import prepare_uploads
-        before = self.counts()
+        before = self.snapshot()
         def revoked(*args):
             prepared = prepare_uploads(*args)
             self.business.accounts.logout(token)
@@ -143,22 +141,22 @@ class PersonPackagesTests(unittest.TestCase):
         with patch('ocr_app.routes.prepare_uploads', side_effect=revoked):
             response = self.append(batch, headers)
         self.assertEqual(response.status_code, 401, response.text)
-        self.assertEqual(self.counts(), before)
+        self.assert_business_unchanged(before, allowed_success=('logout',))
 
     def test_invalid_file_or_person_is_atomic(self):
         _, headers, _ = self.account('alice')
-        before = self.counts()
+        before = self.snapshot()
         self.assertEqual(self.upload(headers, person=' ').status_code, 422)
         self.assertEqual(self.upload(headers, person='x' * 81).status_code, 422)
-        self.assertEqual(self.counts(), before)
+        self.assert_business_unchanged(before)
         batch = self.upload(headers).json()['batch_id']
-        before = self.counts()
+        before = self.snapshot()
         response = self.client.post('/api/v1/batches/' + batch + '/append', headers=headers,
             data=dict(doc_type_hint='DIPLOMA', expected_revision='0'), files=[
                 ('files', ('valid.png', self.image_bytes('green'), 'image/png')),
                 ('files', ('bad.png', b'not an image', 'image/png'))])
         self.assertEqual(response.status_code, 422)
-        self.assertEqual(self.counts(), before)
+        self.assert_business_unchanged(before)
         self.assertEqual(self.business.store.batch(batch)['package_revision'], 0)
 
     def test_concurrent_stale_appends_create_only_one_new_task(self):
@@ -181,7 +179,7 @@ class PersonPackagesTests(unittest.TestCase):
     def test_storage_failure_rolls_back_tasks_and_deletes_only_new_artifacts(self):
         _, headers, _ = self.account('alice')
         batch = self.upload(headers).json()['batch_id']
-        before = self.counts()
+        before = self.snapshot()
         references = {p for p in self.business.root.rglob('*') if p.is_file() and p.suffix not in {'.sqlite3', '-wal', '-shm'}}
         original_put = self.business.storage.put
         calls = []
@@ -195,7 +193,7 @@ class PersonPackagesTests(unittest.TestCase):
                 self.business.store.append_batch(batch, [dict(data=self.image_bytes(color), name='synthetic.png',
                     mime='image/png', actual_source_page_count=1) for color in ['green', 'blue']],
                     'DIPLOMA', 0, 'operator', user=None, authorize=lambda c: None)
-        self.assertEqual(self.counts(), before)
+        self.assert_business_unchanged(before)
         self.assertEqual(self.business.store.batch(batch)['package_revision'], 0)
         after = {p for p in self.business.root.rglob('*') if p.is_file() and p.suffix not in {'.sqlite3', '-wal', '-shm'}}
         self.assertEqual(after, references)
@@ -258,7 +256,7 @@ class PersonPackageMigrationTests(unittest.TestCase):
                     with upgraded.connect() as c:
                         self.assertEqual(c.execute(text('SELECT id,created_at,name_enc,owner_id,owner_snapshot_enc FROM batches')).all(), before)
                         self.assertEqual(c.execute(text('SELECT person_name_enc,package_revision FROM batches')).one(), (None, 0))
-                        self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0010')
+                        self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0012')
                 finally:
                     upgraded.dispose()
 

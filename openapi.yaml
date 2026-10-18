@@ -3,7 +3,7 @@ info:
   title: 证件关键信息提取系统 API
   version: 1.26.0
   description: |
-    内部证件信息提取系统 API 契约（SPEC v1.28）。
+    内部证件信息提取系统 API 契约（SPEC v1.33）。
     批次按不可变上传账号ID隔离：管理员查看全部，operator/viewer仅能访问自己的批次和所属任务。列表先过滤归属再计算总数和分页，越权ID与不存在ID统一404；结果、原图、复核、取消、重跑、完整字段及导出同样校验。混合账号导出整次拒绝，不输出部分结果。删除批次仍仅管理员可操作。
     Batch.owner返回上传人署名；姓名使用当前账号信息，删除登录前保留加密署名快照。历史创建记录完整且操作者唯一才回填归属，无法关联账号的记录仅管理员可见，同名重建不继承。管理员可编辑显示姓名，不修改账号名、角色、密码、启用状态或会话。
     Task.progress_detail提供真实页/区域处理计数；总计划未知时返回null，不估算推理长度或剩余时间。progress保留兼容但不再作为整体进度依据。
@@ -12,7 +12,7 @@ info:
     六类检查包含肝功，优先汇总明确异常；无小结时按有来源的正常检测明细汇总为“已识别明细未见异常”，不宣称整组完整。明确原文正常结论和人工值保持不变；报告A级可作摘要依据，不覆盖阳性、异常或矛盾，也不修改检测行分类/复核。
     明细缺失或未知不默认正常；完整有序且已闭合的原生PDF项目意义表可证明未载明，使用value=null/absence_reason=NOT_ON_DOCUMENT、derived和项目来源，页面/医疗Excel显示报告未载明。保留人工优先、历史密文与既有复核要求。
 
-    当前实现11种材料目录、受控上传、批次/任务查询、人工补正、完整原件预览、字段reveal及XLSX导出。
+    当前实现13种材料目录（12种业务类型及独立TABLE入口）、受控上传、批次/任务查询、人工补正、完整原件预览、字段reveal及XLSX导出。
     管理员可永久删除全部任务已停止的批次（包括NEED_REVIEW），同时清理关联文件与历史结果并保留审计；排队/运行中禁止删除，需提交完整任务版本快照。
     银行卡支持整张照片自动识别，失败逐张裁图重识别或补录；不接收PDF，不声称通用CVV自动检测可靠。
     护照、身份证、执照与户口本暂无真实样本准确率验收；本地校验PASS不等于官方真实性。
@@ -27,6 +27,7 @@ info:
     模型依赖错误不误判内存不足，降级不改写已保存配置，不因轮询或新任务重复尝试双驻留；CPU-only与16GB未知GPU机器未验证可用。
 
     重要约定：
+    - 上传/分类/追加和导出采用独立有界队列；账号同类请求过多返回429 OPERATION_THROTTLED，队列满/等待超时返回503 SERVICE_BUSY。其他数据库写入也可能返回503 SERVICE_BUSY。两者携带Retry-After；客户端保留输入，先核对任务状态再手动重试，不自动重放写请求。
     - 上传、重跑等处理为**异步**，返回 202；查询和人工复核为同步接口
     - 一个文件对应一个 Task，PDF 的页面存于 pages[]；一文件混装无关证件时置NEED_REVIEW并提示分别上传，首版不增加Document数组
     - 所有 PDF 优先使用可靠文字层，仅图像或不可靠区域进行 OCR
@@ -401,6 +402,91 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
 
+  /admin/audit/options:
+    get:
+      tags: [system]
+      summary: 管理员读取审计筛选选项
+      description: 仅有效管理员，返回前复验会话；只提供精简账号操作范围内的事件、结果和操作者，包括仍有可见历史的已删除账号。排除系统过程、保存修正、原图访问及requested阶段；未知历史姓名不补造。
+      responses:
+        '200':
+          description: 操作者、中文操作和结果选项
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuditOptions'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /admin/audit/events:
+    get:
+      tags: [system]
+      summary: 管理员查询操作审计
+      description: 默认最近7个北京时间自然日；后台先过滤账号操作范围，再按created_at和id降序分页。page/page_size支持直接跳页，省略其中一个时分别默认1/50；不能与cursor/limit同时传入。不传页码参数时兼容原游标模式。total是当前筛选下全部可见记录数量，不是游标之后的剩余数量，计数与本页使用同一SQLite读取快照。并发新增记录可能改变后续请求的页码位置。新批量操作一次提交一条，多批次导出可按任一关联批次筛选；历史噪声只过滤不删除。读取后复验管理员，与严重故障日志分离。
+      parameters:
+        - {$ref: '#/components/parameters/AuditDateFrom'}
+        - {$ref: '#/components/parameters/AuditDateTo'}
+        - {$ref: '#/components/parameters/AuditActor'}
+        - {$ref: '#/components/parameters/AuditEventFilter'}
+        - {$ref: '#/components/parameters/AuditOutcome'}
+        - {$ref: '#/components/parameters/AuditBatch'}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, maximum: 2147483647}, description: 指定页码；超出末页返回空items及实际total}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100}, description: 页码模式每页条数，默认50}
+        - {name: cursor, in: query, schema: {type: string, maxLength: 200}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        '200':
+          description: 一页审计记录
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor, total]
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/AuditEvent'}}
+                  next_cursor: {type: string, nullable: true}
+                  total: {type: integer, minimum: 0}
+                  page: {type: integer, minimum: 1, description: 页码模式返回}
+                  page_size: {type: integer, minimum: 1, maximum: 100, description: 页码模式返回}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+  /admin/audit/events/{event_id}:
+    get:
+      tags: [system]
+      summary: 管理员读取账号操作摘要（兼容接口）
+      description: 使用与列表相同的范围，已排除的历史事件返回404；不再读取修正历史，changes恒为空且history_state为not_applicable。保留加密身份/连接快照契约，连接地址仅代表实际peer。读取后复验管理员，网页不再提供技术或修改对比抽屉。
+      parameters:
+        - {name: event_id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: 操作摘要和受控上下文，无材料修改对比
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuditDetail'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/ErrorResponse'}
+  /admin/audit/export:
+    get:
+      tags: [system]
+      summary: 管理员导出筛选后的审计摘要
+      description: 与列表使用同一精简范围及筛选，默认近7日，导出全部匹配摘要（最多10000条，超限422）。列为时间、姓名、账号、操作、关联对象、结果，不含技术编号或业务修改值。生成后事务内复验管理员并记录audit_export，成功不代表浏览器已保存文件。
+      parameters:
+        - {$ref: '#/components/parameters/AuditDateFrom'}
+        - {$ref: '#/components/parameters/AuditDateTo'}
+        - {$ref: '#/components/parameters/AuditActor'}
+        - {$ref: '#/components/parameters/AuditEventFilter'}
+        - {$ref: '#/components/parameters/AuditOutcome'}
+        - {$ref: '#/components/parameters/AuditBatch'}
+      responses:
+        '429': {$ref: '#/components/responses/OperationThrottled'}
+        '503': {$ref: '#/components/responses/ServiceBusy'}
+        '200':
+          description: Excel审计摘要
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
   /admin/diagnostics/status:
     get:
       tags: [system]
@@ -526,7 +612,7 @@ paths:
                   status:
                     type: string
                     enum: [ok, degraded]
-                  version: {type: string, description: 应用版本, example: "1.12.0"}
+                  version: {type: string, description: 应用版本, example: "1.26.0"}
                   queue_depth: {type: integer, minimum: 0, nullable: true, example: 3, description: 等待执行且未请求取消的QUEUED任务数；数据库不可查询时为null，不伪造0}
                   components:
                     type: object
@@ -719,6 +805,8 @@ paths:
                   default: false
                   description: 仅对 MEDICAL_REPORT 生效；完整抽取后投影异常/未知项，不减少原始结果或 stats
       responses:
+        '429': {$ref: '#/components/responses/OperationThrottled'}
+        '503': {$ref: '#/components/responses/ServiceBusy'}
         '202':
           description: 已接受
           content:
@@ -762,6 +850,8 @@ paths:
                   maxItems: 1
                   items: {type: string, format: binary}
       responses:
+        '429': {$ref: '#/components/responses/OperationThrottled'}
+        '503': {$ref: '#/components/responses/ServiceBusy'}
         '200':
           description: 分类建议或待选择
           content:
@@ -891,6 +981,8 @@ paths:
                   type: boolean
                   default: false
       responses:
+        '429': {$ref: '#/components/responses/OperationThrottled'}
+        '503': {$ref: '#/components/responses/ServiceBusy'}
         '202':
           description: 已接受
           content:
@@ -1100,7 +1192,7 @@ paths:
       tags:
       - tasks
       summary: 预处理后的证件图（复核页左侧对照用）
-      description: operator/admin鉴权后直接返回绑定run_id、result_revision和page的完整corrected PNG；viewer返回403，仅支持corrected阶段。访问审计不保存业务原文，无需额外理由。
+      description: operator/admin鉴权后直接返回绑定run_id、result_revision和page的完整corrected PNG；viewer返回403，仅支持corrected阶段。保留受控访问历史，不进入账号操作审计列表，无需额外理由。
       parameters:
       - name: run_id
         in: query
@@ -1260,6 +1352,7 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+        '503': {$ref: '#/components/responses/ServiceBusy'}
 
   /tasks/{task_id}/reject:
     parameters:
@@ -1462,7 +1555,7 @@ paths:
       tags:
       - tasks
       summary: 获取完整敏感值（需 operator 及以上）
-      description: 按run_id/expected_revision绑定本次明确指定敏感字段；operator/admin及非空理由必需。仅返回fields中存在的值，不返回原文或安全码，记录访问审计。
+      description: 按run_id/expected_revision绑定本次明确指定敏感字段；operator/admin及非空理由必需。仅返回fields中存在的值，不返回原文或安全码，保留受控访问历史，不进入账号操作审计列表。
       requestBody:
         required: true
         content:
@@ -1507,6 +1600,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ExportRequest'
       responses:
+        '429': {$ref: '#/components/responses/OperationThrottled'}
+        '503': {$ref: '#/components/responses/ServiceBusy'}
         '404': {$ref: '#/components/responses/NotFound'}
         '200':
           description: 业务材料为XLSX；TABLE单任务为XLSX，多任务为ZIP；不能混合TABLE与其他类型。表格标题选填，有效矩阵且表头明确可直接导出，无需首次保存；不完整结果须明确确认。全部内容按文本写入。
@@ -1543,6 +1638,34 @@ components:
       description: 仅尚未创建任何web_users账号的旧本机CLI兼容；创建过账号后永久关闭该认证入口，浏览器不再使用Key。当前loopback/Host边界未放宽，远程部署另行资格验证。
 
   parameters:
+    AuditDateFrom:
+      name: date_from
+      in: query
+      description: 北京时间开始日期（包含）；省略为最近7日的开始日
+      schema: {type: string, format: date}
+    AuditDateTo:
+      name: date_to
+      in: query
+      description: 北京时间结束日期（包含）；省略为今天
+      schema: {type: string, format: date}
+    AuditActor:
+      name: actor
+      in: query
+      description: options返回的不可变操作者ID，不按可重用账号名关联历史
+      schema: {type: string, maxLength: 100}
+    AuditEventFilter:
+      name: event
+      in: query
+      description: options返回的操作事件代码
+      schema: {type: string, maxLength: 100}
+    AuditOutcome:
+      name: outcome
+      in: query
+      schema: {type: string, enum: [success, failure, requested, legacy]}
+    AuditBatch:
+      name: batch_id
+      in: query
+      schema: {type: string, format: uuid}
     DiagnosticLevel:
       name: level
       in: query
@@ -1578,6 +1701,23 @@ components:
       schema: {type: string, format: uuid}
 
   responses:
+    ServiceBusy:
+      description: SERVICE_BUSY；队列已满、排队超过15秒或SQLite写入繁忙；保留输入，先检查任务状态再决定是否手动重试，不自动重放写请求。
+      headers:
+        Retry-After:
+          schema: {type: integer, example: 2}
+          description: 建议稍后手动重试的秒数，非成功承诺。
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    OperationThrottled:
+      description: OPERATION_THROTTLED；当前账号已有过多同类处理/等待请求；上传类最多2个，导出最多1个。
+      headers:
+        Retry-After:
+          schema: {type: integer, example: 2}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
     BadRequest:
       description: 参数错误
       content:
@@ -1610,6 +1750,87 @@ components:
           schema: {$ref: '#/components/schemas/Error'}
 
   schemas:
+    AuditOptions:
+      type: object
+      required: [actors, events, outcomes]
+      properties:
+        actors:
+          type: array
+          items:
+            type: object
+            required: [id, username, display_name, role]
+            properties:
+              id: {type: string}
+              username: {type: string}
+              display_name: {type: string}
+              role: {type: string}
+        events:
+          type: array
+          items:
+            type: object
+            required: [value, label]
+            properties:
+              value: {type: string}
+              label: {type: string}
+        outcomes:
+          type: array
+          items:
+            type: object
+            required: [value, label]
+            properties:
+              value: {type: string, enum: [success, failure, requested, legacy]}
+              label: {type: string}
+    AuditEvent:
+      type: object
+      required: [id, actor, identity, event, description, outcome, outcome_label, created_at, task_id, run_id, batch_id, target_type, target_id, request_id, details, legacy]
+      properties:
+        id: {type: string, format: uuid}
+        actor: {type: string}
+        identity:
+          type: object
+          properties:
+            username: {type: string}
+            display_name: {type: string}
+            role: {type: string}
+        event: {type: string}
+        description: {type: string}
+        object_label: {type: string, description: 批次类型与时间或目标账号，来源于加密快照；旧记录允许回退编号}
+        outcome: {type: string, enum: [success, failure, requested, legacy]}
+        outcome_label: {type: string}
+        created_at: {type: string}
+        task_id: {type: string, nullable: true}
+        run_id: {type: string, nullable: true}
+        batch_id: {type: string, nullable: true}
+        target_type: {type: string, nullable: true}
+        target_id: {type: string, nullable: true}
+        request_id: {type: string, nullable: true}
+        details: {type: object, description: 仅白名单技术参数，不含证件原文或凭据}
+        legacy: {type: boolean}
+    AuditDetail:
+      allOf:
+        - {$ref: '#/components/schemas/AuditEvent'}
+        - type: object
+          required: [context, changes, history_state]
+          properties:
+            context:
+              type: object
+              description: 解密的身份及连接快照；仅管理员可见，不含凭据
+              properties:
+                peer: {type: string}
+                claimed_username: {type: string}
+                target: {type: object}
+                name_change: {type: object}
+            changes:
+              type: array
+              description: 兼容保留，当前恒为空，不读取业务修正历史
+              items:
+                type: object
+                required: [field, before, after]
+                properties:
+                  field: {type: string}
+                  before: {}
+                  after: {}
+            history_state: {type: string, enum: [available, unavailable, not_applicable], description: 当前恒为not_applicable，旧枚举仅用于契约兼容}
     DiagnosticStatus:
       type: object
       required: [recording_ok, backup_ok, scan_ok, last_check_at, last_backup_at, raw_bytes, archive_bytes, error_count_24h, latest_error_at, latest_error_id, raw_retention_days, backup_retention_days, raw_limit_bytes, archive_limit_bytes]
@@ -1787,6 +2008,8 @@ components:
             - UNAUTHORIZED
             - FORBIDDEN
             - LOGIN_THROTTLED
+            - SERVICE_BUSY
+            - OPERATION_THROTTLED
             - AUTH_NOT_CONFIGURED
             - USERNAME_EXISTS
             - ACCOUNT_PROTECTED
@@ -1989,7 +2212,7 @@ components:
 
     Task:
       type: object
-      description: 一个文件对应一个 Task；PDF 页属于同一任务，不按页创建 Task。身份、执行与结果版本由后端管理。
+      description: 一个文件对应一个 Task；PDF 页属于同一任务，不按页创建 Task。各处理通道按批次所属账号轮转，每次一份，账号内部按本次入队顺序处理；不抢占当前文件，不承诺全局上传顺序或完成时间。身份、执行与结果版本由后端管理。
       required: [task_id, run_id, result_revision, cancel_requested, page_count, pages, status]
       properties:
         required_fields_revision: {type: integer, minimum: 0, description: 本次必填标记所用的共享设置版本}
@@ -2049,6 +2272,8 @@ components:
         extract_options: {$ref: '#/components/schemas/ExtractOptions'}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+        queued_at: {type: string, format: date-time, nullable: true, description: 本次执行入队时间；重跑更新，重复文件复用不更新。迁移前旧任务为null，不从上传时间猜测历史重跑时间。}
+        active_started_at: {type: string, format: date-time, nullable: true, description: 本次执行被领取开始处理的时间；尚未领取时null。数据库排队等待不计入180秒执行预算；领取后的模型队列等待仍计入。}
         expires_at: {type: string, format: date-time, nullable: true, description: 本材料独立到期时间，按原上传时间和管理员保留天数计算；null表示永不自动清除}
 
     TaskProgressDetail:

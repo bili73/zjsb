@@ -84,7 +84,11 @@ class AccountLifecycleTests(unittest.TestCase):
         self.assertIsNone(self.business.accounts.session(token))
         with self.business.engine.connect() as c:
             self.assertEqual(c.execute(text('SELECT * FROM tasks')).all(), task_rows)
-            self.assertEqual(c.execute(text('SELECT * FROM audit')).all(), audit_rows)
+            current_audit = c.execute(text('SELECT * FROM audit')).all()
+            self.assertEqual([row for row in current_audit if row.id in {old.id for old in audit_rows}], audit_rows)
+            added = [row for row in current_audit if row.id not in {old.id for old in audit_rows}]
+            self.assertEqual([(row.event, row.outcome, row.target_id) for row in added],
+                             [('account_deleted', 'success', user['user_id'])])
         self.assertTrue(all((self.root / p).read_bytes() == data for p, data in inputs.items()))
         self.assertNotEqual(self.account()['user_id'], user['user_id'])
         self.assertTrue(self.business.accounts.configured())

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { batchOwnerLabel, expiryText, formatTime, shanghaiDate, taskProgressView } from '../src/presentation.ts'
+import { batchOwnerLabel, expiryText, fairQueueHint, formatTime, shanghaiDate, taskProgressView } from '../src/presentation.ts'
 import type { ProgressDetail, TaskStatus } from '../src/business.ts'
 
 test('batch attribution distinguishes named, deleted, historical and unknown uploaders', () => {
@@ -82,4 +82,29 @@ test('rounding does not show complete OCR units before the final region finishes
   task.progress_detail.processed_regions = task.progress_detail.recognized_regions = 200
   assert.equal(taskProgressView(task).percentage, 100)
   assert.equal(taskProgressView(task).active, true)
+})
+
+test('queued tasks explain account turns and show only observed timestamps in Shanghai time', () => {
+  const queued = taskProgressView({ ...progressTask('QUEUED'), queued_at: '2026-10-16T02:00:00Z', active_started_at: null })
+  assert.equal(queued.label, '排队等待')
+  assert.match(queued.tooltip, /本次入队：2026-10-16 10:00:00（UTC\+8）/)
+  assert.ok(queued.tooltip.includes(fairQueueHint))
+  assert.doesNotMatch(queued.tooltip, /实际开始|已准备|已识别|预计|第\s*\d+\s*位/)
+  const legacy = taskProgressView({ status: 'QUEUED' })
+  assert.equal(legacy.tooltip, fairQueueHint)
+  const active = taskProgressView({ ...progressTask('OCR'), queued_at: '2026-10-16T02:00:00Z', active_started_at: '2026-10-16T02:01:00Z' })
+  assert.match(active.tooltip, /实际开始：2026-10-16 10:01:00（UTC\+8）/)
+  assert.match(active.tooltip, /已识别/)
+  assert.ok(!active.tooltip.includes(fairQueueHint))
+})
+
+test('stopped tasks retain this run timestamps without inventing missing historical starts', () => {
+  const stopped = taskProgressView({ status: 'COMPLETED', queued_at: '2026-10-16T02:00:00Z', active_started_at: '2026-10-16T02:01:00Z' })
+  assert.match(stopped.tooltip, /本次入队/)
+  assert.match(stopped.tooltip, /实际开始/)
+  assert.equal(stopped.active, false)
+  const legacy = taskProgressView({ status: 'COMPLETED', queued_at: null, active_started_at: null })
+  assert.equal(legacy.tooltip, '')
+  const legacyQueued = taskProgressView({ status: 'QUEUED', queued_at: null, active_started_at: null })
+  assert.equal(legacyQueued.tooltip, fairQueueHint)
 })

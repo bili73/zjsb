@@ -233,7 +233,7 @@ class TaskScheduler:
         for lane, types in self.lanes.items():
             if any(job.lane == lane for job in self.jobs.values()):
                 continue
-            task = self.store.claim_next(types)
+            task = self.store.claim_next(types, lane=lane)
             if task is None:
                 continue
             deadline = time.monotonic() + 180

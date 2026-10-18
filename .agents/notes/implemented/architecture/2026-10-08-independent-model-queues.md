@@ -26,6 +26,8 @@ Keep diagnostics anonymous and source evidence encrypted. Record model queue wai
 
 ## Decision audit
 
+[Account-fair document scheduling](2026-10-16-account-fair-document-queue.md) partially supersedes document FIFO: each lane now rotates immutable uploading accounts and preserves each account's enqueue order across batches and reruns. Model-level FIFO, one active document per lane, exact-run stops and the 180-second active budget remain unchanged. Persistent rotation is not same-model concurrent inference.
+
 The [local lifecycle](2026-09-29-local-dual-model-lifecycle.md) is partly changed: dual loading/ownership is retained, but global serial inference is replaced in successful dual operation. [Durable tasks](../feature/2026-09-30-durable-document-tasks.md) retain run/revision, encryption and recovery; whole-runtime timeout/long writer locks are replaced for targeted stops. [Bounded medical recognition](../bug-fix/2026-10-08-bounded-medical-recognition.md) retains soft budgets/cache and historical serial timings. [Diagnostics](../feature/2026-09-30-local-diagnostics.md) retain allowlists. The [temporary workbench](../../archived/feature/2026-10-08-temporary-recognition-workbench.md) adds local source comparison. The [Mac proposal](../../proposed/architecture/2026-10-08-mac-studio-inference-service.md) remains unimplemented. Nothing is wholly superseded or archived.
 
 ## Alternatives considered
@@ -54,3 +56,5 @@ Both models share the same GPU. Contention can increase latency, soft stops or O
 [Adaptive generic forms](../../implemented/feature/2026-10-14-adaptive-generic-forms.md) extends the existing implementation: GENERIC uses the Paddle document lane, reuses CPU upright/geometry, and retains optional source-bound dynamic pairs. Existing document rules, one request per model, human-result precedence and required-value export gates remain applicable.
 
 The [fixed production residency decision](2026-10-14-production-dual-residency.md) removes the production single-resident preference and resource-switch fallback. Successful dual-model independent queues and serial startup-degraded dispatch remain; internal serial mode is benchmark-only.
+
+The [HTTP write refinement](../bug-fix/2026-10-16-bounded-http-writes.md) retains these model queues and tests a separate document writer process alongside upload/review/export. HTTP admission is process-local; SQLite remains the cross-process write authority. Stubbed HTTP pressure results are not model concurrency or accuracy measurements.

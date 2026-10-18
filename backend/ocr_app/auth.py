@@ -13,6 +13,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, InvalidHashError
 from sqlalchemy import text
 from .task_store import TaskError
+from . import audit
 
 SESSION_COOKIE = 'ocr_session'
 SESSION_SECONDS = 30 * 24 * 3600
@@ -32,6 +33,8 @@ def request_user(accounts, request, *, connection=None):
     """Read live HTTP credentials, optionally within the protected write transaction."""
     token = request.cookies.get(SESSION_COOKIE)
     user = accounts.session(token, connection=connection)
+    if user:
+        audit.bind_actor(user)
     request.state.csrf_token = csrf_for(token) if user else None
     if user and request.method not in {'GET', 'HEAD', 'OPTIONS'}:
         same_origin(request)
@@ -42,12 +45,14 @@ def request_user(accounts, request, *, connection=None):
         user = accounts.authenticate(request.headers.get('X-API-Key'), connection=connection)
     if not user:
         raise TaskError('UNAUTHORIZED', '请登录工作台', 401)
+    audit.bind_actor(user)
     return user
 
 
 class Accounts:
-    def __init__(self, storage, engine=None):
+    def __init__(self, storage, engine=None, logger=None):
         self.storage, self.engine = storage, engine
+        self.logger = logger
         self.hasher = PasswordHasher()
         self.dummy_hash = None
         self.path = storage.root.parent / 'secrets' / 'accounts.enc'
@@ -85,8 +90,8 @@ class Accounts:
 
     @contextmanager
     def transaction(self):
-        with self.engine.begin() as connection:
-            connection.exec_driver_sql('BEGIN IMMEDIATE')
+        from .db import write_transaction
+        with write_transaction(self.engine) as connection:
             yield connection
 
     def set_user(self, username, password, display_name, role='operator', *, create_only=False, actor_id=None, token=None):
@@ -111,6 +116,9 @@ class Accounts:
                 c.execute(text('DELETE FROM web_sessions WHERE user_id=(SELECT id FROM web_users WHERE username=:username)'),params)
             row = c.execute(text('SELECT id AS user_id,username,display_name,role,enabled FROM web_users '
                                  'WHERE username=:username'), params).mappings().one()
+            audit.append(c, self.storage, 'account_created' if create_only else 'account_configured',
+                         actor_id or 'system', target_type='account', target_id=row['user_id'],
+                         private={'target': audit.snapshot(row)})
             return dict(row, enabled=bool(row['enabled']))
 
     def users(self):
@@ -122,8 +130,12 @@ class Accounts:
     def disable_user(self, username):
         with self.transaction() as c:
             params={'username':username.lower()}
+            target = c.execute(text('SELECT * FROM web_users WHERE username=:username'), params).mappings().first()
             c.execute(text('UPDATE web_users SET enabled=0 WHERE username=:username'),params)
             c.execute(text('DELETE FROM web_sessions WHERE user_id=(SELECT id FROM web_users WHERE username=:username)'),params)
+            if target:
+                audit.append(c, self.storage, 'account_disabled', 'system', target_type='account',
+                             target_id=target['id'], private={'target': audit.snapshot(target)})
 
     def _acting_user(self, connection, actor_id, token, *, administrator=False):
         if not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9_-]{43}', token):
@@ -166,6 +178,9 @@ class Accounts:
             c.execute(text('UPDATE web_users SET enabled=:enabled WHERE id=:id'), dict(id=target_id, enabled=int(enabled)))
             if not enabled or not target['enabled']:
                 c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': target_id})
+            audit.append(c, self.storage, 'account_enabled' if enabled else 'account_disabled', actor_id,
+                         target_type='account', target_id=target_id, old_enabled=bool(target['enabled']), enabled=enabled,
+                         private={'target': audit.snapshot(target)})
             return dict(user_id=target_id, username=target['username'], display_name=target['display_name'],
                         role=target['role'], enabled=enabled)
 
@@ -177,6 +192,8 @@ class Accounts:
                       dict(id=target_id, snapshot=self.storage.pack(dict(username=target['username'], display_name=target['display_name']))))
             c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': target_id})
             c.execute(text('DELETE FROM web_users WHERE id=:id'), {'id': target_id})
+            audit.append(c, self.storage, 'account_deleted', actor_id, target_type='account', target_id=target_id,
+                         private={'target': audit.snapshot(target)})
 
     def update_display_name(self, actor_id, target_id, display_name, token):
         if (not isinstance(display_name, str) or not 1 <= len(display_name.strip()) <= 80
@@ -184,19 +201,25 @@ class Accounts:
             raise TaskError('INVALID_REQUEST', '姓名需1至80个可打印字符，不能全为空白', 422)
         with self.transaction() as c:
             target = self._admin_target(c, actor_id, target_id, token)
+            actor_snapshot = audit.snapshot(self._acting_user(c, actor_id, token))
             c.execute(text('UPDATE web_users SET display_name=:name WHERE id=:id'),
                       dict(id=target_id, name=display_name.strip()))
+            audit.append(c, self.storage, 'account_name_changed', actor_id, target_type='account', target_id=target_id,
+                         identity_snapshot=actor_snapshot, private={'target': audit.snapshot(target),
+                         'name_change': {'before': target['display_name'], 'after': display_name.strip()}})
             return dict(user_id=target_id, username=target['username'], display_name=display_name.strip(),
                         role=target['role'], enabled=bool(target['enabled']))
 
     def reset_password(self, actor_id, target_id, new_password, token):
         password_hash = self._new_password_hash(new_password)
         with self.transaction() as c:
-            self._admin_target(c, actor_id, target_id, token)
+            target = self._admin_target(c, actor_id, target_id, token)
             if actor_id == target_id:
                 raise TaskError('ACCOUNT_PROTECTED', '请从右上角菜单修改自己的密码', 409)
             c.execute(text('UPDATE web_users SET password_hash=:hash WHERE id=:id'), dict(id=target_id, hash=password_hash))
             c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': target_id})
+            audit.append(c, self.storage, 'password_reset', actor_id, target_type='account', target_id=target_id,
+                         private={'target': audit.snapshot(target)})
 
     def change_password(self, actor_id, current_password, new_password, token):
         with self.engine.connect() as c:
@@ -214,6 +237,7 @@ class Accounts:
                 raise TaskError('UNAUTHORIZED', '密码已变化，请重新登录', 401)
             c.execute(text('UPDATE web_users SET password_hash=:hash WHERE id=:id'), dict(id=actor_id, hash=password_hash))
             c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': actor_id})
+            audit.append(c, self.storage, 'password_changed', actor_id, target_type='account', target_id=actor_id)
 
     def _attempt(self, client):
         # Reserve an attempt before expensive hashing, including concurrent requests.
@@ -249,12 +273,16 @@ class Accounts:
             if current is None or not current['enabled'] or current['password_hash'] != row['password_hash']:
                 raise TaskError('UNAUTHORIZED', '用户名或密码错误', 401)
             c.execute(text('DELETE FROM web_sessions WHERE expires_at <= :now'),{'now':time()})
+            replaced = c.execute(text('SELECT COUNT(*) FROM web_sessions WHERE user_id=:id'), {'id': row['id']}).scalar_one()
             c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': row['id']})
             if isinstance(previous_token,str):
                 c.execute(text('DELETE FROM web_sessions WHERE token_hash=:hash'),{'hash':hashlib.sha256(previous_token.encode()).hexdigest()})
             c.execute(text('INSERT INTO web_sessions VALUES (:hash,:user,:expires)'),
                       dict(hash=hashlib.sha256(token.encode()).hexdigest(),user=row['id'],expires=time()+SESSION_SECONDS))
             c.execute(text('DELETE FROM login_attempts WHERE client_hash=:key'),{'key':client_key})
+            audit.bind_actor(dict(current, user_id=row['id']))
+            audit.append(c, self.storage, 'login', row['id'], target_type='account', target_id=row['id'],
+                         revoked_sessions=replaced)
         return token
 
     def session(self, token, *, connection=None):
@@ -271,4 +299,12 @@ class Accounts:
     def logout(self, token):
         if isinstance(token,str):
             with self.transaction() as c:
+                user = self.session(token, connection=c)
                 c.execute(text('DELETE FROM web_sessions WHERE token_hash=:hash'),{'hash':hashlib.sha256(token.encode()).hexdigest()})
+                if user:
+                    try:
+                        with c.begin_nested():
+                            audit.append(c, self.storage, 'logout', user['user_id'], target_type='account', target_id=user['user_id'])
+                    except Exception as error:
+                        if self.logger:
+                            self.logger.exception('storage_failed', error)

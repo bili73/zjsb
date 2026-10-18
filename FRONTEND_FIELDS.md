@@ -1,6 +1,14 @@
 # 前端字段与当前 API 说明
 
-对应 SPEC v1.31、OpenAPI / 应用源码 1.25.0。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入；账号批次隔离、上传人署名和管理员姓名编辑已实现，各版本验收及实际服务切换见运行记录。
+## 识别任务公平排队
+
+Task新增`queued_at:string|null`（本次入队ISO时间，迁移前旧任务为null）与`active_started_at:string|null`（本次领取开始时间，未领取为null）。前端兼容旧响应省略字段；只显示服务端已记录时间，不从创建时间猜测重跑入队时间。列表存在QUEUED任务时说明同通道按账号轮流、每次一份，当前材料完成后继续调度；进度悬浮展示入队/实际开始时间（UTC+8）。不同账号之间不承诺上传先后顺序或固定排队名次，同账号跨批次按本次入队顺序处理；不提供未经实测的ETA、不显示其他账号任务资料。拆分批次不能增加轮次，重跑进入本人队尾，账号轮转不增加模型并发。
+
+## 服务器繁忙与排队
+
+上传/分类/追加及Excel导出可能短暂等待服务端名额，当前排队上限15秒。503 SERVICE_BUSY表示队列或数据库繁忙，429 OPERATION_THROTTLED表示该账号已有过多同类操作，Retry-After给出建议重试秒数（当前2秒）。ApiFailure.retryAfterSeconds保留可信的整数秒；这不触发写请求自动重试。上传失败保留所选文件，保存失败保留当前草稿，导出失败保留模式与勾选。断网/HTTP超时仍可能已经提交，不得提示为“确定未提交”。导出返回409 RESULT_VERSION_CONFLICT或SETTINGS_VERSION_CONFLICT时，应刷新并核对当前版本/必填要求。
+
+对应 SPEC v1.33、OpenAPI / 应用源码 1.26.0。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入；账号批次隔离、上传人署名和管理员姓名编辑已实现，各版本验收及实际服务切换见运行记录。
 
 批次按上传账号的不可变ID隔离：管理员看全部，操作员/只读仅看自己的。列表先限制归属再计算total和分页，日期筛选不改变隔离；全部Task结果/原图/复核/取消/重跑/完整字段/导出接口独立校验，越权与不存在ID统一404，混合账号导出整次拒绝。批次删除仍仅管理员；材料目录及必填设置仍共享。账号切换清空任务、结果及预览，旧会话的迟到读取和写响应不得回填新会话。
 
@@ -30,7 +38,7 @@ Batch新增owner={user_id:string|null,username:string|null,display_name:string|n
 | `GET/POST /api/v1/admin/users` | 管理员查询／创建账号 |
 | `PATCH/DELETE /api/v1/admin/users/{user_id}` | 管理员编辑姓名／启用／禁用／删除账号，禁用/删除仍保护当前账号和最后管理员 |
 | `POST /api/v1/admin/users/{user_id}/password` | 管理员重置其他账号密码 |
-| `GET /api/v1/doc-types` | 11种材料目录；返回数组，每项doc_type/label/fields |
+| `GET /api/v1/doc-types` | 13种材料目录（12种业务类型及TABLE）；返回数组，每项doc_type/label/fields |
 | `POST /api/v1/batches` | multipart 上传，返回202及显式 task_ids；必须指定 doc_type_hint |
 | `GET /api/v1/batches`、`GET /api/v1/batches/{id}` | 批次列表/详情 |
 | `GET /api/v1/batches/{id}/tasks`、`GET /api/v1/tasks` | 批次任务/分页任务列表 |
@@ -40,7 +48,7 @@ Batch新增owner={user_id:string|null,username:string|null,display_name:string|n
 
 支持 `INTERVIEW_FORM / ID_CARD_FRONT / ID_CARD_BACK / DIPLOMA / DEGREE_CERT / MEDICAL_REPORT / BANK_CARD / BUSINESS_LICENSE / XUEXIN_DIPLOMA_TABLE / PASSPORT / HOUSEHOLD_REGISTER / GENERIC`，另有独立TABLE入口。支持JPG/JPEG、PNG、HEIC、未加密PDF（银行卡和TABLE只接收单张照片）；每批1–100文件，单文件50MB、总计500MB（MB=1024×1024字节），达到上限可上传。选择器、计数、超限提示与提交前校验共用 `uploadLimits`，后端仍独立校验；一文件一Task，同批重复内容沿用任务复用规则。
 
-新增已实现入口如下；追加/拒绝/恢复/替换文件仍未开放。OpenAPI标记x-implemented:false的目标路径不能调用。
+新增已实现入口如下；人员包追加已开放（见1.22.0节），拒绝/恢复/替换文件仍未开放。OpenAPI标记x-implemented:false的目标路径不能调用。
 
 | 请求 | 用途 |
 |---|---|
@@ -400,3 +408,18 @@ Task.export_blockers增加DISPUTED，批次显示“有异议”的任务数、�
 管理员专用GET/PUT /admin/retention：days为7/15/30/null（永不清除），初始7天；revision独立于任务结果版本。GET包含assessed_at与三个有限选项的eligible_count/active_count快照。PUT发送days、expected_revision、confirmed:true，保存前必须弹窗说明新旧文件统一按原上传日期计时、超期数量、删除范围及不可恢复；取消不请求。409 RETENTION_VERSION_CONFLICT保留选择，重新读取后再次确认，不自动重放。所有账号共用服务端设置，禁止本地覆盖。保存后刷新批次。
 
 Task.expires_at和Batch.expires_at支持null，显示“永不自动清除”；有限时显示服务端日期（UTC+8），禁止前端按created_at+7天推算。批次日期为当前剩余文件最早到期时间。设置不会修改识别内容、人工修正、任务状态或结果版本。
+
+## 操作审计（管理员）
+
+新增管理员标签页“操作审计”，仅当前登录角色为admin且标签页激活时挂载；退出、切账号和离开页面会清空数据并终止读取。GET `/admin/audit/options` 提供操作者、操作与结果选项；GET `/admin/audit/events` 支持 `date_from/date_to/actor/event/outcome/batch_id/page/page_size`，返回 `items/total/page/page_size/next_cursor`；兼容旧 `cursor/limit` 模式，但不得混传，旧模式也返回筛选后全量 `total`。默认近7个北京时间自然日，每页50条，按时间和事件ID降序；更换筛选回到首页。`actor` 为不可变账号ID，显示使用事件当时的 `identity`，不得用当前账号姓名回填旧记录。
+
+列表只提供账号登录/管理、上传/追加、导出、删除批次、手动重跑/取消和全局设置操作。后台先按同一规则过滤历史，再分页、生成筛选选项和导出；系统状态、原图/字段访问、框选识别、人员确认、保存修正及导出requested过程不在产品审计中出现。新上传/追加/删除/导出按一次提交合并记录，缺少request_id的旧单份记录不强行合并。匿名登录失败标为未验证身份，不冒充输入账号。
+
+表格显示北京时间、操作者、中文操作说明、关联对象和结果；移除技术详情和修改前后抽屉。`description`包含材料数量及设置变化，`object_label`为加密快照解出的批次类型/时间或目标账号；旧记录关联批次已清理时回退编号，不编造名称。`outcome`沿用success/failure/requested/legacy契约，但新产品查询不返回requested；legacy仍表示未知。`export_generated`仅代表服务端生成文件，不代表浏览器已保存。
+
+GET `/admin/audit/events/{event_id}` 保留兼容的摘要/context结构，但排除的记录返回404，`changes=[]`、`history_state=not_applicable`，不读取材料修正产物。原人工版本与访问历史按原规则保留，不因简化审计被删除。页面禁止提供审计修改/删除按钮。
+
+GET `/admin/audit/export` 使用当前筛选条件导出全部匹配摘要，最多10000条，超限422要求缩小范围；列为时间、姓名、账号、操作、关联对象、结果。接口均须管理员权限，读取或生成后复验会话；前端隐藏入口不能替代后端鉴权。
+
+
+任务批次、操作审计和账号管理统一使用数字分页（总数、每页20/50/100条、上一页、页码、下一页、跳转），批次/审计默认50条，账号默认20条。批次复用既有服务端分页，当前页ID与监控缓存分开；翻页不清除其他任务的进度、版本或待处理操作。账号保留全量读取和客户端分页，最后管理员判断仍基于全部账号。切日期/提交筛选/改每页数量回到首页；删除或数量减少导致页码越界时回到有效末页。失败保留已显示页，旧日期/页码/会话的迟到响应不能覆盖新页。审计总数与列表同一读取快照，实时新增可能改变后续页的位置；Excel仍按完整筛选导出，最多10000条。

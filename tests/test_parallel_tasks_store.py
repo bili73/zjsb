@@ -78,6 +78,18 @@ class ParallelTaskStoreTests(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertEqual(set(outputs), expected)
 
+    def test_public_task_preserves_recorded_enqueue_and_actual_start_times(self):
+        with patch('ocr_app.task_store.now', return_value='2026-10-16T01:00:00+00:00'):
+            task_id = self.create()
+        queued = self.store.task(task_id)
+        self.assertEqual(queued['queued_at'], '2026-10-16T01:00:00+00:00')
+        self.assertIsNone(queued['active_started_at'])
+        with patch('ocr_app.task_store.now', return_value='2026-10-16T02:00:00+00:00'):
+            self.store.claim_next()
+        active = self.store.task(task_id)
+        self.assertEqual(active['queued_at'], queued['queued_at'])
+        self.assertEqual(active['active_started_at'], '2026-10-16T02:00:00+00:00')
+
     def test_failed_stop_keeps_fence_and_rejects_late_progress_page_and_publish(self):
         task_id = self.create()
         task = self.store.claim_next()
@@ -210,10 +222,12 @@ class ParallelTaskStoreTests(unittest.TestCase):
         try:
             with upgraded.connect() as connection:
                 after = dict(connection.execute(text('SELECT * FROM tasks WHERE id=:id'), {'id': task_id}).mappings().one())
-                self.assertEqual(connection.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0010')
+                self.assertEqual(connection.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0012')
                 self.assertEqual(connection.execute(text('SELECT count(*) FROM web_users')).scalar_one(), 0)
                 self.assertEqual(connection.execute(text('SELECT count(*) FROM required_field_settings')).scalar_one(), 0)
             self.assertIsNone(after.pop('stop_code'))
+            self.assertEqual(after.pop('enqueue_seq'), 1)
+            self.assertIsNone(after.pop('queued_at'))
             self.assertEqual(before, after)
             self.assertEqual(storage.read(after['input_ref']), b'unchanged')
         finally:
@@ -256,6 +270,27 @@ class ParallelTaskStoreTests(unittest.TestCase):
         self.assertIsNone(after['stop_code'])
         self.assertTrue(job.child.closed.is_set())
         self.assertNotIn((task_id, job.task['run_id']), scheduler.jobs)
+
+    def test_scheduler_rotates_accounts_after_document_completion_without_interrupting_other_lane(self):
+        files = [dict(data=f'account-a-{i}'.encode(), name='fixture.png', mime='image/png') for i in range(3)]
+        first = self.store.create_batch(files, 'DIPLOMA', 'a')['task_ids'][0]
+        report = self.store.create_batch([dict(data=b'report', name='fixture.pdf', mime='application/pdf')],
+                                         'MEDICAL_REPORT', 'a')['task_ids'][0]
+        scheduler = self.scheduler()
+        scheduler.poll()
+        cert_job = next(job for job in scheduler.jobs.values() if job.task['id'] == first)
+        report_job = next(job for job in scheduler.jobs.values() if job.task['id'] == report)
+        later = self.store.create_batch([dict(data=b'account-b', name='fixture.png', mime='image/png')],
+                                        'DIPLOMA', 'b')['task_ids'][0]
+        scheduler.poll()
+        self.assertEqual({job.task['id'] for job in scheduler.jobs.values()}, {first, report})
+        self.assertTrue(self.store.publish(cert_job.task, self.result()))
+        cert_job.child.messages.put(dict(event='done'))
+        scheduler.poll()
+        cert_job.stop_thread.join(2)
+        scheduler.poll()
+        self.assertEqual({job.task['id'] for job in scheduler.jobs.values()}, {later, report})
+        self.assertFalse(report_job.child.closed.is_set())
 
     def test_scheduler_spawn_time_counts_and_timeout_fence_precedes_queue_stop(self):
         task_id = self.create()

@@ -2,10 +2,11 @@
 import { householdMemberLabels as memberLabels } from '../business.ts'
 import { memberFieldRequired } from '../requiredFields.ts'
 import { computed, reactive, ref, watch } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import { genderText, isGenderKey, isMedicalReviewItem, medicalProjectCount } from '../business.ts'
 import { numberLengthHint } from '../numberLength.ts'
 import { InfoFilled } from '@element-plus/icons-vue'
-import type { DocProfile, FieldSource, TaskResult } from '../business.ts'
+import type { DocProfile, Field, FieldSource, TaskResult } from '../business.ts'
 import { addedMember, buildReview, canAcceptIssue, changedValues, collectIssues, looksMasked, memberFields, summaryPatch } from '../review.ts'
 import type { ReviewBody, Scalar } from '../review.ts'
 import { genericDraft, genericPairSource } from '../generic-review.ts'
@@ -43,6 +44,32 @@ const isMissing = (value: unknown) => value === null || value === undefined || v
 const missingRequired = (key: string) => required(key) && isMissing(values[key])
 const memberMissing = (member: { values: Record<string, Scalar> }, key: string) => memberFieldRequired(props.result, key) && isMissing(member.values[key])
 const addedMemberMissing = (member: { fields: Record<string, Scalar> }, key: string) => memberFieldRequired(props.result, key) && isMissing(member.fields[key])
+// 户口本成员是核对主对象：标题携带人数与必填缺失摘要，存在缺失时默认展开，避免“没识别出人”的误判。
+const membersWithMissing = computed(() => members.reduce((count, member, index) => {
+  const original = props.result.members?.[index]
+  return original && memberFields(original).some(field => memberMissing(member, field.key)) ? count + 1 : count
+}, 0))
+const memberTitle = computed(() => members.length ? `户口本成员（${members.length} 人${membersWithMissing.value ? `，${membersWithMissing.value} 人必填缺失` : ''}）` : '户口本成员（未识别到成员）')
+const memberOpen = ref<string[]>(membersWithMissing.value ? ['members'] : [])
+// 体检的核对主对象是检测项目与清单：折叠标题带上数量与异常摘要，主对象不必点开才知道。
+const itemsTitle = computed(() => {
+  const stats = props.result.stats
+  const flags: string[] = []
+  if (stats?.abnormal) flags.push(`${stats.abnormal} 项异常`)
+  if (stats?.unknown) flags.push(`${stats.unknown} 项待判定`)
+  const extra = added.value.length ? `，另新增 ${added.value.length}` : ''
+  return `编辑检测项目 / 增删项目（${reviewItems.value.length} 项${flags.length ? `：${flags.join('、')}` : ''}${extra}）`
+})
+const findingsTitle = computed(() => `编辑报告检查治疗清单（${findings.length} 条）`)
+const summaryEditTitle = computed(() => `清单声明数 / 增删条目（声明 ${props.result.report_summary?.declared_count ?? '数量未声明'}）`)
+// 不能一键确认的字段级异议就地红字提示，与结果表格、顶部红字三处呼应。
+const fieldIssues = (field: Field) => (field.review_issues ?? []).filter(issue => !canAcceptIssue(issue))
+// 键值是人工补录结果的一部分：删除前确认一次，与表格页删行/列的标准一致。
+async function removePair(index: number) {
+  try { await ElMessageBox.confirm('删除后如需恢复需要重新手动填写，确认删除该键值？', '删除键值', { type: 'warning' }) }
+  catch { return }
+  generic.key_values.splice(index, 1)
+}
 const genericFullTextRequired = computed(() => props.result.required_field_keys?.includes('generic.full_text') ?? true)
 function setField(key: string, value: string) { const kind=props.profile?.fields.find(f=>f.key===key)?.type; values[key]=value===''?null:kind==='integer'||kind==='number'?Number(value):kind==='boolean'?value==='true':value }
 const fieldKind = (key: string) => props.profile?.fields.find(f=>f.key===key)?.type
@@ -92,7 +119,13 @@ function save() {
     }
     emit('save', body)
   } catch (error) {
-    message.value = error instanceof Error && error.message === 'MASKED_VALUE' ? '不能把掩码当作原始值提交。未改的掩码将跳过；需修正时请查看原件并输入完整值。' : '请检查：新增项目需名称和结果；覆盖确认需逐页勾选及理由。'
+    const code = error instanceof Error ? error.message : ''
+    message.value = code === 'MASKED_VALUE' ? '不能把掩码当作原始值提交。未改的掩码将跳过；需修正时请查看原件并输入完整值。'
+      : code === 'INVALID_ITEM' ? '新增检测项目需要项目名称和检测结果。'
+      : code === 'MEMBER_SOURCE' ? '新增成员需要姓名，且原件页必须在 1 到总页数之间。'
+      : code === 'SUMMARY' ? '已新增或删除清单条目：请展开「清单声明数 / 增删条目」，勾选修正报告清单并填写理由与来源页。'
+      : code === 'COVERAGE' ? '全页覆盖确认：请勾选全部页面并填写核对依据。'
+      : '请检查填写内容后重试。'
   }
 }
 </script>
@@ -106,8 +139,8 @@ function save() {
           <el-select v-else-if="isGenderKey(field.key)" :model-value="genderText(values[field.key])" placeholder="未识别" clearable @update:model-value="v => setField(field.key, v ?? '')"><el-option label="男" value="男" /><el-option label="女" value="女" /></el-select>
           <el-input v-else :type="['exam_projects','blood_routine','urine_routine','ecg','dr_imaging','abdominal_ultrasound','liver_function'].includes(field.key) ? 'textarea' : 'text'" :rows="3" :model-value="String((field.key === 'exam_project_count' ? projectCount : values[field.key]) ?? '')" :disabled="!editable(field.key)" @update:model-value="v => setField(field.key,v)" />
           <p v-if="lengthHints[field.key]" role="status" :class="['number-length-hint', lengthHints[field.key]?.level]">{{ lengthHints[field.key]?.message }}</p>
+          <p v-for="issue in fieldIssues(field)" :key="issue.issue_id" role="status" class="field-issue">{{ issue.message }}</p>
           <div v-if="['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type) && field.candidates?.length" class="bank-candidates">
-            <p v-if="field.review_issues.some(issue => issue.code === 'CONFLICT')" class="conf">识别结果不一致，请对照原件选择；选择后仍需保存修正。</p>
             <div v-for="(candidate,index) in field.candidates" :key="index" class="candidate-pick">
               <el-icon class="candidate-icon"><InfoFilled /></el-icon>
               <span class="candidate-body">
@@ -118,32 +151,32 @@ function save() {
               <el-button size="small" type="primary" plain @click="setField(field.key, String(candidate.value ?? ''))">采用</el-button>
             </div>
           </div>
-          <el-button v-if="['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type) && field.source" link @click="emit('locate', field.source)">查看来源</el-button>
-          <el-button v-if="result.doc_type === 'MEDICAL_REPORT'" link @click="emit('locate', field.source ?? {})">查看来源 / 整页</el-button>
+          <el-button v-if="['BANK_CARD','INTERVIEW_FORM','HOUSEHOLD_REGISTER'].includes(result.doc_type) && field.source" link type="primary" @click="emit('locate', field.source)">查看来源</el-button>
+          <el-button v-if="result.doc_type === 'MEDICAL_REPORT'" link type="primary" @click="emit('locate', field.source ?? {})">查看来源 / 整页</el-button>
         </el-form-item>
       </div>
       <el-collapse v-if="items.length || result.doc_type === 'MEDICAL_REPORT'">
-        <el-collapse-item title="编辑检测项目 / 增删项目" name="items">
+        <el-collapse-item :title="itemsTitle" name="items">
           <article v-for="(item, index) in items" :key="item.item_id" class="edit-row">
             <el-checkbox v-model="item.removed">删除该项目（提交后生效）</el-checkbox>
             <div v-if="!item.removed" class="field-grid"><el-form-item v-for="key in itemKeys" :key="key" :label="itemLabels[key]"><el-input v-model="item.values[key]" /></el-form-item></div>
-            <el-button link @click="emit('locate', reviewItems[index]?.source ?? {})">检测行来源</el-button>
-            <el-button v-for="(source, si) in reviewItems[index]?.diagnosis_sources ?? []" :key="si" link @click="emit('locate', source)">诊断来源 {{ si + 1 }}</el-button>
+            <el-button link type="primary" @click="emit('locate', reviewItems[index]?.source ?? {})">检测行来源</el-button>
+            <el-button v-for="(source, si) in reviewItems[index]?.diagnosis_sources ?? []" :key="si" link type="primary" @click="emit('locate', source)">诊断来源 {{ si + 1 }}</el-button>
           </article>
           <article v-for="(item, index) in added" :key="index" class="edit-row"><div class="field-grid"><el-form-item v-for="key in itemKeys" :key="key" :label="itemLabels[key]"><el-input v-model="item[key]" /></el-form-item></div><el-button @click="added.splice(index,1)">撤销新增</el-button></article>
           <el-button @click="added.push(Object.fromEntries(itemKeys.map(k => [k,''])))">新增检测项目</el-button>
         </el-collapse-item>
       </el-collapse>
-      <el-collapse v-if="findings.length"><el-collapse-item title="编辑报告检查治疗清单" name="findings"><article v-for="(finding,index) in findings" :key="finding.finding_id" class="edit-row">
+      <el-collapse v-if="findings.length"><el-collapse-item :title="findingsTitle" name="findings"><article v-for="(finding,index) in findings" :key="finding.finding_id" class="edit-row">
         <el-checkbox v-model="finding.removed">删除此清单条目（需下方清单修正理由与来源页）</el-checkbox>
         <el-form-item label="报告条目原文"><el-input v-model="finding.values.text" type="textarea" /></el-form-item>
         <div class="field-grid"><el-form-item label="报告等级"><el-input v-model="finding.values.risk_grade" /></el-form-item><el-form-item label="异常诊断"><el-input v-model="finding.values.diagnosis" /></el-form-item></div>
         <el-select v-model="finding.result_item_id" placeholder="检测结果关联保持不变"><el-option label="取消关联" :value="''" /><el-option v-for="item in result.items ?? []" :key="item.item_id" :value="item.item_id" :label="`${item.name} · ${item.result_raw}`" /></el-select>
-        <el-button v-for="(source,si) in result.report_summary?.findings[index]?.sources ?? []" :key="si" link @click="emit('locate',source)">清单来源 {{ si + 1 }}</el-button>
+        <el-button v-for="(source,si) in result.report_summary?.findings[index]?.sources ?? []" :key="si" link type="primary" @click="emit('locate',source)">清单来源 {{ si + 1 }}</el-button>
       </article></el-collapse-item></el-collapse>
-      <el-collapse v-if="result.doc_type === 'MEDICAL_REPORT'"><el-collapse-item title="清单声明数 / 增删条目" name="summary-edit"><el-checkbox v-model="summaryEnabled">修正报告清单（不影响实验室计数）</el-checkbox><template v-if="summaryEnabled"><el-select v-model="summaryScope" aria-label="清单作用域"><el-option label="需检查治疗清单" value="follow_up_required"/><el-option label="总检结论" value="overall_conclusion"/><el-option label="未识别" value="unidentified"/></el-select><el-input v-model="summaryTitle" placeholder="原报告清单标题（改声明数量或作用域时必填）"/><el-form-item label="原件明确声明数量；未声明留空，不用条目长度代填"><el-input-number :disabled="summaryScope !== 'follow_up_required'" v-model="summaryCount" :min="0" :precision="0" /></el-form-item><el-form-item label="声明或清单所在原件页"><el-input-number v-model="summaryPage" :min="1" :max="pageCount" :precision="0" /></el-form-item><el-input v-model="summaryReason" placeholder="说明修正的原件依据（必填）"/><article v-for="(f,index) in addedFindings" :key="index" class="edit-row"><el-input v-model="f.text" placeholder="清单条目原文"/><el-input v-model="f.risk_grade" placeholder="报告等级"/><el-input v-model="f.diagnosis" placeholder="异常诊断"/><el-select v-model="f.result_item_id" clearable placeholder="关联检测项目"><el-option v-for="item in result.items ?? []" :key="item.item_id" :label="item.name" :value="item.item_id"/></el-select><el-button @click="addedFindings.splice(index,1)">撤销新增</el-button></article><el-button @click="addedFindings.push({text:'',risk_grade:'',diagnosis:''})">新增清单条目</el-button></template></el-collapse-item></el-collapse>
-      <el-collapse v-if="result.doc_type === 'HOUSEHOLD_REGISTER'"><el-collapse-item title="户口本成员" name="members"><article v-for="(member,index) in members" :key="index" class="edit-row"><h4>成员 {{ index + 1 }}</h4><el-checkbox v-model="member.removed">删除此成员（提交后生效）</el-checkbox><div v-if="!member.removed" class="field-grid"><el-form-item v-for="field in memberFields(result.members![index]!)" :key="field.key" :class="{ 'field-missing': memberMissing(member, field.key) }" :label="`${field.label}${memberFieldRequired(result, field.key) ? '（必填）' : ''}`"><el-select v-if="isGenderKey(field.key)" :model-value="genderText(member.values[field.key])" placeholder="未识别" clearable @update:model-value="v => member.values[field.key] = v ?? ''"><el-option label="男" value="男" /><el-option label="女" value="女" /></el-select><el-input v-else :model-value="String(member.values[field.key] ?? '')" @update:model-value="v => member.values[field.key] = v" /></el-form-item></div></article></el-collapse-item></el-collapse>
-      <el-collapse v-if="result.doc_type === 'HOUSEHOLD_REGISTER'"><el-collapse-item title="补录遗漏成员" name="new-members"><p>成员字段按当前必填设置填写，原件页必须指定；全户完整性仍需逐页覆盖确认。</p><article v-for="(member,index) in addedMembers" :key="index" class="edit-row"><el-form-item label="新增成员原件页"><el-input-number v-model="member.source_page" :min="1" :max="pageCount" :precision="0"/></el-form-item><div class="field-grid"><el-form-item v-for="(label,key) in memberLabels" :key="key" :class="{ 'field-missing': addedMemberMissing(member, key) }" :label="`${label}${memberFieldRequired(result, key) ? '（必填）' : ''}`"><el-input :model-value="String(member.fields[key] ?? '')" @update:model-value="v => member.fields[key] = v"/></el-form-item></div><el-button @click="addedMembers.splice(index,1)">撤销新增成员</el-button></article><el-button @click="addedMembers.push({fields:{},source_page:1})">新增成员</el-button></el-collapse-item></el-collapse><template v-if="result.doc_type === 'GENERIC'"><h4 data-guide="generic-edit">通用全文与键值{{ result.required_field_keys?.includes('generic.full_text') ?? true ? '（正文必填）' : '（正文选填）' }}</h4><el-input v-model="generic.full_text" type="textarea" :rows="6" :class="{ 'field-missing': genericFullTextRequired && !generic.full_text }" /><div v-for="(pair,index) in generic.key_values" :key="index" class="generic-row"><el-input v-model="pair.key" placeholder="字段名"/><el-input v-model="pair.value" type="textarea" autosize placeholder="字段值（原文为空可留空）"/><el-button v-if="genericPairSource(result,pair)" @click="emit('locate',genericPairSource(result,pair)!)">原始来源</el-button><el-button @click="generic.key_values.splice(index,1)">删除</el-button></div><el-button @click="generic.key_values.push({key:'',value:''})">新增键值</el-button></template>
+      <el-collapse v-if="result.doc_type === 'MEDICAL_REPORT'"><el-collapse-item :title="summaryEditTitle" name="summary-edit"><el-checkbox v-model="summaryEnabled">修正报告清单（不影响实验室计数）</el-checkbox><template v-if="summaryEnabled"><el-select v-model="summaryScope" aria-label="清单作用域"><el-option label="需检查治疗清单" value="follow_up_required"/><el-option label="总检结论" value="overall_conclusion"/><el-option label="未识别" value="unidentified"/></el-select><el-input v-model="summaryTitle" placeholder="原报告清单标题（改声明数量或作用域时必填）"/><el-form-item label="原件明确声明数量；未声明留空，不用条目长度代填"><el-input-number :disabled="summaryScope !== 'follow_up_required'" v-model="summaryCount" :min="0" :precision="0" /></el-form-item><el-form-item label="声明或清单所在原件页"><el-input-number v-model="summaryPage" :min="1" :max="pageCount" :precision="0" /></el-form-item><el-input v-model="summaryReason" placeholder="说明修正的原件依据（必填）"/><article v-for="(f,index) in addedFindings" :key="index" class="edit-row"><el-input v-model="f.text" placeholder="清单条目原文"/><el-input v-model="f.risk_grade" placeholder="报告等级"/><el-input v-model="f.diagnosis" placeholder="异常诊断"/><el-select v-model="f.result_item_id" clearable placeholder="关联检测项目"><el-option v-for="item in result.items ?? []" :key="item.item_id" :label="item.name" :value="item.item_id"/></el-select><el-button @click="addedFindings.splice(index,1)">撤销新增</el-button></article><el-button @click="addedFindings.push({text:'',risk_grade:'',diagnosis:''})">新增清单条目</el-button></template></el-collapse-item></el-collapse>
+      <el-collapse v-if="result.doc_type === 'HOUSEHOLD_REGISTER'" v-model="memberOpen"><el-collapse-item :title="memberTitle" name="members"><article v-for="(member,index) in members" :key="index" class="edit-row"><h4>成员 {{ index + 1 }}</h4><el-checkbox v-model="member.removed">删除此成员（提交后生效）</el-checkbox><div v-if="!member.removed" class="field-grid"><el-form-item v-for="field in memberFields(result.members![index]!)" :key="field.key" :class="{ 'field-missing': memberMissing(member, field.key) }" :label="`${field.label}${memberFieldRequired(result, field.key) ? '（必填）' : ''}`"><el-select v-if="isGenderKey(field.key)" :model-value="genderText(member.values[field.key])" placeholder="未识别" clearable @update:model-value="v => member.values[field.key] = v ?? ''"><el-option label="男" value="男" /><el-option label="女" value="女" /></el-select><el-input v-else :model-value="String(member.values[field.key] ?? '')" @update:model-value="v => member.values[field.key] = v" /></el-form-item></div></article></el-collapse-item></el-collapse>
+      <el-collapse v-if="result.doc_type === 'HOUSEHOLD_REGISTER'"><el-collapse-item title="补录遗漏成员" name="new-members"><p>成员字段按当前必填设置填写，原件页必须指定；全户完整性仍需逐页覆盖确认。</p><article v-for="(member,index) in addedMembers" :key="index" class="edit-row"><el-form-item label="新增成员原件页"><el-input-number v-model="member.source_page" :min="1" :max="pageCount" :precision="0"/></el-form-item><div class="field-grid"><el-form-item v-for="(label,key) in memberLabels" :key="key" :class="{ 'field-missing': addedMemberMissing(member, key) }" :label="`${label}${memberFieldRequired(result, key) ? '（必填）' : ''}`"><el-input :model-value="String(member.fields[key] ?? '')" @update:model-value="v => member.fields[key] = v"/></el-form-item></div><el-button @click="addedMembers.splice(index,1)">撤销新增成员</el-button></article><el-button @click="addedMembers.push({fields:{},source_page:1})">新增成员</el-button></el-collapse-item></el-collapse><template v-if="result.doc_type === 'GENERIC'"><h4 data-guide="generic-edit">通用全文与键值{{ result.required_field_keys?.includes('generic.full_text') ?? true ? '（正文必填）' : '（正文选填）' }}</h4><el-input v-model="generic.full_text" type="textarea" :rows="6" :class="{ 'field-missing': genericFullTextRequired && !generic.full_text }" /><div v-for="(pair,index) in generic.key_values" :key="index" class="generic-row"><el-input v-model="pair.key" placeholder="字段名"/><el-input v-model="pair.value" type="textarea" autosize placeholder="字段值（原文为空可留空）"/><el-button v-if="genericPairSource(result,pair)" @click="emit('locate',genericPairSource(result,pair)!)">原始来源</el-button><el-button link type="danger" @click="removePair(index)">删除</el-button></div><el-button @click="generic.key_values.push({key:'',value:''})">新增键值</el-button></template>
       <el-collapse><el-collapse-item title="全页覆盖确认（仅实际逐页核对后填写）" name="coverage"><el-checkbox v-model="coverageEnabled">我已逐页检查原件及遗漏内容</el-checkbox><template v-if="coverageEnabled"><p>原始材料共 {{ pageCount || '未知' }} 页；未知总页数时不能提交完整覆盖声明。</p><el-checkbox-group v-model="checkedPages"><el-checkbox v-for="page in pageCount" :key="page" :value="page">第 {{ page }} 页</el-checkbox></el-checkbox-group><el-input v-model="coverageReason" placeholder="说明人工补齐与完整性核对依据" type="textarea"/><article v-for="region in regions ?? []" :key="region.region_id" class="edit-row"><span>第 {{ region.page }} 页区域 {{ region.region_id.slice(0,8) }}</span><el-select v-model="regionActions[region.region_id]" clearable placeholder="未补充覆盖声明"><el-option value="TRANSCRIBED" label="已补录"/><el-option value="NO_CONTENT" label="已确认无业务文字"/></el-select><el-input v-if="regionActions[region.region_id]" v-model="regionReasons[region.region_id]" placeholder="该区域核对理由"/><el-select v-if="regionActions[region.region_id] === 'TRANSCRIBED'" v-model="regionItems[region.region_id]" multiple placeholder="对应已存在项目"><el-option v-for="item in result.items ?? []" :key="item.item_id" :label="item.name" :value="item.item_id"/></el-select><template v-if="regionActions[region.region_id] === 'TRANSCRIBED'"><el-select v-model="regionFields[region.region_id]" multiple placeholder="本次补录字段"><el-option v-for="f in fields" :key="f.key" :label="f.label" :value="f.key"/></el-select><el-select v-model="regionAdded[region.region_id]" multiple placeholder="本次新增检测项目"><el-option v-for="(item,index) in added" :key="index" :label="item.name || `新增 ${index+1}`" :value="index"/></el-select><el-select v-model="regionFindings[region.region_id]" multiple placeholder="本次修正清单"><el-option v-for="(f,index) in findings" :key="f.finding_id" :label="`清单 ${index+1}`" :value="f.finding_id"/></el-select><el-select v-model="regionMembers[region.region_id]" multiple placeholder="本次修正成员"><el-option v-for="(_,index) in members" :key="index" :label="`成员 ${index+1}`" :value="index"/></el-select><el-select v-if="result.doc_type === 'HOUSEHOLD_REGISTER'" v-model="regionAddedMembers[region.region_id]" multiple placeholder="本次新增成员"><el-option v-for="(member,index) in addedMembers" :key="index" :value="index" :label="String(member.fields.name || `新增成员 ${index+1}`)"/></el-select><el-checkbox v-if="result.doc_type === 'GENERIC'" v-model="regionGeneric[region.region_id]">本次补录通用全文</el-checkbox></template></article></template></el-collapse-item></el-collapse>
       <el-alert v-if="message" type="warning" :closable="false">{{ message }}</el-alert>
       <el-button data-guide="review-save" type="primary" :loading="busy" :disabled="!canWrite" @click="save">保存修正并重新校验</el-button>
@@ -153,6 +186,8 @@ function save() {
 <style scoped>
 .number-length-hint { width:100%; margin:6px 0 0; color:var(--el-color-danger); line-height:1.5; }
 .number-length-hint.info { color:var(--el-text-color-secondary); }
+/* 字段级异议就地红字，与结果表格、顶部红字三处呼应。 */
+.field-issue { margin:6px 0 0; color:var(--el-color-danger); line-height:1.5; }
 .review-editor { margin-top:20px; }
 /* 人工核对与修正：框内讲解文字和数据输入整体加粗，与框外说明拉开层次。 */
 .review-editor { font-weight: 600; }

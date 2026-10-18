@@ -45,6 +45,18 @@ class BatchOwnershipTests(unittest.TestCase):
             return {table: c.execute(text('SELECT * FROM ' + table + ' ORDER BY id')).all()
                     for table in ['tasks', 'runs', 'artifacts', 'audit', 'batches']}
 
+    def assert_business_unchanged(self, before, allowed_success=()):
+        after = self.snapshot()
+        for table in before.keys() - {'audit'}:
+            self.assertEqual(before[table], after[table], table)
+        old = {row._mapping['id']: row for row in before['audit']}
+        current = {row._mapping['id']: row for row in after['audit']}
+        self.assertEqual(old, {identifier: current.get(identifier) for identifier in old}, 'old audit must be immutable')
+        for identifier in current.keys() - old.keys():
+            row = current[identifier]._mapping
+            self.assertTrue(row['outcome'] == 'failure' or
+                            row['outcome'] == 'success' and row['event'] in allowed_success, row['event'])
+
     def test_lists_are_scoped_before_dates_totals_and_pagination(self):
         alice, ah, _ = self.account('alice')
         bob, bh, _ = self.account('bob')
@@ -91,7 +103,7 @@ class BatchOwnershipTests(unittest.TestCase):
                 response = self.client.request(method, path, headers=ah, **({'json': body} if body is not None else {}))
                 self.assertEqual(response.status_code, 404, response.text)
                 self.assertNotIn('synthetic value', response.text)
-                self.assertEqual(self.snapshot(), before)
+                self.assert_business_unchanged(before)
         missing = self.client.get('/api/v1/tasks/' + str(uuid.uuid4()), headers=ah)
         foreign = self.client.get(prefix, headers=ah)
         self.assertEqual((missing.status_code, missing.json()['code'], missing.json()['message']),
@@ -123,7 +135,7 @@ class BatchOwnershipTests(unittest.TestCase):
             before = self.snapshot()
             response = self.client.post('/api/v1/export', headers=headers, json=dict(task_ids=ids))
             self.assertEqual(response.status_code, 404, response.text)
-            self.assertEqual(before, self.snapshot())
+            self.assert_business_unchanged(before)
 
     def test_viewer_is_scoped_and_still_readonly(self):
         viewer, vh, _ = self.account('viewer', 'viewer')
@@ -233,17 +245,20 @@ class BatchOwnerMigrationTests(unittest.TestCase):
                         if actor is not None:
                             c.execute(text("INSERT INTO audit VALUES (:id,:actor,:task,:run,'task_created','2026-10-10','{}')"),
                                       dict(id=str(uuid.uuid4()), actor=actor, task=task, run=run))
-                before = {table: c.execute(text('SELECT * FROM ' + table + ' ORDER BY id')).all() for table in ['tasks', 'audit', 'web_users']}
+                before = {}
+                for table in ['tasks', 'audit', 'web_users']:
+                    result = c.execute(text('SELECT * FROM ' + table + ' ORDER BY id'))
+                    before[table] = (','.join(result.keys()), result.all())
             engine.dispose()
             upgraded = open_database(root)
             try:
                 with upgraded.connect() as c:
-                    self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0010')
+                    self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0012')
                     actual = dict(c.execute(text('SELECT id,owner_id FROM batches')).all())
                     self.assertEqual(actual, dict(known=owner, legacy=legacy, conflicting=None, missing=None, empty=None))
                     self.assertTrue(all(row[0] == b'unchanged batch cipher' for row in c.execute(text('SELECT name_enc FROM batches'))))
-                    for table, rows in before.items():
-                        self.assertEqual(c.execute(text('SELECT * FROM ' + table + ' ORDER BY id')).all(), rows)
+                    for table, (columns, rows) in before.items():
+                        self.assertEqual(c.execute(text('SELECT ' + columns + ' FROM ' + table + ' ORDER BY id')).all(), rows)
                 # Rerunning startup never reassigns identities from later audit changes.
                 with upgraded.begin() as c:
                     c.execute(text("UPDATE audit SET actor='different-later-actor'"))

@@ -38,3 +38,5 @@ Local backed-up activation verifies schema0008 and its unique session index. Two
 Longer unattended browser validity is explicitly requested; immediate revocation and logout remain available. This does not qualify online HTTPS/proxy deployment or permit sending credentials to logs. A browser only notices displacement on its next protected request, rather than receiving a push. Existing retained sessions may expire earlier than thirty days until the next successful login.
 
 [API authorization boundaries](../bug-fix/2026-10-13-api-authorization-boundaries.md) extend the live transaction session check to material operations, add default route authentication and protect full health/slow responses; this note retains its remaining decisions.
+
+The [account operation audit](2026-10-16-account-operation-audit.md) adds administrator history. Session replacement, login failure/throttling and logout are recorded without credentials or device fingerprints.

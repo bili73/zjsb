@@ -134,6 +134,6 @@ class WebSessionTests(unittest.TestCase):
         self.assertTrue(export.content.startswith(b'PK'))
         with self.business.engine.connect() as c:
             self.assertEqual(dict(c.execute(text('SELECT * FROM runs WHERE id=:id'),{'id':task['run_id']}).mappings().one()),run)
-            self.assertEqual(c.execute(text("SELECT actor FROM audit WHERE event='export_full'")).scalar_one(),me['user_id'])
+            self.assertEqual(c.execute(text("SELECT actor FROM audit WHERE event='export_generated'")).scalar_one(),me['user_id'])
 
 if __name__=='__main__': unittest.main()

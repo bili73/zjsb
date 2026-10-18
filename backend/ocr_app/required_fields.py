@@ -45,6 +45,7 @@ def save_configuration(store, body, actor, *, authorize):
         if policy['revision'] != body['expected_revision']:
             raise TaskError('SETTINGS_VERSION_CONFLICT', '必填设置已被修改，请重新读取后再保存', 409)
         updated = deepcopy(policy['overrides'])
+        previous = [field['key'] for field in configurable_fields(kind, policy['overrides']) if field['required']]
         if selected is None:
             updated.pop(kind, None)
         else:
@@ -56,7 +57,8 @@ def save_configuration(store, body, actor, *, authorize):
                                 'ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,overrides_json=excluded.overrides_json'),
                            dict(revision=policy['revision'], value=json.dumps(updated)))
         store._audit(connection, 'required_fields_changed', actor, doc_type=kind,
-                     required_fields=updated.get(kind), required_fields_revision=policy['revision'])
+                     required_fields=updated.get(kind), old_required_fields=previous,
+                     required_fields_revision=policy['revision'])
         return configuration(policy)
 
 

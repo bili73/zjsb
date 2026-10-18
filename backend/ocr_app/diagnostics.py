@@ -38,7 +38,7 @@ runtime_started runtime_failed runtime_stopped cleanup_failed storage_probe_fail
 health_snapshot_failed gpu_lease_failed settings_failed server_stopped task_created task_claimed
 task_stage task_completed task_cancelled task_interrupted task_expired request_completed request_failed
 upload_rejected pipeline_failed watchdog_timeout migration_failed retention_failed batch_cleanup_failed'''.split())
-ERROR_CODES = set('''REGION_OCR_BUSY REGION_OCR_TIMEOUT REGION_OCR_EMPTY REGION_OCR_UNAVAILABLE
+ERROR_CODES = set('''SERVICE_BUSY OPERATION_THROTTLED REGION_OCR_BUSY REGION_OCR_TIMEOUT REGION_OCR_EMPTY REGION_OCR_UNAVAILABLE
 RESOURCE_LIMIT MODEL_LOAD_FAILED MODEL_WARMUP_FAILED MODEL_PROCESS_EXITED
 SUPERVISION_FAILED MODEL_REQUEST_TIMEOUT INPUT_INVALID INVALID_REQUEST RUNTIME_STARTING
 RUNTIME_BUSY CUDA_UNAVAILABLE CONNECTION_FAILED INVALID_HEALTH DIAGNOSTICS_UNAVAILABLE
@@ -52,7 +52,7 @@ ENUMS = {
     'model': {'glm_ocr', 'paddleocr_vl', 'glm-ocr', 'paddleocr-vl'},
     'phase': {'loading', 'warming', 'ready', 'starting', 'stopping', 'recognize', 'unloaded', 'failed'},
     'operation': {'load', 'recognize', 'statistics', 'shutdown', 'stop_task', 'startup', 'close',
-                  'health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete',
+                  'audit', 'health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete',
                   'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save',
                   'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks',
                   'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun',

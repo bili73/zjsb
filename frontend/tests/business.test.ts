@@ -114,6 +114,22 @@ test('parseTask validates optional batch_id and sanitizes error payloads', () =>
   assert.throws(() => parseTasks([{ ...task, status: 'RUNNING' }]), /INVALID_RESPONSE/)
 })
 
+test('task scheduling timestamps remain optional for old servers and validate new responses', () => {
+  const task = { task_id: id, run_id: id, result_revision: 1, cancel_requested: false, status: 'QUEUED', page_count: 0, pages: [] }
+  assert.equal(parseTask(task).queued_at, undefined)
+  assert.equal(parseTask(task).active_started_at, undefined)
+  const queued = { ...task, queued_at: '2026-10-16T02:00:00Z', active_started_at: null }
+  assert.equal(parseTask(queued).queued_at, queued.queued_at)
+  assert.equal(parseTask(queued).active_started_at, null)
+  const active = { ...queued, status: 'OCR', active_started_at: '2026-10-16T02:01:00Z' }
+  assert.equal(parseTask(active).active_started_at, active.active_started_at)
+  for (const invalid of ['', 'broken', 123, {}, []]) {
+    assert.throws(() => parseTask({ ...queued, queued_at: invalid }), /INVALID_RESPONSE/)
+    assert.throws(() => parseTask({ ...queued, active_started_at: invalid }), /INVALID_RESPONSE/)
+  }
+  assert.equal(parseTask({ ...queued, queued_at: null }).queued_at, null)
+})
+
 test('parseBatches rejects unknown batch status', () => {
   const list = { items: [{ batch_id: id, status: 'PROCESSING' }], total: 1, page: 1, page_size: 50 }
   assert.equal(parseBatches(list).total, 1)

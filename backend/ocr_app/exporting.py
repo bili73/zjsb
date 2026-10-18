@@ -240,7 +240,9 @@ def workbook_bytes(results, packages=()):
 
 
 def export_results(store, request, actor, role, *, user=None, authorize=None, with_metadata=False):
+    import json
     from sqlalchemy import text
+    from .task_store import identity, now
     from .review import optional_reason, invalid
     if not isinstance(request, dict) or set(request) - {'batch_id', 'task_ids', 'versions', 'masked', 'reason', 'format'}:
         invalid()
@@ -252,8 +254,9 @@ def export_results(store, request, actor, role, *, user=None, authorize=None, wi
     if role not in {'operator', 'admin'}:
         raise TaskError('FORBIDDEN_REVEAL', '当前账号无完整导出权限', 403)
     optional_reason(request.get('reason'))
-    snapshots, packages = [], {}
-    with store.transaction() as connection:
+    snapshots, packages, batch_revisions = [], {}, {}
+    with store.engine.connect() as connection:
+        connection.exec_driver_sql('BEGIN')
         if authorize:
             authorize(connection)
         policy = store.required_policy(connection)
@@ -291,6 +294,7 @@ def export_results(store, request, actor, role, *, user=None, authorize=None, wi
             snapshot['_source_filename'] = store.storage.unpack(row['meta_enc']).get('file_name')
             snapshots.append(snapshot)
             batch = store._batch_row(connection, row['batch_id'], user)
+            batch_revisions[batch['id']] = batch['package_revision']
             if batch['is_person_package']:
                 package = packages.setdefault(batch['id'], dict(
                     person_name=store.storage.unpack(batch['person_name_enc']), results=[]))
@@ -300,17 +304,37 @@ def export_results(store, request, actor, role, *, user=None, authorize=None, wi
         table_export = any(snapshot['doc_type'] == 'TABLE' for snapshot in snapshots)
         if table_export and (packages or any(snapshot['doc_type'] != 'TABLE' for snapshot in snapshots)):
             invalid('表格请单独导出，不能与证件或人员材料包混合')
-        for row in rows:
-            store._audit(connection, 'export_full', actor, row,
-                         required_fields_revision=policy['revision'],
-                         result_revision=row['revision'], legacy_masked=is_masked)
-            store._access_history(connection, row, actor, 'export_full', request.get('reason'), legacy_masked=is_masked)
     if table_export:
         from .table_export import table_export_bundle
         data, media, filename = table_export_bundle(snapshots)
     else:
         data, media, filename = workbook_bytes(snapshots, packages.values()), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'reviewed-results.xlsx'
-    if authorize:
-        with store.engine.connect() as connection:
-            authorize(connection)
+    prepared = []
+    try:
+        for row in rows:
+            payload = dict(event='export_full', actor=actor, reason=request.get('reason'), at=now(),
+                           run_id=row['run_id'], result_revision=row['revision'], legacy_masked=is_masked)
+            prepared.append((row, store.storage.put(json.dumps(payload, ensure_ascii=False).encode())))
+        with store.transaction() as connection:
+            if authorize:
+                authorize(connection)
+            if store.required_policy(connection)['revision'] != policy['revision']:
+                raise TaskError('SETTINGS_VERSION_CONFLICT', '必填设置已变化，请重新核对后导出')
+            for batch_id, revision in batch_revisions.items():
+                if store._batch_row(connection, batch_id, user)['package_revision'] != revision:
+                    raise TaskError('RESULT_VERSION_CONFLICT', '材料包已更新，请刷新后重新导出')
+            for row, reference in prepared:
+                current = store._row(connection, row['id'], user)
+                store._expected(current, row['run_id'], row['revision'])
+                if current['status'] != row['status']:
+                    raise TaskError('RESULT_VERSION_CONFLICT', '任务状态已变化，请重新核对后导出')
+                connection.execute(text("INSERT INTO artifacts(id,task_id,run_id,kind,reference) VALUES (:id,:task,:run,'access_history',:ref)"),
+                                   dict(id=identity(), task=row['id'], run=row['run_id'], ref=reference))
+            from .audit import selection_details
+            store._audit(connection, 'export_generated', actor, **selection_details(rows),
+                         required_fields_revision=policy['revision'])
+    except BaseException:
+        for _, reference in prepared:
+            store.storage.delete(reference)
+        raise
     return (data, media, filename) if with_metadata else data

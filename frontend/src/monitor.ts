@@ -19,6 +19,8 @@ export interface MonitorState {
   serverTotal: number
   dateRange: BatchDateRange | null
   listedIds: string[]
+  page: number
+  pageSize: number
   polling: boolean
   retrying: boolean
   failureCount: number
@@ -39,13 +41,13 @@ export const entryNeedsReview = (entry: Pick<BatchEntry, 'tasks'>) => entry.task
 
 export function createMonitor(getApi: () => BusinessApi | null, options: MonitorOptions = {}) {
   const intervalMs = options.intervalMs ?? 2000
-  const pageSize = options.pageSize ?? 50
+  const initialPageSize = options.pageSize ?? 50
   const isVisible = options.isVisible ?? (() => typeof document === 'undefined' || !document.hidden)
   const state = reactive<MonitorState>({
-    entries: {}, order: [], serverTotal: 0, dateRange: null, listedIds: [], polling: false, retrying: false, failureCount: 0, lastCheckedAt: null, pending: {},
+    entries: {}, order: [], serverTotal: 0, dateRange: null, listedIds: [], page: 1, pageSize: initialPageSize,
+    polling: false, retrying: false, failureCount: 0, lastCheckedAt: null, pending: {},
   })
   let failures = 0
-  let nextPage = 2
   let listGeneration = 0
   let sessionGeneration = 0
   let disposed = false
@@ -117,7 +119,6 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     state.order = state.order.filter(id => id !== batchId)
     state.listedIds = state.listedIds.filter(id => id !== batchId)
     for (const id of taskIds) delete state.pending[id]
-    nextPage = 2 // A deletion shifts server pagination.
   }
 
   async function pollOnce(signal: AbortSignal, refreshTasks = false): Promise<number | null> {
@@ -126,10 +127,14 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     const generation = listGeneration
     if (refreshTasks) state.order.forEach(id => taskRefreshNeeded.add(id))
     try {
-      const list = await client.batches(1, pageSize, signal, state.dateRange)
+      let list = await client.batches(state.page, state.pageSize, signal, state.dateRange)
       if (generation !== listGeneration || signal.aborted || disposed) return null
+      const last = Math.max(1, Math.ceil(list.total / state.pageSize))
+      if (state.page > last) list = await client.batches(last, state.pageSize, signal, state.dateRange)
+      if (generation !== listGeneration || signal.aborted || disposed) return null
+      state.page = list.page
       state.serverTotal = list.total
-      state.listedIds = [...new Set([...list.items.map(batch => batch.batch_id), ...state.listedIds])]
+      state.listedIds = list.items.map(batch => batch.batch_id)
       const policyRevision = list.items.find(batch => batch.required_fields_revision !== undefined)?.required_fields_revision
       for (const batch of list.items) {
         upsertBatch(batch)
@@ -141,7 +146,7 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
         const entry = state.entries[id]
         if (!entry) continue
         // Explicit reconciliation also rereads terminal batches on older pages.
-        if (taskRefreshNeeded.has(id) || !entry.tasksLoaded || entry.batch?.status === 'PROCESSING' ||
+        if (taskRefreshNeeded.has(id) || !entry.tasksLoaded || entry.batch?.status === 'PROCESSING' || entryRunning(entry) ||
           policyRevision !== undefined && entry.tasks.some(task => task.required_fields_revision !== policyRevision)) {
           try {
             let batchVersion = entry.batch
@@ -216,28 +221,40 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     else stop()
   }
 
-  async function loadMore(signal: AbortSignal): Promise<void> {
+  async function changePage(page: number, signal: AbortSignal, size = state.pageSize): Promise<void> {
     const client = getApi()
-    if (!client) return
-    const generation = listGeneration
+    if (!client || disposed) return
+    if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(size) || size < 1 || size > 100) throw new Error('INVALID_PAGE')
+    stop()
+    const generation = ++listGeneration
     const previous = new Map(state.order.map(id => [id, state.entries[id]?.batch]))
-    const list = await client.batches(nextPage, pageSize, signal, state.dateRange)
-    if (generation !== listGeneration || signal.aborted || disposed) return
-    nextPage += 1
-    state.serverTotal = list.total
-    state.listedIds = [...new Set([...state.listedIds, ...list.items.map(batch => batch.batch_id)])]
-    let reconcile = false
-    for (const batch of list.items) {
-      // Pages can overlap after new uploads shift pagination. Preserve a batch
-      // refreshed while this page was in flight, including completed batches.
-      if (state.entries[batch.batch_id]?.batch !== previous.get(batch.batch_id)) continue
-      upsertBatch(batch)
-      if (!state.entries[batch.batch_id]!.tasksLoaded || taskRefreshNeeded.has(batch.batch_id)) reconcile = true
-    }
-    sortBatches()
-    if (reconcile) {
-      state.polling = true
-      loop.start()
+    let failed = false
+    try {
+      let list = await client.batches(page, size, signal, state.dateRange)
+      if (generation !== listGeneration || signal.aborted || disposed) return
+      const last = Math.max(1, Math.ceil(list.total / size))
+      if (page > last) list = await client.batches(last, size, signal, state.dateRange)
+      if (generation !== listGeneration || signal.aborted || disposed) return
+      state.page = list.page; state.pageSize = size; state.serverTotal = list.total
+      state.listedIds = list.items.map(batch => batch.batch_id)
+      for (const batch of list.items) {
+        // Preserve metadata updated by a concurrent result/action while this page was read.
+        if (state.entries[batch.batch_id]?.batch === previous.get(batch.batch_id)) upsertBatch(batch)
+        taskRefreshNeeded.add(batch.batch_id)
+      }
+      sortBatches()
+    } catch (error) {
+      if (generation !== listGeneration || signal.aborted || disposed) return
+      failed = true
+      if (generation === listGeneration && error instanceof ApiFailure && error.card.http_status === 401) reportUnauthorized()
+      throw error
+    } finally {
+      if (generation === listGeneration && !disposed && !unauthorizedNotified) {
+        // Reconcile hidden running jobs even when a requested page failed or was cancelled.
+        // Successful jumps already fetched the list; schedule the next poll instead of refetching immediately.
+        state.polling = true
+        loop.start(failed ? 0 : intervalMs)
+      }
     }
   }
 
@@ -248,7 +265,7 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     state.dateRange = range
     state.listedIds = []
     state.serverTotal = 0
-    nextPage = 2
+    state.page = 1
     start()
   }
 
@@ -291,6 +308,10 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     }
     taskRefreshNeeded.add(created.batch_id)
     setDateRange(null)
+    stop()
+    listGeneration++ // An accepted upload supersedes any pending historical-page request.
+    state.page = 1
+    state.listedIds = [created.batch_id]
     setExpanded(created.batch_id, true)
     start()
     return created
@@ -337,6 +358,7 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     const wasListed = state.listedIds.includes(batchId)
     removeBatch(batchId, result.task_ids)
     if (wasListed) state.serverTotal = Math.max(0, state.serverTotal - 1)
+    state.page = Math.min(state.page, Math.max(1, Math.ceil(state.serverTotal / state.pageSize)))
     start()
     return result
   }
@@ -361,13 +383,14 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     state.retrying = false
     state.lastCheckedAt = null
     failures = 0
-    nextPage = 2
+    state.page = 1
+    state.pageSize = initialPageSize
     taskRefreshNeeded.clear()
     unauthorizedNotified = false
   }
 
   function dispose() { disposed = true; clear() }
 
-  return { state, pollOnce, start, stop, onVisible, loadMore, loadTasks, setDateRange, setExpanded, submitUpload, confirmPerson, runAction, deleteBatch, pendingNotice, entryOf, clear, dispose }
+  return { state, pollOnce, start, stop, onVisible, changePage, loadTasks, setDateRange, setExpanded, submitUpload, confirmPerson, runAction, deleteBatch, pendingNotice, entryOf, clear, dispose }
 }
 export type Monitor = ReturnType<typeof createMonitor>

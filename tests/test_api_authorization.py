@@ -12,12 +12,14 @@ class APIAuthorizationTests(unittest.TestCase):
     account = ownership.BatchOwnershipTests.account
     batch = ownership.BatchOwnershipTests.batch
     snapshot = ownership.BatchOwnershipTests.snapshot
+    assert_business_unchanged = ownership.BatchOwnershipTests.assert_business_unchanged
     password = ownership.BatchOwnershipTests.password
 
     # This inventory deliberately fails when an endpoint is added without an access decision.
     protected = {
         'GET': ['health', 'auth/me', 'auth/me/workbench', 'admin/users', 'admin/required-fields', 'admin/retention', 'doc-types',
                 'admin/diagnostics/status', 'admin/diagnostics/events', 'admin/diagnostics/bundle',
+                'admin/audit/options', 'admin/audit/events', 'admin/audit/events/{event_id}', 'admin/audit/export',
                 'batches', 'batches/{batch_id}', 'batches/{batch_id}/tasks', 'tasks',
                 'tasks/{task_id}', 'tasks/{task_id}/result', 'tasks/{task_id}/preview'],
         'POST': ['auth/logout', 'auth/password', 'diagnostics/frontend', 'admin/users', 'admin/users/{user_id}/password',
@@ -35,7 +37,7 @@ class APIAuthorizationTests(unittest.TestCase):
         version = dict(run_id=identifier, expected_revision=0)
         for method, paths in self.protected.items():
             for path in paths:
-                url = '/api/v1/' + path.replace('{batch_id}', identifier).replace('{task_id}', identifier).replace('{user_id}', identifier)
+                url = '/api/v1/' + path.replace('{batch_id}', identifier).replace('{task_id}', identifier).replace('{user_id}', identifier).replace('{event_id}', identifier)
                 body = dict(version)
                 if path == 'export': body = dict(task_ids=[identifier])
                 elif path.endswith('/ocr-region'): body.update(page=1, bbox=[0.0, 0.0, 1.0, 1.0])
@@ -82,7 +84,7 @@ class APIAuthorizationTests(unittest.TestCase):
             with self.subTest(method=method, path=path, status=status):
                 response = self.client.request(method, path, headers=headers, **options)
                 self.assertEqual(response.status_code, status, response.text)
-                self.assertEqual(before, self.snapshot())
+                self.assert_business_unchanged(before)
 
     def test_csrf_and_origin_guard_every_cookie_write(self):
         _, headers, _ = self.account('csrf', 'admin')
@@ -134,7 +136,7 @@ class APIAuthorizationTests(unittest.TestCase):
                     response = self.client.post('/api/v1/tasks/' + task['task_id'] + '/' + operation,
                         headers=headers, json=dict(run_id=task['run_id'], expected_revision=0))
                 self.assertEqual(response.status_code, 401, response.text)
-                self.assertEqual(before, self.snapshot())
+                self.assert_business_unchanged(before, allowed_success=('logout',))
 
     def test_preview_reveal_export_recheck_before_transaction(self):
         for operation, target in [('preview', 'ocr_app.preview.corrected_preview'),
@@ -157,7 +159,7 @@ class APIAuthorizationTests(unittest.TestCase):
                 with patch(target, side_effect=revoke):
                     response = self.client.post(path, headers=headers, json=body)
                 self.assertEqual(response.status_code, 401, response.text)
-                self.assertEqual(before, self.snapshot())
+                self.assert_business_unchanged(before, allowed_success=('logout',))
 
     def test_export_rechecks_after_workbook_build(self):
         from ocr_app.exporting import workbook_bytes
@@ -197,7 +199,7 @@ class APIAuthorizationTests(unittest.TestCase):
                 files={'files': ('synthetic.png', self.image, 'image/png')})
         self.assertEqual(response.status_code, 401, response.text)
         self.assertNotIn('must not escape', response.text)
-        self.assertEqual(before, self.snapshot())
+        self.assert_business_unchanged(before, allowed_success=('logout',))
 
     def test_role_change_cannot_reuse_stale_admin_ownership(self):
         owner, _, _ = self.account('owner')
@@ -213,4 +215,4 @@ class APIAuthorizationTests(unittest.TestCase):
             response = self.client.post('/api/v1/tasks/' + task['task_id'] + '/review', headers=headers,
                 json=dict(run_id=task['run_id'], expected_revision=0))
         self.assertEqual(response.status_code, 403, response.text)
-        self.assertEqual(before, self.snapshot())
+        self.assert_business_unchanged(before)

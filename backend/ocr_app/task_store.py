@@ -139,8 +139,8 @@ class TaskStore:
 
     @contextmanager
     def transaction(self):
-        with self.engine.begin() as connection:
-            connection.exec_driver_sql('BEGIN IMMEDIATE')
+        from .db import write_transaction
+        with write_transaction(self.engine) as connection:
             yield connection
 
     def _batch_row(self, connection, batch_id, user=None):
@@ -174,10 +174,10 @@ class TaskStore:
                     account_exists=account is not None)
 
     def _audit(self, connection, event, actor='worker', task=None, **details):
-        connection.execute(text('INSERT INTO audit VALUES (:id,:actor,:task,:run,:event,:at,:detail)'),
-                           dict(id=identity(), actor=actor, task=task['id'] if task else None,
-                                run=task['run_id'] if task else None, event=event, at=now(),
-                                detail=json.dumps(details)))
+        from .audit import append
+        if event in {'task_failed', 'task_rejected', 'task_interrupted'}:
+            details.setdefault('outcome', 'failure')
+        return append(connection, self.storage, event, actor, task, **details)
 
     def create_batch(self, files, doc_type, actor, options=None, *, person_name=None, authorize=None):
         return self._write_upload(files, doc_type, actor, options, person_name=person_name, authorize=authorize)
@@ -200,7 +200,19 @@ class TaskStore:
                 if file.get('mime') not in {'image/png', 'image/jpeg', 'image/heic', 'image/heif'} or file.get('actual_source_page_count') != 1:
                     raise TaskError('UNSUPPORTED_FORMAT', '银行卡和表格请上传已解码的单张照片', 415)
         batch, created, references, task_ids = batch_id or identity(), now(), [], []
+        prepared, used = {}, set()
         try:
+            # Encrypt and fsync before taking SQLite's cross-process writer lock.
+            # References are not visible until the complete batch transaction commits.
+            if authorize:
+                with self.engine.connect() as connection:
+                    authorize(connection)
+            for file in files:
+                digest = file.get('content_hash') or hashlib.sha256(file['data']).hexdigest()
+                if digest not in prepared:
+                    reference = self.storage.put(file['data'])
+                    references.append(reference)
+                    prepared[digest] = reference
             with self.transaction() as connection:
                 if authorize:
                     authorize(connection)
@@ -223,6 +235,8 @@ class TaskStore:
                                         person=self.storage.pack(person_name) if person_name else None,
                                         package=int(isinstance(doc_type, list) or person_name is not None)))
                 hashes = dict(connection.execute(text('SELECT content_hash,id FROM tasks WHERE batch_id=:id'), {'id': batch}).all())
+                enqueue_seq = connection.execute(text('SELECT COALESCE(MAX(enqueue_seq),0) FROM tasks')).scalar_one()
+                queued_at = now()
                 for file, kind in zip(files, kinds):
                     digest = file.get('content_hash') or hashlib.sha256(file['data']).hexdigest()
                     if digest in hashes:
@@ -235,13 +249,15 @@ class TaskStore:
                                            dict(value=self.storage.pack(warnings), id=duplicate['id']))
                         continue
                     task_id, run_id = identity(), identity()
-                    reference = self.storage.put(file['data'])
-                    references.append(reference)
+                    enqueue_seq += 1
+                    reference = prepared[digest]
+                    used.add(reference)
                     duplicate = connection.execute(text('SELECT t.id FROM tasks t JOIN batches b ON b.id=t.batch_id '
                                                         'WHERE t.content_hash=:hash AND b.owner_id=:owner LIMIT 1'),
                                                    {'hash': digest, 'owner': actor}).first()
                     warnings = [dict(code='DUPLICATE_FILE', message='其他批次存在相同文件，本批次独立处理')] if duplicate else []
                     params = dict(id=task_id, batch=batch, run=run_id, at=created,
+                                  enqueue_seq=enqueue_seq, queued_at=queued_at,
                                   expires=deadline(created, retention['days']),
                                   hash=digest, doc=kind, reference=reference,
                                   meta=self.storage.pack(dict(file_name=file['name'], file_size=len(file['data']), mime_type=file['mime'],
@@ -249,21 +265,23 @@ class TaskStore:
                                   options=self.storage.pack(dict(options or {}, abnormal_only=kind == 'MEDICAL_REPORT' and bool((options or {}).get('abnormal_only')),
                                       **({'bank_admission': file['admission']} if file.get('admission') else {}))), warnings=self.storage.pack(warnings))
                     connection.execute(text('''INSERT INTO tasks
-                        (id,batch_id,run_id,status,created_at,updated_at,expires_at,content_hash,doc_type,input_ref,meta_enc,options_enc,warnings_enc)
-                        VALUES (:id,:batch,:run,'QUEUED',:at,:at,:expires,:hash,:doc,:reference,:meta,:options,:warnings)'''), params)
+                        (id,batch_id,run_id,status,created_at,updated_at,expires_at,content_hash,doc_type,input_ref,meta_enc,options_enc,warnings_enc,enqueue_seq,queued_at)
+                        VALUES (:id,:batch,:run,'QUEUED',:at,:at,:expires,:hash,:doc,:reference,:meta,:options,:warnings,:enqueue_seq,:queued_at)'''), params)
                     connection.execute(text("INSERT INTO runs(id,task_id,status) VALUES (:run,:id,'QUEUED')"), params)
                     connection.execute(text("INSERT INTO artifacts(id,task_id,run_id,kind,reference) VALUES (:aid,:id,:run,'input',:reference)"),
                                        dict(params, aid=identity()))
-                    self._audit(connection, 'task_created', actor, dict(id=task_id, run_id=run_id))
                     task_ids.append(task_id)
                     hashes[digest] = task_id
-                if batch_id:
-                    self._audit(connection, 'package_appended', actor, batch_id=batch, added_tasks=len(task_ids))
-            return dict(batch_id=batch, task_ids=task_ids)
+                self._audit(connection, 'package_appended' if batch_id else 'upload', actor,
+                            batch_id=batch, task_count=len(task_ids), doc_types=sorted(set(kinds)))
         except BaseException:
             for reference in references:
                 self.storage.delete(reference)
             raise
+        for reference in references:
+            if reference not in used:
+                self.storage.delete(reference)
+        return dict(batch_id=batch, task_ids=task_ids)
 
     def confirm_person(self, batch_id, person_name, expected_revision, actor, *, user, authorize):
         if not isinstance(person_name, str) or not 1 <= len(person_name.strip()) <= 80 or not person_name.isprintable():
@@ -307,6 +325,7 @@ class TaskStore:
                            doc_type_confidence=None, doc_type_confidence_method='unavailable',
                            page_count=len(pages), pages=pages, content_hash=row['content_hash'],
                            created_at=row['created_at'], updated_at=row['updated_at'], expires_at=row['cleanup_at'],
+                           queued_at=row['queued_at'], active_started_at=row['active_started_at'],
                            error=json.loads(row['error_json']) if row['error_json'] else None,
                            warnings=self.storage.unpack(row['warnings_enc'], []), summary=None,
                            export_ready=not export_blockers, export_blockers=export_blockers,
@@ -442,20 +461,34 @@ class TaskStore:
         with self.engine.connect() as connection:
             return connection.execute(text("SELECT COUNT(*) FROM tasks WHERE status='QUEUED' AND cancel_requested=0")).scalar_one()
 
-    def claim_next(self, doc_types=None):
+    def claim_next(self, doc_types=None, *, lane=None):
         allowed = tuple(SUPPORTED if doc_types is None else doc_types)
         if not allowed:
             return None
         if not set(allowed) <= SUPPORTED:
             raise ValueError('Unsupported document lane')
+        lane = lane or ('all' if doc_types is None else 'types:' + ','.join(sorted(allowed)))
         with self.transaction() as connection:
-            query = text("""SELECT * FROM tasks WHERE status='QUEUED' AND cancel_requested=0
-                AND stop_code IS NULL AND doc_type IN :allowed ORDER BY created_at,id LIMIT 1""").bindparams(
-                    bindparam('allowed', expanding=True))
-            row = connection.execute(query, {'allowed': allowed}).mappings().first()
+            cursor = connection.execute(text('SELECT last_owner FROM document_queue_cursors WHERE lane=:lane'),
+                                        {'lane': lane}).scalar_one_or_none()
+            # One durable account turn per claim. Batches cannot multiply turns.
+            # The legacy bucket cannot collide with any real immutable account ID.
+            query = text("""WITH pending AS (
+                SELECT t.*, CASE WHEN b.owner_id IS NULL THEN 'l:' ELSE 'a:' || b.owner_id END AS queue_owner
+                FROM tasks t JOIN batches b ON b.id=t.batch_id
+                WHERE t.status='QUEUED' AND t.cancel_requested=0
+                AND t.stop_code IS NULL AND t.doc_type IN :allowed
+            ) SELECT * FROM pending ORDER BY
+                CASE WHEN :cursor IS NULL OR queue_owner > :cursor THEN 0 ELSE 1 END,
+                CASE WHEN :cursor IS NOT NULL THEN queue_owner END,
+                enqueue_seq,id LIMIT 1""").bindparams(bindparam('allowed', expanding=True))
+            row = connection.execute(query, {'allowed': allowed, 'cursor': cursor}).mappings().first()
             if row is None:
                 return None
             row = dict(row)
+            connection.execute(text('''INSERT INTO document_queue_cursors(lane,last_owner) VALUES (:lane,:owner)
+                ON CONFLICT(lane) DO UPDATE SET last_owner=excluded.last_owner'''),
+                               {'lane': lane, 'owner': row.pop('queue_owner')})
             timestamp = now()
             connection.execute(text("UPDATE tasks SET status='PREPROCESSING',active_started_at=:at,updated_at=:at WHERE id=:id"),
                                dict(at=timestamp, id=row['id']))
@@ -473,13 +506,14 @@ class TaskStore:
     def progress(self, task, stage, progress, pages=None):
         if stage not in ACTIVE:
             raise ValueError('Invalid task stage')
+        pages_payload = self.storage.pack(pages) if pages is not None else None
         with self.transaction() as connection:
             row = self._row(connection, task['id'])
             if row['run_id'] != task['run_id'] or row['status'] not in ACTIVE or row['cancel_requested'] or row['stop_code']:
                 return False
             connection.execute(text('UPDATE tasks SET status=:stage,progress=:progress,pages_enc=:pages,updated_at=:at WHERE id=:id'),
                                dict(stage=stage, progress=max(0, min(99, int(progress))), id=task['id'], at=now(),
-                                    pages=self.storage.pack(pages) if pages is not None else row['pages_enc']))
+                                    pages=pages_payload if pages is not None else row['pages_enc']))
             return True
 
     def save_page(self, task, index, data, width, height):
@@ -500,9 +534,10 @@ class TaskStore:
             raise
 
     def attempt(self, task, payload):
+        encoded = self.storage.pack(payload)
         with self.transaction() as connection:
             connection.execute(text('INSERT INTO attempts VALUES (:id,:task,:run,:at,:payload)'),
-                               dict(id=identity(), task=task['id'], run=task['run_id'], at=now(), payload=self.storage.pack(payload)))
+                               dict(id=identity(), task=task['id'], run=task['run_id'], at=now(), payload=encoded))
 
     def publish(self, task, result):
         with self.transaction() as connection:
@@ -532,7 +567,8 @@ class TaskStore:
                                     result=current_payload, pages=current_pages,
                                     error=error_json, warnings=self.storage.pack(self.storage.unpack(row['warnings_enc'], []) + result.get('warnings', [])),
                                     at=now(), id=task['id']))
-            self._audit(connection, 'task_' + status.lower(), task=row)
+            self._audit(connection, 'task_' + status.lower(), task=row, status=status,
+                        result_revision=row['revision'] + 1, code=error.get('code') if isinstance(error, dict) else None)
             return True
 
     def _expected(self, row, run_id, revision):
@@ -555,9 +591,11 @@ class TaskStore:
         from .review import apply_review, invalid, reason
         reference = None
         try:
-            with self.transaction() as connection:
+            with self.engine.connect() as connection:
+                connection.exec_driver_sql('BEGIN')
                 if authorize:
                     authorize(connection)
+                policy = self.required_policy(connection)
                 row = self._row(connection, task_id, user)
                 self._expected(row, body.get('run_id'), body.get('expected_revision'))
                 if row['status'] not in {'FAILED', 'NEED_REVIEW', 'COMPLETED'}:
@@ -652,7 +690,7 @@ class TaskStore:
                 if row['status'] == 'FAILED' and not verified and not confirmation_only:
                     invalid('失败任务须完整逐页补正后才能创建人工版本')
                 result = apply_review(original, body, actor=actor, coverage_verified=verified,
-                                      required_overrides=self.required_policy(connection)['overrides'])
+                                      required_overrides=policy['overrides'])
                 if confirmation_only:
                     # Recovery may have FAILED the row after a partial snapshot.
                     # Confirming an exception never rewrites execution outcome.
@@ -668,19 +706,29 @@ class TaskStore:
                 history = dict(task_id=task_id, run_id=row['run_id'], base_revision=row['revision'],
                                result_revision=row['revision'] + 1, actor=actor, at=now(), request=body,
                                before=original, after=result)
-                reference = self.storage.put(json.dumps(history, ensure_ascii=False, allow_nan=False).encode())
+            reference = self.storage.put(json.dumps(history, ensure_ascii=False, allow_nan=False).encode())
+            result_payload, pages_payload = self.storage.pack(result), self.storage.pack(pages)
+            with self.transaction() as connection:
+                if authorize:
+                    authorize(connection)
+                current = self._row(connection, task_id, user)
+                self._expected(current, row['run_id'], row['revision'])
+                if current['status'] != row['status']:
+                    raise TaskError('RESULT_VERSION_CONFLICT', '任务状态已变化，请刷新后再保存')
+                if self.required_policy(connection)['revision'] != policy['revision']:
+                    raise TaskError('SETTINGS_VERSION_CONFLICT', '必填设置已变化，请重新核对后保存')
                 connection.execute(text("INSERT INTO artifacts(id,task_id,run_id,kind,reference) VALUES (:id,:task,:run,'review_revision',:ref)"),
                                    dict(id=identity(), task=task_id, run=row['run_id'], ref=reference))
                 connection.execute(text('UPDATE tasks SET result_enc=:result,pages_enc=:pages,status=:status,revision=revision+1,error_json=:error,updated_at=:at WHERE id=:id'),
-                                   dict(result=self.storage.pack(result), pages=self.storage.pack(pages), status=result['status'],
+                                   dict(result=result_payload, pages=pages_payload, status=result['status'],
                                         error=row['error_json'] if confirmation_only else None, at=now(), id=task_id))
                 self._audit(connection, 'human_review', actor, row, result_revision=row['revision'] + 1,
-                            status=result['status'])
-            return self.task(task_id)
+                            base_revision=row['revision'], status=result['status'])
         except BaseException:
             if reference is not None:
                 self.storage.delete(reference)
             raise
+        return self.task(task_id)
 
     def cancel(self, task_id, run_id, revision, actor, *, user=None, authorize=None):
         with self.transaction() as connection:
@@ -707,11 +755,13 @@ class TaskStore:
             if row['status'] not in TERMINAL | {'NEED_REVIEW'}:
                 raise TaskError('INVALID_STATE', '当前任务仍在运行')
             new_run = identity()
+            enqueue_seq = connection.execute(text('SELECT COALESCE(MAX(enqueue_seq),0)+1 FROM tasks')).scalar_one()
+            queued_at = now()
             connection.execute(text("INSERT INTO runs(id,task_id,status) VALUES (:run,:id,'QUEUED')"), dict(run=new_run, id=task_id))
             connection.execute(text("""UPDATE tasks SET run_id=:run,revision=revision+1,status='QUEUED',cancel_requested=0,
                 progress=0,pages_enc=NULL,result_enc=NULL,error_json=NULL,active_started_at=NULL,stop_code=NULL,warnings_enc=:warnings,
-                updated_at=:at WHERE id=:id"""),
-                               dict(run=new_run, at=now(), id=task_id,
+                updated_at=:at,queued_at=:at,enqueue_seq=:enqueue_seq WHERE id=:id"""),
+                               dict(run=new_run, at=queued_at, enqueue_seq=enqueue_seq, id=task_id,
                                     warnings=self.storage.pack([w for w in self.storage.unpack(row['warnings_enc'], [])
                                                                 if w.get('code') == 'DUPLICATE_FILE'])))
             self._audit(connection, 'task_rerun', actor, row, new_run_id=new_run)
@@ -815,10 +865,9 @@ class TaskStore:
                 self._expected(row, version['run_id'], version['expected_revision'])
             for row in rows:
                 references.extend(connection.execute(text('SELECT reference FROM artifacts WHERE task_id=:id'), {'id': row['id']}).scalars())
-                self._audit(connection, 'task_deleted', actor, row, batch_id=batch_id, result_revision=row['revision'])
+            self._audit(connection, 'batch_deleted', actor, batch_id=batch_id, task_count=len(rows))
             connection.execute(text('DELETE FROM tasks WHERE batch_id=:id'), {'id': batch_id})
             connection.execute(text('DELETE FROM batches WHERE id=:id'), {'id': batch_id})
-            self._audit(connection, 'batch_deleted', actor, batch_id=batch_id, task_count=len(rows))
         cleanup_pending = False
         for reference in set(references):
             try:

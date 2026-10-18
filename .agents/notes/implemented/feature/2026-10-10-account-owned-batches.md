@@ -52,3 +52,5 @@ Account isolation prevents colleague material access through both UI and direct 
 [Person material packages](2026-10-12-person-material-packages.md) extend batches with explicit encrypted attribution, versioned append and presence-only identity-card pairing. Existing ownership, task versioning, deletion and recognition boundaries remain; old tasks and their expiry are not changed by append.
 
 [API authorization boundaries](../bug-fix/2026-10-13-api-authorization-boundaries.md) extend the live transaction session check to material operations, add default route authentication and protect full health/slow responses; this note retains its remaining decisions.
+
+The [account operation audit](2026-10-16-account-operation-audit.md) adds administrator history. Audit identity snapshots preserve the actor at the operation time, independently of current/deleted batch ownership.

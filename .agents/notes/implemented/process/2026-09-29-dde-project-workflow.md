@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: scripts, .agents/skills/dde, skills-lock.json, package.json, AGENTS.md, CLAUDE.md, .gitignore, .gitattributes
-Last-verified: 2026-10-08
+Last-verified: 2026-10-18
 
 ## Problem
 
@@ -38,3 +38,4 @@ The user authorizes an initial source commit to the empty Gitee repository bi_li
 - Both instruction files contain the important-change note rule.
 - npx tsx scripts/notes.ts verify passes the tree, format, archive and optional module-document checks.
 - package.json contains neither dependencies nor devDependencies.
+- 2026-10-18: CLAUDE.md was fully refreshed to match the current codebase (module inventory, launch modes, retention, lanes, frontend and scripts commands). Both instruction files still contain the important-change note rule and `npm run verify` passes.

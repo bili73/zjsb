@@ -41,3 +41,5 @@ Local activation completes after an idle consistent snapshot and owned launcher 
 ## Consequences
 
 Shortening can make existing stopped files immediately eligible for the next cleanup; dialog counts can age after loading. Never retains disk usage until manual deletion or later policy change. Already deleted files cannot be recovered by extending retention. Changes commit with cleanup and upload serialized by the existing write transaction lock.
+
+The [account operation audit](2026-10-16-account-operation-audit.md) adds administrator history. Audit summaries survive material expiry while before/after business values remain in expiring encrypted review artifacts.

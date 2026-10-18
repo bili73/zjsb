@@ -71,6 +71,7 @@ class ClassificationTests(unittest.TestCase):
 class MixedUploadTests(unittest.TestCase):
     setUp = base.BusinessAPITests.setUp
     account = ownership.BatchOwnershipTests.account
+    assert_business_unchanged = ownership.BatchOwnershipTests.assert_business_unchanged
     password = 'synthetic account password'
 
     def image_bytes(self, color):
@@ -87,7 +88,7 @@ class MixedUploadTests(unittest.TestCase):
     def snapshot(self):
         with self.business.engine.connect() as c:
             rows = {table: c.execute(text('SELECT * FROM ' + table)).all() for table in ('batches', 'tasks', 'runs', 'artifacts', 'audit')}
-        return rows, sorted(str(p) for p in self.business.storage.root.rglob('*.enc'))
+        return dict(rows, encrypted_files=sorted(str(p) for p in self.business.storage.root.rglob('*.enc')))
 
     def test_mixed_order_repeated_names_and_medical_option(self):
         _, headers, _ = self.account('alice')
@@ -111,7 +112,7 @@ class MixedUploadTests(unittest.TestCase):
         self.assertEqual([self.business.store.task(identifier) for identifier in created['task_ids']], before)
         state = self.snapshot()
         self.assertEqual(self.post(headers, ['ID_CARD_BACK', 'DEGREE_CERT'], batch=created['batch_id'], files=files).status_code, 409)
-        self.assertEqual(self.snapshot(), state)
+        self.assert_business_unchanged(state)
 
     def test_invalid_metadata_and_missing_person_create_nothing(self):
         _, headers, _ = self.account('alice')
@@ -121,14 +122,14 @@ class MixedUploadTests(unittest.TestCase):
                              (['DIPLOMA', 'DEGREE_CERT'], {'person_name': ''})]:
             with self.subTest(kinds=kinds, extra=extra):
                 self.assertEqual(self.post(headers, kinds, data=extra).status_code, 422)
-                self.assertEqual(self.snapshot(), state)
+                self.assert_business_unchanged(state)
 
     def test_last_invalid_file_and_storage_failure_roll_back(self):
         _, headers, _ = self.account('alice')
         state = self.snapshot()
         response = self.post(headers, ['DIPLOMA', 'DEGREE_CERT'], files=[('files', ('ok.png', self.image, 'image/png')), ('files', ('bad.png', b'bad', 'image/png'))])
         self.assertEqual(response.status_code, 422)
-        self.assertEqual(self.snapshot(), state)
+        self.assert_business_unchanged(state)
         original = self.business.storage.put
         calls = 0
         def fail_second(data):
@@ -138,14 +139,14 @@ class MixedUploadTests(unittest.TestCase):
             return original(data)
         with patch.object(self.business.storage, 'put', side_effect=fail_second):
             self.assertEqual(self.post(headers, ['DIPLOMA', 'DEGREE_CERT']).status_code, 500)
-        self.assertEqual(self.snapshot(), state)
+        self.assert_business_unchanged(state)
 
     def test_duplicate_with_conflicting_types_rolls_back(self):
         _, headers, _ = self.account('alice')
         state = self.snapshot()
         files = [('files', ('same.png', self.image, 'image/png'))] * 2
         self.assertEqual(self.post(headers, ['DIPLOMA', 'DEGREE_CERT'], files=files).status_code, 422)
-        self.assertEqual(self.snapshot(), state)
+        self.assert_business_unchanged(state)
         response = self.post(headers, ['DIPLOMA', 'DIPLOMA'], files=files)
         self.assertEqual(response.status_code, 202)
         self.assertEqual(len(response.json()['task_ids']), 1)
@@ -158,7 +159,7 @@ class MixedUploadTests(unittest.TestCase):
             ('files', ('first.png', self.image, 'image/png')),
             ('files', ('second.pdf', document.tobytes(), 'application/pdf'))])
         self.assertEqual(response.status_code, 415)
-        self.assertEqual(self.snapshot(), state)
+        self.assert_business_unchanged(state)
 
     def test_classification_is_authenticated_memory_only_and_independent_of_runtime(self):
         _, headers, _ = self.account('alice')

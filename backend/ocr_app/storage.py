@@ -69,6 +69,9 @@ class Storage:
         return self.blobs / (str(uuid.UUID(reference)) + '.bin')
 
     def put(self, data: bytes) -> str:
+        from time import monotonic
+        from .db import WRITE_TIMINGS
+        started = monotonic()
         reference = str(uuid.uuid4())
         target = self.path(reference)
         temporary = target.with_suffix('.part')
@@ -80,6 +83,9 @@ class Storage:
             temporary.replace(target)
         finally:
             temporary.unlink(missing_ok=True)
+            timings = WRITE_TIMINGS.get()
+            if timings is not None:
+                timings['file'] += monotonic() - started
         return reference
 
     def read(self, reference: str) -> bytes:

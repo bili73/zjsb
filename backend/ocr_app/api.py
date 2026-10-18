@@ -52,7 +52,8 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
                       'retention_settings': 'retention_read', 'update_retention_settings': 'retention_save',
                       'required_fields': 'required_settings_read', 'update_required_fields': 'required_settings_save',
                       'workbench_layout': 'workbench_layout_read', 'update_workbench_layout': 'workbench_layout_save',
-                      'update_workbench_default': 'workbench_default_save'}
+                      'update_workbench_default': 'workbench_default_save', 'audit_events': 'audit',
+                      'audit_options': 'audit', 'audit_detail': 'audit', 'audit_export': 'audit'}
         return dict(request_id=getattr(request.state, 'request_id', None), http_method=request.method,
                     operation=operations.get(endpoint, 'diagnostics' if 'diagnostic' in endpoint else 'interface'),
                     **{key: str(value) for key, value in request.path_params.items() if key in {'task_id', 'batch_id'}})
@@ -98,18 +99,34 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
     app = FastAPI(version='1.26.0', lifespan=lifespan, docs_url=None,
                   redoc_url=None, openapi_url=None)
     app.state.diagnostics = diagnostic_service
+    from .admission import Admission
+    app.state.upload_admission = Admission()
+    app.state.export_admission = Admission(per_account=1)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost', '127.0.0.1'],
                        www_redirect=False)
 
     @app.exception_handler(TaskError)
     async def task_error(request, error):
+        overloaded = error.code in {'SERVICE_BUSY', 'OPERATION_THROTTLED'}
+        if business and not overloaded:
+            from .audit import failure
+            await run_in_threadpool(failure, business, request, error.code, error.status)
         request_id = getattr(request.state, 'request_id', str(uuid.uuid4()))
         error_id = await run_in_threadpool(logger.exception, 'request_failed', error,
-            **request_context(request), http_status=error.status, error_code=error.code) if logger else str(uuid.uuid4())
+            **request_context(request), http_status=error.status, error_code=error.code) if logger and not overloaded else str(uuid.uuid4())
         payload = dict(code=error.code, message=error.message, error_id=error_id, request_id=request_id)
         if getattr(error, 'details', None) is not None:
             payload['details'] = error.details
-        return JSONResponse(payload, status_code=error.status)
+        return JSONResponse(payload, status_code=error.status,
+                            headers={'Retry-After': '2'} if overloaded else None)
+
+    from sqlalchemy.exc import OperationalError
+    @app.exception_handler(OperationalError)
+    async def database_error(request, error):
+        from .db import sqlite_busy
+        if sqlite_busy(error):
+            return await task_error(request, TaskError('SERVICE_BUSY', '服务器写入繁忙，请稍后重试', 503))
+        raise error
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request, error):
@@ -119,27 +136,45 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
     @app.middleware('http')
     async def loopback_only(request: Request, call_next):
         request.state.request_id = str(uuid.uuid4())
-        begin = time.monotonic()
+        from .audit import CONTEXT, failure
+        audit_token = CONTEXT.set(dict(request_id=request.state.request_id,
+                                      peer=request.client.host if request.client else None))
+        from .db import WRITE_TIMINGS
+        timings = {'wait': 0.0, 'hold': 0.0, 'file': 0.0}
+        timing_token = WRITE_TIMINGS.set(timings)
         try:
-            allowed = bool(request.client and ip_address(request.client.host).is_loopback)
-        except ValueError:
-            allowed = False
-        if not allowed:
-            return PlainTextResponse('Forbidden', status_code=403)
-        try:
-            response = await call_next(request)
-        except Exception as error:
-            error_id = await run_in_threadpool(logger.exception, 'request_failed', error,
-                **request_context(request), http_status=500, error_code='INTERNAL_ERROR') if logger else str(uuid.uuid4())
-            response = JSONResponse(dict(code='INTERNAL_ERROR', message='处理失败，请保存错误编号和诊断记录',
-                                         error_id=error_id, request_id=request.state.request_id), status_code=500)
-        response.headers['X-Request-ID'] = request.state.request_id
-        response.headers['Cache-Control'] = 'no-store'
-        # Polling/read success and diagnostics reporting must not amplify log traffic.
-        if logger and response.status_code < 400 and request.method not in {'GET', 'HEAD', 'OPTIONS'} and not request.url.path.startswith('/api/v1/diagnostics'):
-            await run_in_threadpool(logger.event, 'request_completed', **request_context(request),
-                         http_status=response.status_code, duration_seconds=time.monotonic()-begin)
-        return response
+            begin = time.monotonic()
+            try:
+                allowed = bool(request.client and ip_address(request.client.host).is_loopback)
+            except ValueError:
+                allowed = False
+            if not allowed:
+                return PlainTextResponse('Forbidden', status_code=403)
+            try:
+                response = await call_next(request)
+            except Exception as error:
+                if business:
+                    await run_in_threadpool(failure, business, request, 'INTERNAL_ERROR', 500)
+                error_id = await run_in_threadpool(logger.exception, 'request_failed', error,
+                    **request_context(request), http_status=500, error_code='INTERNAL_ERROR') if logger else str(uuid.uuid4())
+                response = JSONResponse(dict(code='INTERNAL_ERROR', message='处理失败，请保存错误编号和诊断记录',
+                                             error_id=error_id, request_id=request.state.request_id), status_code=500)
+            response.headers['X-Request-ID'] = request.state.request_id
+            response.headers['Cache-Control'] = 'no-store'
+            queue_wait = getattr(request.state, 'queue_wait', 0)
+            if queue_wait is not None:
+                response.headers['X-Queue-Wait-Ms'] = str(round(queue_wait * 1000, 3))
+            response.headers['X-DB-Wait-Ms'] = str(round(timings['wait'] * 1000, 3))
+            response.headers['X-DB-Hold-Ms'] = str(round(timings['hold'] * 1000, 3))
+            response.headers['X-File-Write-Ms'] = str(round(timings['file'] * 1000, 3))
+            # Polling/read success and diagnostics reporting must not amplify log traffic.
+            if logger and response.status_code < 400 and request.method not in {'GET', 'HEAD', 'OPTIONS'} and not request.url.path.startswith('/api/v1/diagnostics'):
+                await run_in_threadpool(logger.event, 'request_completed', **request_context(request),
+                             http_status=response.status_code, duration_seconds=time.monotonic()-begin)
+            return response
+        finally:
+            CONTEXT.reset(audit_token)
+            WRITE_TIMINGS.reset(timing_token)
 
     def health():
         snapshot = None

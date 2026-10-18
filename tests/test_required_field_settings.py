@@ -114,7 +114,12 @@ class RequiredFieldSettingsTests(unittest.TestCase):
                 self.assertEqual(self.business.store.required_policy(), policy)
                 with self.business.engine.connect() as connection:
                     self.assertEqual(connection.execute(text(
-                        "SELECT count(*) FROM audit WHERE event='required_fields_changed'")).scalar_one(), 0)
+                        "SELECT count(*) FROM audit WHERE event='required_fields_changed' AND outcome='success'")).scalar_one(), 0)
+                    failures = connection.execute(text(
+                        "SELECT detail_json FROM audit WHERE event='required_fields_changed' AND outcome='failure' AND actor=:actor"),
+                        {'actor': actor['user_id']}).scalars().all()
+                    self.assertEqual(len(failures), 1)
+                    self.assertEqual(json.loads(failures[0])['code'], 'UNAUTHORIZED')
 
     def test_unknown_duplicate_nonstring_and_derived_fields_are_rejected(self):
         self.admin()

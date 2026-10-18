@@ -42,3 +42,5 @@ The affected backend suites pass 37 tests, the complete frontend suite passes 21
 Normal timing/lifecycle evidence is absent by default, so explicit diagnostic overrides may be needed for performance investigations. The current running processes only adopt the new level after restart. This change does not deploy the Mac branch or rewrite/delete historical low-level logs.
 
 The [serious-query restriction](../../implemented/simplification/2026-10-15-serious-diagnostic-query.md) narrows product lookup and ZIPs to ERROR/CRITICAL. The original five-level lookup rationale remains historical; files, parsers and explicit capture overrides remain intact.
+
+The [account operation audit](2026-10-16-account-operation-audit.md) adds administrator history. Successful business operations use a separate transactional audit stream; ERROR/CRITICAL diagnostic capture and polling exclusions remain unchanged.

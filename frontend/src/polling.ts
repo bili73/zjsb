@@ -5,7 +5,7 @@ export class ReadLoop {
   private generation = 0
   private readonly read: (signal: AbortSignal) => Promise<number | null>
   constructor(read: (signal: AbortSignal) => Promise<number | null>) { this.read = read }
-  start() {
+  start(delayMs = 0) {
     this.stop()
     const generation = this.generation
     const run = async () => {
@@ -18,7 +18,8 @@ export class ReadLoop {
         if (!controller.signal.aborted) throw error
       }
     }
-    void run()
+    if (delayMs > 0) this.timer = setTimeout(run, delayMs)
+    else void run()
   }
   stop() { this.generation++; clearTimeout(this.timer); this.controller?.abort() }
 }

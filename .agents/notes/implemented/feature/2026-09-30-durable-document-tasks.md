@@ -22,6 +22,8 @@ Reliable PDF text keeps its positions and bypasses OCR. The first pass persists 
 
 ## Upload admission limits
 
+[Account-fair document scheduling](../architecture/2026-10-16-account-fair-document-queue.md) changes document claim order to durable account rotation with per-account enqueue FIFO. Upload/append allocate ordered enqueue sequences, reruns join the account's tail, and duplicate reuse keeps its position. Migration adds scheduling metadata without rewriting saved evidence; unknown historical enqueue timestamps remain NULL. Existing run/revision, cancellation and recovery boundaries remain.
+
 The user approves up to100 files per upload,50 MiB per nonempty file and500 MiB of file payload per upload. The UI labels these binary limits as MB, consistently with the existing byte calculation. Shared backend constants bind streamed multipart admission and decoder validation; frontend constants bind the picker, messages and validation. Multipart framing receives separate bounded headroom scaled for100 filenames, while the aggregate file payload still cannot exceed500 MiB. Exactly-at-limit uploads are valid; excess count or size returns FILE_TOO_LARGE/413 before persistent task creation. Existing malformed-form400, format/page/pixel validation, authentication and task queues remain active.
 
 Files remain in memory until decoding and encrypted persistence complete. Larger accepted uploads can increase peak memory and admission time; these limits do not qualify100-file OCR throughput, simultaneous500 MiB clients or Mac deployment. The existing upload client timeout and one-request batch transaction remain unchanged. No append/replace endpoint is introduced. The [frontend workbench](2026-10-08-frontend-rebuild-element-plus.md) uses the same limits without increasing per-model concurrency.
@@ -106,3 +108,5 @@ The [bank ROI orientation repair](../bug-fix/2026-10-12-bank-card-roi-orientatio
 The [calendar browser](2026-10-09-batch-calendar-browser.md) adds read-only creation-day ranges before pagination without changing identities or UTC storage. The [bank input/recovery refinement](2026-10-09-bank-auto-recognition.md) queues full photos without synchronous OCR and creates a new task for a recovered single crop, retaining original tasks.
 
 [Person material packages](2026-10-12-person-material-packages.md) extend batches with explicit encrypted attribution, versioned append and presence-only identity-card pairing. Existing ownership, task versioning, deletion and recognition boundaries remain; old tasks and their expiry are not changed by append.
+
+The [bounded HTTP write refinement](../bug-fix/2026-10-16-bounded-http-writes.md) stages upload/review artifacts before short writer transactions, then rechecks authorization, CAS and policy. Durable acknowledgment, encrypted history, rollback and exclusive-startup orphan cleanup remain; it adds bounded upload/export admission without changing OCR queues.

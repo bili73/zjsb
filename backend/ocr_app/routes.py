@@ -233,6 +233,25 @@ def router(business, runtime, health):
             raise TaskError('DIAGNOSTICS_UNAVAILABLE', '诊断服务未配置', 503)
         return service
 
+    async def upload_slot(request: Request, user=Depends(operator)):
+        request.state.queue_wait = None
+        async with request.app.state.upload_admission.enter(user['user_id']) as waited:
+            request.state.queue_wait = waited
+            # Waiting must not preserve an account/session that has since been revoked.
+            await run_in_threadpool(recheck_admitted, request, user)
+            yield
+
+    async def export_slot(request: Request, user=Depends(principal)):
+        request.state.queue_wait = None
+        async with request.app.state.export_admission.enter(user['user_id']) as waited:
+            request.state.queue_wait = waited
+            await run_in_threadpool(recheck_admitted, request, user)
+            yield
+
+    def recheck_admitted(request, user):
+        with business.engine.connect() as connection:
+            authorization(request, user)(connection)
+
     def recheck_diagnostic_user(request, user, *, admin=True):
         with business.engine.connect() as connection:
             return business.accounts._acting_user(connection, user['user_id'], request.cookies.get(SESSION_COOKIE), administrator=admin)
@@ -330,13 +349,18 @@ def router(business, runtime, health):
 
     @routes.put('/admin/workbench-default')
     def update_workbench_default(body: WorkbenchLayoutBody, request: Request, user=Depends(administrator)):
-        from .workbench_preferences import save_default
+        from .workbench_preferences import save_default, load_default
         if body.layout is not None and (len(set(body.layout)) != len(body.layout)
                                         or not set(body.layout) <= SUPPORTED):
             raise TaskError('INVALID_REQUEST', '布局包含重复或不支持的材料类型', 422)
         with business.accounts.transaction() as connection:
             business.accounts._acting_user(connection, user['user_id'], request.cookies.get(SESSION_COOKIE), administrator=True)
-            return save_default(connection, body.layout, body.expected_revision)
+            previous = load_default(connection)
+            result = save_default(connection, body.layout, body.expected_revision)
+            if previous != result:
+                business.store._audit(connection, 'workbench_default_changed', user['user_id'],
+                                      old_layout=previous['layout'], layout=result['layout'], revision=result['revision'])
+            return result
 
     @public.post('/auth/login')
     async def login(request: Request):
@@ -347,6 +371,10 @@ def router(business, runtime, health):
                 not isinstance(body['password'],str) or not 1<=len(body['password'])<=128):
             raise TaskError('INVALID_REQUEST', '登录请求无效', 422)
         from starlette.concurrency import run_in_threadpool
+        from .audit import CONTEXT
+        context = CONTEXT.get()
+        if context is not None:
+            context['claimed_username'] = body['username']
         token=await run_in_threadpool(business.accounts.login,body['username'],body['password'],
                                      request.client.host,request.cookies.get(SESSION_COOKIE))
         user=business.accounts.session(token)
@@ -368,6 +396,51 @@ def router(business, runtime, health):
     @routes.get('/admin/users')
     def users(user=Depends(administrator)):
         return dict(items=business.accounts.users())
+
+    def audit_service():
+        from .audit import AuditService
+        return AuditService(business.engine, business.storage)
+
+    def audit_filters(date_from: date | None = None, date_to: date | None = None,
+                      actor: str | None = Query(default=None, max_length=100),
+                      event: str | None = Query(default=None, max_length=100),
+                      outcome: Literal['success', 'failure', 'requested', 'legacy'] | None = None,
+                      batch_id: uuid.UUID | None = None):
+        return dict(date_from=date_from.isoformat() if date_from else None,
+                    date_to=date_to.isoformat() if date_to else None, actor=actor, event=event, outcome=outcome,
+                    batch_id=str(batch_id) if batch_id else None)
+
+    @routes.get('/admin/audit/options')
+    def audit_options(request: Request, user=Depends(administrator)):
+        result = audit_service().options()
+        recheck_diagnostic_user(request, user)
+        return result
+
+    @routes.get('/admin/audit/events')
+    def audit_events(request: Request, user=Depends(administrator), filters=Depends(audit_filters),
+                     cursor: str | None = Query(default=None, max_length=200), limit: int = Query(default=50, ge=1, le=100),
+                     page: int | None = Query(default=None, ge=1, le=2147483647),
+                     page_size: int | None = Query(default=None, ge=1, le=100)):
+        if (page is not None or page_size is not None) and ('cursor' in request.query_params or 'limit' in request.query_params):
+            raise TaskError('INVALID_REQUEST', '页码分页不能与游标分页同时使用', 422)
+        result = audit_service().query(cursor=cursor, limit=limit, page=page, page_size=page_size, **filters)
+        recheck_diagnostic_user(request, user)
+        return result
+
+    @routes.get('/admin/audit/events/{event_id}')
+    def audit_detail(event_id: uuid.UUID, request: Request, user=Depends(administrator)):
+        result = audit_service().detail(str(event_id))
+        recheck_diagnostic_user(request, user)
+        return result
+
+    @routes.get('/admin/audit/export')
+    def audit_export(request: Request, user=Depends(administrator), filters=Depends(audit_filters), slot=Depends(export_slot)):
+        data, count = audit_service().workbook(**filters)
+        with business.store.transaction() as connection:
+            business.accounts._acting_user(connection, user['user_id'], request.cookies.get(SESSION_COOKIE), administrator=True)
+            business.store._audit(connection, 'audit_export', user['user_id'], records=count)
+        return Response(data, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        headers={'Content-Disposition': 'attachment; filename="operation-audit.xlsx"'})
 
     @routes.post('/admin/users', status_code=201)
     async def create_user(request: Request, user=Depends(administrator)):
@@ -458,7 +531,7 @@ def router(business, runtime, health):
         return business.store.batches(page, page_size, date_from, date_to, user=user)
 
     @routes.post('/classify')
-    async def classify_upload(request: Request, user=Depends(operator)):
+    async def classify_upload(request: Request, user=Depends(operator), slot=Depends(upload_slot)):
         from .document_classification import classify_file
         from starlette.concurrency import run_in_threadpool
         files, _ = await memory_form(request, classification=True)
@@ -468,7 +541,7 @@ def router(business, runtime, health):
         return result
 
     @routes.post('/batches', status_code=202)
-    async def upload(request: Request, user=Depends(operator)):
+    async def upload(request: Request, user=Depends(operator), slot=Depends(upload_slot)):
         if not runtime.is_alive():
             raise TaskError('INTERNAL_ERROR', '处理服务不可用，请检查引擎状态并重新启动程序', 503)
         files, fields = await memory_form(request)
@@ -484,7 +557,7 @@ def router(business, runtime, health):
                                       person_name=fields.get('person_name'), authorize=authorization(request, user))
 
     @routes.post('/batches/{batch_id}/append', status_code=202)
-    async def append_upload(batch_id: uuid.UUID, request: Request, user=Depends(operator)):
+    async def append_upload(batch_id: uuid.UUID, request: Request, user=Depends(operator), slot=Depends(upload_slot)):
         with business.engine.connect() as connection:
             business.store._batch_row(connection, str(batch_id), user)
         if not runtime.is_alive():
@@ -568,9 +641,14 @@ def router(business, runtime, health):
                              user=user, authorize=authorization(request, user))
 
     @routes.post('/export')
-    def export(body: ExportBody, request: Request, user=Depends(operator)):
+    def export(body: ExportBody, request: Request, user=Depends(operator), slot=Depends(export_slot)):
         from .exporting import export_results
         from urllib.parse import quote
+        from .audit import CONTEXT
+        context = CONTEXT.get()
+        if context is not None:
+            context['export_targets'] = ([dict(batch_id=str(body.batch_id))] if body.batch_id else
+                                         [dict(task_id=str(identifier)) for identifier in body.task_ids or []]) or [{}]
         data, media, filename = export_results(business.store, body.model_dump(mode='json', exclude_none=True), user['user_id'], user['role'],
                               user=user, authorize=authorization(request, user), with_metadata=True)
         return Response(data, media_type=media,

@@ -66,6 +66,8 @@ ERROR_DESCRIPTIONS = {
     'FORBIDDEN_REVEAL': '当前账号没有查看完整原件或字段的权限。',
     'UNAUTHORIZED': '登录校验未通过或登录已失效。', 'FORBIDDEN': '当前账号无权执行此操作。',
     'NOT_FOUND': '请求的记录不存在。', 'LOGIN_THROTTLED': '登录尝试过于频繁，请稍后再试。',
+    'SERVICE_BUSY': '服务器处理繁忙，本次操作未完成，请稍后重试。',
+    'OPERATION_THROTTLED': '当前账号已有同类操作正在处理，请等待完成后再试。',
     'AUTH_NOT_CONFIGURED': '登录账号尚未配置。', 'USERNAME_EXISTS': '账号名称已存在。',
     'ACCOUNT_PROTECTED': '当前账号或最后一个启用的管理员受到保护。',
     'CURRENT_PASSWORD_INCORRECT': '原密码校验未通过。',

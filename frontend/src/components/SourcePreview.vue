@@ -223,8 +223,8 @@ void (async () => {
         <div v-if="entries[n - 1]?.status === 'error'" class="page-error">该页读取失败。<el-button link type="primary" @click="entries[n - 1]!.status = 'idle'; loadPage(n)">重试</el-button></div>
         <el-skeleton v-else-if="entries[n - 1]?.status === 'loading'" animated class="page-skeleton" />
         <figure v-if="entries[n - 1]?.url" class="img-wrap" :class="{ 'ocr-ready': ocrEnabled }" :title="ocrEnabled ? '点击查看原图并框选识别' : undefined" @click="onPageClick(n)">
-          <el-image v-if="ocrEnabled" :src="entries[n - 1]!.url" fit="scale-down" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
-          <el-image v-else :src="entries[n - 1]!.url" :preview-src-list="[entries[n - 1]!.url]" preview-teleported hide-on-click-modal fit="scale-down" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
+          <el-image v-if="ocrEnabled" :src="entries[n - 1]!.url" fit="scale-down" decoding="async" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
+          <el-image v-else :src="entries[n - 1]!.url" :preview-src-list="[entries[n - 1]!.url]" preview-teleported hide-on-click-modal fit="scale-down" decoding="async" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
           <span v-if="overlayFor(n)" class="bbox-overlay" :style="overlayFor(n)!" />
         </figure>
         <div v-else-if="entries[n - 1]?.status !== 'error' && entries[n - 1]?.status !== 'loading'" class="page-holder">滚动到此处时加载本页</div>
@@ -244,13 +244,15 @@ void (async () => {
 .ocr-entry { display: inline-flex; }
 .tools-spacer { flex: 1; }
 .page-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
-.page-item { scroll-margin-top: 8px; }
+/* 滚动性能：占位与图片容器统一按 A4 比例预留高度，图片加载完成不再把下方内容顶下去（layout shift）；
+   content-visibility 让视口外的页完全跳过排版和绘制，长报告滚动更轻。 */
+.page-item { scroll-margin-top: 8px; content-visibility: auto; contain-intrinsic-size: auto 820px; }
 .page-no { display: block; font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 4px; }
-.page-image { width: 100%; display: block; }
+.page-image { width: 100%; height: 100%; display: block; }
 .img-wrap.ocr-ready { cursor: zoom-in; }
-.img-wrap { display: block; width: 100%; margin: 0; }
-.page-holder { border: 1px dashed var(--el-border-color); border-radius: 6px; min-height: 160px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--el-text-color-secondary); }
-.page-skeleton { min-height: 160px; }
+.img-wrap { position: relative; display: block; width: 100%; margin: 0; aspect-ratio: 210 / 297; }
+.page-holder { border: 1px dashed var(--el-border-color); border-radius: 6px; min-height: 160px; aspect-ratio: 210 / 297; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--el-text-color-secondary); }
+.page-skeleton { min-height: 160px; aspect-ratio: 210 / 297; }
 .page-error { font-size: 13px; color: var(--el-color-danger); }
 .bbox-overlay { position: absolute; border: 2px solid var(--el-color-danger); background: rgba(255, 93, 93, 0.14); pointer-events: none; border-radius: 2px; }
 .local-preview { margin-top: 16px; }

@@ -48,7 +48,7 @@ export interface BatchList { items: Batch[]; total: number; page: number; page_s
 export interface TaskError { code: ErrorCode; error_id: string | null; stage: Stage | null }
 export interface ExportDispute { dispute_id: string; field: string; label: string; code: string; message: string; can_confirm: boolean }
 export interface ExportEligibility { export_ready?: boolean; export_blockers?: { field: string; code: string }[]; export_disputes?: ExportDispute[]; required_fields_revision?: number; required_field_keys?: string[] }
-export interface Task extends ExportEligibility { task_id: string; batch_id?: string; run_id: string; result_revision: number; cancel_requested: boolean; status: TaskStatus; file_name?: string; doc_type?: string; progress?: number; page_count: number; actual_source_page_count?: number | null; content_hash?: string; expires_at?: string | null; pages: { page_id: string; page_index: number; extraction_method: string; regions?: { region_id: string }[] }[]; error?: TaskError | null; extract_options?: { abnormal_only?: boolean }; progress_detail?: ProgressDetail }
+export interface Task extends ExportEligibility { task_id: string; batch_id?: string; run_id: string; result_revision: number; cancel_requested: boolean; status: TaskStatus; file_name?: string; doc_type?: string; progress?: number; page_count: number; actual_source_page_count?: number | null; content_hash?: string; expires_at?: string | null; queued_at?: string | null; active_started_at?: string | null; pages: { page_id: string; page_index: number; extraction_method: string; regions?: { region_id: string }[] }[]; error?: TaskError | null; extract_options?: { abnormal_only?: boolean }; progress_detail?: ProgressDetail }
 // 进度明细：以已完成的物理 OCR 区域为计量单位。total_* 在区域计划未知（准备中/历史任务）时为 null，
 // 不提供估计分母；processed_regions 表示重试策略结束后到达终态的区域数，不保证识别正确。
 export interface ProgressDetail { stage: TaskStatus; prepared_pages: number; total_pages: number | null; processed_regions: number; recognized_regions: number; incomplete_regions: number; total_regions: number | null }
@@ -178,6 +178,8 @@ export function parseTask(value: unknown): Task {
   requireValue(exportEligibilityValid(value))
   requireValue(value.batch_id === undefined || uuid(value.batch_id))
   requireValue(value.expires_at == null || typeof value.expires_at === 'string' && Number.isFinite(Date.parse(value.expires_at)))
+  requireValue(value.queued_at == null || typeof value.queued_at === 'string' && Number.isFinite(Date.parse(value.queued_at)))
+  requireValue(value.active_started_at == null || typeof value.active_started_at === 'string' && Number.isFinite(Date.parse(value.active_started_at)))
   requireValue(value.actual_source_page_count == null || integer(value.actual_source_page_count, 1))
   requireValue(value.content_hash === undefined || typeof value.content_hash === 'string' && /^[0-9a-f]{64}$/.test(value.content_hash))
   requireValue(value.progress === undefined || (integer(value.progress) && Number(value.progress) <= 100))

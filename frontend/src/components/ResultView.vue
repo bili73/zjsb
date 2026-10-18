@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { InfoFilled, Lock } from '@element-plus/icons-vue'
 import { abnormalBasisLabels, fieldValueText, matchesMedicalFilter, medicalFlag } from '../business.ts'
+import { canAcceptIssue } from '../review.ts'
 import { numberLengthHint } from '../numberLength.ts'
 import type { Field, FieldSource, ItemsFilter, MedicalItem, TaskResult } from '../business.ts'
 import { searchMedicalItems } from '../workbench.ts'
@@ -25,6 +26,8 @@ const countCheckLabels = { match: '清单条目数吻合', mismatch: '清单条�
 function fieldText(field: Field): string {
   return fieldValueText(field, isMedical.value)
 }
+// 不能一键确认的字段级异议（校验失败/冲突等）在字段行内就地提示，别让顶部红字成为唯一线索。
+const fieldIssues = (field: Field) => (field.review_issues ?? []).filter(issue => !canAcceptIssue(issue))
 function flagTone(item: MedicalItem): 'success' | 'danger' | 'warning' | 'info' {
   if (item.abnormal_exclusion_reason) return 'info'
   if (item.abnormal_basis === 'unknown') return 'warning'
@@ -40,7 +43,7 @@ function basisText(item: MedicalItem): string {
 }
 const statText = (value: number | null) => (value === null ? '未确认' : String(value))
 function onFilterChange(value: string | number | boolean | undefined) { emit('update:filter', value as ItemsFilter) }
-function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BANK_CARD','INTERVIEW_FORM'].includes(props.result.doc_type)) && source) emit('locate', source) }
+function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BANK_CARD','INTERVIEW_FORM','HOUSEHOLD_REGISTER'].includes(props.result.doc_type)) && source) emit('locate', source) }
 </script>
 
 <template>
@@ -59,6 +62,7 @@ function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BAN
           </el-dropdown>
         </span>
         <p v-if="lengthHints[field.key]" role="status" :class="['number-length-hint', lengthHints[field.key]?.level]">{{ lengthHints[field.key]?.message }}</p>
+        <p v-for="issue in fieldIssues(field)" :key="issue.issue_id" role="status" class="field-issue">{{ issue.message }}</p>
         <div v-if="['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type) && field.candidates?.length">
           <div v-for="(candidate,index) in field.candidates" :key="index" class="candidate-hint">
             <el-icon class="candidate-icon"><InfoFilled /></el-icon>
@@ -108,11 +112,12 @@ function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BAN
         </el-table-column>
         <el-table-column label="结果" min-width="150">
           <template #default="{ row }">
-            <div>{{ row.result_raw }}{{ row.unit ?? '' }}</div>
+            <div v-if="row.result_raw">{{ row.result_raw }}{{ row.unit ?? '' }}</div>
+            <div v-else class="result-missing">未填写</div>
             <div v-if="row.reference_range" class="conf">参考区间 {{ row.reference_range }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="报告等级 / 诊断" min-width="170"><template #default="{ row }"><div>{{ row.risk_grade ?? '等级未识别' }}</div><div>{{ row.diagnosis ?? '诊断未识别' }}</div><el-button v-for="(s,index) in row.diagnosis_sources ?? []" :key="index" link @click="locate(s)">诊断来源 {{ Number(index)+1 }}</el-button></template></el-table-column>
+        <el-table-column label="报告等级 / 诊断" min-width="170"><template #default="{ row }"><div v-if="row.risk_grade || row.diagnosis"><div v-if="row.risk_grade">{{ row.risk_grade }}</div><div v-if="row.diagnosis">{{ row.diagnosis }}</div></div><div v-else class="conf">—</div><el-button v-for="(s,index) in row.diagnosis_sources ?? []" :key="index" link type="primary" @click="locate(s)">诊断来源 {{ Number(index)+1 }}</el-button></template></el-table-column>
         <el-table-column label="判定" width="110">
           <template #default="{ row }">
             <el-tooltip :content="basisText(row as MedicalItem)" placement="top">
@@ -179,6 +184,9 @@ function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BAN
 <style scoped>
 .number-length-hint { margin:6px 0 0; color:var(--el-color-danger); line-height:1.5; }
 .number-length-hint.info { color:var(--el-text-color-secondary); }
+/* 字段级异议与缺失结果：红色就地提示，与顶部红字呼应。 */
+.field-issue { margin:6px 0 0; color:var(--el-color-danger); line-height:1.5; }
+.result-missing { color:var(--el-color-danger); }
 /* 候选提示：浅黄提示条（图标 + 文案 + 查看来源），和普通识别值一眼区分，比 el-alert 轻量。 */
 .candidate-hint { display:flex; align-items:flex-start; gap:6px; margin-top:6px; padding:6px 10px; border-radius:6px; background:var(--el-color-warning-light-9); font-size:13px; line-height:1.6; }
 .candidate-hint .candidate-icon { margin-top:4px; color:var(--el-color-warning); flex-shrink:0; }

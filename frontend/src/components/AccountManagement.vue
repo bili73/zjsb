@@ -56,6 +56,11 @@ async function create() {
     error.value = '密码需8至128个字符。'; return
   }
   if (form.password !== form.confirmation) { error.value = '两次密码输入不一致。'; return }
+  if (form.role === 'admin') {
+    try {
+      await ElMessageBox.confirm(`管理员可以管理账号、查看操作审计并修改必填字段与保存期限，权限较大。确认创建管理员账号 ${form.username}？`, '创建管理员', { type: 'warning', confirmButtonText: '确认创建', cancelButtonText: '取消' })
+    } catch { return }
+  }
   creating.value = true
   try {
     const user = await props.api.createUser({ username: form.username, display_name: form.display_name.trim(), password: form.password, role: form.role }, controller.signal)
@@ -67,6 +72,12 @@ async function create() {
 }
 function protectedAccount(user: ManagedUser) {
   return user.user_id === props.currentUser.user_id || (user.enabled && user.role === 'admin' && adminCount.value <= 1)
+}
+// 置灰原因就地说明，别让操作员去页面底部找规则。
+function protectionReason(user: ManagedUser): string {
+  if (user.user_id === props.currentUser.user_id) return '当前登录账号不能禁用或删除'
+  if (user.enabled && user.role === 'admin' && adminCount.value <= 1) return '最后一个启用的管理员不能禁用或删除'
+  return ''
 }
 function password(user: ManagedUser) {
   if (user.user_id === props.currentUser.user_id) emit('changePassword')
@@ -159,9 +170,9 @@ onBeforeUnmount(() => { controller.abort(); form.password = ''; form.confirmatio
         <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag size="small" effect="light" :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '禁用' }}</el-tag></template></el-table-column>
         <el-table-column label="操作" width="370" fixed="right"><template #default="{ row }">
           <el-button link type="primary" :disabled="busy" @click="editName(row as ManagedUser)">编辑姓名</el-button>
-          <el-button link :type="row.enabled ? 'warning' : 'success'" :disabled="busy || (row.enabled && protectedAccount(row as ManagedUser))" @click="change(row as ManagedUser, 'enabled')">{{ row.enabled ? '禁用' : '启用' }}</el-button>
-          <el-button link type="primary" :disabled="busy" @click="password(row as ManagedUser)">{{ row.user_id === currentUser.user_id ? '修改密码' : '重置密码' }}</el-button>
-          <el-button link type="danger" :disabled="busy || protectedAccount(row as ManagedUser)" @click="change(row as ManagedUser, 'delete')">删除</el-button>
+          <el-tooltip :content="protectionReason(row as ManagedUser)" :disabled="!protectionReason(row as ManagedUser)" placement="top"><span><el-button link :type="row.enabled ? 'warning' : 'success'" :disabled="busy || (row.enabled && protectedAccount(row as ManagedUser))" @click="change(row as ManagedUser, 'enabled')">{{ row.enabled ? '禁用' : '启用' }}</el-button></span></el-tooltip>
+          <el-tooltip :content="row.user_id === currentUser.user_id ? '修改自己的密码，需输入当前密码' : '为该账号设置新密码，所有旧登录立即失效'" placement="top"><span><el-button link type="primary" :disabled="busy" @click="password(row as ManagedUser)">{{ row.user_id === currentUser.user_id ? '修改密码' : '重置密码' }}</el-button></span></el-tooltip>
+          <el-tooltip :content="protectionReason(row as ManagedUser)" :disabled="!protectionReason(row as ManagedUser)" placement="top"><span><el-button link type="danger" :disabled="busy || protectedAccount(row as ManagedUser)" @click="change(row as ManagedUser, 'delete')">删除</el-button></span></el-tooltip>
         </template></el-table-column>
       </el-table>
       <el-pagination v-model:current-page="page" :page-size="pageSize" @update:page-size="resizePage"

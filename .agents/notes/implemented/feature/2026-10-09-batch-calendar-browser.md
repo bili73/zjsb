@@ -37,7 +37,7 @@ Tests cover Shanghai midnight, leap-month and cross-year Monday week bounds, des
 
 ## Consequences
 
-Week convention is Monday-based and calendar selection matches creation time rather than latest update time. Long-running jobs outside the selected range remain active but are hidden from that view; clearing the date reveals all tracked batches. This does not promise all old jobs fit in memory, qualify Mac or change retention.
+Week convention is Monday-based and calendar selection matches creation time rather than latest update time. Long-running jobs outside the selected range remain active but are hidden from that view; clearing the date browses all dates through the selected numbered page; cached off-page tasks continue to be tracked. See [numbered pagination](2026-10-16-numbered-list-pagination.md) for the current display/cache separation. This does not promise all old jobs fit in memory, qualify Mac or change retention.
 
 
 ## Release verification

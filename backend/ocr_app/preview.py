@@ -23,15 +23,17 @@ def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, ma
         if len(artifacts) != 1:
             raise TaskError('INVALID_REQUEST', '该页没有可唯一定位的原件证据', 404)
         data = store.storage.read(artifacts[0]['reference'])
-        store._audit(connection, 'preview_full', actor, row, result_revision=revision, page=page)
-        store._access_history(connection, row, actor, 'preview_full', access_reason, page=page)
     # Re-encode metadata-free pixels; content must have passed admission safety.
     target = BytesIO()
     with Image.open(BytesIO(data)) as image:
         image.convert('RGB').save(target, format='PNG')
-    if authorize:
-        with store.engine.connect() as connection:
+    with store.transaction() as connection:
+        if authorize:
             authorize(connection)
+        row = store._row(connection, task_id, user)
+        store._expected(row, run_id, revision)
+        store._audit(connection, 'preview_full', actor, row, result_revision=revision, page=page)
+        store._access_history(connection, row, actor, 'preview_full', access_reason, page=page)
     return target.getvalue()
 
 

@@ -3,6 +3,8 @@ import { randomId } from './browserCapabilities.ts'
 import type { App } from 'vue'
 
 export const errorMessages = {
+  SERVICE_BUSY: '服务器繁忙，请保留当前输入，稍后检查任务状态再重试；不要连续提交。',
+  OPERATION_THROTTLED: '该账号已有同类操作正在处理，请等待完成后再试。',
   DIAGNOSTICS_BUSY: '日志正在读取，请稍后重试。', DIAGNOSTICS_UNAVAILABLE: '日志记录或读取暂不可用，请下载本页诊断信息并联系管理员。', DIAGNOSTICS_RATE_LIMITED: '诊断上报过于频繁，请稍后重试。',
   REGION_OCR_BUSY: '框选识别正在处理中，请稍后再试。', REGION_OCR_TIMEOUT: '框选识别超时，请缩小选区重试或手工填写。',
   REGION_OCR_EMPTY: '选区没有读出文字，请重新框选或手工填写。', REGION_OCR_UNAVAILABLE: '框选识别暂不可用，请手工填写；持续不可用时请联系管理员检查或重启后端。',
@@ -35,12 +37,12 @@ export const errorMessages = {
   CLIENT_ERROR: '界面发生错误，请复制诊断信息交给维护人员。', UNKNOWN_ERROR: '操作未完成，请查看错误编号。',
 } as const
 export type ErrorCode = keyof typeof errorMessages
-export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'retention_read' | 'retention_save' | 'required_settings_read' | 'required_settings_save' | 'workbench_layout_read' | 'workbench_layout_save' | 'workbench_default_save' | 'batch_list' | 'batch_tasks' | 'batch_delete' | 'person_update' | 'upload' | 'classify' | 'region_ocr' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export' | 'diagnostics'
+export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'retention_read' | 'retention_save' | 'required_settings_read' | 'required_settings_save' | 'workbench_layout_read' | 'workbench_layout_save' | 'workbench_default_save' | 'batch_list' | 'batch_tasks' | 'batch_delete' | 'person_update' | 'upload' | 'classify' | 'region_ocr' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export' | 'diagnostics' | 'audit'
 export type Stage = 'BOOTSTRAP' | 'QUEUED' | 'PREPROCESSING' | 'OCR' | 'EXTRACTING' | 'VALIDATING' | 'PUBLISHING' | 'CLEANUP'
 export type DiagnosticOrigin = 'http' | 'task' | 'vue' | 'window' | 'promise'
 const stages = new Set(['BOOTSTRAP', 'QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING', 'PUBLISHING', 'CLEANUP'])
 const origins = new Set(['http', 'task', 'vue', 'window', 'promise'])
-const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save', 'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks', 'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export', 'diagnostics'])
+const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save', 'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks', 'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export', 'diagnostics', 'audit'])
 const exceptionNames = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'URIError', 'EvalError', 'DOMException'])
 const browserEvents = ['javascript_error', 'resize_observer', 'opaque_script', 'promise_rejection', 'vue_error'] as const
 type BrowserEvent = typeof browserEvents[number]

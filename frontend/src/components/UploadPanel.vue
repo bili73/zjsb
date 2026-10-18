@@ -76,7 +76,19 @@ const typeMeta: Partial<Record<UploadDocType, { icon: Component; desc: string }>
   XUEXIN_DIPLOMA_TABLE: { icon: Reading, desc: '仅学历证书电子注册备案表。' },
 }
 const selectedFiles = computed<File[]>(() => fileList.value.flatMap(item => (item.raw instanceof File ? [item.raw] : [])))
-const invalidReason = computed(() => !mixed.value && docType.value === 'TABLE' && selectedFiles.value.some(file => /\.pdf$/i.test(file.name) || file.type === 'application/pdf') ? '表格识别暂不接收PDF，请上传单张照片。' : (selectedFiles.value.length ? validateUpload(selectedFiles.value) : null))
+// 银行卡/表格不收 PDF：选中文件当下就提示，不等提交时才报。
+const isPdfFile = (file: File) => /\.pdf$/i.test(file.name) || file.type === 'application/pdf'
+const invalidReason = computed(() => {
+  const files = selectedFiles.value
+  if (!files.length) return null
+  if (!mixed.value && docType.value === 'TABLE' && files.some(isPdfFile)) return '表格识别暂不接收PDF，请上传单张照片。'
+  if (!mixed.value && docType.value === 'BANK_CARD' && files.some(isPdfFile)) return '银行卡请上传单张 JPG/PNG/HEIC 照片，不接收 PDF。'
+  if (mixed.value) {
+    const offender = entries.value.find(item => rows[item.uid!]?.type === 'BANK_CARD' && item.raw instanceof File && isPdfFile(item.raw))
+    if (offender) return `「${offender.name}」是 PDF：银行卡请上传单张 JPG/PNG/HEIC 照片，不接收 PDF。`
+  }
+  return validateUpload(files)
+})
 const entries = computed(() => fileList.value.filter(item => item.raw instanceof File && item.uid !== undefined))
 const unknownCount = computed(() => mixed.value ? entries.value.filter(item => !rows[item.uid!]?.type).length : 0)
 const hasMedical = computed(() => mixed.value ? entries.value.some(item => rows[item.uid!]?.type === 'MEDICAL_REPORT') : docType.value === 'MEDICAL_REPORT')
@@ -463,9 +475,9 @@ async function submit() {
 
       <el-alert v-if="invalidReason" type="warning" :closable="false" show-icon class="upload-invalid">{{ invalidReason }}</el-alert>
 
-      <div v-if="hasMedical" class="upload-row">
+      <div v-if="hasMedical && selectedFiles.length" class="upload-row">
         <el-switch v-model="abnormalOnly" :disabled="submitting" active-text="仅整理异常与待判定项" />
-        <span class="upload-hint">仅改变默认结果展示范围；复核和导出仍按完整结果检查，不承诺加速。</span>
+        <span class="upload-hint">只改变默认显示的项目范围；核对和导出仍按完整结果检查。</span>
       </div>
 
       <div class="upload-row upload-footer">
@@ -473,8 +485,8 @@ async function submit() {
         <div class="upload-actions">
           <el-button v-if="selectedFiles.length && !submitting" @click="clearFiles">一键清除</el-button>
           <el-button v-if="submitting" @click="cancelSubmit">取消上传</el-button>
-          <el-button type="primary" data-guide="upload-submit" :loading="submitting" :disabled="!canWrite || !catalogue.length || !!unknownCount || !!invalidReason" @click="submit">
-            {{ submitting ? '正在提交，请勿重复操作…' : `${mixed ? (targetBatch ? '统一追加' : '整包提交') : '开始识别'}（${selectedFiles.length || ''}）` }}
+          <el-button type="primary" data-guide="upload-submit" :loading="submitting" :disabled="!canWrite || !catalogue.length || !selectedFiles.length || !!unknownCount || !!invalidReason" @click="submit">
+            {{ submitting ? '正在提交，请勿重复操作…' : `${mixed ? (targetBatch ? '统一追加' : '整包提交') : '开始识别'}${selectedFiles.length ? `（${selectedFiles.length}）` : ''}` }}
           </el-button>
         </div>
       </div>

@@ -104,7 +104,7 @@ async function saveReview(body: ReviewBody) {
     result.value = fresh
   } catch (error) {
     if (isAbort(error)) return
-    if (error instanceof ApiFailure) { if (error.card.http_status === 401) emit('unauthorized'); if (error.card.http_status === 409) stale.value = true; reviewError.value = `${errorMessages[error.card.code]}（错误编号 ${error.card.error_id}）` }
+    if (error instanceof ApiFailure) { if (error.card.http_status === 401) emit('unauthorized'); if (error.card.http_status === 409) stale.value = true; reviewError.value = errorMessages[error.card.code] + (error.retryAfterSeconds === undefined ? `（错误编号 ${error.card.error_id}）` : `可在 ${error.retryAfterSeconds} 秒后重试。`) }
     else reviewError.value = '提交未确认，草稿已保留。请查任务状态，不要盲目重复提交。'
   } finally { saving.value = false }
 }

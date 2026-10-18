@@ -37,7 +37,7 @@ class SchedulerTests(unittest.TestCase):
                           task('report', 'MEDICAL_REPORT')]
         self.store, self.models, self.logger = Mock(), Mock(), Mock()
         self.store.cancelled.return_value = False
-        def claim(types):
+        def claim(types, *, lane=None):
             row = next((row for row in self.remaining if types is None or row['doc_type'] in types), None)
             if row:
                 self.remaining.remove(row)
@@ -57,6 +57,8 @@ class SchedulerTests(unittest.TestCase):
     def test_two_lanes_claim_independently_but_certificate_lane_stays_bounded(self):
         self.scheduler.poll()
         self.assertEqual({j.task['id'] for j in self.scheduler.jobs.values()}, {'cert-one', 'report'})
+        self.assertEqual([call.kwargs['lane'] for call in self.store.claim_next.call_args_list],
+                         ['certificate', 'medical'])
         self.scheduler.poll()
         self.assertEqual(len(self.scheduler.jobs), 2)
         self.assertEqual([t['id'] for t in self.remaining], ['cert-two'])
@@ -68,6 +70,7 @@ class SchedulerTests(unittest.TestCase):
         self.scheduler.poll()
         self.assertEqual(len(self.scheduler.jobs), 1)
         self.assertEqual(next(iter(self.scheduler.jobs.values())).task['id'], 'cert-one')
+        self.assertEqual(self.store.claim_next.call_args.kwargs, {'lane': 'all'})
         self.scheduler.close()
 
     def test_photo_tables_share_paddle_lane_and_wait_for_medical_work(self):

@@ -13,7 +13,7 @@ import type { Batch, BatchStatus, DocProfile, IdCardPairing, Task, TaskStatus } 
 import { errorMessages } from '../diagnostics.ts'
 import { entryNeedsReview, entryRunning } from '../monitor.ts'
 import type { BatchEntry, Monitor } from '../monitor.ts'
-import { batchOwnerLabel, expiryText, formatTime, taskProgressView } from '../presentation.ts'
+import { batchOwnerLabel, expiryText, fairQueueHint, formatTime, taskProgressView } from '../presentation.ts'
 import { groupBatchEntries, periodBounds } from '../batchCalendar.ts'
 import type { BatchPeriod } from '../batchCalendar.ts'
 
@@ -48,21 +48,20 @@ onUnmounted(() => { disposed = true; moreController?.abort(); actionController?.
 
 // Keyed by the id from monitor.order, not entry.batch, so optimistic entries
 // (batch still null right after upload) keep a stable identity too.
-const entries = computed(() => props.monitor.state.order
-  .filter(id => !props.monitor.state.dateRange || props.monitor.state.listedIds.includes(id))
+const entries = computed(() => props.monitor.state.listedIds
   .map(id => ({ id, entry: props.monitor.state.entries[id] }))
   .filter((item): item is { id: string; entry: BatchEntry } => item.entry !== undefined))
 const groups = computed(() => groupBatchEntries(entries.value, period.value))
+const hasQueuedTasks = computed(() => entries.value.some(({ entry }) => entry.tasks.some(task => task.status === 'QUEUED')))
 const missingTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, entry.tasks.filter(hasMissingRequiredFields)])))
 const disputedTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, entry.tasks.filter(hasExportDisputes)])))
 const visibleTasks = (id: string, tasks: Task[]) => tasks.filter(t =>
   !missingOnly[id] && !disputedOnly[id] || !!missingOnly[id] && hasMissingRequiredFields(t) || !!disputedOnly[id] && hasExportDisputes(t))
 const isTableEntry = (entry: BatchEntry) => entry.tasks.some(task => task.doc_type === 'TABLE')
-const hasMore = computed(() => props.monitor.state.listedIds.length < props.monitor.state.serverTotal)
 
 const expandedNames = computed<string[]>({
   get: () => props.monitor.state.order.filter(id => props.monitor.state.entries[id]?.expanded),
-  set: names => { props.monitor.state.order.forEach(id => props.monitor.setExpanded(id, names.includes(id))) },
+  set: names => { props.monitor.state.listedIds.forEach(id => props.monitor.setExpanded(id, names.includes(id))) },
 })
 
 const taskTagTypes: Record<TaskStatus, 'primary' | 'success' | 'warning' | 'danger' | 'info'> = {
@@ -98,12 +97,12 @@ function batchMeta(batchId: string) {
 const progressViews = computed(() => Object.fromEntries(entries.value.flatMap(({ entry }) =>
   entry.tasks.map(task => [task.task_id, taskProgressView(task)]))))
 
-async function loadMore() {
+async function changePage(page: number, size = props.monitor.state.pageSize) {
   if (loadingMore.value) return
   moreController = new AbortController()
   loadingMore.value = true
   try {
-    await props.monitor.loadMore(moreController.signal)
+    await props.monitor.changePage(page, moreController.signal, size)
   } catch (error) {
     if (isAbort(error)) return
     if (error instanceof ApiFailure) {
@@ -249,7 +248,6 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
       <div class="toolbar-spacer" />
       <span class="board-actions" data-guide="batch-refresh">
         <el-button :icon="RefreshRight" @click="monitor.start()">刷新</el-button>
-        <el-button v-if="hasMore" :loading="loadingMore" @click="loadMore">加载更早的批次</el-button>
       </span>
     </div>
 
@@ -263,6 +261,7 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
     />
 
     <div data-guide="batch-list" class="guide-batch-hint">展开批次查看文件、导出检查与本批次指引。</div>
+    <p v-if="hasQueuedTasks" class="guide-batch-hint">{{ fairQueueHint }}将鼠标移到“处理进度”可查看入队和实际开始时间。</p>
     <el-empty v-if="entries.length === 0" :description="anchor ? '该时间段暂无批次，可更换日期或查看全部日期。' : '暂无批次；切换到「上传识别」提交第一批文件。'" />
 
     <el-collapse v-else v-model="expandedNames" class="batch-collapse">
@@ -395,6 +394,9 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
       </el-collapse-item>
       </section>
     </el-collapse>
+    <el-pagination background :current-page="monitor.state.page" :page-size="monitor.state.pageSize" :total="monitor.state.serverTotal"
+      :page-sizes="[20, 50, 100]" :disabled="loadingMore || !!acting" layout="total, sizes, prev, pager, next, jumper" class="list-pager"
+      @update:current-page="changePage($event)" @update:page-size="changePage(1, $event)" />
     <el-dialog :model-value="!!appendTarget" title="补充人员材料" width="min(1000px, 94vw)" destroy-on-close @close="appendTarget = null" @closed="monitor.start()">
       <UploadPanel v-if="appendTarget" :target-batch="appendTarget" :api="api" :catalogue="catalogue" :monitor="monitor" :can-write="canWrite" @submitted="appendTarget = null" @preview="(files, tasks) => emit('preview', files, tasks)" @unauthorized="emit('unauthorized')" />
     </el-dialog>
@@ -404,6 +406,7 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
 <style scoped>
 .guide-batch-hint { margin: 8px 16px; font-size: 13px; color: var(--el-text-color-secondary); }
 .board-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.list-pager { justify-content: flex-end; flex-wrap: wrap; row-gap: 8px; margin-top: 16px; }
 .calendar-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .group-heading { margin: 0; padding: 12px 16px; font-size: 14px; background: var(--el-fill-color-light); }
 .group-heading span { margin-left: 12px; font-size: 12px; font-weight: normal; color: var(--el-text-color-secondary); }

@@ -45,3 +45,7 @@ Revocation does not undo committed operations or already-sent content. Internal 
 ## Consequences
 
 Each protected write adds a live session read on its existing connection; slow exports/previews/classification add one check after preparation. No write lock spans image encoding, OCR, workbook construction or process waiting. Revocation is effective at the next protected boundary, not retroactive. The login screen exposes connectivity only; engine details require login. Existing standalone launch probes authenticate before waiting on full runtime health and report401 as AUTH_FAILED rather than a false startup timeout. No schema, model queues or browser-routing framework is added.
+
+The [account operation audit](../feature/2026-10-16-account-operation-audit.md) adds administrator history. Administrator audit reads and exports inherit default authentication and revalidate live sessions before returning content.
+
+The [bounded HTTP write refinement](2026-10-16-bounded-http-writes.md) adds live authorization after admission waits and after staged file/workbook preparation. Moving expensive preparation outside writer locks never preserves a revoked session or bypasses final task/policy/package revision checks.

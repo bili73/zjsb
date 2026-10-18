@@ -73,7 +73,7 @@ class MigrationAtomicityTests(unittest.TestCase):
                 restarted = open_database(root)
                 try:
                     with restarted.connect() as c:
-                        self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0010')
+                        self.assertEqual(c.execute(text('SELECT version_num FROM alembic_version')).scalar_one(), '0012')
                         for table, (columns, rows) in before.items():
                             self.assertEqual(c.execute(text('SELECT ' + ','.join(columns) + ' FROM ' + table)).all(), rows)
                         self.assertEqual(c.exec_driver_sql('PRAGMA foreign_key_check').all(), [])
@@ -88,6 +88,49 @@ class MigrationAtomicityTests(unittest.TestCase):
 
     def test_0010_interruption_preserves_tasks_and_settings(self):
         self.interrupted_upgrade('0009', 'INSERT INTO retention_settings VALUES (1,7,0)')
+
+    def test_0011_interruption_rolls_back_audit_columns_without_rewriting_history(self):
+        self.interrupted_upgrade('0010', 'ALTER TABLE audit ADD COLUMN context_enc BLOB')
+
+    def test_0012_interruption_rolls_back_queue_columns_and_preserves_results(self):
+        self.interrupted_upgrade('0011', 'CREATE INDEX tasks_enqueue ON tasks(enqueue_seq)')
+
+    def test_0012_legacy_order_uses_rerun_update_without_inventing_enqueue_timestamps(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            engine = create_engine('sqlite:///' + str(root / 'tasks.sqlite3'))
+            config = Config()
+            config.set_main_option('script_location', str(ROOT / 'backend/migrations'))
+            with engine.begin() as c:
+                c.exec_driver_sql('BEGIN IMMEDIATE')
+                config.attributes['connection'] = c
+                command.upgrade(config, '0011')
+                c.execute(text("INSERT INTO batches(id,created_at,name_enc,owner_id) VALUES ('batch','2026-10-16',:blob,'owner')"),
+                          {'blob': b'unchanged batch'})
+                cases = [('rerun', 'QUEUED', '2026-01-01', '2026-10-16'),
+                         ('b', 'QUEUED', '2026-10-15', '2026-10-15'),
+                         ('a', 'QUEUED', '2026-10-15', '2026-10-15'),
+                         ('saved', 'NEED_REVIEW', '2026-10-01', '2026-10-16')]
+                for task, status, created, updated in cases:
+                    c.execute(text('''INSERT INTO tasks(id,batch_id,run_id,status,created_at,updated_at,expires_at,
+                        content_hash,doc_type,input_ref,meta_enc,options_enc,result_enc)
+                        VALUES (:id,'batch',:id,:status,:created,:updated,'2027-01-01',
+                        :id,'DIPLOMA','original reference',:blob,:blob,:blob)'''),
+                        dict(id=task, status=status, created=created, updated=updated, blob=b'original encrypted value'))
+                result = c.execute(text('SELECT * FROM tasks ORDER BY id'))
+                columns, before = ','.join(result.keys()), result.all()
+            engine.dispose()
+            for _ in range(2):
+                upgraded = open_database(root)
+                try:
+                    with upgraded.connect() as c:
+                        self.assertEqual(c.execute(text('SELECT ' + columns + ' FROM tasks ORDER BY id')).all(), before)
+                        self.assertEqual(c.execute(text("SELECT id FROM tasks WHERE status='QUEUED' ORDER BY enqueue_seq")).scalars().all(),
+                                         ['a', 'b', 'rerun'])
+                        self.assertEqual(c.execute(text('SELECT queued_at FROM tasks')).scalars().all(), [None] * 4)
+                        self.assertEqual(c.execute(text('SELECT COUNT(*) FROM document_queue_cursors')).scalar_one(), 0)
+                finally:
+                    upgraded.dispose()
 
     def test_0009_interruption_rolls_back_preferences_without_changing_existing_records(self):
         self.interrupted_upgrade('0008', "UPDATE alembic_version SET version_num='0009' WHERE alembic_version.version_num = '0008'")

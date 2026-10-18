@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-16T01:20:02.095Z",
+  "generatedAt": "2026-10-18T07:16:04.428Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 108,
+    "activeNotes": 125,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 646,
+    "relations": 691,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 103,
+      "implemented": 120,
       "rejected": 3
     },
     "staleNotes": []
@@ -60,7 +60,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep current recognition optimization independent of the host backend. When the Mac is available, qualify its native Apple GPU route using the existing frozen evidence and separate measurements. The official GLM MLX guide and Paddle Apple S",
@@ -147,7 +147,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Use a single shared HR workbench with one or two named accounts. Keep username/password login and server-side sessions. Create or reset accounts through a deployment command; omit public registration, email recovery and a user-management ap",
@@ -250,7 +250,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "The launcher exposes the lightweight local UI/service first and starts an independent runtime worker. It sequentially loads and warms GLM-OCR then PaddleOCR-VL in their existing isolated environments. Both remain resident in default dual_re",
@@ -338,7 +338,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.5,
+        "monthsSinceVerify": 0.6,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "PaddlePaddle/PaddleOCR-VL-1.6 is installed at pinned revision c5630abae1d940eafe0697512a0325494b02ab42 in models/paddleocr-vl-1.6 and a separate .venvs/paddleocr-vl-1.6 environment with native Transformers 5.17.0 and Torch 2.10.0+cu128. Ori",
@@ -402,6 +402,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
@@ -409,20 +410,25 @@
         "archived/feature/2026-10-08-temporary-recognition-workbench.md",
         "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
         "implemented/feature/2026-10-14-adaptive-generic-forms.md",
-        "implemented/architecture/2026-10-14-production-dual-residency.md"
+        "implemented/architecture/2026-10-14-production-dual-residency.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
       ],
       "citedBy": [
         "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/architecture/2026-10-14-production-dual-residency.md",
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-10-measured-task-progress.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
         "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
         "implemented/feature/2026-10-14-adaptive-generic-forms.md",
+        "implemented/testing/2026-10-16-http-concurrency-capacity.md",
+        "implemented/testing/2026-10-16-live-account-fairness.md",
         "rejected/feature/2026-10-09-certificate-field-localization.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md"
       ],
@@ -434,7 +440,7 @@
         "rule": "最近复核 2026-10-08"
       },
       "summary": "When both models complete serial startup successfully, use two bounded document lanes: one certificate lane (DIPLOMA and DEGREE_CERT) and one medical lane, each with at most one supervised CPU task process. Single-resident or startup-degrad",
-      "bodySha256": "dfc57b0d2ac68b3c",
+      "bodySha256": "17c8c9c32980e4a8",
       "lines": {
         "title": 1,
         "status": 3,
@@ -459,19 +465,19 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 31
+            "line": 33
           },
           {
             "title": "Testing",
-            "line": 39
+            "line": 41
           },
           {
             "title": "Consequences",
-            "line": 48
+            "line": 50
           },
           {
             "title": "Generic form extension (2026-10-14)",
-            "line": 52
+            "line": 54
           }
         ]
       },
@@ -557,6 +563,89 @@
       "updateHint": "编辑 .agents/notes/implemented/architecture/2026-10-14-production-dual-residency.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+      "path": ".agents/notes/implemented/architecture/2026-10-16-account-fair-document-queue.md",
+      "anchor": "// Note: .agents/notes/implemented/architecture/2026-10-16-account-fair-document-queue.md",
+      "title": "Rotate document lanes fairly between uploading accounts",
+      "lifecycle": "implemented",
+      "class": "architecture",
+      "date": "2026-10-16",
+      "scope": [
+        "backend/ocr_app/task_store.py",
+        "backend/ocr_app/task_scheduler.py",
+        "backend/migrations",
+        "tests",
+        "frontend/src",
+        "frontend/tests",
+        "frontend/public/help",
+        "openapi.yaml",
+        "SPEC.md",
+        "ARCHITECTURE.md",
+        "RUNTIME.md",
+        "FRONTEND_FIELDS.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+        "implemented/testing/2026-10-16-live-account-fairness.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/testing/2026-10-16-live-account-fairness.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "Keep one active document per lane and one in-flight request per model. At each document boundary select the next waiting account on a stable ring of immutable batch owner IDs, using a persisted cursor per lane. An empty cursor starts at the",
+      "bodySha256": "f27ffd8e589a3239",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 27
+          },
+          {
+            "title": "Testing",
+            "line": 35
+          },
+          {
+            "title": "Consequences",
+            "line": 43
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/architecture/2026-10-16-account-fair-document-queue.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
       "path": ".agents/notes/implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
       "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
@@ -610,7 +699,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.5,
+        "monthsSinceVerify": 0.6,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The implementation restores native medical structure and repairs the confirmed certificate mapping defects under the user's approved scope. Both deployed recognition models, the production default, serial GPU ownership, confidence semantics",
@@ -692,7 +781,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.5,
+        "monthsSinceVerify": 0.6,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The small standard-library OTSL-to-HTML decoder runs before existing medical column mapping. It follows official PaddleX token semantics, escapes cell text, preserves horizontal and vertical spans, and never uses field references to repair ",
@@ -1022,7 +1111,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep existing 生化检验报告单 source attribution and its liver-name/abbreviation whitelist; never treat every biochemical or hepatitis measurement as liver function. When liver_function has no abnormal summary or explicit conclusion, serialize the ",
@@ -1113,7 +1202,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Add observed signatory boundaries including 院长 with spaced-label forms; these delimiters do not restore removed signatory fields. Rank an explicit printed 校名/学校名称 field above an unlabelled cover/title candidate. Distinct equally authoritati",
@@ -1211,7 +1300,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Automatically populate liver_function only with confirmed abnormal source-backed measurements attributed to the liver group. Keep actual abnormal names, results, units and diagnoses; ignore normal/unknown measurements and normal or unclassi",
@@ -1299,7 +1388,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "When no explicit institution value or conflict already exists, accept the complete observed 普潓/普惠年华健康体检中心 branch line only on page one and within the observed lower-right personal-information band (normalized x-start at least .35, y-start .",
@@ -1391,7 +1480,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Summarize all six groups from measured rows, independently of a printed conclusion. Keep confirmed abnormal results and conflicts ahead of normal fallback. Allow a source-backed, nonempty A-grade UNKNOWN row as report-level normal evidence,",
@@ -1472,7 +1561,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "For blood_routine, urine_routine, ecg, dr_imaging and abdominal_ultrasound, derive 未见异常 when the observed group contains at least one eligible measured row, every group row has a real source and nonempty result, every row is NORMAL with a r",
@@ -1558,7 +1647,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The application has no experimental certificate helper, endpoint or added positioning dependencies. Field-level positioning/source controls appear only for medical reports; all document types retain whole-page image preview and manual editi",
@@ -1644,7 +1733,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Extend native table recovery with one bounded adjacent-page context for an observed split header: a qualified medical header at the prior page bottom ends in 风险, and the aligned next-page top header contains only 等级 in its last cell. Requir",
@@ -1728,7 +1817,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Initialize the calendar with today's Shanghai civil date and immediately filter the server-side batch list to that day. Day/week/month select the period containing the chosen anchor, so each view shows only that selected period. Clearing th",
@@ -1796,7 +1885,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The entire illustration fits proportionally inside a centered viewer capped at 1000px width and 86 percent of the viewport height. Image scrolling and its explanatory text are removed. The existing cross, Escape, backdrop dismissal and read",
@@ -1862,7 +1951,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Open an illustration in one native modal dialog in the same manual document. Keep a visible 44px close button outside the scrollable image area, support native Escape and backdrop dismissal, and show the image at its original dimensions in ",
@@ -1944,7 +2033,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The pipeline publishes preparation checkpoints and one completed physical OCR-region checkpoint after retries, preserving the current worker callback signature, polling, run/revision fences and180-second deadline. It stays in OCR across pag",
@@ -2013,7 +2102,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "SourcePreview keeps the latest medical source as a cancellable navigation intent. After its image loads, it scrolls to its highlight or existing whole-page fallback. Page-load and preview-size changes coalesce into animation-frame alignment",
@@ -2090,7 +2179,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Element Plus and the existing polling remain. A measured bar appears only during OCR with a known positive region total, accompanied by literal processed/total counts. Queue has no activity spinner; other active phases use the existing Load",
@@ -2158,7 +2247,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The existing latest-selection intent, lazy loading, layout observation, scheduled-frame cancellation and manual-browsing cancellation remain active. Every alignment, including one triggered by page expansion, requests native smooth scrollin",
@@ -2229,7 +2318,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Retain the existing evidence-bound extraction. Split a closed gender token only when followed by an explicit demographic label present in the current profile. Preserve the original source and genuine disagreements. Do not infer demographics",
@@ -2317,7 +2406,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD uses a dedicated classifier path, selected by an optional internal doc_type keyword on prepare_image. Bounded CPU OpenCV contour analysis operates on a maximum1000-pixel thumbnail: blurred gray dark Otsu, saturation Otsu and Canny",
@@ -2393,7 +2482,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Share school whitespace normalization and signature boundaries between diploma and degree extraction. In degrees, an unlabelled institution immediately adjacent to a signing title within the same text block has the same authority as an expl",
@@ -2471,7 +2560,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Lock the complete upload/confirmation operation against reentry, capture the client, target/version, mode, files and types before asking the attribution question, and cancel its continuation after unmount, abort, identity change or selectio",
@@ -2543,13 +2632,14 @@
       "citedBy": [
         "implemented/bug-fix/2026-10-09-medical-measured-group-summaries.md",
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
-        "implemented/bug-fix/2026-10-12-review-repairs.md"
+        "implemented/bug-fix/2026-10-12-review-repairs.md",
+        "implemented/feature/2026-10-16-numbered-list-pagination.md"
       ],
       "lastVerified": "2026-10-12",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "The user approves 已识别明细未见异常 only for normal summaries derived from measured rows without a printed conclusion. Explicit source conclusions and manual values keep their original meaning. Read/export projections apply the rule without rewriti",
@@ -2649,7 +2739,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Require an authorization callback for save_configuration and execute it inside BEGIN IMMEDIATE before reading or changing policy, including no-op saves. The HTTP route supplies the existing live administrator-session check; trusted internal",
@@ -2729,25 +2819,29 @@
         "implemented/feature/2026-10-12-thirty-day-single-session.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
-        "implemented/feature/2026-10-13-source-region-ocr-copy.md"
+        "implemented/feature/2026-10-13-source-region-ocr-copy.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-review-repairs.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
         "implemented/feature/2026-10-09-web-password-sessions.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
         "implemented/feature/2026-10-12-thirty-day-single-session.md",
         "implemented/feature/2026-10-13-source-region-ocr-copy.md",
-        "implemented/feature/2026-10-15-admin-file-retention.md"
+        "implemented/feature/2026-10-15-admin-file-retention.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md"
       ],
       "lastVerified": "2026-10-13",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Business endpoints inherit a protected APIRouter default principal dependency, separate from the explicitly public login route. Keep administrator/operator/viewer and immutable batch ownership semantics. Reuse the existing session/legacy-ke",
-      "bodySha256": "d9f129c6e7f1c923",
+      "bodySha256": "8d5575dd70d49666",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2831,7 +2925,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Region OCR reuses the native JobProcess supervisor for the short-lived binary protocol. The ten-second execution budget, bounded output and one in-flight request remain; whole-job cleanup precedes slot release. Job cleanup has its existing ",
@@ -3063,7 +3157,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Use the modern Clipboard API when available. Otherwise synchronously attempt selection-based copy inside the user click and active dialog, with temporary text removed and focus restored. A rejected modern write may attempt the same fallback",
@@ -3152,7 +3246,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Exclude QUEUED and active processing states from automatic expiry and use the same set for retention impact counts. Preserve original upload deadlines, explicit cancellation and eventual expiry after processing stops. Do not expand ACTIVE i",
@@ -3240,7 +3334,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Keep ordinary save as the authorized acknowledgment interaction. Confirm only targets with a selected value: medical findings require a live result association and nonempty result, and medical items require a nonempty result with selected o",
@@ -3325,7 +3419,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Vue errors use the existing diagnostic path and retain console behavior. Browser ErrorEvent records prefer parsed stack positions and fall back to bounded numeric event coordinates. Exact known ResizeObserver and opaque script messages map ",
@@ -3369,6 +3463,152 @@
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+      "title": "Bound HTTP admission and shorten durable write transactions",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-16",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "frontend/public/help",
+        "frontend/tests",
+        "tests",
+        "scripts/probe_http_load.py",
+        "openapi.yaml",
+        "SPEC.md",
+        "ARCHITECTURE.md",
+        "FRONTEND_FIELDS.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/simplification/2026-10-16-account-action-audit.md",
+        "implemented/testing/2026-10-16-http-concurrency-capacity.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/simplification/2026-10-16-account-action-audit.md",
+        "implemented/testing/2026-10-16-http-concurrency-capacity.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "Keep SQLite WAL/FULL and the five-second busy timeout. Centralize short write-transaction handling for TaskStore and Accounts, translating only SQLite busy to an explicit retryable 503; never retry a transaction body. HTTP upload/classifica",
+      "bodySha256": "2f3a30569032c171",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 30
+          },
+          {
+            "title": "Verification scope",
+            "line": 37
+          },
+          {
+            "title": "Verification evidence",
+            "line": 41
+          },
+          {
+            "title": "Consequences",
+            "line": 49
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-16-bounded-http-writes.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md",
+      "title": "Source preview scroll performance and bbox overlay positioning",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-18",
+      "scope": [
+        "frontend/src/components/SourcePreview.vue"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [],
+      "lastVerified": "2026-10-18",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-18"
+      },
+      "summary": "- All page placeholders share one A4 aspect-ratio reservation: .img-wrap, .page-holder, .page-skeleton get aspect-ratio: 210 / 297, and .page-image fills the reserved box (height: 100%). The list reaches final height before any bytes arrive",
+      "bodySha256": "aa40a030f874af6a",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 15
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 22
+          },
+          {
+            "title": "Verification",
+            "line": 28
+          },
+          {
+            "title": "Consequences",
+            "line": 32
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "path": ".agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -3396,6 +3636,7 @@
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md",
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
         "implemented/bug-fix/2026-10-10-measured-task-progress.md",
         "implemented/feature/2026-10-10-delete-recognized-batches.md",
@@ -3418,13 +3659,15 @@
         "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
         "implemented/feature/2026-10-09-bank-auto-recognition.md",
-        "implemented/feature/2026-10-12-person-material-packages.md"
+        "implemented/feature/2026-10-12-person-material-packages.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
       ],
       "citedBy": [
         "proposed/architecture/2026-10-08-mac-studio-inference-service.md",
         "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md",
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/bug-fix/2026-09-30-paddle-otsl-table-decoding.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
@@ -3432,6 +3675,7 @@
         "implemented/bug-fix/2026-10-10-measured-task-progress.md",
         "implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md",
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
@@ -3457,11 +3701,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The later administrator file retention decision replaces this note's fixed seven-day duration and client-side expiry fallback. Administrators select 7/15/30 days or never for existing and future files after a confirmation dialog; original u",
-      "bodySha256": "46dde71dba90c33a",
+      "bodySha256": "a4ba9d9226ed8561",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3486,39 +3730,39 @@
           },
           {
             "title": "Decision audit",
-            "line": 33
+            "line": 35
           },
           {
             "title": "Alternatives considered",
-            "line": 45
+            "line": 47
           },
           {
             "title": "Testing",
-            "line": 51
+            "line": 53
           },
           {
             "title": "Consequences",
-            "line": 64
+            "line": 66
           },
           {
             "title": "Related verification",
-            "line": 70
+            "line": 72
           },
           {
             "title": "Current contract extension",
-            "line": 81
+            "line": 83
           },
           {
             "title": "Batch presentation extension",
-            "line": 86
+            "line": 88
           },
           {
             "title": "Batch presentation verification",
-            "line": 93
+            "line": 95
           },
           {
             "title": "Current refinement",
-            "line": 98
+            "line": 100
           }
         ]
       },
@@ -3576,7 +3820,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "Diagnostics initialize before launcher configuration and business imports. One structured JSONL writer per process instance rotates at 10 MiB across five files. The verified automatic archive extension provides severity, administrator searc",
@@ -3683,7 +3927,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Result projection repair limits bank-profile completion to actual result objects. Task summaries do not acquire fabricated empty fields; legacy results retain current profile fields and labels.",
@@ -3802,7 +4046,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "- Stack: Vue 3.5 + TypeScript + Vite, Element Plus 2.14 full import with zh-cn locale, pinned exact dependency versions. Composables only (no Pinia, no vue-router), matching ARCHITECTURE.md's composable-first stance for this local tool. - C",
@@ -4055,7 +4299,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Review binds task_id, run_id and expected_revision in a short atomic transaction. Patches accept only editable business fields, current item/finding/member IDs and explicit acceptance of currently acceptable issues. Keep raw OCR/source and ",
@@ -4365,7 +4609,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Provision HRSSC as admin using hidden terminal input and the existing Argon2id account store. Account names remain case-insensitive. Change the creation/reset minimum to eight characters; preserve the 128-character maximum and login throttl",
@@ -4456,7 +4700,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD accepts decoded single photographs, including full front faces, and cropped rows. Upload does not call a recognizer; encrypted source persistence and independent per-file tasks match the other document families. PDF remains unsupp",
@@ -4536,6 +4780,7 @@
         "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-10-16-numbered-list-pagination.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
         "implemented/feature/2026-10-10-delete-recognized-batches.md",
         "implemented/bug-fix/2026-10-09-selected-calendar-period.md"
@@ -4552,11 +4797,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Default to day-grouped all-date browsing. Day/week/month controls change grouping, and a corresponding date/week/month picker selects a server-side creation-date range; clearing it restores all dates. Use Shanghai UTC+8 civil dates and Mond",
-      "bodySha256": "ddbeba43c5cce347",
+      "bodySha256": "52ec92caa13d2142",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4657,7 +4902,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Replace the technical workbook with business worksheets grouped by material type. A document row contains its latest saved field values in profile order with Chinese labels, plus a readable source filename to distinguish repeated names/mate",
@@ -4751,7 +4996,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "All three workbench download actions use Chinese material labels and a Shanghai UTC+8 export-start timestamp: 体检报告_20261009_151530.xlsx. Combine distinct types with + for a mixed selection; unknown or missing types use 识别结果 without copying ",
@@ -4854,7 +5099,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "The user approves the field/extraction/review/export plan and explicitly defines the project count as the count of the body 本次体检项目意义 catalogue. Keep that editable catalogue as supporting evidence. Derive a read-only integer exam_project_cou",
@@ -4966,7 +5211,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Add an additive SQLite migration for named users, hashed opaque sessions and login throttling. Deployment operators create/change/disable accounts with a masked-password CLI; no default password, registration or browser account administrati",
@@ -5043,7 +5288,8 @@
         "implemented/feature/2026-10-10-embedded-help-integration.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
-        "implemented/feature/2026-10-10-delete-recognized-batches.md"
+        "implemented/feature/2026-10-10-delete-recognized-batches.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-review-repairs.md",
@@ -5053,17 +5299,18 @@
         "implemented/feature/2026-10-10-embedded-help-integration.md",
         "implemented/feature/2026-10-10-web-user-manual.md",
         "implemented/feature/2026-10-12-thirty-day-single-session.md",
-        "implemented/feature/2026-10-14-account-workbench-layout.md"
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md"
       ],
       "lastVerified": "2026-10-10",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Extend administrator management with enable/disable, deletion and password reset for other accounts. Add a self-service change-password dialog to the logged-in user menu for all roles, requiring the current password and confirmation of the ",
-      "bodySha256": "d6ab5812fac1767c",
+      "bodySha256": "8c8772dd049ce027",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5133,9 +5380,11 @@
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
-        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md"
       ],
       "citedBy": [
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md",
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
         "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
@@ -5144,17 +5393,19 @@
         "implemented/feature/2026-10-12-person-material-packages.md",
         "implemented/feature/2026-10-12-thirty-day-single-session.md",
         "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
-        "implemented/feature/2026-10-14-account-workbench-layout.md"
+        "implemented/feature/2026-10-14-account-workbench-layout.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md",
+        "implemented/feature/2026-10-16-numbered-list-pagination.md"
       ],
       "lastVerified": "2026-10-10",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Persist an immutable owner ID on each batch, inherited by every task. New ownership comes only from the authenticated uploader. Backfill existing batches only when every surviving task has creation audit evidence with one shared actor; ambi",
-      "bodySha256": "bfe438cb36711e67",
+      "bodySha256": "f8d6d8a2ba593e21",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5240,7 +5491,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "An administrator-only settings tab provides authenticated GET/PUT endpoints under /admin/required-fields. The application persists document-type overrides and one monotonic revision in a small SQLite settings table; default absence preserve",
@@ -5330,7 +5581,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "DELETE /batches/{batch_id} accepts a complete task/run/revision snapshot. Within the same BEGIN IMMEDIATE transaction, recheck the current administrator session, batch membership, allowed states and each version. Only NEED_REVIEW, COMPLETED",
@@ -5405,7 +5656,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Preserve the concurrent HelpDrawer integration and qualify the current build with fresh synthetic real-HTTP account acceptance. The drawer embeds the same generic static manual in an iframe and unmounts its frame when closed; opening/closin",
@@ -5475,7 +5726,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The later administrator file retention decision replaces this note's fixed seven-day duration and client-side expiry fallback. Administrators select 7/15/30 days or never for existing and future files after a confirmation dialog; original u",
@@ -5551,7 +5802,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "A 使用说明 entry beside 诊断 in the authenticated workbench header is available to every account role. The initial separate-tab navigation is partially replaced by the later embedded-help integration, which owns the current drawer interaction and",
@@ -5641,7 +5892,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "The CPU helper uses the Apache-2.0 PaddlePaddle PP-LCNet_x1_0_doc_ori official ONNX export, pinned to revision 7330ab7039123e46af2dc03154b9969aa412c61d and SHA256 af9a0a4f317ff0709ce752067807f819cb15d883f8ecad89f28df1c6ee2d9c92. Each view f",
@@ -5720,7 +5971,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Treat the back as an optional material. Preserve independent ID_CARD_FRONT tasks and their own required fields; no back upload is needed for completion or export. Keep missing_back as a compatible presence state but display 国徽面未上传（可选，可仅识别人像",
@@ -5817,7 +6068,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "The later administrator file retention decision replaces this note's fixed seven-day duration and client-side expiry fallback. Administrators select 7/15/30 days or never for existing and future files after a confirmation dialog; original u",
@@ -5902,7 +6153,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Person-package exports use 人员信息总表 instead of 人员材料总览 as their first sheet. Personnel name and naming status come first, followed by every current profile field of each selected material type, and then package source/count/candidate metadata.",
@@ -6017,7 +6268,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Represent package intent independently of the confirmed person name using an additive batch flag. Backfill existing explicitly named packages only; leave ordinary and historical unassigned batches unchanged. Mixed file_types creation means ",
@@ -6117,7 +6368,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Offer explicit 按人员整理 and 按类型批量 modes; the chosen primary workflow is the person mode, while preserving existing type-batch uploads. A person enters the name once, chooses mixed files together, reviews a list containing thumbnail/file name a",
@@ -6196,22 +6447,24 @@
         "implemented/feature/2026-10-09-web-password-sessions.md",
         "implemented/feature/2026-10-10-account-lifecycle-management.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
-        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
         "implemented/feature/2026-10-09-web-password-sessions.md",
-        "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md"
+        "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md"
       ],
       "lastVerified": "2026-10-12",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "New successful logins issue a random token with thirty-day absolute validity (30243600 seconds), with matching Cookie Max-Age. Polling/restoration does not extend expiry. Keep hashed server-side tokens, HttpOnly/SameSite/CSRF, secure HTTPS ",
-      "bodySha256": "5305d0406c54efc1",
+      "bodySha256": "84de7184ade74b03",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6291,7 +6544,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "The field-button placement and automatic draft application described below are the original decision, partially replaced by source-region text copying. The current component is RegionOcrDialog.vue; the source toolbar opens general transcrip",
@@ -6384,7 +6637,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "1. 先证明真实样本可以恢复，再接入业务",
@@ -6488,7 +6741,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "A small deterministic browser helper extracts explicit four-digit-year Chinese dates from the current editable OCR text. Accept Arabic/full-width digits and common Chinese digit/year and ten-based month/day notation; whitespace between reco",
@@ -6560,7 +6813,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "For materials with trusted corrected pages (ocrEnabled), clicking a source page image opens the region OCR dialog in a new cinema variant: a fullscreen dark backdrop (82% black modal mask, like the retired stock viewer) with the corrected p",
@@ -6642,7 +6895,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Put a labelled camera button in SourcePreview's toolbar. It opens the existing bounded page/rectangle dialog at the most visible corrected page, with manual page selection. OCR text appears in the same dialog as an editable textarea. Copy a",
@@ -7149,7 +7402,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Keep required-value and table-structure gates. Add one server projection for explicit number-length warnings, current format/checksum failures and unresolved recognition conflicts. Uncalibrated confidence, no official lookup and uncovered r",
@@ -7319,7 +7572,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Add INTERVIEW_FORM with exactly five initial fields: name (姓名), gender (性别), age (年龄), id_number (身份证号) and mobile_number (手机号). All are required by default and remain editable through the existing administrator required-field policy. Prese",
@@ -7486,7 +7739,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "The ordinary non-table review editor sends confirm_export_disputes=true with its existing version-bound save. Apply all edits and current validation first, then acknowledge every remaining confirmable dispute against that resulting value/co",
@@ -7637,23 +7890,25 @@
         "implemented/feature/2026-10-10-progress-detail-and-retention-display.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
         "implemented/feature/2026-10-10-configurable-required-fields.md",
-        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-10-progress-detail-and-retention-display.md",
-        "implemented/feature/2026-10-12-person-material-packages.md"
+        "implemented/feature/2026-10-12-person-material-packages.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md"
       ],
       "lastVerified": "2026-10-15",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Queued-work recovery clarifies automatic expiry: QUEUED and processing states are both protected and counted as deferred. Completion, failure or cancellation restores eligibility using the original upload deadline. ACTIVE remains reserved f",
-      "bodySha256": "5766487ac206c36b",
+      "bodySha256": "463b7b7917d2e399",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7724,7 +7979,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "目标恢复细节见审查修复：目标隐藏、移除或被新 DOM 替换时重置解析状态，稳定后重新绑定正确高亮；移除的旧节点立即解绑，保留既有作用域、退出和草稿保护边界。",
@@ -7810,7 +8065,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Diagnostic recovery and scan bounds extends this design with awaited thread-pool HTTP logging, per-file maintenance isolation and explicit partial-query/ZIP metadata. Damaged sources remain intact while valid records/files remain accessible",
@@ -7879,23 +8134,25 @@
       "cites": [
         "implemented/simplification/2026-10-15-serious-diagnostic-query.md",
         "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
-        "implemented/feature/2026-09-30-local-diagnostics.md"
+        "implemented/feature/2026-09-30-local-diagnostics.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
         "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md",
         "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
       ],
       "lastVerified": "2026-10-15",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Default and invalid OCR_LOG_LEVEL values resolve to ERROR, retaining ERROR and CRITICAL. Explicit existing troubleshooting overrides remain available. The original five-level product lookup is narrowed by the serious-query restriction; the ",
-      "bodySha256": "390ed206963621f8",
+      "bodySha256": "13f20401c75b2c3b",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7972,7 +8229,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Use the first valid, trimmed, nonempty candidate in the existing upstream ranking. Skip candidates with control characters or more than 200 characters. Preserve all original candidates and existing OCR titles. Saved human tables remain auth",
@@ -8016,6 +8273,285 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-15-table-title-suggestions-and-untitled-export.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-16-account-operation-audit.md",
+      "path": ".agents/notes/implemented/feature/2026-10-16-account-operation-audit.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-16-account-operation-audit.md",
+      "title": "Trace account and material operations through administrator audit",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-16",
+      "scope": [
+        "backend/ocr_app",
+        "backend/migrations",
+        "frontend/src",
+        "frontend/public/help",
+        "tests",
+        "frontend/tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "RUNTIME.md",
+        "FRONTEND_FIELDS.md",
+        "ARCHITECTURE.md",
+        "IMPLEMENTATION_PLAN.md",
+        "scripts/probe_operation_audit_browser.cjs"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/simplification/2026-10-16-account-action-audit.md",
+        "implemented/feature/2026-10-10-account-lifecycle-management.md",
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/feature/2026-10-12-thirty-day-single-session.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+        "implemented/feature/2026-10-15-admin-file-retention.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/feature/2026-10-10-account-lifecycle-management.md",
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/feature/2026-10-12-thirty-day-single-session.md",
+        "implemented/feature/2026-10-15-admin-file-retention.md",
+        "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+        "implemented/simplification/2026-10-16-account-action-audit.md",
+        "implemented/testing/2026-10-16-http-concurrency-capacity.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "The event scope, per-material granularity and review comparison UI below are partially superseded by the approved concise account actions decision. Identity, transaction, permission and migration decisions remain applicable.",
+      "bodySha256": "d4b8ac25ee76cca6",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related decisions",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 29
+          },
+          {
+            "title": "Testing",
+            "line": 35
+          },
+          {
+            "title": "Windows activation evidence",
+            "line": 41
+          },
+          {
+            "title": "Consequences",
+            "line": 47
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-16-account-operation-audit.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-16-accounts-panel-restyle.md",
+      "path": ".agents/notes/implemented/feature/2026-10-16-accounts-panel-restyle.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-16-accounts-panel-restyle.md",
+      "title": "Accounts panel rebuilt as a creation toolbar plus a list section",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-16",
+      "scope": [
+        "frontend/src/components/AccountManagement.vue"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-16-numbered-list-pagination.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-16-numbered-list-pagination.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "The presentation and full-list account operations remain; paging follows direct numbered pagination:",
+      "bodySha256": "384ff0ad97f87d88",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 20
+          },
+          {
+            "title": "Verification",
+            "line": 25
+          },
+          {
+            "title": "Consequences",
+            "line": 29
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-16-accounts-panel-restyle.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md",
+      "path": ".agents/notes/implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md",
+      "title": "Audit panel rebuilt as a single-row filter toolbar",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-16",
+      "scope": [
+        "frontend/src/components/AuditPanel.vue"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-16-numbered-list-pagination.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-16-numbered-list-pagination.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "The toolbar presentation remains in place; pagination is now governed by direct numbered pagination:",
+      "bodySha256": "78af6354afa794d8",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Verification",
+            "line": 28
+          },
+          {
+            "title": "Consequences",
+            "line": 32
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-16-batch-expanded-toolbar-one-row.md",
+      "path": ".agents/notes/implemented/feature/2026-10-16-batch-expanded-toolbar-one-row.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-16-batch-expanded-toolbar-one-row.md",
+      "title": "Batch expanded toolbar consolidated to one row with exclusive filter tags",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-16",
+      "scope": [
+        "frontend/src/components/BatchBoard.vue",
+        "frontend/src/components/ExportControls.vue",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "- New .batch-actions row in BatchBoard: ExportControls first, then OperationGuide (本批次指引), then the admin 删除批次 button — one adjacent cluster in the requested order (an initial flex-spacer variant that pushed the right group to the row edge ",
+      "bodySha256": "61525a602a80f862",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 17
+          },
+          {
+            "title": "Verification",
+            "line": 22
+          },
+          {
+            "title": "Consequences",
+            "line": 26
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-16-batch-expanded-toolbar-one-row.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-10-16-detail-page-declutter.md",
       "path": ".agents/notes/implemented/feature/2026-10-16-detail-page-declutter.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-10-16-detail-page-declutter.md",
@@ -8042,7 +8578,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "- ResultView: field-line 待核对/核对项 tags and 置信度 span removed; medical summary-note alert removed (the medical guide step carries the same completeness caveat verbatim); items-table 置信度 and 核对 columns removed; 仅看待核对 checkbox and its BMI small ",
@@ -8082,6 +8618,275 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-16-detail-page-declutter.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-16-numbered-list-pagination.md",
+      "path": ".agents/notes/implemented/feature/2026-10-16-numbered-list-pagination.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-16-numbered-list-pagination.md",
+      "title": "Direct numbered pagination for batches, audit and accounts",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-16",
+      "scope": [
+        "scripts/probe_numbered_pagination_browser.cjs",
+        "backend/ocr_app/audit.py",
+        "backend/ocr_app/routes.py",
+        "frontend/src",
+        "frontend/tests",
+        "tests/test_operation_audit.py",
+        "scripts/probe_operation_audit_browser.cjs",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "SPEC.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md",
+        "implemented/feature/2026-10-16-accounts-panel-restyle.md",
+        "implemented/simplification/2026-10-16-account-action-audit.md",
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/bug-fix/2026-10-12-qualified-normal-and-refresh-retry.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-09-batch-calendar-browser.md",
+        "implemented/feature/2026-10-16-accounts-panel-restyle.md",
+        "implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "The three lists use the installed Element Plus pagination control. Keep batch/audit defaults at 50 and accounts at 20, with 20/50/100 choices. Audit accepts page/page_size and returns items/total/page/page_size; legacy cursor/limit calls an",
+      "bodySha256": "52bb9cb49c434910",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related decisions",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Verification",
+            "line": 28
+          },
+          {
+            "title": "Consequences",
+            "line": 34
+          },
+          {
+            "title": "Windows activation — 2026-10-16",
+            "line": 38
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-16-numbered-list-pagination.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-16-scroll-jump-buttons.md",
+      "path": ".agents/notes/implemented/feature/2026-10-16-scroll-jump-buttons.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-16-scroll-jump-buttons.md",
+      "title": "Floating scroll navigation (back to top / jump to bottom)",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-16",
+      "scope": [
+        "frontend/src/App.vue",
+        "frontend/src/components/BatchBoard.vue",
+        "frontend/src/components/AccountManagement.vue"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "- App shell gains el-backtop (right 32 / bottom 48, default 200px visibility) plus a companion 跳转到底部 circular button stacked above it, styled after el-backtop (white circle, primary arrow, hover tint). The bottom button appears once the pag",
+      "bodySha256": "c60afc738a223ad9",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 16
+          },
+          {
+            "title": "Verification",
+            "line": 21
+          },
+          {
+            "title": "Consequences",
+            "line": 25
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-16-scroll-jump-buttons.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-18-review-usability-fixes-batch-b.md",
+      "path": ".agents/notes/implemented/feature/2026-10-18-review-usability-fixes-batch-b.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-18-review-usability-fixes-batch-b.md",
+      "title": "Review usability fixes from the 2026-10-18 visual audit (batch B)",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-18",
+      "scope": [
+        "frontend/src/components/TableReview.vue",
+        "frontend/src/components/AccountManagement.vue",
+        "frontend/src/components/ReviewEditor.vue",
+        "frontend/src/components/RequiredFieldSettings.vue",
+        "frontend/src/components/RetentionSettings.vue",
+        "frontend/src/components/UploadPanel.vue"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [],
+      "lastVerified": "2026-10-18",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-18"
+      },
+      "summary": "- TableReview: save is enabled while the table has never been saved (reviewed_tables empty) even with zero edits, so pre-fills can be committed as-is; the alert chain gains two info states — pre-filled-not-saved (fresh) and no-modification-",
+      "bodySha256": "3f7eff96ceb5058d",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 9
+          },
+          {
+            "title": "Decision",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 28
+          },
+          {
+            "title": "Verification",
+            "line": 35
+          },
+          {
+            "title": "Consequences",
+            "line": 39
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-18-review-usability-fixes-batch-b.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-18-review-usability-fixes.md",
+      "path": ".agents/notes/implemented/feature/2026-10-18-review-usability-fixes.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-18-review-usability-fixes.md",
+      "title": "Review usability fixes from the 2026-10-18 visual audit",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-18",
+      "scope": [
+        "frontend/src/components/ReviewEditor.vue",
+        "frontend/src/components/ResultView.vue",
+        "frontend/src/components/UploadPanel.vue"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [],
+      "lastVerified": "2026-10-18",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-18"
+      },
+      "summary": "- ResultView and ReviewEditor now render each non-acceptable field-level review issue as an inline red line under its field (role=\"status\"), in both the read view and the editor, so the top notice, the read table and the edit form tell one ",
+      "bodySha256": "63123e37772aab43",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 29
+          },
+          {
+            "title": "Verification",
+            "line": 36
+          },
+          {
+            "title": "Consequences",
+            "line": 40
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-18-review-usability-fixes.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/process/2026-09-29-dde-project-workflow.md",
       "path": ".agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
       "anchor": "// Note: .agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
@@ -8105,15 +8910,15 @@
         "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
       ],
       "citedBy": [],
-      "lastVerified": "2026-10-08",
+      "lastVerified": "2026-10-18",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
-        "rule": "最近复核 2026-10-08"
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-18"
       },
       "summary": "NianLog/DDE is installed locally for Codex and Claude Code. The project copies the upstream scripts unchanged into scripts/ and retains their license in scripts/DDE-LICENSE.txt. A private package declares Node = 18, no runtime or developmen",
-      "bodySha256": "afd25fd497b4d0df",
+      "bodySha256": "2f4f1a0979182b47",
       "lines": {
         "title": 1,
         "status": 3,
@@ -8191,7 +8996,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "Main includes the portable HTTP browser and serious-query commit 84a1045 with its tests and existing decision notes. It also includes only backend/scripts/tests from 7f32595: the dependency-free TaskError contract (still re-exported by task",
@@ -8233,6 +9038,144 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/process/2026-10-16-portable-deployment-fixes-to-main.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/process/2026-10-18-contract-doc-header-sync.md",
+      "path": ".agents/notes/implemented/process/2026-10-18-contract-doc-header-sync.md",
+      "anchor": "// Note: .agents/notes/implemented/process/2026-10-18-contract-doc-header-sync.md",
+      "title": "Keep contract document headers in sync with their bodies",
+      "lifecycle": "implemented",
+      "class": "process",
+      "date": "2026-10-18",
+      "scope": [
+        "SPEC.md",
+        "openapi.yaml",
+        "ARCHITECTURE.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md",
+        "FRONTEND_FIELDS.md",
+        "LOCAL_OCR.md",
+        "README.md",
+        "CLAUDE.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [
+        "implemented/process/2026-10-18-wip-checkpoint-handoff.md"
+      ],
+      "lastVerified": "2026-10-18",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-18"
+      },
+      "summary": "Any batch that changes the body, contract version, or enumerated current-state capability of a contract document must, in the same batch, update that document's header and cross-references: 依据/对应 lines, 对应业务/API版本, 更新日期（or the dated section",
+      "bodySha256": "5c937819a7160d63",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Consequences",
+            "line": 27
+          },
+          {
+            "title": "Verification",
+            "line": 31
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/process/2026-10-18-contract-doc-header-sync.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/process/2026-10-18-wip-checkpoint-handoff.md",
+      "path": ".agents/notes/implemented/process/2026-10-18-wip-checkpoint-handoff.md",
+      "anchor": "// Note: .agents/notes/implemented/process/2026-10-18-wip-checkpoint-handoff.md",
+      "title": "WIP checkpoint and handoff before the Codex thread resumes",
+      "lifecycle": "implemented",
+      "class": "process",
+      "date": "2026-10-18",
+      "scope": [
+        "backend",
+        "frontend",
+        "tests",
+        ".agents/notes",
+        "IMPLEMENTATION_PLAN.md",
+        "README.md",
+        "CLAUDE.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/process/2026-10-18-contract-doc-header-sync.md"
+      ],
+      "citedBy": [],
+      "lastVerified": "2026-10-18",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-18"
+      },
+      "summary": "Freeze feature work on this tree until the Codex thread resumes: no other harness edits backend/frontend/tests while the thread is paused. Two safeguards were applied on 2026-10-18:",
+      "bodySha256": "37f69db3d5bced42",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Consequences",
+            "line": 30
+          },
+          {
+            "title": "Verification",
+            "line": 34
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/process/2026-10-18-wip-checkpoint-handoff.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/simplification/2026-10-08-required-fields-only-export.md",
@@ -8292,7 +9235,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Export current saved, unfiltered results when their business-required values are present. Resolve conditional top-level requirements through doc_profiles.profile(doc_type,current_values), include basic_info-compatible values, each household",
@@ -8620,7 +9563,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Remove source filename headers and matching values from all business worksheets. Personnel tables keep every selected current business field, numbered repeated-document groups, names/status/counts and name candidates with their material typ",
@@ -8700,7 +9643,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Expose only ERROR and CRITICAL in product filters and records. The empty filter means both serious levels. Apply the restriction before pagination and ZIP construction in the shared service record iterator; reject low-level filter values in",
@@ -8742,6 +9685,151 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-15-serious-diagnostic-query.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/simplification/2026-10-16-account-action-audit.md",
+      "path": ".agents/notes/implemented/simplification/2026-10-16-account-action-audit.md",
+      "anchor": "// Note: .agents/notes/implemented/simplification/2026-10-16-account-action-audit.md",
+      "title": "Keep audit focused on concise account actions",
+      "lifecycle": "implemented",
+      "class": "simplification",
+      "date": "2026-10-16",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "frontend/public/help",
+        "tests",
+        "frontend/tests",
+        "scripts/probe_operation_audit_browser.cjs",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "ARCHITECTURE.md",
+        "IMPLEMENTATION_PLAN.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-16-account-operation-audit.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md",
+        "implemented/feature/2026-10-16-numbered-list-pagination.md",
+        "implemented/testing/2026-10-16-http-concurrency-capacity.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "Keep account login/logout and account management, upload/append, completed or failed export, batch deletion, explicit rerun/cancel, and global settings. Stop new worker/maintenance, preview/reveal/region OCR, person confirmation and review ",
+      "bodySha256": "45fc49931d85f15c",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related decisions",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Testing",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 35
+          },
+          {
+            "title": "Windows activation",
+            "line": 41
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-16-account-action-audit.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/simplification/2026-10-18-absence-reason-dropdowns-removed.md",
+      "path": ".agents/notes/implemented/simplification/2026-10-18-absence-reason-dropdowns-removed.md",
+      "anchor": "// Note: .agents/notes/implemented/simplification/2026-10-18-absence-reason-dropdowns-removed.md",
+      "title": "Absence-reason dropdowns removed from the review editor",
+      "lifecycle": "implemented",
+      "class": "simplification",
+      "date": "2026-10-18",
+      "scope": [
+        "frontend/src/components/ReviewEditor.vue",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [],
+      "lastVerified": "2026-10-18",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-18"
+      },
+      "summary": "- All four absence selects deleted from the template. The now-unreachable frontend plumbing went with them: the absence reactive, the absenceObject helper, absence slots on items/findings/members drafts, the absence entry in the deep dirty ",
+      "bodySha256": "b8e84d971fa52f9a",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 18
+          },
+          {
+            "title": "Verification",
+            "line": 23
+          },
+          {
+            "title": "Consequences",
+            "line": 27
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-18-absence-reason-dropdowns-removed.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
@@ -8854,7 +9942,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.5,
+        "monthsSinceVerify": 0.6,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The isolated paired diagnostic uses four encrypted certificate inputs and frozen visual references from the valid schema v2 experiment, plus three existing front-side bank-card samples scored only on card_number. Bank references are visuall",
@@ -8932,7 +10020,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.5,
+        "monthsSinceVerify": 0.6,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The diagnostic freezes source images, SPEC field templates and provisional Agent visual references before model inference. Identical inputs run through text recognition plus the unchanged extractor and explicit English-key and Chinese-field",
@@ -9166,7 +10254,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Visually inspect original images before inference. Copy historical references into a new encrypted fixture and record study endpoints under the user's approved graduation semantics; preserve printed month precision. Add the three current or",
@@ -9214,6 +10302,149 @@
       "updateHint": "编辑 .agents/notes/implemented/testing/2026-10-09-diploma-accuracy-refresh.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/testing/2026-10-16-http-concurrency-capacity.md",
+      "path": ".agents/notes/implemented/testing/2026-10-16-http-concurrency-capacity.md",
+      "anchor": "// Note: .agents/notes/implemented/testing/2026-10-16-http-concurrency-capacity.md",
+      "title": "Isolated Windows HTTP concurrency measurement",
+      "lifecycle": "implemented",
+      "class": "testing",
+      "date": "2026-10-16",
+      "scope": [
+        "scripts/probe_http_load.py"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/feature/2026-10-16-account-operation-audit.md",
+        "implemented/simplification/2026-10-16-account-action-audit.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "Freeze backend source and migrations into a unique ignored output directory. Start one loopback Uvicorn process with real authentication, encrypted storage, SQLite, diagnostics and audit, but a runtime stub that never claims queued work or ",
+      "bodySha256": "723cd1f8be448965",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 15
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 19
+          },
+          {
+            "title": "Testing",
+            "line": 26
+          },
+          {
+            "title": "Consequences",
+            "line": 38
+          },
+          {
+            "title": "Follow-up measurement protocol",
+            "line": 44
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/testing/2026-10-16-http-concurrency-capacity.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/testing/2026-10-16-live-account-fairness.md",
+      "path": ".agents/notes/implemented/testing/2026-10-16-live-account-fairness.md",
+      "anchor": "// Note: .agents/notes/implemented/testing/2026-10-16-live-account-fairness.md",
+      "title": "Verify account rotation through the restarted Windows service",
+      "lifecycle": "implemented",
+      "class": "testing",
+      "date": "2026-10-16",
+      "scope": [
+        "backend/ocr_app/task_store.py",
+        "backend/ocr_app/task_scheduler.py",
+        "backend/migrations",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md"
+      ],
+      "lastVerified": "2026-10-16",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0.1,
+        "rule": "最近复核 2026-10-16"
+      },
+      "summary": "Activate the current main worktree with dual residency on the existing local port. Confirm no queued/active/expired material, preserve a consistent SQLite backup plus all material/key hashes and copied files, stop only the verified launcher",
+      "bodySha256": "4717bd173b2fa131",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related decisions",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Testing",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 39
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/testing/2026-10-16-live-account-fairness.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "rejected/feature/2026-10-09-certificate-field-localization.md",
       "path": ".agents/notes/rejected/feature/2026-10-09-certificate-field-localization.md",
       "anchor": "// Note: .agents/notes/rejected/feature/2026-10-09-certificate-field-localization.md",
@@ -9253,7 +10484,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep GLM/Paddle as the business recognizers. Use pinned rapidocr-onnxruntime1.4.4 with its bundled PP-OCRv4 detector/recognizer and direction classifier as a CPU-only positioning helper. Independent line text is needed to match values relia",
@@ -9336,7 +10567,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep the current business Excel layout until the business team supplies its template, but add reference-threshold review and a separately saved human hiring-opinion field after the user approves this narrowed contract. Automated output is l",
@@ -9411,7 +10642,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "被撤回的方案使用OpenCV候选框、Paddle结构识别和GLM备用，保留原始矩阵与人工矩阵；一张照片一个标题命名的XLSX，多张ZIP。其优点是复用了现有模型、版本校验和加密存储，较少引入依赖。",
@@ -9686,6 +10917,11 @@
     {
       "type": "cite",
       "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "implemented/architecture/2026-10-16-account-fair-document-queue.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
       "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
     },
     {
@@ -9725,6 +10961,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/architecture/2026-10-14-production-dual-residency.md",
       "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
     },
@@ -9737,6 +10978,31 @@
       "type": "cite",
       "from": "implemented/architecture/2026-10-14-production-dual-residency.md",
       "to": "implemented/feature/2026-10-14-interview-registration-and-shared-upright.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+      "to": "implemented/feature/2026-10-10-account-owned-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+      "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+      "to": "implemented/testing/2026-10-16-live-account-fairness.md"
     },
     {
       "type": "cite",
@@ -10400,6 +11666,16 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+      "to": "implemented/feature/2026-10-16-account-operation-audit.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+      "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
       "to": "implemented/feature/2026-10-13-field-region-ocr.md"
     },
@@ -10550,6 +11826,31 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+      "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+      "to": "implemented/simplification/2026-10-16-account-action-audit.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+      "to": "implemented/testing/2026-10-16-http-concurrency-capacity.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "to": "implemented/feature/2026-10-15-admin-file-retention.md"
     },
@@ -10567,6 +11868,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/architecture/2026-10-16-account-fair-document-queue.md"
     },
     {
       "type": "cite",
@@ -10682,6 +11988,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "to": "implemented/feature/2026-10-12-person-material-packages.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-09-30-durable-document-tasks.md",
+      "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
     },
     {
       "type": "cite",
@@ -11231,6 +12542,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-09-batch-calendar-browser.md",
+      "to": "implemented/feature/2026-10-16-numbered-list-pagination.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-batch-calendar-browser.md",
       "to": "implemented/bug-fix/2026-10-12-review-repairs.md"
     },
     {
@@ -11440,6 +12756,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-10-account-lifecycle-management.md",
+      "to": "implemented/feature/2026-10-16-account-operation-audit.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-10-account-owned-batches.md",
       "to": "implemented/feature/2026-10-09-web-password-sessions.md"
     },
@@ -11482,6 +12803,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-10-account-owned-batches.md",
       "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-10-account-owned-batches.md",
+      "to": "implemented/feature/2026-10-16-account-operation-audit.md"
     },
     {
       "type": "cite",
@@ -11847,6 +13173,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-12-thirty-day-single-session.md",
       "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-12-thirty-day-single-session.md",
+      "to": "implemented/feature/2026-10-16-account-operation-audit.md"
     },
     {
       "type": "cite",
@@ -12305,6 +13636,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-15-admin-file-retention.md",
+      "to": "implemented/feature/2026-10-16-account-operation-audit.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-15-contextual-operation-guide.md",
       "to": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
     },
@@ -12365,6 +13701,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
+      "to": "implemented/feature/2026-10-16-account-operation-audit.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-15-table-title-suggestions-and-untitled-export.md",
       "to": "implemented/simplification/2026-10-14-table-export-without-confirmation.md"
     },
@@ -12377,6 +13718,76 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-15-table-title-suggestions-and-untitled-export.md",
       "to": "implemented/feature/2026-10-14-auto-table-header-rows.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-account-operation-audit.md",
+      "to": "implemented/simplification/2026-10-16-account-action-audit.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-account-operation-audit.md",
+      "to": "implemented/feature/2026-10-10-account-lifecycle-management.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-account-operation-audit.md",
+      "to": "implemented/feature/2026-10-10-account-owned-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-account-operation-audit.md",
+      "to": "implemented/feature/2026-10-12-thirty-day-single-session.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-account-operation-audit.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-account-operation-audit.md",
+      "to": "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-account-operation-audit.md",
+      "to": "implemented/feature/2026-10-15-admin-file-retention.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-accounts-panel-restyle.md",
+      "to": "implemented/feature/2026-10-16-numbered-list-pagination.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md",
+      "to": "implemented/feature/2026-10-16-numbered-list-pagination.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-numbered-list-pagination.md",
+      "to": "implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-numbered-list-pagination.md",
+      "to": "implemented/feature/2026-10-16-accounts-panel-restyle.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-numbered-list-pagination.md",
+      "to": "implemented/simplification/2026-10-16-account-action-audit.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-numbered-list-pagination.md",
+      "to": "implemented/feature/2026-10-10-account-owned-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-numbered-list-pagination.md",
+      "to": "implemented/bug-fix/2026-10-12-qualified-normal-and-refresh-retry.md"
     },
     {
       "type": "cite",
@@ -12412,6 +13823,11 @@
       "type": "cite",
       "from": "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md",
       "to": "implemented/feature/2026-10-16-detail-page-declutter.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/process/2026-10-18-wip-checkpoint-handoff.md",
+      "to": "implemented/process/2026-10-18-contract-doc-header-sync.md"
     },
     {
       "type": "cite",
@@ -12532,6 +13948,16 @@
       "type": "cite",
       "from": "implemented/simplification/2026-10-15-serious-diagnostic-query.md",
       "to": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-16-account-action-audit.md",
+      "to": "implemented/feature/2026-10-16-account-operation-audit.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-16-account-action-audit.md",
+      "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
     },
     {
       "type": "cite",
@@ -12667,6 +14093,36 @@
       "type": "cite",
       "from": "implemented/testing/2026-10-09-diploma-accuracy-refresh.md",
       "to": "implemented/bug-fix/2026-10-09-medical-cover-institution.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-16-http-concurrency-capacity.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-16-http-concurrency-capacity.md",
+      "to": "implemented/feature/2026-10-16-account-operation-audit.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-16-http-concurrency-capacity.md",
+      "to": "implemented/simplification/2026-10-16-account-action-audit.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-16-http-concurrency-capacity.md",
+      "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-16-live-account-fairness.md",
+      "to": "implemented/architecture/2026-10-16-account-fair-document-queue.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-16-live-account-fairness.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
     },
     {
       "type": "cite",

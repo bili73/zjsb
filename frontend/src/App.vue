@@ -19,6 +19,7 @@ import HelpDrawer from './components/HelpDrawer.vue'
 import OperationGuide from './components/OperationGuide.vue'
 import type { GuideContext } from './guide.ts'
 import AccountManagement from './components/AccountManagement.vue'
+import AuditPanel from './components/AuditPanel.vue'
 import RequiredFieldSettings from './components/RequiredFieldSettings.vue'
 import RetentionSettings from './components/RetentionSettings.vue'
 import PasswordDialog from './components/PasswordDialog.vue'
@@ -229,6 +230,9 @@ onBeforeUnmount(() => {
         </el-tab-pane>
         <el-tab-pane v-if="user.role === 'admin'" label="账号管理" name="accounts" data-guide-scope="page-accounts" lazy>
           <AccountManagement v-if="api" :api="api" :current-user="user" @change-password="passwordOpen = true" @unauthorized="handleUnauthorized" @profile-changed="profileChanged" />
+        </el-tab-pane>
+        <el-tab-pane v-if="user.role === 'admin'" label="操作审计" name="audit" data-guide-scope="page-audit" lazy>
+          <AuditPanel v-if="api && activeTab === 'audit'" :key="user.user_id" :api="api" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane v-if="user.role === 'admin'" label="必填字段设置" name="required" data-guide-scope="page-required" lazy>
           <RequiredFieldSettings v-if="api" :api="api" @saved="requiredFieldsSaved" @unauthorized="handleUnauthorized" />

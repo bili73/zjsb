@@ -42,7 +42,7 @@ function makeServer() {
         return (!query.get('date_from') || day >= query.get('date_from')!) && (!query.get('date_to') || day <= query.get('date_to')!)
       }
       const items = (page === 1 ? db.batches : db.page2).filter(inRange)
-      return json({ items, total: [...db.batches, ...db.page2].filter(inRange).length, page, page_size: 50 })
+      return json({ items, total: [...db.batches, ...db.page2].filter(inRange).length, page, page_size: Number(query.get('page_size') ?? 50) })
     }
     if (url.includes('/batches/') && url.includes('/tasks')) {
       if (db.failNextTasks > 0) { db.failNextTasks--; throw new TypeError('temporary task-list failure') }
@@ -97,7 +97,7 @@ function makeServer() {
 function makeMonitorCase() {
   const server = makeServer()
   const client = new BusinessApi(server.fetcher)
-  const monitor = createMonitor(() => client, { intervalMs: 15, isVisible: () => true })
+  const monitor = createMonitor(() => client, { intervalMs: 15, pageSize: 1, isVisible: () => true })
   const signal = () => new AbortController().signal
   return { server, monitor, signal }
 }
@@ -119,7 +119,7 @@ test('task reconciliation remains scheduled when batch metadata advances during 
     }
     return server.fetcher(input, init)
   })
-  const monitor = createMonitor(() => client, { intervalMs: 15, isVisible: () => true })
+  const monitor = createMonitor(() => client, { intervalMs: 15, pageSize: 1, isVisible: () => true })
   const signal = new AbortController().signal
   try {
     await monitor.pollOnce(signal)
@@ -130,9 +130,10 @@ test('task reconciliation remains scheduled when batch metadata advances during 
     server.db.batches = [updated]
     server.db.page2 = [updated]
     server.db.tasks[id] = [{ ...task, result_revision: 2 }]
-    await monitor.loadMore(signal)
+    await monitor.changePage(2, signal)
     released.resolve()
-    assert.equal(await olderRead, 15, 'new pending reconciliation must keep the loop alive')
+    assert.equal(await olderRead, null, 'page change fences the old read')
+    assert.equal(monitor.state.polling, true, 'new page owns pending reconciliation')
     assert.equal(await monitor.pollOnce(signal), null)
     assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, 2)
   } finally { released.resolve(); monitor.dispose() }
@@ -143,7 +144,7 @@ test('remote batch deletion removes only its cache and continues peer polling', 
   const removed: { id: string; taskIds: string[] }[] = []
   const client = new BusinessApi(server.fetcher)
   const monitor = createMonitor(() => client, {
-    intervalMs: 15, isVisible: () => true,
+    intervalMs: 15, pageSize: 1, isVisible: () => true,
     onBatchRemoved: (id, taskIds) => removed.push({ id, taskIds }),
   })
   const signal = new AbortController().signal
@@ -156,7 +157,7 @@ test('remote batch deletion removes only its cache and continues peer polling', 
   server.db.tasks[peer] = [running]
   try {
     await monitor.pollOnce(signal)
-    await monitor.loadMore(signal)
+    await monitor.changePage(2, signal)
     monitor.stop() // The remainder explicitly drives each read.
     monitor.state.pending[lost.task_id] = { operation: 'rerun', task_id: lost.task_id, run_id: lost.run_id }
     server.db.batches = [mkBatch(peer)]
@@ -170,7 +171,7 @@ test('remote batch deletion removes only its cache and continues peer polling', 
     assert.ok(monitor.state.entries[older], 'an older page is not evidence of deletion')
     assert.deepEqual(removed, [{ id: deleted, taskIds: [lost.task_id] }])
     assert.equal(monitor.state.failureCount, 0)
-    await monitor.loadMore(signal)
+    await monitor.changePage(2, signal)
     assert.equal(new URLSearchParams(server.db.listQueries.at(-1)).get('page'), '2')
   } finally { monitor.dispose() }
 })
@@ -209,10 +210,11 @@ test('completed task refresh remains pending after a transient task-list failure
 test('a forced refresh survives list failure for completed tasks on older pages', async () => {
   const { server, monitor, signal } = makeMonitorCase()
   const id = crypto.randomUUID()
+  server.db.batches = [mkBatch(crypto.randomUUID(), 'COMPLETED')]
   server.db.page2 = [mkBatch(id, 'COMPLETED')]
   server.db.tasks[id] = [mkTask(crypto.randomUUID(), id, 'COMPLETED', 'DIPLOMA')]
   try {
-    await monitor.loadMore(signal())
+    await monitor.changePage(2, signal())
     await monitor.loadTasks(id, signal())
     server.db.tasks[id]![0]!.result_revision = 2
     server.db.failNextList = 1
@@ -231,7 +233,7 @@ test('manual refresh rereads completed tasks on older pages and reports stopped 
   server.db.tasks[older] = [mkTask(crypto.randomUUID(), older, 'COMPLETED', 'DIPLOMA')]
   try {
     await monitor.pollOnce(signal())
-    await monitor.loadMore(signal())
+    await monitor.changePage(2, signal())
     await monitor.loadTasks(older, signal())
     for (const id of [first, older]) server.db.tasks[id] = server.db.tasks[id]!.map(task => ({ ...task, result_revision: 2 }))
     monitor.start()
@@ -279,9 +281,10 @@ test('policy changes refresh terminal rows, including previously loaded older pa
     server.db.tasks[first] = [{ ...mkTask(crypto.randomUUID(), first, 'COMPLETED', 'DIPLOMA'), required_fields_revision: 0, export_ready: true }]
     server.db.tasks[older] = [{ ...mkTask(crypto.randomUUID(), older, 'COMPLETED', 'DIPLOMA'), required_fields_revision: 0, export_ready: true }]
     await monitor.pollOnce(signal())
-    await monitor.loadMore(signal())
+    await monitor.changePage(2, signal())
     await monitor.loadTasks(older, signal())
     server.db.batches[0]!.required_fields_revision = 1
+    server.db.page2[0]!.required_fields_revision = 1 // The server projects the global policy on every page.
     server.db.tasks[first] = server.db.tasks[first]!.map(task => ({ ...task, required_fields_revision: 1, export_ready: false }))
     server.db.tasks[older] = server.db.tasks[older]!.map(task => ({ ...task, required_fields_revision: 1, export_ready: false }))
     await monitor.pollOnce(signal())
@@ -338,8 +341,8 @@ test('batch deletion clears rows/pending entries and preserves filters and other
     assert.equal(monitor.state.pending[task.task_id], undefined)
     assert.equal(monitor.state.dateRange.date_from, '2026-10-08')
     assert.equal(monitor.state.entries[running]?.tasks[0]?.status, 'OCR')
-    await monitor.loadMore(signal())
-    assert.equal(new URLSearchParams(server.db.listQueries.at(-1)).get('page'), '2')
+    await monitor.changePage(2, signal())
+    assert.equal(new URLSearchParams(server.db.listQueries.at(-1)).get('page'), '1')
   } finally { monitor.dispose() }
 })
 
@@ -358,7 +361,7 @@ test('pre-deletion list responses cannot resurrect a deleted batch', async () =>
     }
     return response
   })
-  const monitor = createMonitor(() => client, { isVisible: () => true })
+  const monitor = createMonitor(() => client, { intervalMs: 15, pageSize: 1, isVisible: () => true })
   const signal = new AbortController().signal
   try {
     await monitor.pollOnce(signal)
@@ -434,7 +437,7 @@ test('first refresh and merged pages remain descending without losing optimistic
     server.db.batches = [newest, older] // newly accepted upload not yet present in list snapshot
     const middle = { ...mkBatch(crypto.randomUUID(), 'COMPLETED'), created_at: '2026-10-08T10:00:00Z' }
     server.db.page2 = [middle, older]
-    await monitor.loadMore(signal())
+    await monitor.changePage(2, signal())
     await monitor.pollOnce(signal())
     assert.deepEqual(monitor.state.order, [pending.batch_id, newest.batch_id, middle.batch_id, older.batch_id])
     assert.ok(monitor.state.entries[newest.batch_id]?.tasksLoaded)
@@ -450,7 +453,7 @@ test('calendar filtering preserves hidden running tasks and resets server pagina
   server.db.tasks[old.batch_id] = [running]
   try {
     await monitor.pollOnce(signal())
-    await monitor.loadMore(signal())
+    await monitor.changePage(2, signal())
     monitor.setDateRange({ date_from: '2026-10-09', date_to: '2026-10-09' }); monitor.stop()
     await monitor.pollOnce(signal())
     assert.deepEqual(monitor.state.listedIds, [today.batch_id])
@@ -460,9 +463,9 @@ test('calendar filtering preserves hidden running tasks and resets server pagina
     server.db.tasks[old.batch_id] = [{ ...running, status: 'NEED_REVIEW' }]
     await monitor.pollOnce(signal())
     assert.equal(monitor.state.entries[old.batch_id]!.tasks[0]!.status, 'NEED_REVIEW')
-    await monitor.loadMore(signal())
+    await monitor.changePage(2, signal())
     const query = new URLSearchParams(server.db.listQueries.at(-1))
-    assert.equal(query.get('page'), '2')
+    assert.equal(query.get('page'), '1')
     assert.equal(query.get('date_from'), '2026-10-09')
     monitor.clear()
     assert.equal(monitor.state.dateRange, null)
@@ -481,7 +484,7 @@ test('an old calendar page response cannot replace the newly selected range', as
   })
   const monitor = createMonitor(() => client)
   try {
-    const late = monitor.loadMore(new AbortController().signal)
+    const late = monitor.changePage(2, new AbortController().signal)
     monitor.setDateRange({ date_from: '2026-10-09', date_to: '2026-10-09' }); monitor.stop()
     await monitor.pollOnce(new AbortController().signal)
     release!(json({ items: [old], total: 100, page: 2, page_size: 50 }))
@@ -612,7 +615,7 @@ test('read failures back off and recover without losing tracked batches', async 
   }
 })
 
-test('loadMore appends older pages while keeping newest-first order', async () => {
+test('page navigation keeps cached history while selecting only the requested page', async () => {
   const { server, monitor, signal } = makeMonitorCase()
   try {
     const created = await monitor.submitUpload([pdf('new.pdf')], 'DIPLOMA', false, signal())
@@ -621,7 +624,7 @@ test('loadMore appends older pages while keeping newest-first order', async () =
     const older = crypto.randomUUID()
     server.db.page2 = [mkBatch(older, 'COMPLETED')]
 
-    await monitor.loadMore(signal())
+    await monitor.changePage(2, signal())
     assert.equal(monitor.state.order[0], created.batch_id)
     assert.ok(monitor.state.order.includes(older))
     assert.equal(monitor.state.serverTotal, 2)
@@ -649,11 +652,11 @@ test('late overlapping pagination cannot replace refreshed terminal batch metada
     if (url.endsWith(`/batches/${id}`)) return json(batch)
     throw new Error('UNEXPECTED_TEST_PATH')
   })
-  const monitor = createMonitor(() => client, { isVisible: () => true })
+  const monitor = createMonitor(() => client, { intervalMs: 15, pageSize: 1, isVisible: () => true })
   const signal = new AbortController().signal
   try {
     await monitor.pollOnce(signal)
-    const more = monitor.loadMore(signal)
+    const more = monitor.changePage(2, signal)
     await entered.promise
     batch = { ...original, person_name: '新姓名', package_revision: 1, id_card_pairing: 'missing_back',
       updated_at: '2026-10-12T00:01:00Z' }
@@ -667,8 +670,8 @@ test('late overlapping pagination cannot replace refreshed terminal batch metada
     assert.equal(monitor.state.entries[id]!.batch!.package_revision, 1)
     assert.equal(monitor.state.entries[id]!.batch!.id_card_pairing, 'missing_back')
     assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, task.result_revision)
-    assert.equal(monitor.state.polling, false)
     assert.equal(await monitor.pollOnce(signal), null)
+    await eventually(() => !monitor.state.polling)
   } finally { release.resolve(); monitor.dispose() }
 })
 
@@ -685,13 +688,13 @@ test('new processing batches from pagination resume task reads after polling sto
     }
     return server.fetcher(input, init)
   })
-  const monitor = createMonitor(() => client, { intervalMs: 15, isVisible: () => true })
+  const monitor = createMonitor(() => client, { intervalMs: 15, pageSize: 1, isVisible: () => true })
   const signal = new AbortController().signal
   try {
     assert.equal(await monitor.pollOnce(signal), null)
     server.db.page2 = [mkBatch(older, 'PROCESSING')]
     server.db.tasks[older] = [mkTask(crypto.randomUUID(), older, 'OCR', 'DIPLOMA')]
-    await monitor.loadMore(signal)
+    await monitor.changePage(2, signal)
     await entered.promise
     assert.equal(monitor.state.polling, true)
     assert.equal(monitor.state.entries[older]!.tasksLoaded, false)
@@ -723,7 +726,7 @@ test('changed terminal pagination resumes fenced task reconciliation without for
     }
     return server.fetcher(input, init)
   })
-  const monitor = createMonitor(() => client, { isVisible: () => true })
+  const monitor = createMonitor(() => client, { intervalMs: 15, pageSize: 1, isVisible: () => true })
   const signal = new AbortController().signal
   try {
     assert.equal(await monitor.pollOnce(signal), null)
@@ -733,7 +736,7 @@ test('changed terminal pagination resumes fenced task reconciliation without for
     server.db.page2 = [updated]
     server.db.tasks[id] = [{ ...server.db.tasks[id]![0]!, result_revision: 2 }]
     pause = true
-    await monitor.loadMore(signal)
+    await monitor.changePage(2, signal)
     await entered.promise
     assert.equal(monitor.state.polling, true)
     assert.equal(monitor.state.entries[id]!.tasks[0]!.result_revision, 1)
