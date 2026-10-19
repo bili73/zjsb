@@ -92,6 +92,8 @@ const invalidReason = computed(() => {
 const entries = computed(() => fileList.value.filter(item => item.raw instanceof File && item.uid !== undefined))
 const unknownCount = computed(() => mixed.value ? entries.value.filter(item => !rows[item.uid!]?.type).length : 0)
 const hasMedical = computed(() => mixed.value ? entries.value.some(item => rows[item.uid!]?.type === 'MEDICAL_REPORT') : docType.value === 'MEDICAL_REPORT')
+// 银行卡/表格只收照片（invalidReason 已在选择当下拦截 PDF）；格式提示同步按类型区分，不再先暗示可传 PDF 再被拦。
+const photoOnly = computed(() => !mixed.value && (docType.value === 'BANK_CARD' || docType.value === 'TABLE'))
 watch([() => fileList.value.map(item => item.uid).join(','), mixed, () => props.api, () => props.canWrite], () => {
   const current = new Set(mixed.value ? entries.value.map(item => item.uid!) : [])
   Object.keys(rows).map(Number).filter(uid => !current.has(uid)).forEach(releaseRow)
@@ -445,7 +447,7 @@ async function submit() {
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
         <div class="el-upload__text">{{ mixed ? '将此人的各种材料一起拖到此处，或' : `将${docTypes[docType]}文件拖到此处，或` }} <em>点击选择</em></div>
         <template #tip>
-          <div class="el-upload__tip">支持 JPG / PNG / HEIC / PDF，单文件 ≤ {{ uploadLimits.maxFileMB }} MB，每批 1–{{ uploadLimits.maxFiles }} 个文件、总计 ≤ {{ uploadLimits.maxBatchMB }} MB。</div>
+          <div class="el-upload__tip">{{ photoOnly ? '支持 JPG / PNG / HEIC 照片（不接收 PDF）' : '支持 JPG / PNG / HEIC / PDF' }}，单文件 ≤ {{ uploadLimits.maxFileMB }} MB，每批 1–{{ uploadLimits.maxFiles }} 个文件、总计 ≤ {{ uploadLimits.maxBatchMB }} MB。</div>
         </template>
       </el-upload>
 

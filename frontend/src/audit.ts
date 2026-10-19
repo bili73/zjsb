@@ -55,6 +55,9 @@ export function auditQuery(filters: AuditFilters, cursor?: string | null) {
   if (cursor) query.set('cursor', cursor)
   return query.toString()
 }
+// 表格显示的是最近一次查询的快照（applied），导出读实时控件值（live）；两者同由 filters() 构造、键序固定，
+// 整体序列化比较即可判断“改了筛选还没点查询”的分叉，导出前据此提示。
+export const auditExportDiverged = (live: AuditFilters, applied: AuditFilters): boolean => JSON.stringify(live) !== JSON.stringify(applied)
 export function auditActor(row: AuditRecord) {
   return row.identity.display_name ? `${row.identity.display_name}（${row.identity.username ?? row.actor}）` :
     ({ worker: '系统任务', system: '系统维护', anonymous: '未登录／身份未验证' }[row.actor] ?? `历史账号（姓名未记录）：${row.actor}`)
