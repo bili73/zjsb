@@ -13,12 +13,13 @@ import zipfile
 
 from . import diagnostics as d
 from .diagnostic_archive import (ARCHIVE_BUDGET, FAILURE_PATTERN, RAW_BUDGET, ArchiveIndex, ReadIssues,
-                                 atomic_json, iter_records, locked, maintenance,
+                                 atomic_json, file_signature, iter_records, locked, maintenance,
                                  owned_archives, owned_raw)
 from .task_errors import TaskError
 
 SHANGHAI = timezone(timedelta(hours=8))
 MAX_DOWNLOAD = 64 * 1024 * 1024
+MAX_CACHED_RECORD_BYTES = 8 * 1024 * 1024
 
 
 def window(date_from=None, date_to=None):
@@ -39,6 +40,7 @@ class DiagnosticService:
         self.state_lock = threading.Lock()
         self.rate_lock = threading.Lock()
         self.archive_index = ArchiveIndex()
+        self.record_cache = None
         self.reports = {}
         self.state = dict(last_backup_at=None, backup_ok=None, last_check_at=None, scan_ok=None,
                           raw_bytes=0, archive_bytes=0, error_count_24h=0, latest_error_at=None,
@@ -120,11 +122,52 @@ class DiagnosticService:
         return dict(state, raw_retention_days=7, backup_retention_days=30,
                     raw_limit_bytes=RAW_BUDGET, archive_limit_bytes=ARCHIVE_BUDGET)
 
+    def _record_signature(self):
+        try:
+            with locked(self.root):
+                return tuple(sorted((str(path), file_signature(path)) for path in owned_raw(self.root) + owned_archives(self.root)))
+        except OSError:
+            return None  # A failed fingerprint cannot turn an old cache into current evidence.
+
+    def _error_records(self, start, end, issues, stop):
+        # Coarse bounds permit default rolling-date queries to reuse a scan;
+        # records() still applies the exact request bounds below.
+        since = start[:10] + 'T00:00:00+00:00'
+        until = (datetime.fromisoformat(end).date() + timedelta(days=1)).isoformat() + 'T00:00:00+00:00'
+        signature = self._record_signature()
+        key = (since, until, signature)
+        if signature is not None and self.record_cache is not None and self.record_cache[0] == key:
+            for encoded in self.record_cache[1]:
+                if stop and stop.is_set():
+                    issues.interrupted = True
+                    return
+                yield json.loads(encoded)
+            return
+        self.record_cache = None
+        encoded_rows, size = [], 0
+        for row in iter_records(self.root, since=since, until=until, issues=issues, index=self.archive_index, stop=stop):
+            if row['level'] not in {'ERROR', 'CRITICAL'}:
+                continue
+            if encoded_rows is not None:
+                encoded = json.dumps(row, ensure_ascii=False).encode()
+                size += len(encoded)
+                if size <= MAX_CACHED_RECORD_BYTES:
+                    encoded_rows.append(encoded)
+                else:
+                    encoded_rows = None
+            yield row
+        if (signature is not None and encoded_rows is not None and not issues.incomplete
+                and signature == self._record_signature()):
+            self.record_cache = (key, tuple(encoded_rows))
+
     def records(self, *, level=None, date_from=None, date_to=None, error_id=None, task_id=None, issues=None, stop=None):
         if level is not None and level not in {'ERROR', 'CRITICAL'}:
             raise TaskError('INVALID_REQUEST', '仅可查询 ERROR 和 CRITICAL 严重日志', 422)
         start, end = window(date_from, date_to)
-        for row in iter_records(self.root, since=start, until=end, issues=issues, index=self.archive_index, stop=stop):
+        issues = issues if issues is not None else ReadIssues()
+        for row in self._error_records(start, end, issues, stop):
+            if row['timestamp'] < start or row['timestamp'] >= end:
+                continue
             context = row['context']
             if row['level'] not in {'ERROR', 'CRITICAL'} or (level and row['level'] != level):
                 continue

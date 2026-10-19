@@ -49,6 +49,7 @@ class Engine:
         if model_name not in {'glm-ocr', 'paddleocr-vl'} or self.checkpoint_name not in allowed:
             raise ValueError('INVALID_MODEL_CHECKPOINT')
         self.model = self.processor = None
+        self.vision_isolation = None
         self.phase = 'loading'
 
     def load(self):
@@ -74,6 +75,8 @@ class Engine:
             def compatible_mask(*, inputs_embeds, **other):
                 return original(input_embeds=inputs_embeds, **other)
             module.create_causal_mask = compatible_mask
+            from ocr_app.paddle_attention import install_paddle_vision_isolation
+            self.vision_isolation = install_paddle_vision_isolation(module)
             self.processor = AutoProcessor.from_pretrained(checkpoint, trust_remote_code=True, local_files_only=True)
         else:
             self.model = AutoModelForImageTextToText.from_pretrained(checkpoint, **options).eval()
@@ -160,16 +163,46 @@ def main():
     diag = init_diagnostics(Path(os.environ.get('OCR_DIAGNOSTICS_ROOT', str(DEFAULT_ROOT))), 'model',
                             os.environ.get('OCR_DIAGNOSTICS_SESSION'))
     engine = Engine(args.model, args.checkpoint)
-    for line in sys.stdin:
+    from ocr_app.model_protocol import ModelInbox
+    from ocr_app.batch_generation import generate_rows
+    # A background stdin read before NumPy imports stalls extension initialization
+    # in the installed Windows runtime. Warm dependencies before starting it.
+    inbox = None
+    while True:
+        if inbox is None:
+            line = sys.stdin.readline()
+            item = (line, {}) if line else None
+        else:
+            item = inbox.messages.get()
+        if item is None:
+            break
         payload = {}
+        loaded = False
         try:
-            payload = json.loads(line)
-            if not isinstance(payload, dict):
+            payload, controls = item
+            if inbox is None:
+                payload = json.loads(payload)
+            if not isinstance(payload, dict) or payload.get('protocol_error'):
                 raise ValueError('INVALID_REQUEST')
             context = correlation_context(payload.get('context'))
             context.setdefault('request_id', payload.get('id'))
             with contextlib.redirect_stdout(sys.stderr):
-                result = engine.load() if payload['op'] == 'load' else engine.recognize(payload)
+                if payload['op'] == 'load':
+                    result = engine.load()
+                    loaded = True
+                elif payload['op'] == 'recognize_batch':
+                    if engine.model is None:
+                        raise RuntimeError('MODEL_NOT_LOADED')
+                    engine.phase = 'recognize'
+                    def completed(row_id, value, error):
+                        message = dict(id=payload['id'], event='row_result', row_id=row_id, ok=error is None)
+                        message.update(result=value) if error is None else message.update(error_code=error)
+                        emit(message)
+                    result = generate_rows(engine, payload['rows'], controls, completed)
+                elif payload['op'] == 'recognize':
+                    result = engine.recognize(payload)
+                else:
+                    raise ValueError('INVALID_REQUEST')
             emit({'id': payload['id'], 'ok': True, 'result': result})
         except Exception as error:
             torch = getattr(engine, 'torch', None)
@@ -188,6 +221,11 @@ def main():
             error_id = diag.exception('request_failed', error, model=args.model, phase=engine.phase,
                                       error_code=code, **context)
             emit({'id': request_id, 'ok': False, 'error_code': code, 'error_id': error_id})
+        finally:
+            if inbox is not None:
+                inbox.finish(payload.get('id'))
+        if loaded and inbox is None:
+            inbox = ModelInbox(sys.stdin)
 
 
 if __name__ == '__main__':

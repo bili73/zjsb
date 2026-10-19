@@ -31,10 +31,10 @@ class AccountFairQueueTests(unittest.TestCase):
         self.store = TaskStore(self.engine, self.storage)
         self.serial = 0
 
-    def create(self, owner='a', count=1, kind='DIPLOMA', *, package=False):
+    def create(self, owner='a', count=1, kind='DIPLOMA', *, package=False, pages=None):
         self.serial += 1
         files = [dict(data=f'synthetic-{self.serial}-{index}'.encode(),
-                      name=f'fixture-{index}.png', mime='image/png')
+                      name=f'fixture-{index}.png', mime='image/png', actual_source_page_count=pages)
                  for index in range(count)]
         return self.store.create_batch(files, [kind] * count if package else kind, owner)
 
@@ -69,6 +69,38 @@ class AccountFairQueueTests(unittest.TestCase):
         self.assertEqual(second['id'], bob)
         self.complete(second)
         self.assertEqual(self.claim()['id'], alice[1])
+
+    def test_single_page_guard_preserves_fair_head_and_cursor_until_lane_is_idle(self):
+        first = self.create('a', pages=1)['task_ids'][0]
+        report = self.create('b', kind='MEDICAL_REPORT', pages=22)['task_ids'][0]
+        later = self.create('c', pages=1)['task_ids'][0]
+        types = CERTIFICATES | {'MEDICAL_REPORT'}
+        self.assertEqual(self.claim(types)['id'], first)
+        self.assertIsNone(self.store.claim_next(types, lane='certificate', single_page_only=True))
+        self.assertEqual(self.cursor(), 'a:a')
+        self.assertEqual(self.raw(report)['status'], 'QUEUED')
+        self.assertIsNone(self.raw(report)['active_started_at'])
+        with self.engine.connect() as connection:
+            self.assertIsNone(connection.execute(text('SELECT started_at FROM runs WHERE id=:id'),
+                {'id': self.raw(report)['run_id']}).scalar_one())
+        self.complete(self.raw(first))
+        claimed = self.claim(types)
+        self.assertEqual(claimed['id'], report)
+        self.assertFalse(claimed['_batch_safe'])
+        self.complete(claimed)
+        self.assertEqual(self.store.claim_next(types, lane='certificate', single_page_only=True)['id'], later)
+
+    def test_only_validated_single_page_non_medical_materials_are_batch_safe(self):
+        for kind, pages, expected in [('DIPLOMA', 1, True), ('DIPLOMA', 2, False),
+                ('DIPLOMA', None, False), ('DIPLOMA', True, False), ('MEDICAL_REPORT', 1, False)]:
+            with self.subTest(kind=kind, pages=pages):
+                identity = self.create('a', kind=kind, pages=pages)['task_ids'][0]
+                if not expected:
+                    self.assertIsNone(self.store.claim_next({kind}, single_page_only=True))
+                claimed = self.store.claim_next({kind})
+                self.assertEqual(claimed['id'], identity)
+                self.assertIs(claimed['_batch_safe'], expected)
+                self.complete(claimed)
 
     def test_three_accounts_rotate_with_stable_owner_ring(self):
         accounts = {owner: self.create(owner, 3)['task_ids'] for owner in ['b', 'a', 'c']}

@@ -1,4 +1,4 @@
-"""Two bounded document processes sharing independently owned model queues."""
+"""Bounded short-document slots; long files retain exclusive lane admission."""
 from dataclasses import dataclass, field
 import json
 import math
@@ -91,6 +91,8 @@ class TaskScheduler:
         self.store, self.manager, self.models = store, manager, models
         self.config, self.logger, self.reply, self.factory = config, logger, reply, factory
         self.parallel = bool(getattr(manager, 'parallel_inference', False))
+        # One currently executing image plus a queued pair, without a gather wait.
+        self.slots = 3 if self.parallel and getattr(manager, 'model_batch_size', 1) == 2 else 1
         from .doc_profiles import catalogue
         paddle_types = {'MEDICAL_REPORT', 'TABLE', 'GENERIC', 'INTERVIEW_FORM'}
         document_types = {entry['doc_type'] for entry in catalogue()} - paddle_types
@@ -231,19 +233,24 @@ class TaskScheduler:
         if self.closing:
             return
         for lane, types in self.lanes.items():
-            if any(job.lane == lane for job in self.jobs.values()):
-                continue
-            task = self.store.claim_next(types, lane=lane)
-            if task is None:
-                continue
-            deadline = time.monotonic() + 180
-            try:
-                child = self.factory(self.config, task, deadline, self.revisions(), self.logger)
-            except Exception as error:
-                error_id = self.logger.exception('spawn_failed', error,
-                    task_id=task['id'], run_id=task['run_id'])
-                raise RuntimeFailure('SUPERVISION_FAILED', error_id) from error
-            self.jobs[self.identity(task)] = ActiveTask(task, lane, child, deadline)
+            while sum(job.lane == lane for job in self.jobs.values()) < self.slots:
+                lane_jobs = [job for job in self.jobs.values() if job.lane == lane]
+                if lane_jobs and any(not job.task.get('_batch_safe', False) for job in lane_jobs):
+                    break
+                claim_options = {'lane': lane}
+                if self.slots > 1 and lane_jobs:
+                    claim_options['single_page_only'] = True
+                task = self.store.claim_next(types, **claim_options)
+                if task is None:
+                    break
+                deadline = time.monotonic() + 180
+                try:
+                    child = self.factory(self.config, task, deadline, self.revisions(), self.logger)
+                except Exception as error:
+                    error_id = self.logger.exception('spawn_failed', error,
+                        task_id=task['id'], run_id=task['run_id'])
+                    raise RuntimeFailure('SUPERVISION_FAILED', error_id) from error
+                self.jobs[self.identity(task)] = ActiveTask(task, lane, child, deadline)
         if not self.jobs and time.monotonic() - self.last_cleanup > 60:
             self.store.cleanup()
             self.last_cleanup = time.monotonic()

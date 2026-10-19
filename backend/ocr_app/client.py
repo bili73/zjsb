@@ -49,7 +49,8 @@ class RuntimeClient:
             try:
                 command = [sys.executable, '-u', '-X', 'utf8',
                     str(ROOT / 'backend/runtime_worker.py'), '--mode', self.config.mode,
-                    '--session-dir', str(self.config.session_dir)]
+                    '--session-dir', str(self.config.session_dir),
+                    '--model-batch-size', str(self.config.model_batch_size)]
                 if self.config.data_root is not None:
                     command += ['--data-root', str(self.config.data_root)]
                 self.process = JobProcess(command, cwd=ROOT,

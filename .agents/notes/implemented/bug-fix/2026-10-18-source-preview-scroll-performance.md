@@ -25,6 +25,8 @@ The user reported janky scrolling on the medical-report detail drawer (体检报
 - Virtual scrolling (render only a window of pages): rejected — the existing IntersectionObserver lazy-load plus content-visibility achieves the same skip-offscreen-work effect with far less churn to the page-list DOM and scroll restoration.
 - Reduce the lazy-load rootMargin (150% → smaller) to load fewer pages ahead: rejected — pre-loading pages before the operator arrives is deliberate; with stable aspect-ratio placeholders there is no longer a jump penalty for it.
 
+The later [prioritized detail loading repair](2026-10-19-prioritized-detail-loading.md) addresses request contention rather than layout shifts. It partially changes this preload choice to a75percent actual-scroll-root margin and a two-request queue, keeping nearby preloading, reserved geometry and smooth location. This note's layout and overlay decisions remain active.
+
 ## Verification
 
 Perf harness re-run after the change: layout shift 0.138 → 0 on the left list (0 on body both runs), long tasks 0 throughout, body-scroll dropped frames 1 → 0. rAF-gap count on the image-list run rises only because stable placeholders lengthen the scroll distance and put more pages in the preload zone (12 images decoded vs 8); decode is off-main-thread and dominates only in headless software rendering. The 15-screen UX audit harness re-rendered without page errors (SourcePreview error/holder/loaded paths intact); frontend typecheck, 246 node tests, production build and `npm run verify` pass with this note. Screenshot of the stressed drawer confirms images letterbox correctly inside the reserved A4 boxes.

@@ -1,16 +1,17 @@
 """Version-bound full corrected evidence with existing operator permissions."""
 from io import BytesIO
+import json
 from sqlalchemy import text
 from PIL import Image
 
-from .task_store import TaskError
+from .task_store import TaskError, identity, now
 from .review import reason, optional_reason, invalid
 
 
 def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, masked=True, access_reason=None, user=None, authorize=None):
     if type(page) is not int or page < 1:
         invalid()
-    with store.transaction() as connection:
+    with store.engine.connect() as connection:
         if authorize:
             authorize(connection)
         row = store._row(connection, task_id, user)
@@ -22,18 +23,27 @@ def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, ma
                                        dict(task=task_id, run=run_id, page=page)).mappings().all()
         if len(artifacts) != 1:
             raise TaskError('INVALID_REQUEST', '该页没有可唯一定位的原件证据', 404)
-        data = store.storage.read(artifacts[0]['reference'])
+        source_reference = artifacts[0]['reference']
+    data = store.storage.read(source_reference)
     # Re-encode metadata-free pixels; content must have passed admission safety.
     target = BytesIO()
     with Image.open(BytesIO(data)) as image:
         image.convert('RGB').save(target, format='PNG')
-    with store.transaction() as connection:
-        if authorize:
-            authorize(connection)
-        row = store._row(connection, task_id, user)
-        store._expected(row, run_id, revision)
-        store._audit(connection, 'preview_full', actor, row, result_revision=revision, page=page)
-        store._access_history(connection, row, actor, 'preview_full', access_reason, page=page)
+    history = dict(event='preview_full', actor=actor, reason=access_reason, at=now(),
+                   run_id=run_id, result_revision=revision, page=page)
+    reference = store.storage.put(json.dumps(history, ensure_ascii=False).encode())
+    try:
+        with store.transaction() as connection:
+            if authorize:
+                authorize(connection)
+            row = store._row(connection, task_id, user)
+            store._expected(row, run_id, revision)
+            store._audit(connection, 'preview_full', actor, row, result_revision=revision, page=page)
+            connection.execute(text("INSERT INTO artifacts(id,task_id,run_id,kind,reference) VALUES (:id,:task,:run,'access_history',:ref)"),
+                               dict(id=identity(), task=task_id, run=run_id, ref=reference))
+    except BaseException:
+        store.storage.delete(reference)
+        raise
     return target.getvalue()
 
 

@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend/ocr_app/task_store.py, backend/ocr_app/task_scheduler.py, backend/migrations, tests, frontend/src, frontend/tests, frontend/public/help, openapi.yaml, SPEC.md, ARCHITECTURE.md, RUNTIME.md, FRONTEND_FIELDS.md
-Last-verified: 2026-10-16
+Last-verified: 2026-10-19
 
 ## Problem
 
@@ -10,11 +10,11 @@ Global document FIFO lets an account with a large batch block other accounts usi
 
 ## Decision
 
-Keep one active document per lane and one in-flight request per model. At each document boundary select the next waiting account on a stable ring of immutable batch owner IDs, using a persisted cursor per lane. An empty cursor starts at the account with the oldest queued task; subsequent claims advance through the sorted owner ring, wrapping when needed. Accounts without eligible queued tasks are skipped. Historical NULL owners share one separate legacy bucket; deleted accounts retain their original batch owner identity. This promises account turns, not global arrival order between accounts or equal processing time per account. With only A and B waiting, A's current document is followed by B regardless of A's backlog. The cursor update and exact task claim commit together.
+Keep one exclusive model call per model; the baseline single-image mode admits one active document per lane. The later [Windows two-image runtime](2026-10-19-runtime-two-image-batches.md) partially supersedes that admission limit for validated short single-page materials only, retaining medical/long-file exclusivity, unchanged claim order, cursor and180-second budgets. At each document claim boundary select the next waiting account on a stable ring of immutable batch owner IDs, using a persisted cursor per lane. An empty cursor starts at the account with the oldest queued task; subsequent claims advance through the sorted owner ring, wrapping when needed. Accounts without eligible queued tasks are skipped. Historical NULL owners share one separate legacy bucket; deleted accounts retain their original batch owner identity. This promises account turns, not global arrival order between accounts or equal processing time per account. With only A and B waiting, A's current document is followed by B regardless of A's backlog. The cursor update and exact task claim commit together.
 
 Each task has a durable enqueue sequence and a nullable queued_at timestamp. New and appended files receive sequences in accepted input order; reruns receive a new sequence at the tail; duplicate reuse retains its existing position. Migration preserves existing task/result/blob content and deterministically seeds legacy order from the last QUEUED update or original creation time, but leaves unknown queued_at NULL instead of pretending the inferred time was observed. Sequences order currently retained tasks, not a permanent audit counter: assigning max(existing)+1 within the writer transaction also works after deletion. A committed claim consumes a turn even if its worker subsequently fails. No in-flight file is preempted. The two production lanes have independent cursors; the serial fallback has its own cursor. Model request FIFO, fallback and cancellation fences, and the existing 180-second active budget remain unchanged.
 
-The task API adds queued_at and active_started_at. The UI explains account rotation and displays these observed timestamps, without exposing other accounts or inventing queue positions/ETAs. No new queue limits, inference replicas, batch inference, model changes, or production restart/deployment are included.
+The task API adds queued_at and active_started_at. The UI explains account rotation and displays these observed timestamps, without exposing other accounts or inventing queue positions/ETAs. Account rotation itself introduces no inference replicas, batch inference or model changes; the separately linked runtime decision owns the subsequent short-file batching and Windows activation.
 
 ## Related decision audit
 

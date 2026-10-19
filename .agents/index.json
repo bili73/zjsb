@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-18T07:16:04.428Z",
+  "generatedAt": "2026-10-19T04:34:06.275Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 125,
+    "activeNotes": 132,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 691,
+    "relations": 726,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 120,
+      "implemented": 127,
       "rejected": 3
     },
     "staleNotes": []
@@ -403,6 +403,7 @@
       "supersededBy": [],
       "cites": [
         "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
@@ -418,6 +419,7 @@
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/architecture/2026-10-14-production-dual-residency.md",
         "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-10-measured-task-progress.md",
         "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
@@ -429,18 +431,19 @@
         "implemented/feature/2026-10-14-adaptive-generic-forms.md",
         "implemented/testing/2026-10-16-http-concurrency-capacity.md",
         "implemented/testing/2026-10-16-live-account-fairness.md",
+        "implemented/testing/2026-10-19-windows-model-batching.md",
         "rejected/feature/2026-10-09-certificate-field-localization.md",
         "archived/feature/2026-10-08-temporary-recognition-workbench.md"
       ],
-      "lastVerified": "2026-10-08",
+      "lastVerified": "2026-10-19",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
-        "rule": "最近复核 2026-10-08"
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
       },
       "summary": "When both models complete serial startup successfully, use two bounded document lanes: one certificate lane (DIPLOMA and DEGREE_CERT) and one medical lane, each with at most one supervised CPU task process. Single-resident or startup-degrad",
-      "bodySha256": "17c8c9c32980e4a8",
+      "bodySha256": "7e01ffeae224ca0f",
       "lines": {
         "title": 1,
         "status": 3,
@@ -519,7 +522,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "The application launcher always selects dual_resident, accepts the old explicit dual flag for compatibility, rejects single, and replaces a saved single preference on launch. Load and warm both models sequentially. Failure of one model leav",
@@ -587,6 +590,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
@@ -595,18 +599,20 @@
       ],
       "citedBy": [
         "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
-        "implemented/testing/2026-10-16-live-account-fairness.md"
+        "implemented/testing/2026-10-16-live-account-fairness.md",
+        "implemented/testing/2026-10-19-windows-model-batching.md"
       ],
-      "lastVerified": "2026-10-16",
+      "lastVerified": "2026-10-19",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
-        "rule": "最近复核 2026-10-16"
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
       },
-      "summary": "Keep one active document per lane and one in-flight request per model. At each document boundary select the next waiting account on a stable ring of immutable batch owner IDs, using a persisted cursor per lane. An empty cursor starts at the",
-      "bodySha256": "f27ffd8e589a3239",
+      "summary": "Keep one exclusive model call per model; the baseline single-image mode admits one active document per lane. The later Windows two-image runtime partially supersedes that admission limit for validated short single-page materials only, retai",
+      "bodySha256": "ca66ba5d6ceedb55",
       "lines": {
         "title": 1,
         "status": 3,
@@ -644,6 +650,97 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/architecture/2026-10-16-account-fair-document-queue.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "path": ".agents/notes/implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "anchor": "// Note: .agents/notes/implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "title": "Dispatch bounded two-image batches with independent row ownership",
+      "lifecycle": "implemented",
+      "class": "architecture",
+      "date": "2026-10-19",
+      "scope": [
+        "backend",
+        "tests",
+        "scripts",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "ARCHITECTURE.md",
+        "RUNTIME.md",
+        "IMPLEMENTATION_PLAN.md",
+        "openapi.yaml",
+        "README.md",
+        "CHANGELOG.md",
+        "SPEC.md",
+        "FRONTEND_FIELDS.md",
+        "frontend/package.json",
+        "frontend/package-lock.json",
+        "frontend/src/presentation.ts",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+        "implemented/testing/2026-10-19-windows-model-batching.md",
+        "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+        "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md",
+        "implemented/testing/2026-10-19-windows-model-batching.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "Expose an internal batch-size limit of1 or2, default1 for direct/benchmark RuntimeConfig callers and2 for the qualified Windows launcher. Successful dual startup enables at most three short single-page documents per existing lane and at mos",
+      "bodySha256": "95ac11b7bae9c1ca",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related decision audit",
+            "line": 23
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 30
+          },
+          {
+            "title": "Testing",
+            "line": 39
+          },
+          {
+            "title": "Consequences",
+            "line": 49
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/architecture/2026-10-19-runtime-two-image-batches.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
@@ -867,7 +964,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Dual-resident startup remains the default and loads serially. The later independent queues decision permits cross-model inference and targeted stop while retaining180-second Task and181-second supervision. Medical generation uses20 seconds;",
@@ -943,7 +1040,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Upload and worker validation share backend/ocr_app/image_admission.py. The policy keeps JPEG/PNG/HEIF/HEIC single-image support and allows exactly two-image MPO only when the first MP entry is a baseline primary JPEG and the second is expli",
@@ -1026,7 +1123,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The same server-derived exact-name eligibility governs abnormal/statistical and medical item review scopes. abnormal_exclusion_reason includes SECTION_SUMMARY for exact 小结 (whitespace/trailing colon normalization only); HEIGHT_WEIGHT covers",
@@ -2015,6 +2112,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
@@ -2026,6 +2124,7 @@
       "citedBy": [
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-10-phase-aware-progress-display.md",
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-10-progress-detail-and-retention-display.md"
       ],
@@ -2037,7 +2136,7 @@
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The pipeline publishes preparation checkpoints and one completed physical OCR-region checkpoint after retries, preserving the current worker callback signature, polling, run/revision fences and180-second deadline. It stays in OCR across pag",
-      "bodySha256": "bb17210c651a23c6",
+      "bodySha256": "43388f8f009cd1de",
       "lines": {
         "title": 1,
         "status": 3,
@@ -2058,19 +2157,19 @@
           },
           {
             "title": "Decision audit",
-            "line": 19
+            "line": 21
           },
           {
             "title": "Alternatives considered",
-            "line": 23
+            "line": 25
           },
           {
             "title": "Testing",
-            "line": 30
+            "line": 32
           },
           {
             "title": "Consequences",
-            "line": 42
+            "line": 44
           }
         ]
       },
@@ -2824,8 +2923,10 @@
         "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
       ],
       "citedBy": [
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
         "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+        "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
         "implemented/feature/2026-10-09-web-password-sessions.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
         "implemented/feature/2026-10-12-thirty-day-single-session.md",
@@ -3003,7 +3104,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Use positive issuer/card evidence and negative back-service evidence together. Keep nearby detected text pixels for visual recognition even when quick OCR cannot read the text. Recognize aligned side supplements when source cues connect the",
@@ -3080,7 +3181,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Cap splitEntries at twelve for default, inherited and personal layouts. Preserve order and put every remaining catalogue key in the hidden set, still selectable under More Types. Add-to-workbench cannot exceed twelve; explain the need to tu",
@@ -3232,10 +3333,12 @@
         "implemented/feature/2026-10-15-error-only-chinese-diagnostics.md",
         "implemented/feature/2026-10-15-contextual-operation-guide.md",
         "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
-        "implemented/simplification/2026-10-15-serious-diagnostic-query.md"
+        "implemented/simplification/2026-10-15-serious-diagnostic-query.md",
+        "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-15-safe-diagnostic-error-context.md",
+        "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
         "implemented/feature/2026-10-15-admin-file-retention.md",
         "implemented/feature/2026-10-15-contextual-operation-guide.md",
         "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
@@ -3250,7 +3353,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Exclude QUEUED and active processing states from automatic expiry and use the same set for retention impact counts. Preserve original upload deadlines, explicit cancellation and eventual expiry after processing stops. Do not expand ACTIVE i",
-      "bodySha256": "068316baa2efd18c",
+      "bodySha256": "831c408743b9188a",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3494,7 +3597,10 @@
       "citedBy": [
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
         "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+        "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/simplification/2026-10-16-account-action-audit.md",
         "implemented/testing/2026-10-16-http-concurrency-capacity.md"
@@ -3563,8 +3669,13 @@
       ],
       "supersedes": null,
       "supersededBy": [],
-      "cites": [],
-      "citedBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md"
+      ],
       "lastVerified": "2026-10-18",
       "archivedDate": null,
       "freshness": {
@@ -3573,7 +3684,7 @@
         "rule": "最近复核 2026-10-18"
       },
       "summary": "- All page placeholders share one A4 aspect-ratio reservation: .img-wrap, .page-holder, .page-skeleton get aspect-ratio: 210 / 297, and .page-image fills the reserved box (height: 100%). The list reaches final height before any bytes arrive",
-      "bodySha256": "aa40a030f874af6a",
+      "bodySha256": "929399c3335f1202",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3598,15 +3709,382 @@
           },
           {
             "title": "Verification",
-            "line": 28
+            "line": 30
           },
           {
             "title": "Consequences",
-            "line": 32
+            "line": 34
           }
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+      "title": "Avoid repeated full-result work while loading batch summaries",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-19",
+      "scope": [
+        "backend/ocr_app/task_store.py",
+        "frontend/src/monitor.ts",
+        "tests",
+        "frontend/tests",
+        "ARCHITECTURE.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-16-numbered-list-pagination.md",
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+        "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md",
+        "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+        "implemented/testing/2026-10-19-windows-model-batching.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "Build batch summaries from status, type, expiry and update metadata without calling public task projection or export validation. Keep source-result reads only where person-package name suggestions require them. Preserve owner checks, pairin",
+      "bodySha256": "25305eb2edbd7249",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Related decisions",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Testing",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 35
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-19-batch-read-amplification.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md",
+      "title": "Compare note indexes at their recorded snapshot time",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-19",
+      "scope": [
+        "scripts/agent-index.ts",
+        "scripts/tests",
+        "package.json"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/process/2026-09-29-dde-project-workflow.md",
+        "implemented/process/2026-10-18-contract-doc-header-sync.md"
+      ],
+      "citedBy": [
+        "implemented/process/2026-09-29-dde-project-workflow.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "For --check, validate the saved generatedAt and rebuild the current source tree at that timestamp. Compare every indexed property as before, including freshness, dates, hashes, relations and anchors. Malformed JSON or missing/invalid genera",
+      "bodySha256": "467286de21de1c95",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related decisions",
+            "line": 15
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 19
+          },
+          {
+            "title": "Testing",
+            "line": 25
+          },
+          {
+            "title": "Consequences",
+            "line": 31
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md",
+      "title": "Isolate packed Paddle images without a quadratic batch mask",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-19",
+      "scope": [
+        "backend/model_worker.py",
+        "backend/ocr_app",
+        "scripts/probe_cuda_batches.py",
+        "tests",
+        "ARCHITECTURE.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/testing/2026-10-19-windows-model-batching.md",
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+        "implemented/testing/2026-10-19-windows-model-batching.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "The original Paddle checkpoint loads a narrowly scoped adapter from repository code. Weights, cached model source and environments remain unchanged. For packed SDPA vision input, the adapter calls the original attention separately on the cu",
+      "bodySha256": "0c27582cd2cc1c34",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 17
+          },
+          {
+            "title": "Testing",
+            "line": 23
+          },
+          {
+            "title": "Consequences",
+            "line": 29
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+      "title": "Keep preview file I/O outside the writer lock and reuse unchanged diagnostic scans",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-19",
+      "scope": [
+        "backend/ocr_app/preview.py",
+        "backend/ocr_app/diagnostic_service.py",
+        "tests",
+        "ARCHITECTURE.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+        "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+        "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "Read the preview's version-bound artifact reference through an ordinary connection, then decrypt, encode and durably stage its encrypted access history outside the SQLite writer lock. Recheck account, owner, run and result revision immediat",
+      "bodySha256": "b3653ffb754aca06",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Related decisions",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Testing",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 37
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+      "title": "Prioritize detail images and avoid redundant durable progress",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-19",
+      "scope": [
+        "frontend/src/components/SourcePreview.vue",
+        "frontend/src/components/TaskResultDrawer.vue",
+        "backend/ocr_app/task_store.py",
+        "frontend/tests",
+        "tests",
+        "ARCHITECTURE.md",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+        "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+        "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md",
+        "implemented/bug-fix/2026-10-10-measured-task-progress.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+        "implemented/bug-fix/2026-10-10-measured-task-progress.md",
+        "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "Active preview requests are limited to two per mounted component, same-page callers share a promise, and explicit location/jump requests precede pending background pages. The observer uses the actual scroll viewport and75percent margin afte",
+      "bodySha256": "1dff9614a8358adf",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related decisions",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Testing",
+            "line": 27
+          },
+          {
+            "title": "Consequences",
+            "line": 35
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-19-prioritized-detail-loading.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -4182,7 +4660,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "DIPLOMA returns11 structured fields instead of13, retaining six required keys and removing only principal/study_mode. DEGREE_CERT keeps study_mode. Deprecated diploma labels remain parsing boundaries so neighboring school, major and certifi",
@@ -4418,7 +4896,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "Authenticated structured business results return complete stored values and original evidence; remove the masked projection and inherited value_masked display values. New bank profiles omit the redundant card_number_masked field. The public",
@@ -4520,7 +4998,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "exam_projects is an editable optional string Field containing ordered project names separated by the Chinese semicolon. Extraction preserves printed names such as 内科检查 and 心电图 without inventing a fixed department vocabulary. It accepts only",
@@ -5388,6 +5866,7 @@
         "implemented/bug-fix/2026-10-12-prepush-isolation-and-migration.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
         "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
+        "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
         "implemented/feature/2026-10-10-account-lifecycle-management.md",
         "implemented/feature/2026-10-10-web-user-manual.md",
         "implemented/feature/2026-10-12-person-material-packages.md",
@@ -6979,7 +7458,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Store one ordered nullable list plus revision per immutable named account in SQLite. Null means catalogue defaults; an empty list means all entries tucked. Retain a revision after restoring defaults to prevent stale writes. A self-only GET/",
@@ -7068,7 +7547,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Retain reliable native PDF evidence, otherwise use the current Paddle model, with one GLM fallback per region and a 40-second generation soft budget inside the existing 180-second task budget. GENERIC shares the Paddle document lane with ME",
@@ -7152,7 +7631,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Persist a singleton default layout and independent revision. Personal null now means inherit that default; default null means the system catalogue order. Personal arrays, including an empty array, override the shared default. Return both pe",
@@ -7233,7 +7712,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "标题选填与无标题导出进一步移除标题缺失门禁；本篇表头依据、人工优先和未知行数需处理的规则保持。",
@@ -7312,7 +7791,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "The profile reuses holder_name and bank_name with labels 姓名 and 开户行, adds optional branch_name, and puts these four business fields first. Existing required-field settings remain authoritative. The pipeline identifies front-card and supplem",
@@ -7476,7 +7955,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "The section, its confirmDispute handler (confirmed_disputes review path) and its scoped CSS are removed. The primary remedy for a dispute is unchanged and fully intact: fix the field (pick the candidate or fill the correct value) and save —",
@@ -7650,7 +8129,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Use one pure frontend hint function in the saved-result and live-review views. Counts ignore whitespace; bank counts also accept full-width digits and grouping hyphens for display only. Keep values, leading zeros, source text, backend valid",
@@ -7816,7 +8295,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "Split the type-card grid into an ordered visible set plus a tucked set. Customization is an on-grid edit mode: 自定义入口 toggles it, and the actual workbench cards become directly manipulable — long-press (~280 ms, 10 px slop) picks a card up, ",
@@ -8648,6 +9127,7 @@
         "implemented/bug-fix/2026-10-12-qualified-normal-and-refresh-retry.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
         "implemented/feature/2026-10-16-accounts-panel-restyle.md",
         "implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md"
@@ -8907,18 +9387,21 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md",
         "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
       ],
-      "citedBy": [],
-      "lastVerified": "2026-10-18",
+      "citedBy": [
+        "implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md"
+      ],
+      "lastVerified": "2026-10-19",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
         "monthsSinceVerify": 0,
-        "rule": "最近复核 2026-10-18"
+        "rule": "最近复核 2026-10-19"
       },
-      "summary": "NianLog/DDE is installed locally for Codex and Claude Code. The project copies the upstream scripts unchanged into scripts/ and retains their license in scripts/DDE-LICENSE.txt. A private package declares Node = 18, no runtime or developmen",
-      "bodySha256": "2f4f1a0979182b47",
+      "summary": "NianLog/DDE is installed locally for Codex and Claude Code. The project initially copied the upstream scripts unchanged into scripts/ and retains their license in scripts/DDE-LICENSE.txt. The repository's agent-index.ts now has the narrow s",
+      "bodySha256": "e1a0b20b064c446e",
       "lines": {
         "title": 1,
         "status": 3,
@@ -9062,17 +9545,18 @@
       "supersededBy": [],
       "cites": [],
       "citedBy": [
+        "implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md",
         "implemented/process/2026-10-18-wip-checkpoint-handoff.md"
       ],
-      "lastVerified": "2026-10-18",
+      "lastVerified": "2026-10-19",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
         "monthsSinceVerify": 0,
-        "rule": "最近复核 2026-10-18"
+        "rule": "最近复核 2026-10-19"
       },
       "summary": "Any batch that changes the body, contract version, or enumerated current-state capability of a contract document must, in the same batch, update that document's header and cross-references: 依据/对应 lines, 对应业务/API版本, 更新日期（or the dated section",
-      "bodySha256": "5c937819a7160d63",
+      "bodySha256": "6b8d471659bd0d9f",
       "lines": {
         "title": 1,
         "status": 3,
@@ -9093,19 +9577,19 @@
           },
           {
             "title": "Decision audit",
-            "line": 17
+            "line": 19
           },
           {
             "title": "Alternatives considered",
-            "line": 21
+            "line": 23
           },
           {
             "title": "Consequences",
-            "line": 27
+            "line": 29
           },
           {
             "title": "Verification",
-            "line": 31
+            "line": 33
           }
         ]
       },
@@ -9324,7 +9808,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The complete old frontend tree is moved inside this workspace to output/frontend-retired-20261008-v1/frontend. Absolute paths and absence of reparse points are checked; all1287 file SHA256 values match before and after. The active frontend ",
@@ -9400,7 +9884,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "The 恢复系统默认 button and its confirmation branch are removed. Administrator saving of the visible layout and personal 恢复默认 inheritance remain unchanged. Persisted layouts and nullable API compatibility are preserved; this change does not reset",
@@ -9484,7 +9968,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-14"
       },
       "summary": "The ranked optional-title decision supersedes this note's sole-candidate and mandatory-title rules. The historical rationale below explains the earlier choice; read-time projection, human precedence, header/structure/partial-output gates an",
@@ -9864,7 +10348,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.6,
+        "monthsSinceVerify": 0.7,
         "rule": "最近复核 2026-09-29"
       },
       "summary": "The diagnostic benchmark uses PP-DocLayoutV3 on CPU to detect regions in full-resolution source images. It preserves detected tables as separate regions and combines nearby text without crossing tables. Coordinates, omitted image regions an",
@@ -10097,7 +10581,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The frozen corpus contains all four source hashes and encrypted copies, every page's existing decoder evidence, blank-page records and conservative raster regions. Native text/table evidence remains independent of OCR. Twelve table pages ar",
@@ -10179,7 +10663,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-08"
       },
       "summary": "The already approved real-file acceptance uses a probe that starts the existing API, Business and RuntimeClient components with a new encrypted data root. A supervised child serves loopback HTTP, and its parent owns the existing GPU byte lo",
@@ -10443,6 +10927,79 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/testing/2026-10-16-live-account-fairness.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/testing/2026-10-19-windows-model-batching.md",
+      "path": ".agents/notes/implemented/testing/2026-10-19-windows-model-batching.md",
+      "anchor": "// Note: .agents/notes/implemented/testing/2026-10-19-windows-model-batching.md",
+      "title": "Qualify model batching on Windows before a Mac adaptation",
+      "lifecycle": "implemented",
+      "class": "testing",
+      "date": "2026-10-19",
+      "scope": [
+        "scripts",
+        "tests",
+        "RUNTIME.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md",
+        "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+        "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md",
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+        "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "Use the installed fixed GLM and original Paddle checkpoints, respective CUDA/Transformers environments, bfloat16/SDPA and existing prompt templates. Run each model alone under the existing exclusive GPU experiment lock; serialize model load",
+      "bodySha256": "1acccdbef6bb0075",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related decisions",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Testing",
+            "line": 27
+          },
+          {
+            "title": "Consequences",
+            "line": 33
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/testing/2026-10-19-windows-model-batching.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "rejected/feature/2026-10-09-certificate-field-localization.md",
@@ -10922,6 +11479,11 @@
     {
       "type": "cite",
       "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
+      "to": "implemented/architecture/2026-10-19-runtime-two-image-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-08-independent-model-queues.md",
       "to": "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md"
     },
     {
@@ -10982,6 +11544,11 @@
     {
       "type": "cite",
       "from": "implemented/architecture/2026-10-16-account-fair-document-queue.md",
+      "to": "implemented/architecture/2026-10-19-runtime-two-image-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-16-account-fair-document-queue.md",
       "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
     },
     {
@@ -11003,6 +11570,41 @@
       "type": "cite",
       "from": "implemented/architecture/2026-10-16-account-fair-document-queue.md",
       "to": "implemented/testing/2026-10-16-live-account-fairness.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "to": "implemented/architecture/2026-10-16-account-fair-document-queue.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "to": "implemented/testing/2026-10-19-windows-model-batching.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "to": "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "to": "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
     },
     {
       "type": "cite",
@@ -11412,6 +12014,11 @@
     {
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-10-measured-task-progress.md",
+      "to": "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-10-measured-task-progress.md",
       "to": "implemented/feature/2026-09-30-durable-document-tasks.md"
     },
     {
@@ -11781,6 +12388,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
+      "to": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
       "to": "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
     },
@@ -11848,6 +12460,96 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
       "to": "implemented/testing/2026-10-16-http-concurrency-capacity.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md",
+      "to": "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+      "to": "implemented/feature/2026-10-16-numbered-list-pagination.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+      "to": "implemented/feature/2026-10-10-account-owned-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+      "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+      "to": "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
+      "to": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md",
+      "to": "implemented/process/2026-09-29-dde-project-workflow.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md",
+      "to": "implemented/process/2026-10-18-contract-doc-header-sync.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md",
+      "to": "implemented/testing/2026-10-19-windows-model-batching.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md",
+      "to": "implemented/architecture/2026-10-19-runtime-two-image-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+      "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+      "to": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+      "to": "implemented/bug-fix/2026-10-19-batch-read-amplification.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+      "to": "implemented/bug-fix/2026-10-19-batch-read-amplification.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+      "to": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+      "to": "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+      "to": "implemented/bug-fix/2026-10-10-measured-task-progress.md"
     },
     {
       "type": "cite",
@@ -13792,6 +14494,11 @@
     {
       "type": "cite",
       "from": "implemented/process/2026-09-29-dde-project-workflow.md",
+      "to": "implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/process/2026-09-29-dde-project-workflow.md",
       "to": "implemented/testing/2026-09-29-automatic-layout-evaluation.md"
     },
     {
@@ -14123,6 +14830,31 @@
       "type": "cite",
       "from": "implemented/testing/2026-10-16-live-account-fairness.md",
       "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-19-windows-model-batching.md",
+      "to": "implemented/architecture/2026-10-16-account-fair-document-queue.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-19-windows-model-batching.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-19-windows-model-batching.md",
+      "to": "implemented/bug-fix/2026-10-19-batch-read-amplification.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-19-windows-model-batching.md",
+      "to": "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/testing/2026-10-19-windows-model-batching.md",
+      "to": "implemented/architecture/2026-10-19-runtime-two-image-batches.md"
     },
     {
       "type": "cite",

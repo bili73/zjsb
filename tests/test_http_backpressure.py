@@ -108,6 +108,36 @@ class PersistenceTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200, response.text[:80] if response.status_code != 200 else '')
         self.assert_files_referenced()
 
+    def test_preview_file_read_and_history_fsync_do_not_own_sqlite_writer(self):
+        task, _ = self.ready()
+        original = self.business.storage.read
+        def read(reference):
+            with closing(sqlite3.connect(self.business.root / 'tasks.sqlite3', timeout=.05)) as c:
+                c.execute('BEGIN IMMEDIATE')
+                c.execute('UPDATE retention_settings SET revision=revision WHERE id=1')
+                c.commit()
+            return original(reference)
+        with self.while_put_assert_other_writer_can_commit(), patch.object(self.business.storage, 'read', side_effect=read):
+            response = self.client.get('/api/v1/tasks/' + task['task_id'] + '/preview', headers=self.headers,
+                params=dict(run_id=task['run_id'], result_revision=task['result_revision']))
+        self.assertEqual(response.status_code, 200, response.text[:80] if response.status_code != 200 else '')
+        self.assertEqual(response.headers['content-type'], 'image/png')
+        self.assert_files_referenced()
+
+    def test_preview_stale_after_history_staging_cleans_staged_file(self):
+        task, _ = self.ready()
+        original = self.business.storage.put
+        def put(data):
+            reference = original(data)
+            with self.business.store.transaction() as c:
+                c.execute(text('UPDATE tasks SET revision=revision+1 WHERE id=:id'), {'id': task['task_id']})
+            return reference
+        with patch.object(self.business.storage, 'put', side_effect=put):
+            response = self.client.get('/api/v1/tasks/' + task['task_id'] + '/preview', headers=self.headers,
+                params=dict(run_id=task['run_id'], result_revision=task['result_revision']))
+        self.assertEqual(response.status_code, 409)
+        self.assert_files_referenced()
+
     def test_upload_rejected_after_staging_leaves_no_batch_or_file(self):
         count = 0
         def authorize(connection):

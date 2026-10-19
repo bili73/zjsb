@@ -96,7 +96,7 @@ class WorkerPipelineTests(unittest.TestCase):
         completed = queue.Queue()
         models, scheduler = Mock(), Mock()
         scheduler.poll.side_effect = RuntimeFailure('SUPERVISION_FAILED')
-        args = types.SimpleNamespace(mode='dual_resident', session_dir=Path('unused-session'), data_root=Path('unused-data'))
+        args = types.SimpleNamespace(mode='dual_resident', session_dir=Path('unused-session'), data_root=Path('unused-data'), model_batch_size=1)
         with patch.object(runtime_worker.argparse.ArgumentParser, 'parse_args', return_value=args), \
                 patch.object(runtime_worker, 'RuntimeConfig', return_value=Mock()), \
                 patch.object(runtime_worker, 'ModelManager', return_value=self.manager), \

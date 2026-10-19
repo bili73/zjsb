@@ -16,6 +16,7 @@ from starlette.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from .task_store import TaskError
+from .version import APP_VERSION
 
 
 class ModelStates(BaseModel):
@@ -96,7 +97,7 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
                 if diagnostic_service:
                     diagnostic_service.close()
 
-    app = FastAPI(version='1.26.0', lifespan=lifespan, docs_url=None,
+    app = FastAPI(version=APP_VERSION, lifespan=lifespan, docs_url=None,
                   redoc_url=None, openapi_url=None)
     app.state.diagnostics = diagnostic_service
     from .admission import Admission
@@ -186,7 +187,7 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
             except Exception:
                 # Invalid/internal state must not become a public exception or path leak.
                 snapshot = None
-        response = {'status': 'degraded', 'version': '1.26.0', 'queue_depth': None,
+        response = {'status': 'degraded', 'version': APP_VERSION, 'queue_depth': None,
                     'components': {'db': 'down', 'worker': 'ok' if worker_ready else 'down',
                                    'storage': 'ok' if storage_ready else 'down'}}
         if snapshot is not None:

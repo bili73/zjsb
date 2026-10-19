@@ -74,21 +74,18 @@ async function fetchResult() {
   }
 }
 
-watch(() => props.open, open => {
-  if (open) {
+watch([() => props.open, taskKey] as const, ([open], [wasOpen]) => {
+  if (!open) { controller?.abort(); return }
+  if (!wasOpen) {
     dirty.value = false; stale.value = false; reviewError.value = ''
     result.value = null
     failed.value = null
     filter.value = 'all'
     activeSource.value = null
     refreshedOnce.value = false
-  }
-})
-watch(taskKey, () => {
-  if (dirty.value && result.value) { stale.value = true; return }
+  } else if (dirty.value && result.value) { stale.value = true; return }
   void fetchResult()
-})
-watch(() => props.open, open => { if (open) void fetchResult() }, { immediate: true })
+}, { immediate: true })
 async function refreshDraft() {
   if (dirty.value) { try { await ElMessageBox.confirm('刷新将放弃当前未提交草稿；请先记录需要保留的修正。', '读取最新版本') } catch { return } }
   dirty.value = false; stale.value = false; reviewError.value = ''; result.value = null; await fetchResult()

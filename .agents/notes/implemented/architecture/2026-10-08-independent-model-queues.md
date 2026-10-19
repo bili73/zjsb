@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: backend, tests, SPEC.md, ARCHITECTURE.md, RUNTIME.md, IMPLEMENTATION_PLAN.md, scripts, AGENTS.md
-Last-verified: 2026-10-08
+Last-verified: 2026-10-19
 
 ## Problem
 
@@ -26,7 +26,7 @@ Keep diagnostics anonymous and source evidence encrypted. Record model queue wai
 
 ## Decision audit
 
-[Account-fair document scheduling](2026-10-16-account-fair-document-queue.md) partially supersedes document FIFO: each lane now rotates immutable uploading accounts and preserves each account's enqueue order across batches and reruns. Model-level FIFO, one active document per lane, exact-run stops and the 180-second active budget remain unchanged. Persistent rotation is not same-model concurrent inference.
+[Account-fair document scheduling](2026-10-16-account-fair-document-queue.md) partially supersedes document FIFO: each lane now rotates immutable uploading accounts and preserves each account's enqueue order across batches and reruns. Model-level FIFO, exact-run stops and the180-second active budget remain. Persistent rotation is not same-model concurrent inference. The later [Windows two-image runtime](2026-10-19-runtime-two-image-batches.md) partially supersedes the one-document/one-image limit only for validated short single-page files, with at most3 slots and2 images per exclusive model call. Medical, multi-page and unknown-page-count work retains exclusive lane admission. Its row controls replace killing a shared model for an ordinary confirmed cancellation.
 
 The [local lifecycle](2026-09-29-local-dual-model-lifecycle.md) is partly changed: dual loading/ownership is retained, but global serial inference is replaced in successful dual operation. [Durable tasks](../feature/2026-09-30-durable-document-tasks.md) retain run/revision, encryption and recovery; whole-runtime timeout/long writer locks are replaced for targeted stops. [Bounded medical recognition](../bug-fix/2026-10-08-bounded-medical-recognition.md) retains soft budgets/cache and historical serial timings. [Diagnostics](../feature/2026-09-30-local-diagnostics.md) retain allowlists. The [temporary workbench](../../archived/feature/2026-10-08-temporary-recognition-workbench.md) adds local source comparison. The [Mac proposal](../../proposed/architecture/2026-10-08-mac-studio-inference-service.md) remains unimplemented. Nothing is wholly superseded or archived.
 

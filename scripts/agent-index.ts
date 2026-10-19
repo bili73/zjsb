@@ -424,11 +424,27 @@ export function runIndex(argv: string[]): number {
     outPath = resolve(agentNoteRoot, "..", "index.json");
   }
 
-  const index = buildIndex();
+  let disk: string | undefined;
+  let snapshotTime: Date | undefined;
+  if (check && existsSync(outPath)) {
+    disk = readFileSync(outPath, "utf8");
+    try {
+      const generatedAt = JSON.parse(disk).generatedAt;
+      if (typeof generatedAt !== "string") throw new Error("missing snapshot time");
+      snapshotTime = new Date(generatedAt);
+      if (Number.isNaN(snapshotTime.getTime())) throw new Error("invalid snapshot time");
+    } catch {
+      console.error(`agent-index: ${toRepoPath(outPath)} 无有效索引或生成时间——请运行 npx tsx scripts/notes.ts index 重新生成`);
+      return 1;
+    }
+  }
+  // Check source consistency at the recorded snapshot time; elapsed time alone
+  // changes freshness values, states and staleNotes. Generation stays current.
+  const index = buildIndex({ now: snapshotTime });
   const content = JSON.stringify(index, null, 2) + "\n";
 
   if (check) {
-    if (!existsSync(outPath)) {
+    if (disk === undefined) {
       if (index.notes.length === 0) {
         console.log("ok: no notes and no index — agent index not adopted (opt-in; runs once notes exist)");
         return 0;
@@ -436,7 +452,6 @@ export function runIndex(argv: string[]): number {
       console.error(`agent-index: ${toRepoPath(outPath)} 不存在——请运行 npx tsx scripts/notes.ts index 生成后提交`);
       return 1;
     }
-    const disk = readFileSync(outPath, "utf8");
     if (stripVolatile(disk) !== stripVolatile(content)) {
       console.error(`agent-index: ${toRepoPath(outPath)} 与笔记库不同步——请运行 npx tsx scripts/notes.ts index 并提交`);
       return 1;

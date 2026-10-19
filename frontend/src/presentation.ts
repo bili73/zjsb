@@ -38,7 +38,7 @@ const progressLabels: Record<TaskStatus, string> = {
   NEED_REVIEW: '识别结束，待核对', COMPLETED: '已完成', FAILED: '处理失败', REJECTED: '已拒绝', CANCELLED: '已取消',
 }
 
-export const fairQueueHint = '同一识别通道按账号轮流处理，每次一份；正在处理的材料完成后继续调度。'
+export const fairQueueHint = '同一识别通道按账号轮流领取材料；短材料可能合批处理，长报告等待通道空闲后逐份处理。'
 
 export function taskProgressView(task: Pick<Task, 'status' | 'progress_detail' | 'queued_at' | 'active_started_at'>) {
   const detail = task.progress_detail

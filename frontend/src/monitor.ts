@@ -146,7 +146,9 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
         const entry = state.entries[id]
         if (!entry) continue
         // Explicit reconciliation also rereads terminal batches on older pages.
-        if (taskRefreshNeeded.has(id) || !entry.tasksLoaded || entry.batch?.status === 'PROCESSING' || entryRunning(entry) ||
+        if (taskRefreshNeeded.has(id) || !entry.tasksLoaded || entryRunning(entry) ||
+          entry.batch?.status === 'PROCESSING' && !entry.batch.updated_at ||
+          entry.tasks.some(task => state.pending[task.task_id]) ||
           policyRevision !== undefined && entry.tasks.some(task => task.required_fields_revision !== policyRevision)) {
           try {
             let batchVersion = entry.batch

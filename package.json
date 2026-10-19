@@ -4,6 +4,7 @@
   "type": "module",
   "engines": { "node": ">=18" },
   "scripts": {
+    "test:notes": "npx tsx --test scripts/tests/*.test.ts",
     "notes": "npx tsx scripts/notes.ts",
     "verify": "npx tsx scripts/notes.ts verify"
   }

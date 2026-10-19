@@ -24,7 +24,7 @@ DEFAULT_ROOT = ROOT / '.runtime' / 'diagnostics'
 MAX_BYTES = 10 * 1024 * 1024
 FILE_COUNT = 5
 RETENTION_SECONDS = 7 * 86400
-APP_VERSION = '1.26.0'
+from .version import APP_VERSION
 LEVELS = {'DEBUG': 10, 'INFO': 20, 'WARNING': 30, 'ERROR': 40, 'CRITICAL': 50}
 OWNER = 'local-ocr-safe-diagnostics-v1'
 COMPONENTS = {'bootstrap', 'launcher', 'api', 'client', 'runtime', 'model', 'collector', 'frontend'}
@@ -51,7 +51,7 @@ UNSAFE_CARD_INPUT CARD_ADMISSION_FAILED EXPORT_BLOCKED EXPORT_VALUE_TOO_LONG PRE
 ENUMS = {
     'model': {'glm_ocr', 'paddleocr_vl', 'glm-ocr', 'paddleocr-vl'},
     'phase': {'loading', 'warming', 'ready', 'starting', 'stopping', 'recognize', 'unloaded', 'failed'},
-    'operation': {'load', 'recognize', 'statistics', 'shutdown', 'stop_task', 'startup', 'close',
+    'operation': {'load', 'recognize', 'recognize_batch', 'statistics', 'shutdown', 'stop_task', 'startup', 'close',
                   'audit', 'health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete',
                   'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save',
                   'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks',

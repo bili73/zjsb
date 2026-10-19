@@ -21,6 +21,11 @@ const failure = ref('')
 const jumpPage = ref(1)
 const loading = ref(false)
 const controllers = new Map<number, AbortController>()
+interface PageLoad { page: number; epoch: number; priority: number; promise: Promise<void>; resolve: () => void }
+const pageLoads = new Map<number, PageLoad>()
+const pendingPages = new Map<number, PageLoad>()
+let requestEpoch = 0, requestPriority = 0, disposed = false
+const maxRequests = 2
 const pageEls = new Map<number, HTMLElement>()
 const visiblePages = new Set<number>()
 const previewEl = ref<HTMLElement>()
@@ -72,30 +77,63 @@ function clearPage(page: number) {
 }
 
 function resetAll() {
+  requestEpoch++
+  for (const job of pageLoads.values()) job.resolve()
+  pageLoads.clear()
+  pendingPages.clear()
   for (const controller of controllers.values()) controller.abort()
   controllers.clear()
   for (let page = 1; page <= entries.length; page++) clearPage(page)
 }
 
-async function loadPage(page: number) {
-  if (!props.api || !props.canWrite) { failure.value = props.canWrite ? '预览组件未就绪。' : '当前只读账号无原图预览权限。'; return }
+function loadPage(page: number, priority = false): Promise<void> {
+  if (disposed || !props.active) return Promise.resolve()
+  if (!props.api || !props.canWrite) { failure.value = props.canWrite ? '预览组件未就绪。' : '当前只读账号无原图预览权限。'; return Promise.resolve() }
   const entry = entries[page - 1]
-  if (!entry || entry.status === 'loading' || entry.url) return
-  controllers.get(page)?.abort()
-  const current = new AbortController()
-  controllers.set(page, current)
+  if (!entry || entry.url) return Promise.resolve()
+  const existing = pageLoads.get(page)
+  if (existing) { if (priority) existing.priority = ++requestPriority; return existing.promise }
+  if (entry.status === 'error' && !priority) return Promise.resolve()
+  let resolve!: () => void
+  const promise = new Promise<void>(done => { resolve = done })
+  const job = { page, epoch: requestEpoch, priority: priority ? ++requestPriority : 0, promise, resolve }
+  pageLoads.set(page, job)
+  pendingPages.set(page, job)
   entry.status = 'loading'
   failure.value = ''
+  drainPages()
+  return promise
+}
+
+function drainPages() {
+  if (disposed || !props.active || !props.api || !props.canWrite) return
+  while (controllers.size < maxRequests && pendingPages.size) {
+    const [page, job] = [...pendingPages].sort((a, b) => b[1].priority - a[1].priority)[0]!
+    pendingPages.delete(page)
+    void readPage(job)
+  }
+}
+
+async function readPage(job: PageLoad) {
+  const { page, epoch } = job
+  const entry = entries[page - 1]!
+  const current = new AbortController()
+  controllers.set(page, current)
   try {
-    const response = await props.api.preview(props.task, page, current.signal)
-    if (current.signal.aborted) return
+    const response = await props.api!.preview(props.task, page, current.signal)
+    if (current.signal.aborted || epoch !== requestEpoch || disposed) return
     entry.url = URL.createObjectURL(response.blob)
     entry.corrected = response.corrected
     entry.status = 'done'
   } catch (error) {
-    if (isAbort(error) || current.signal.aborted) return
+    if (isAbort(error) || current.signal.aborted || epoch !== requestEpoch || disposed) return
     entry.status = 'error'
     if (error instanceof ApiFailure) { failure.value = errorMessages[error.card.code]; if (error.card.http_status === 401) emit('unauthorized') }
+  } finally {
+    if (controllers.get(page) === current) controllers.delete(page)
+    if (pageLoads.get(page) === job) pageLoads.delete(page)
+    job.resolve()
+    drainPages()
   }
 }
 
@@ -103,8 +141,37 @@ function onIntersect(records: IntersectionObserverEntry[]) {
   for (const record of records) {
     const page = Number((record.target as HTMLElement).dataset.page)
     if (!page) continue
-    if (record.isIntersecting) { visiblePages.add(page); void loadPage(page) } else visiblePages.delete(page)
+    if (record.isIntersecting) { visiblePages.add(page); void loadPage(page) } else {
+      visiblePages.delete(page)
+      dropPendingPage(page)
+    }
   }
+}
+
+function dropPendingPage(page: number) {
+  const job = pendingPages.get(page)
+  if (job && !job.priority) { pendingPages.delete(page); pageLoads.delete(page); clearPage(page); job.resolve() }
+}
+
+function scrollViewportFor(element: HTMLElement | null): HTMLElement | null {
+  for (let current = element; current; current = current.parentElement) {
+    if (/(auto|scroll)/.test(getComputedStyle(current).overflowY)
+        && current.clientHeight > 0 && current.scrollHeight > current.clientHeight) return current
+  }
+  return null
+}
+
+function bindViewport() {
+  const next = scrollViewportFor(previewEl.value?.parentElement ?? null)
+  if (next === previewViewport && observer) return
+  for (const event of browsingEvents) previewViewport?.removeEventListener(event, cancelNavigation)
+  observer?.disconnect()
+  visiblePages.clear()
+  for (const page of pendingPages.keys()) dropPendingPage(page)
+  previewViewport = next
+  observer = new IntersectionObserver(onIntersect, { root: previewViewport, rootMargin: '75% 0px' })
+  for (const el of pageEls.values()) observer.observe(el)
+  for (const event of browsingEvents) previewViewport?.addEventListener(event, cancelNavigation, { passive: true })
 }
 
 function goTo(page: number) {
@@ -112,7 +179,7 @@ function goTo(page: number) {
   const target = Math.min(Math.max(1, Math.floor(page || 1)), maxPage.value)
   jumpPage.value = target
   pageEls.get(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  void loadPage(target)
+  void loadPage(target, true)
 }
 
 function reloadAll() {
@@ -169,28 +236,30 @@ watch(() => props.source, source => {
   navigating = true
   const page = Math.min(Math.max(1, source.page ?? 1), maxPage.value)
   jumpPage.value = page
-  void loadPage(page)
+  void loadPage(page, true)
   alignSource()
 }, { flush: 'post', immediate: true })
 watch(() => entries.map(entry => [entry.status, entry.loaded]), alignSource, { flush: 'post' })
-watch(() => `${props.task.task_id}:${props.task.run_id}:${props.task.result_revision}`, () => {
+watch([() => props.active, () => props.api, () => props.canWrite, () => resultKey(props.task)], () => {
   cancelNavigation()
   resetAll()
   failure.value = ''
+  if (props.source) {
+    navigating = true
+    jumpPage.value = Math.min(Math.max(1, props.source.page ?? 1), maxPage.value)
+    void loadPage(jumpPage.value, true)
+  }
+  else void loadPage(1)
   for (const page of visiblePages) void loadPage(page)
 })
-observer = new IntersectionObserver(onIntersect, { root: null, rootMargin: '150% 0px' })
 onMounted(() => {
-  layoutObserver = new ResizeObserver(alignSource)
+  layoutObserver = new ResizeObserver(() => { bindViewport(); alignSource() })
   if (pageListEl.value) layoutObserver.observe(pageListEl.value)
   if (previewEl.value) layoutObserver.observe(previewEl.value)
-  previewViewport = previewEl.value?.parentElement ?? null
-  while (previewViewport?.parentElement && !/(auto|scroll)/.test(getComputedStyle(previewViewport).overflowY)) {
-    previewViewport = previewViewport.parentElement
-  }
-  for (const event of browsingEvents) previewViewport?.addEventListener(event, cancelNavigation, { passive: true })
+  bindViewport()
 })
 onBeforeUnmount(() => {
+  disposed = true
   cancelNavigation()
   layoutObserver?.disconnect()
   for (const event of browsingEvents) previewViewport?.removeEventListener(event, cancelNavigation)
@@ -220,7 +289,7 @@ void (async () => {
     <ol ref="pageListEl" class="page-list">
       <li v-for="n in maxPage" :key="n" :ref="el => setPageRef(el, n)" :data-page="n" class="page-item">
         <span class="page-no">第 {{ n }} 页</span>
-        <div v-if="entries[n - 1]?.status === 'error'" class="page-error">该页读取失败。<el-button link type="primary" @click="entries[n - 1]!.status = 'idle'; loadPage(n)">重试</el-button></div>
+        <div v-if="entries[n - 1]?.status === 'error'" class="page-error">该页读取失败。<el-button link type="primary" @click="loadPage(n, true)">重试</el-button></div>
         <el-skeleton v-else-if="entries[n - 1]?.status === 'loading'" animated class="page-skeleton" />
         <figure v-if="entries[n - 1]?.url" class="img-wrap" :class="{ 'ocr-ready': ocrEnabled }" :title="ocrEnabled ? '点击查看原图并框选识别' : undefined" @click="onPageClick(n)">
           <el-image v-if="ocrEnabled" :src="entries[n - 1]!.url" fit="scale-down" decoding="async" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />

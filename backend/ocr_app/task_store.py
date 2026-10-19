@@ -354,8 +354,14 @@ class TaskStore:
         with self.engine.connect() as connection:
             row = dict(self._batch_row(connection, batch_id, user))
             owner = self._owner(connection, row)
-        policy = policy if policy is not None else self.required_policy()
-        tasks = self.tasks(batch_id, policy=policy, user=user)
+            policy = policy if policy is not None else self.required_policy(connection)
+            # Summaries need task metadata, not decrypted page/result projections
+            # and their export validation. Full task reads retain those checks.
+            tasks = [dict(task) for task in connection.execute(text(
+                'SELECT t.status,t.doc_type,t.updated_at, '
+                'CASE WHEN r.days IS NULL THEN NULL ELSE t.expires_at END AS expires_at '
+                'FROM tasks t CROSS JOIN retention_settings r WHERE t.batch_id=:batch AND r.id=1'),
+                {'batch': batch_id}).mappings()]
         with self.engine.connect() as connection:
             row = self._batch_row(connection, batch_id, user)
             suggestions = []
@@ -461,7 +467,7 @@ class TaskStore:
         with self.engine.connect() as connection:
             return connection.execute(text("SELECT COUNT(*) FROM tasks WHERE status='QUEUED' AND cancel_requested=0")).scalar_one()
 
-    def claim_next(self, doc_types=None, *, lane=None):
+    def claim_next(self, doc_types=None, *, lane=None, single_page_only=False):
         allowed = tuple(SUPPORTED if doc_types is None else doc_types)
         if not allowed:
             return None
@@ -486,6 +492,12 @@ class TaskStore:
             if row is None:
                 return None
             row = dict(row)
+            pages = self.storage.unpack(row['meta_enc'], {}).get('actual_source_page_count')
+            row['_batch_safe'] = row['doc_type'] != 'MEDICAL_REPORT' and type(pages) is int and pages == 1
+            # Do not skip a long fair head, advance its cursor or start its budget
+            # while another document is still using this lane.
+            if single_page_only and not row['_batch_safe']:
+                return None
             connection.execute(text('''INSERT INTO document_queue_cursors(lane,last_owner) VALUES (:lane,:owner)
                 ON CONFLICT(lane) DO UPDATE SET last_owner=excluded.last_owner'''),
                                {'lane': lane, 'owner': row.pop('queue_owner')})
@@ -506,13 +518,17 @@ class TaskStore:
     def progress(self, task, stage, progress, pages=None):
         if stage not in ACTIVE:
             raise ValueError('Invalid task stage')
+        progress = max(0, min(99, int(progress)))
         pages_payload = self.storage.pack(pages) if pages is not None else None
         with self.transaction() as connection:
             row = self._row(connection, task['id'])
             if row['run_id'] != task['run_id'] or row['status'] not in ACTIVE or row['cancel_requested'] or row['stop_code']:
                 return False
+            if (row['status'] == stage and row['progress'] == progress
+                    and (pages is None or self.storage.unpack(row['pages_enc']) == pages)):
+                return True
             connection.execute(text('UPDATE tasks SET status=:stage,progress=:progress,pages_enc=:pages,updated_at=:at WHERE id=:id'),
-                               dict(stage=stage, progress=max(0, min(99, int(progress))), id=task['id'], at=now(),
+                               dict(stage=stage, progress=progress, id=task['id'], at=now(),
                                     pages=pages_payload if pages is not None else row['pages_enc']))
             return True
 

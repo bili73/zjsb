@@ -2,7 +2,7 @@
 
 Status: implemented
 Scope: SPEC.md, openapi.yaml, ARCHITECTURE.md, RUNTIME.md, IMPLEMENTATION_PLAN.md, FRONTEND_FIELDS.md, LOCAL_OCR.md, README.md, CLAUDE.md
-Last-verified: 2026-10-18
+Last-verified: 2026-10-19
 
 ## Problem
 
@@ -10,9 +10,11 @@ The contract documents plus README carry version references in headers, badges a
 
 ## Decision
 
-Any batch that changes the body, contract version, or enumerated current-state capability of a contract document must, in the same batch, update that document's header and cross-references: 依据/对应 lines, 对应业务/API版本, 更新日期（or the dated section header）, 对应 SPEC vX lines, README badges, and app-version examples in openapi.yaml. The authoritative values are SPEC.md's version line, openapi.yaml info.version（kept equal to `api.py` FastAPI(version=) and `diagnostics.py` APP_VERSION）, and DocTypeEnum in code. Historical narrative inside dated records（RUNTIME.md per-round sections）is never rewritten; ambiguous "当前" statements there get a date prefix instead. Mechanical reference repair must not invent acceptance records or change contract semantics.
+Any batch that changes the body, contract version, or enumerated current-state capability of a contract document must, in the same batch, update that document's header and cross-references: 依据/对应 lines, 对应业务/API版本, 更新日期（or the dated section header）, 对应 SPEC vX lines, README badges, and app-version examples in openapi.yaml. The authoritative values are SPEC.md's version line, `version.py` APP_VERSION（imported by API/diagnostics and kept equal to openapi.yaml info.version and frontend package/lock versions）, and DocTypeEnum in code. Historical narrative inside dated records（RUNTIME.md per-round sections）is never rewritten; ambiguous "当前" statements there get a date prefix instead. Mechanical reference repair must not invent acceptance records or change contract semantics.
 
 The 2026-10-18 drift repair is the first application: headers of all seven contract documents plus README badges now read SPEC v1.33 / OpenAPI 1.26.0 / 2026-10-18 where they state current state; "11类" claims became "13类（12种业务类型及TABLE）"; fixed-seven-day retention claims became admin-configurable retention; IMPLEMENTATION_PLAN.md gained subsystem code entries and a dated catch-up section for the v1.25–v1.33 features landed 2026-10-10～10-18, with links only to notes that exist.
+
+Current-state summaries in SPEC.md, FRONTEND_FIELDS.md, IMPLEMENTATION_PLAN.md and ARCHITECTURE.md also follow the implemented rules: saved business results need required values and no unresolved explicit export disputes, while TABLE keeps its own header/structure/completeness gates; neither export path requires COMPLETED. Ordinary review save acknowledges confirmable disputes without a separate confirmation button, and this does not waive the stricter completion checks. Production stays dual_resident; single_resident is isolated benchmark-only. Browser access uses named Cookie sessions with CSRF and revocation; legacy API keys remain bootstrap-only while web_users is empty. Material retention is administrator-configurable at 7/15/30 days or never, applies to old and new uploads with confirmation, and protects queued/active work until it stops. These are description repairs, not new product decisions; dated historical acceptance records remain unchanged.
 
 ## Decision audit
 
@@ -32,3 +34,4 @@ After a batch lands, every contract document header can be trusted without cross
 
 - 2026-10-18: the seven contract documents and README state SPEC v1.33 / 1.26.0 / 13类 consistently where they describe current state; openapi.yaml app-version example updated to 1.26.0; no x-implemented semantics or acceptance records were altered.
 - 2026-10-18: `npm run verify` passes after the repair batch (124 notes, tree and relative links green).
+- 2026-10-19: current export summaries and bank-card confirmation text are checked against `exporting.py`, `export_disputes.py`, `review.py` and `ReviewEditor.vue`; production mode against `launcher.py`/`start.ps1`; browser/bootstrap authentication against `auth.py`; retention against its existing implemented decision. The four edited contract documents carry the new verification date while SPEC v1.33 / API 1.26.0 and historical acceptance records are unchanged. No runtime code, service state or business data is changed by this documentation repair.

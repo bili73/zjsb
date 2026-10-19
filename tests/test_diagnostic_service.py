@@ -134,7 +134,8 @@ class ArchiveTests(unittest.TestCase):
         self.assertNotIn('stderr_drained', text)
         rows = list(a.iter_records(self.root))
         self.assertEqual(rows[-1]['level'], 'CRITICAL')
-        self.assertTrue(all(row['app_version'] == '1.26.0' for row in rows))
+        from ocr_app.version import APP_VERSION
+        self.assertTrue(all(row['app_version'] == APP_VERSION for row in rows))
         legacy = dict(rows[0]); legacy.pop('record_id'); legacy.pop('level'); legacy.pop('app_version')
         safe = d._export_record(legacy)
         self.assertEqual(d._export_record(safe), safe)

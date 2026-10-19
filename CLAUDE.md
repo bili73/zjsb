@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `IMPLEMENTATION_PLAN.md` | 当前实现状态与代码入口清单（头部更新日期/依据行＋现状表格＋按日期追加的补录章节） |
 | `FRONTEND_FIELDS.md` | 前端字段字典与当前可用 API 入口（字段交接契约，被 SPEC 引用） |
 
-各契约文档头部版本曾互相漂移，2026-10-18 已统一修复（基线：SPEC v1.33、openapi 1.26.0）；此后若再发现不一致，判断现状以 `SPEC.md`/`openapi.yaml` 版本号与 `RUNTIME.md` 置顶章节为准。应用版本号三处同步：`openapi.yaml` info.version、`api.py` FastAPI(version=)、`diagnostics.py` APP_VERSION。
+各契约文档头部版本曾互相漂移，2026-10-18 已统一修复（当时基线：SPEC v1.33、openapi 1.26.0）；此后若再发现不一致，判断现状以 `SPEC.md`/`openapi.yaml` 版本号与 `RUNTIME.md` 置顶章节为准。当前应用版本1.27.0，唯一Python来源为`backend/ocr_app/version.py`，API和诊断导入该常量；`openapi.yaml` info.version、前端package/lock及变更记录同步。历史标签只指向已提交内容，不重写旧提交显示版本。
 
 不得宣称未验收的能力（Mac 迁移、16 GB 人资机、CPU-only、全报告准确率、日吞吐）。
 同一批次改动契约文档正文时，必须同步该文档头部（版本/依据/对应行/更新日期）及交叉引用版本号；规则见 [契约文档头部同步](.agents/notes/implemented/process/2026-10-18-contract-doc-header-sync.md)。
@@ -72,10 +72,10 @@ backend/launch.py → ocr_app/launcher.py（GPU 执行通道字节锁=单实例�
      ├─ 文件进程（每任务一个；双 lane：certificate=其余 9 类（各类证书/身份证/护照/户口本/营业执照/学信表/银行卡），medical={MEDICAL_REPORT, TABLE, GENERIC, INTERVIEW_FORM}）：task_worker.py
      │   pipeline.py（两遍解码、主备模型尝试与缓存、证据保全的部分结果）· documents.py（解码、保守分区、原生证据）· extraction.py（字段/表格整理）
      │   文档域模块：doc_profiles.py（doc_type 权威元数据与 13 类型目录；跨进程共享，API 的 catalogue 端点与协调器的 lane 计算也导入它）· document_fields.py · medical_ledger.py · interview_form.py · generic_forms.py / generic_layout.py · photo_table_pipeline.py · table_recognition.py / table_format.py / table_export.py · bank_photocopy.py / bank_bins.py · image_admission.py / image_preprocessing.py（CPU 方向摆正 onnx）
-     └─ 模型进程（仅 .venvs/glm-ocr 与 .venvs/paddleocr-vl）：model_worker.py 私有协议（load/recognize、GenerationGuard 软预算与重复检测）+ winjob.py Job Object 进程树监督
+     └─ 模型进程（仅 .venvs/glm-ocr 与 .venvs/paddleocr-vl）：model_worker.py 私有协议（load/recognize/recognize_batch）+ batch_generation.py 逐行停止/完成 + model_protocol.py 定向控制 + winjob.py Job Object 进程树监督
 ```
 
-- 并发模型：生产固定 `dual_resident`——GLM 与 Paddle 各自 FIFO 队列、同模型同时最多一个推理请求、跨模型可重叠；启动加载/预热串行。`single_resident` 全串行逻辑仅存于内部路径（测试与离线串行基准），启动器已不接受该选项，旧单模型偏好自动归一为 dual。并发会话中故障模型本会话禁用，不自动重载。
+- 并发模型：生产固定`dual_resident`——GLM与Paddle各自FIFO、每模型同时一个调用、跨模型可重叠；Windows每调用最多2张，不等凑批，仅单页非体检材料可每通道最多3份准备/执行；体检、多页、页数未知独占通道，不跳过公平队首。启动加载/预热串行，完成数值库初始化后再启用stdin控制线程。`--model-batch-size 1`回到单张；`single_resident`仅测试与离线串行基准，启动降级仍串行。故障模型本会话禁用，不自动重载。Mac线上禁止写入、重启及推理实验。
 - 模型路由：体检/表格/通用/面试表主用 Paddle（主备各一次）；证书类主用 GLM（glm×2 + paddle×1）；银行卡按 front/supplement/ambiguous_front 分区各一次，未检出分区的 whole 回退区域按证书类三连尝试。生成软预算分档：医疗与面试表 20 秒，通用、银行卡与拍照表格 40 秒（表格档在 `photo_table_pipeline.py` 单独定义），证书类无软预算。
 - 预算：Task 领取后共享 180 秒（含模型队列等待与换模），双层 watchdog——协调器在 deadline+1s 定向停止该任务，API 进程 Business.watch 以首次观察时刻 +181s 兜底；停止失败置 SUPERVISION_FAILED 并关闭整个 runtime。
 - 数据：SQLite 在 `.runtime/data/`（WAL、Alembic 迁移 `backend/migrations/`，当前 0001–0012）；敏感产物 AES-GCM 加密，部署密钥在 `.runtime/secrets/`（Windows DPAPI，跨用户复制不可恢复）；保留期管理员可配置（7/15/30 天或永不清除，初始 7 天）；schema0011 操作审计表升级后不可只回退旧代码（旧版按七列插入 audit 不兼容），回退须用备份先演练。

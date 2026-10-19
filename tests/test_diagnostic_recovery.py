@@ -174,6 +174,64 @@ class PartialRecoveryTests(unittest.TestCase):
         self.assertEqual(len(page['items']), 1)
 
 
+class DiagnosticScanCacheTests(unittest.TestCase):
+    setUp = existing.ArchiveTests.setUp
+
+    def test_unchanged_scan_reused_with_precise_filters_and_independent_rows(self):
+        self.logger.event('request_completed')
+        self.logger.event('request_timeout')
+        with patch('ocr_app.diagnostic_service.iter_records', wraps=a.iter_records) as scans:
+            first = self.service.query(limit=1)
+            identifier = first['items'][0]['record_id']
+            first['items'][0]['description'] = 'caller mutation'
+            second = self.service.query(error_id=identifier)
+            self.assertEqual(scans.call_count, 1)
+            self.assertEqual(len(second['items']), 1)
+            self.assertNotEqual(second['items'][0]['description'], 'caller mutation')
+        self.assertFalse(second['incomplete'])
+
+    def test_append_delete_and_corrupt_replacement_invalidate_cache(self):
+        self.logger.event('request_timeout')
+        self.assertEqual(len(self.service.query()['items']), 1)
+        self.logger.event('request_timeout')
+        self.assertEqual(len(self.service.query()['items']), 2)
+        self.logger.path.write_text('invalid replacement\n')
+        damaged = self.service.query()
+        self.assertEqual(damaged['items'], [])
+        self.assertTrue(damaged['incomplete'])
+        self.logger.path.unlink()
+        clean = self.service.query()
+        self.assertEqual(clean['items'], [])
+        self.assertFalse(clean['incomplete'])
+
+    def test_warm_cache_still_applies_exact_time_bounds(self):
+        rows = []
+        for hour in ['10:10', '10:30', '11:10']:
+            row = self.logger._record('request_timeout', {})
+            row['timestamp'] = '2026-10-19T' + hour + ':00+00:00'
+            rows.append(row)
+        self.logger.path.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+        with patch('ocr_app.diagnostic_service.iter_records', wraps=a.iter_records) as scans:
+            with patch('ocr_app.diagnostic_service.window', return_value=('2026-10-19T10:15:00+00:00', '2026-10-19T10:45:00+00:00')):
+                self.assertEqual([row['record_id'] for row in self.service.query()['items']], [rows[1]['record_id']])
+            with patch('ocr_app.diagnostic_service.window', return_value=('2026-10-19T10:35:00+00:00', '2026-10-19T10:45:00+00:00')):
+                self.assertEqual(self.service.query()['items'], [])
+            self.assertEqual(scans.call_count, 1)
+
+    def test_incomplete_and_oversized_scans_are_never_cached(self):
+        self.logger.event('request_timeout')
+        with patch('ocr_app.diagnostic_service.MAX_CACHED_RECORD_BYTES', 1):
+            with patch('ocr_app.diagnostic_service.iter_records', wraps=a.iter_records) as scans:
+                self.assertEqual(len(self.service.query()['items']), 1)
+                self.assertEqual(len(self.service.query()['items']), 1)
+                self.assertEqual(scans.call_count, 2)
+        self.logger.path.write_text(self.logger.path.read_text() + 'broken\n')
+        with patch('ocr_app.diagnostic_service.iter_records', wraps=a.iter_records) as scans:
+            self.assertTrue(self.service.query()['incomplete'])
+            self.assertTrue(self.service.query()['incomplete'])
+            self.assertEqual(scans.call_count, 2)
+
+
 class ArchiveIndexTests(unittest.TestCase):
     setUp = existing.ArchiveTests.setUp
 

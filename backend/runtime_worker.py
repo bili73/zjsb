@@ -118,8 +118,10 @@ def main():
     ap.add_argument('--mode', required=True)
     ap.add_argument('--session-dir', type=Path, required=True)
     ap.add_argument('--data-root', type=Path)
+    ap.add_argument('--model-batch-size', type=int, choices=(1, 2), default=1)
     args = ap.parse_args()
-    config = RuntimeConfig(args.session_dir, args.mode, data_root=args.data_root)
+    config = RuntimeConfig(args.session_dir, args.mode, data_root=args.data_root,
+                           model_batch_size=args.model_batch_size)
     manager = ModelManager(config, lambda value: emit({'event': 'snapshot', 'runtime': value}))
     logger = session_diagnostics(args.session_dir, 'runtime')
     store = None

@@ -38,6 +38,7 @@ def launch(diagnostic):
     parser.add_argument('--mode', choices=('dual_resident',), help='Production always keeps both models resident')
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--no-browser', action='store_true')
+    parser.add_argument('--model-batch-size', type=int, choices=(1, 2), default=2)
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535:
         parser.error('port must be between 1024 and 65535')
@@ -66,7 +67,8 @@ def launch(diagnostic):
         import uvicorn
         business = Business(runtime_root / 'data', diagnostic)
         business.prepare()
-        runtime = RuntimeClient(RuntimeConfig(session, mode, data_root=business.root))
+        runtime = RuntimeClient(RuntimeConfig(session, mode, data_root=business.root,
+                                              model_batch_size=args.model_batch_size))
         app = create_app(runtime, ROOT / 'frontend/dist', session, business=business, logger=diagnostic)
         server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=args.port, access_log=False,
                                              proxy_headers=False, log_level='warning'))

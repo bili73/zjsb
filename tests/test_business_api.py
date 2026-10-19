@@ -53,10 +53,13 @@ class BusinessAPITests(unittest.TestCase):
         self.assertEqual((batch['name'], batch['display_name']), ('毕业证', '毕业证'))
         with self.business.engine.connect() as connection:
             self.assertEqual(connection.execute(text('SELECT name_enc FROM batches WHERE id=:id'), {'id': identifier}).scalar_one(), historical)
-        with patch.object(self.business.store, 'tasks', return_value=[{'doc_type': 'DIPLOMA', 'status': 'COMPLETED', 'updated_at': batch['created_at'], 'expires_at': batch['expires_at']}, {'doc_type': 'DEGREE_CERT', 'status': 'COMPLETED', 'updated_at': batch['created_at'], 'expires_at': batch['expires_at']} ]):
-            self.assertEqual(self.business.store.batch(identifier)['name'], '混合材料 · 毕业证 / 学位证')
-        with patch.object(self.business.store, 'tasks', return_value=[]):
-            self.assertEqual(self.business.store.batch(identifier)['name'], '待确定类型')
+        mixed = self.business.store.create_batch([
+            dict(data=self.image + bytes([i]), name='synthetic.png', mime='image/png')
+            for i in range(2)], ['DIPLOMA', 'DEGREE_CERT'], 'synthetic')
+        self.assertTrue(self.business.store.batch(mixed['batch_id'])['name'].endswith('混合材料 · 毕业证 / 学位证'))
+        with self.business.store.transaction() as connection:
+            connection.execute(text('DELETE FROM tasks WHERE batch_id=:batch'), {'batch': mixed['batch_id']})
+        self.assertTrue(self.business.store.batch(mixed['batch_id'])['name'].endswith('待确定类型'))
 
     def test_batches_are_descending_and_timestamps_remain_utc(self):
         # Equal wall-clock ticks use the documented ID tie-break, not upload order.

@@ -13,12 +13,15 @@ class RuntimeConfig:
     load_timeout: float = 300.0
     request_timeout: float = 180.0
     data_root: Path | None = None
+    model_batch_size: int = 1
 
     def __post_init__(self):
         if self.mode not in MODES:
             raise ValueError('Unknown residency mode')
         if self.load_timeout <= 0 or self.request_timeout <= 0:
             raise ValueError('Timeout must be positive')
+        if type(self.model_batch_size) is not int or self.model_batch_size not in {1, 2}:
+            raise ValueError('Model batch size must be one or two')
 
     def model_command(self, key):
         model = MODELS[key]

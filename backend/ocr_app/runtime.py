@@ -6,9 +6,12 @@ import os
 import queue
 import threading
 import time
+import uuid
 
 from .config import MODELS, ROOT
 from .diagnostics import correlation_context, safe_context, session_diagnostics
+
+ROW_CANCEL_WAIT_SECONDS = 10.
 
 
 class RuntimeFailure(Exception):
@@ -24,6 +27,7 @@ class ModelProcess:
         self.key, self.phase = key, phase
         self.responses = queue.Queue()
         self.serial = 0
+        self.write_lock = threading.Lock()
         self.phase_state = 'loading'
         config.session_dir.mkdir(parents=True, exist_ok=True)
         self.diag = session_diagnostics(config.session_dir, 'model')
@@ -74,7 +78,7 @@ class ModelProcess:
         finally:
             self.diag.event('stderr_drained', model=self.key, stderr_characters=count, stderr_lines=lines)
 
-    def call(self, operation, timeout, **payload):
+    def call(self, operation, timeout, *, on_row=None, on_started=None, **payload):
         self.serial += 1
         request_id = self.serial
         context = correlation_context(payload.get('context'))
@@ -82,8 +86,11 @@ class ModelProcess:
         self.diag.event('request_started', model=self.key, operation=operation, **context)
         end = time.monotonic() + timeout
         try:
-            self.process.stdin.write(json.dumps({'id': request_id, 'op': operation, **payload}) + '\n')
-            self.process.stdin.flush()
+            with self.write_lock:
+                self.process.stdin.write(json.dumps({'id': request_id, 'op': operation, **payload}) + '\n')
+                self.process.stdin.flush()
+            if on_started:
+                on_started(request_id)
             while True:
                 remaining = end - time.monotonic()
                 if remaining <= 0:
@@ -103,6 +110,11 @@ class ModelProcess:
                     continue
                 if message.get('id') != request_id:
                     raise RuntimeFailure('MODEL_LOAD_FAILED')
+                if message.get('event') == 'row_result':
+                    if operation != 'recognize_batch' or on_row is None:
+                        raise RuntimeFailure('MODEL_LOAD_FAILED')
+                    on_row(message)
+                    continue
                 if not isinstance(message.get('ok'), bool):
                     raise RuntimeFailure('MODEL_LOAD_FAILED')
                 if not message['ok']:
@@ -119,6 +131,14 @@ class ModelProcess:
         except (BrokenPipeError, OSError, ValueError) as error:
             error_id = self.diag.exception('request_failed', error, model=self.key, operation=operation, **context)
             raise RuntimeFailure('MODEL_PROCESS_EXITED', error_id) from error
+
+    def cancel_rows(self, request_id, row_ids):
+        try:
+            with self.write_lock:
+                self.process.stdin.write(json.dumps(dict(op='cancel_rows', target_id=request_id, row_ids=row_ids)) + '\n')
+                self.process.stdin.flush()
+        except (BrokenPipeError, OSError, ValueError) as error:
+            raise RuntimeFailure('MODEL_PROCESS_EXITED') from error
 
     def poll(self):
         return self.process.poll()
@@ -174,6 +194,10 @@ class ModelManager:
         with self._state:
             return self._parallel_session and not self.closed
 
+    @property
+    def model_batch_size(self):
+        return self.config.model_batch_size if self.parallel_inference else 1
+
     def snapshot(self):
         with self._state:
             return copy.deepcopy(self.view)
@@ -181,6 +205,10 @@ class ModelManager:
     def statistics(self):
         with self._state:
             return dict(runtime=copy.deepcopy(self.view), metrics=copy.deepcopy(self.metrics),
+                        model_batch_size=self.model_batch_size,
+                        active_requests={key:[{name:member['context'].get(name) for name in ('task_id','run_id','request_id')}
+                            for member in owner.get('rows',{}).values() if not member['done'].is_set()]
+                            for key,owner in self._owners.items()},
                         model_pids={key: client.process.pid for key, client in self.clients.items()
                                     if hasattr(client, 'process')})
 
@@ -377,6 +405,9 @@ class ModelManager:
             raise RuntimeFailure('SUPERVISION_FAILED' if self.fatal else 'MODEL_PROCESS_EXITED')
         if owner and (owner['task_id'], owner['run_id']) in self._stopped_runs:
             raise RuntimeFailure('CANCELLED')
+        if owner and owner.get('rows') and all((m['context']['task_id'],m['context']['run_id']) in self._stopped_runs
+                                              for m in owner['rows'].values()):
+            raise RuntimeFailure('CANCELLED')
 
     def _acquire_execution(self, lock, deadline, owner):
         while True:
@@ -389,9 +420,17 @@ class ModelManager:
                 return
 
     def stop_run(self, task_id, run_id):
-        deadline = time.monotonic() + 10.
+        deadline = time.monotonic() + ROW_CANCEL_WAIT_SECONDS
+        waiting, controls = [], []
         with self._state:
             self._stopped_runs.add((task_id, run_id))
+            for key, owner in self._owners.items():
+                for member in owner.get('rows', {}).values():
+                    if (member['context']['task_id'], member['context']['run_id']) == (task_id, run_id) and not member['done'].is_set():
+                        member['cancelled'].set()
+                        waiting.append((key, owner, member))
+                        if owner['client'] is not None and owner['rpc_id'] is not None:
+                            controls.append((owner['client'], owner['rpc_id'], member['row_id']))
             owners = [(key, owner, owner['client']) for key, owner in self._owners.items()
                       if (owner['task_id'], owner['run_id']) == (task_id, run_id)]
             # Fence reuse of this same process before releasing state. Otherwise
@@ -399,6 +438,17 @@ class ModelManager:
             # the per-model close lock, despite an identical client generation.
             for key, _, _ in owners:
                 self.view['models'][key] = 'stopping'
+        for client, rpc_id, row_id in controls:
+            client.cancel_rows(rpc_id, [row_id])
+        for key, owner, member in waiting:
+            if not member['done'].wait(max(0., deadline - time.monotonic())):
+                # A missing generation-boundary acknowledgement is a shared
+                # process failure. Confirm cleanup; never claim the peer passed.
+                self._failure(key, 'MODEL_REQUEST_TIMEOUT', owner['client'])
+                if not owner['done'].wait(2):
+                    with self._state:
+                        self.fatal = self.closed = True
+                    raise RuntimeFailure('SUPERVISION_FAILED')
         for key, owner, client in owners:
             if client is not None:
                 self._unload(key, client)
@@ -505,6 +555,7 @@ class ModelManager:
                 result = {**result, 'model_revision': self._revisions.get(key),
                           'model_generation': self._generations[key], 'queue_wait_seconds': queue_wait}
             self._record_metric(dict(model=key, operation='recognize', wall_seconds=time.monotonic() - started,
+                                     started_monotonic=started, finished_monotonic=time.monotonic(),
                                      **{k: v for k, v in result.items() if k != 'text'}))
             self.diag.event('request_completed', model=key, operation='recognize',
                             **{**context, **{name: value for name, value in safe_context(result).items()
@@ -519,6 +570,124 @@ class ModelManager:
                 self._failure(key, error.code, client)
             # The future task pipeline owns the explicit, bounded region retry; no hidden extra OCR attempt.
             raise
+
+    def recognize_batch(self, key, requests, on_result):
+        """One exclusive generate call, independently fenced streamed rows."""
+        if key not in MODELS or self.model_batch_size != 2 or not 1 <= len(requests) <= 2:
+            raise ValueError('Invalid runtime batch')
+        from .batch_generation import compatible
+        if any(not compatible(requests[0]['payload'], item['payload']) for item in requests):
+            raise ValueError('Incompatible runtime batch')
+        entered = time.monotonic()
+        members = {}
+        for index, request in enumerate(requests):
+            row_id = uuid.uuid4().hex
+            members[row_id] = dict(request, index=index, row_id=row_id, cancelled=threading.Event(),
+                done=threading.Event(), deadline=min(request['deadline'], entered+self.config.request_timeout))
+        owner = dict(task_id=None, run_id=None, rows=members, client=None, rpc_id=None, done=threading.Event())
+        acquired, client, dispatched = False, None, 0
+        batch_id = uuid.uuid4().hex
+
+        def deliver(member, result=None, error=None):
+            with self._state:
+                if member['done'].is_set():
+                    raise RuntimeFailure('MODEL_LOAD_FAILED')
+                identity = member['context']['task_id'], member['context']['run_id']
+                if identity in self._stopped_runs or member['cancelled'].is_set():
+                    result, error = None, RuntimeFailure('CANCELLED')
+                elif self.closed:
+                    result, error = None, RuntimeFailure('SUPERVISION_FAILED' if self.fatal else 'MODEL_PROCESS_EXITED')
+                elif time.monotonic() >= member.get('call_deadline', member['deadline']):
+                    result, error = None, RuntimeFailure('EXTRACT_TIMEOUT')
+                if result is not None:
+                    result = {**result, 'model_revision':self._revisions.get(key),
+                        'model_generation':self._generations[key], 'inference_batch_id':batch_id,
+                        'queue_wait_seconds':max(0., started-member['submitted_at'])}
+                member['done'].set()
+            self._record_metric({'model':key, 'operation':'recognize', 'inference_batch_id':batch_id,
+                'wall_seconds':max(0., time.monotonic()-started), 'batch_size':dispatched,
+                **({k:v for k,v in result.items() if k != 'text'} if result is not None else dict(error_code=error.code))})
+            on_result(member['index'], result, error)
+
+        def received(message):
+            member = members.get(message.get('row_id'))
+            if member is None or not isinstance(message.get('ok'), bool):
+                raise RuntimeFailure('MODEL_LOAD_FAILED')
+            if message['ok']:
+                result = message.get('result')
+                if not isinstance(result, dict) or not isinstance(result.get('text'), str):
+                    raise RuntimeFailure('MODEL_LOAD_FAILED')
+                deliver(member, result)
+            else:
+                code = message.get('error_code')
+                if code not in {'CANCELLED', 'EXTRACT_TIMEOUT', 'INPUT_INVALID'}:
+                    raise RuntimeFailure('MODEL_LOAD_FAILED')
+                deliver(member, error=RuntimeFailure(code))
+
+        def started_call(identity):
+            with self._state:
+                owner['rpc_id'] = identity
+                cancelled = [member['row_id'] for member in members.values() if member['cancelled'].is_set()]
+            if cancelled:
+                client.cancel_rows(identity, cancelled)
+
+        started = entered
+        try:
+            self._acquire_execution(self._execution[key], max(m['deadline'] for m in members.values()), owner)
+            acquired = True
+            with self._state:
+                self._check_owner(owner)
+                client = self.clients.get(key)
+                if client is None or self.view['models'][key] != 'ready':
+                    raise RuntimeFailure('MODEL_LOAD_FAILED')
+                owner['client'] = client
+                self._owners[key] = owner
+                for member in members.values():
+                    if (member['context']['task_id'], member['context']['run_id']) in self._stopped_runs:
+                        member['cancelled'].set()
+            started = time.monotonic()
+            sending = []
+            for member in members.values():
+                if member['cancelled'].is_set():
+                    deliver(member, error=RuntimeFailure('CANCELLED'))
+                elif member['deadline'] <= started:
+                    deliver(member, error=RuntimeFailure('EXTRACT_TIMEOUT'))
+                else:
+                    soft = member['payload'].get('generation_timeout_seconds')
+                    if soft is not None and (type(soft) not in (int,float) or not math.isfinite(soft) or soft <= 0):
+                        deliver(member, error=RuntimeFailure('INPUT_INVALID'))
+                        continue
+                    member['call_deadline'] = min(member['deadline'], started+soft+10) if soft is not None else member['deadline']
+                    sending.append({**member['payload'], 'row_id':member['row_id'], 'deadline':member['deadline']})
+            if not sending:
+                return
+            dispatched = len(sending)
+            final = client.call('recognize_batch', timeout=max(m['call_deadline'] for m in members.values() if not m['done'].is_set())-started,
+                rows=sending, on_row=received, on_started=started_call)
+            if final.get('completed') != len(sending) or any(not m['done'].is_set() for m in members.values()):
+                raise RuntimeFailure('MODEL_LOAD_FAILED')
+        except Exception as caught:
+            error = caught if isinstance(caught, RuntimeFailure) else RuntimeFailure('MODEL_PROCESS_EXITED')
+            if error.error_id is None and error.code not in {'CANCELLED','INPUT_INVALID','EXTRACT_TIMEOUT'}:
+                error.error_id = self.diag.exception('request_failed', caught, model=key,
+                    operation='recognize_batch', error_code=error.code)
+            if client is not None and error.code not in {'CANCELLED','INPUT_INVALID','EXTRACT_TIMEOUT'}:
+                self._failure(key, error.code, client)
+            for member in members.values():
+                if not member['done'].is_set():
+                    deliver(member, error=error)
+        finally:
+            if dispatched:
+                self._record_metric(dict(model=key, operation='recognize_batch', inference_batch_id=batch_id,
+                    started_monotonic=started, finished_monotonic=time.monotonic(),
+                    batch_size=dispatched, wall_seconds=time.monotonic()-started,
+                    completed_rows=sum(m['done'].is_set() for m in members.values())))
+            with self._state:
+                if self._owners.get(key) is owner:
+                    del self._owners[key]
+                owner['done'].set()
+            if acquired:
+                self._execution[key].release()
 
     def close(self):
         with self._state:

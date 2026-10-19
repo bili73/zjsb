@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: 证件关键信息提取系统 API
-  version: 1.26.0
+  version: 1.27.0
   description: |
     内部证件信息提取系统 API 契约（SPEC v1.33）。
     批次按不可变上传账号ID隔离：管理员查看全部，operator/viewer仅能访问自己的批次和所属任务。列表先过滤归属再计算总数和分页，越权ID与不存在ID统一404；结果、原图、复核、取消、重跑、完整字段及导出同样校验。混合账号导出整次拒绝，不输出部分结果。删除批次仍仅管理员可操作。
@@ -612,7 +612,7 @@ paths:
                   status:
                     type: string
                     enum: [ok, degraded]
-                  version: {type: string, description: 应用版本, example: "1.26.0"}
+                  version: {type: string, description: 应用版本, example: "1.27.0"}
                   queue_depth: {type: integer, minimum: 0, nullable: true, example: 3, description: 等待执行且未请求取消的QUEUED任务数；数据库不可查询时为null，不伪造0}
                   components:
                     type: object
