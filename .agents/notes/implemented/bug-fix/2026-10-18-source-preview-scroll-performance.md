@@ -27,6 +27,8 @@ The user reported janky scrolling on the medical-report detail drawer (体检报
 
 The later [prioritized detail loading repair](2026-10-19-prioritized-detail-loading.md) addresses request contention rather than layout shifts. It partially changes this preload choice to a75percent actual-scroll-root margin and a two-request queue, keeping nearby preloading, reserved geometry and smooth location. This note's layout and overlay decisions remain active.
 
+[Preview renditions](../feature/2026-10-19-preview-renditions.md) implements the previously deferred server downsampling lever: page lists request display pixels, and enlargement/region OCR retain originals. Local image/PDF elements mount only when explicitly expanded. Layout, fractional source coordinates and smooth navigation remain active.
+
 ## Verification
 
 Perf harness re-run after the change: layout shift 0.138 → 0 on the left list (0 on body both runs), long tasks 0 throughout, body-scroll dropped frames 1 → 0. rAF-gap count on the image-list run rises only because stable placeholders lengthen the scroll distance and put more pages in the preload zone (12 images decoded vs 8); decode is off-main-thread and dominates only in headless software rendering. The 15-screen UX audit harness re-rendered without page errors (SourcePreview error/holder/loaded paths intact); frontend typecheck, 246 node tests, production build and `npm run verify` pass with this note. Screenshot of the stressed drawer confirms images letterbox correctly inside the reserved A4 boxes.

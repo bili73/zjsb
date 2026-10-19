@@ -61,6 +61,7 @@ class DeleteBatchBody(BaseModel):
 class FullPreview(Version):
     page: int = Field(default=1, ge=1)
     reason: str | None = Field(default=None, max_length=1000)
+    rendition: Literal['original', 'display'] = 'original'
 
 
 class RegionOCRBody(Version):
@@ -422,7 +423,7 @@ def router(business, runtime, health):
                      page: int | None = Query(default=None, ge=1, le=2147483647),
                      page_size: int | None = Query(default=None, ge=1, le=100)):
         if (page is not None or page_size is not None) and ('cursor' in request.query_params or 'limit' in request.query_params):
-            raise TaskError('INVALID_REQUEST', '页码分页不能与游标分页同时使用', 422)
+            raise TaskError('AUDIT_FILTER_INVALID', '页码分页不能与游标分页同时使用', 422)
         result = audit_service().query(cursor=cursor, limit=limit, page=page, page_size=page_size, **filters)
         recheck_diagnostic_user(request, user)
         return result
@@ -601,6 +602,11 @@ def router(business, runtime, health):
     def task(task_id: uuid.UUID, user=Depends(principal)):
         return business.store.task(str(task_id), user=user)
 
+    @routes.delete('/tasks/{task_id}')
+    def delete_task(task_id: uuid.UUID, body: Version, request: Request, user=Depends(operator)):
+        return business.store.delete_task(str(task_id), str(body.run_id), body.expected_revision, user['user_id'],
+            user=user, authorize=authorization(request, user))
+
     @routes.get('/tasks/{task_id}/result')
     def result(task_id: uuid.UUID, items_filter: Literal['all', 'abnormal', 'unknown'] | None = None,
                include_normal_summary: bool = True, user=Depends(principal)):
@@ -620,19 +626,19 @@ def router(business, runtime, health):
     @routes.get('/tasks/{task_id}/preview')
     def preview(task_id: uuid.UUID, run_id: uuid.UUID, request: Request, result_revision: int = Query(ge=0),
                 page: int = Query(1, ge=1), stage: Literal['corrected'] = 'corrected',
-                masked: bool = True, user=Depends(operator)):
+                masked: bool = True, rendition: Literal['original', 'display'] = 'original', user=Depends(operator)):
         from .preview import corrected_preview
         data = corrected_preview(business.store, str(task_id), str(run_id), result_revision, page,
-                                 actor=user['user_id'], role=user['role'], user=user, authorize=authorization(request, user))
-        return Response(data, media_type='image/png', headers={'X-Preview-Stage': 'corrected', 'X-Result-Revision': str(result_revision)})
+                                 actor=user['user_id'], role=user['role'], user=user, authorize=authorization(request, user), rendition=rendition)
+        return Response(data, media_type='image/png', headers={'X-Preview-Stage': 'corrected', 'X-Result-Revision': str(result_revision), 'X-Preview-Rendition': rendition})
 
     @routes.post('/tasks/{task_id}/preview')
     def full_preview(task_id: uuid.UUID, body: FullPreview, request: Request, user=Depends(operator)):
         from .preview import corrected_preview
         data = corrected_preview(business.store, str(task_id), str(body.run_id), body.expected_revision, body.page,
                                  actor=user['user_id'], role=user['role'], masked=False, access_reason=body.reason,
-                                 user=user, authorize=authorization(request, user))
-        return Response(data, media_type='image/png', headers={'X-Preview-Stage': 'corrected', 'X-Result-Revision': str(body.expected_revision)})
+                                 user=user, authorize=authorization(request, user), rendition=body.rendition)
+        return Response(data, media_type='image/png', headers={'X-Preview-Stage': 'corrected', 'X-Result-Revision': str(body.expected_revision), 'X-Preview-Rendition': body.rendition})
 
     @routes.post('/tasks/{task_id}/reveal')
     def reveal(task_id: uuid.UUID, body: RevealBody, request: Request, user=Depends(operator)):

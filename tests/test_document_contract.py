@@ -26,6 +26,22 @@ class DocumentContractTests(unittest.TestCase):
     def validate(self,name,value):
         jsonschema.Draft7Validator(dict(self.document,**{'$ref':'#/components/schemas/'+name}),format_checker=jsonschema.FormatChecker()).validate(value)
 
+    def test_every_internal_reference_resolves(self):
+        def visit(value):
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    if key == '$ref' and item.startswith('#/'):
+                        with self.subTest(reference=item):
+                            target = self.document
+                            for part in item[2:].split('/'):
+                                target = target[part.replace('~1', '/').replace('~0', '~')]
+                    else:
+                        visit(item)
+            elif isinstance(value, list):
+                for item in value:
+                    visit(item)
+        visit(self.document)
+
     def test_generic_optional_sources_tables_and_review_links(self):
         from test_generic_forms import block
         initial=extract_result([block('姓名：张三\n电话：'),
@@ -160,6 +176,32 @@ class DocumentContractTests(unittest.TestCase):
         self.assertIn('image/png',preview['responses']['200']['content'])
         self.assertIn('X-Result-Revision',preview['responses']['200']['headers'])
         self.assertTrue(self.document['components']['schemas']['Field']['properties']['value_masked']['deprecated'])
+
+    def test_preview_rendition_defaults_and_response_headers_match_both_routes(self):
+        path = self.document['paths']['/tasks/{task_id}/preview']
+        params = {p['name']: p for p in path['get']['parameters']}
+        rendition = params['rendition']['schema']
+        self.assertEqual(rendition['default'], 'original')
+        self.assertEqual(rendition['enum'], ['original', 'display'])
+        for method in ('get', 'post'):
+            self.assertEqual(path[method]['responses']['200']['headers']['X-Preview-Rendition']['schema']['enum'], ['original', 'display'])
+        version = dict(run_id=str(uuid4()), expected_revision=3)
+        self.assertEqual(FullPreview(**version).rendition, 'original')
+        for value in ('original', 'display'):
+            self.validate('FullPreviewRequest', dict(version, rendition=value))
+            self.assertEqual(FullPreview(**version, rendition=value).rendition, value)
+        with self.assertRaises(jsonschema.ValidationError):
+            self.validate('FullPreviewRequest', dict(version, rendition='thumbnail'))
+
+    def test_audit_specific_failures_are_in_the_public_error_contract(self):
+        codes = self.document['components']['schemas']['Error']['properties']['code']['enum']
+        self.assertIn('AUDIT_FILTER_INVALID', codes)
+        self.assertIn('AUDIT_EXPORT_TOO_LARGE', codes)
+        for path in ('/admin/audit/events', '/admin/audit/export'):
+            operation = self.document['paths'][path]['get']
+            self.assertIn('AUDIT_FILTER_INVALID', operation['description'])
+            self.assertIn('422', operation['responses'])
+        self.assertIn('AUDIT_EXPORT_TOO_LARGE', self.document['paths']['/admin/audit/export']['get']['description'])
 
     def test_confirmation_reason_is_optional_but_not_arbitrary(self):
         version=dict(run_id=str(uuid4()),expected_revision=0)

@@ -66,7 +66,7 @@ export class BusinessApi {
       const response = await this.fetcher.call(globalThis, `/api/v1${path}`, { ...init, headers, signal: controller.signal, credentials: 'same-origin', cache: 'no-store' })
       status = response.status
       requestId = response.headers.get('X-Request-ID')
-      const body: unknown = response.ok && binary ? { blob: await response.blob(), filename: responseFilename(response.headers.get('Content-Disposition')), stage: response.headers.get('X-Preview-Stage'), revision: response.headers.get('X-Result-Revision'), truncated: response.headers.get('X-Diagnostics-Truncated') === 'true', incomplete: response.headers.get('X-Diagnostics-Incomplete') === 'true' } : await response.json().catch(() => null)
+      const body: unknown = response.ok && binary ? { blob: await response.blob(), filename: responseFilename(response.headers.get('Content-Disposition')), stage: response.headers.get('X-Preview-Stage'), revision: response.headers.get('X-Result-Revision'), rendition: response.headers.get('X-Preview-Rendition'), truncated: response.headers.get('X-Diagnostics-Truncated') === 'true', incomplete: response.headers.get('X-Diagnostics-Incomplete') === 'true' } : await response.json().catch(() => null)
       signal.throwIfAborted()
       if (!response.ok) {
         const error = isRecord(body) && isRecord(body.error) ? body.error : isRecord(body) ? body : {}
@@ -169,12 +169,16 @@ export class BusinessApi {
   review(taskId: string, body: ReviewBody, signal: AbortSignal) {
     return this.request(`/tasks/${encodeURIComponent(taskId)}/review`, 'review', parseTask, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   }
-  preview(task: Pick<Task, 'task_id' | 'run_id' | 'result_revision'>, page: number, signal: AbortSignal, reason?: string) {
+  preview(task: Pick<Task, 'task_id' | 'run_id' | 'result_revision'>, page: number, signal: AbortSignal, reason?: string, rendition: 'original' | 'display' = 'original') {
     const query = new URLSearchParams({ run_id: task.run_id, result_revision: String(task.result_revision), page: String(page), stage: 'corrected' })
-    const init = reason === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_id: task.run_id, expected_revision: task.result_revision, page, reason }) }
+    const selected = rendition === 'display' ? { rendition } : {}
+    if (rendition === 'display') query.set('rendition', rendition)
+    const init = reason === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_id: task.run_id, expected_revision: task.result_revision, page, reason, ...selected }) }
     return this.request(`/tasks/${encodeURIComponent(task.task_id)}/preview${reason === undefined ? `?${query}` : ''}`, 'preview', body => {
       if (!isRecord(body) || !(body.blob instanceof Blob) || !body.blob.type.startsWith('image/')) throw new Error('INVALID_RESPONSE')
-      return { blob: body.blob, corrected: body.stage === 'corrected' && body.revision === String(task.result_revision) }
+      const actual = body.rendition ?? 'original'
+      if (actual !== 'original' && actual !== 'display' || rendition === 'original' && actual !== 'original') throw new Error('INVALID_RESPONSE')
+      return { blob: body.blob, corrected: body.stage === 'corrected' && body.revision === String(task.result_revision), rendition: actual }
     }, signal, init, true)
   }
   export(body: { batch_id?: string; task_ids?: string[]; masked: boolean; reason?: string; versions?: { task_id: string; run_id: string; result_revision: number }[] }, signal: AbortSignal) {
@@ -204,6 +208,16 @@ export class BusinessApi {
       return { ...created, cleanup_pending: body.cleanup_pending }
     }, signal, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       versions: tasks.map(task => ({ task_id: task.task_id, run_id: task.run_id, expected_revision: task.result_revision })),
+    }) })
+  }
+  deleteTask(batchId: string, task: Task, signal: AbortSignal) {
+    return this.request(`/tasks/${encodeURIComponent(task.task_id)}`, 'task_delete', body => {
+      if (!isRecord(body) || body.task_id !== task.task_id || body.batch_id !== batchId ||
+        typeof body.batch_deleted !== 'boolean' || typeof body.cleanup_pending !== 'boolean') throw new Error('INVALID_RESPONSE')
+      return { task_id: task.task_id, batch_id: batchId,
+        batch_deleted: body.batch_deleted, cleanup_pending: body.cleanup_pending }
+    }, signal, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      run_id: task.run_id, expected_revision: task.result_revision,
     }) })
   }
   result(taskId: string, itemsFilter: ItemsFilter | undefined, signal: AbortSignal) {

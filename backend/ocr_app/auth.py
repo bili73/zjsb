@@ -3,12 +3,14 @@ from contextlib import contextmanager
 import getpass
 import hashlib
 import hmac
+import math
 import os
 import re
 import secrets
 import uuid
 from pathlib import Path
 from time import time
+from threading import BoundedSemaphore
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, InvalidHashError
 from sqlalchemy import text
@@ -17,6 +19,7 @@ from . import audit
 
 SESSION_COOKIE = 'ocr_session'
 SESSION_SECONDS = 30 * 24 * 3600
+LOGIN_WINDOW_SECONDS = 300
 
 
 def same_origin(request):
@@ -55,6 +58,7 @@ class Accounts:
         self.logger = logger
         self.hasher = PasswordHasher()
         self.dummy_hash = None
+        self._login_slots = BoundedSemaphore(2)
         self.path = storage.root.parent / 'secrets' / 'accounts.enc'
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not self.path.exists():
@@ -239,22 +243,70 @@ class Accounts:
             c.execute(text('DELETE FROM web_sessions WHERE user_id=:id'), {'id': actor_id})
             audit.append(c, self.storage, 'password_changed', actor_id, target_type='account', target_id=actor_id)
 
-    def _attempt(self, client):
-        # Reserve an attempt before expensive hashing, including concurrent requests.
-        now=time();key=hashlib.sha256(client.encode()).hexdigest()
+    def _attempt(self, username, client):
+        # Reserve both allowances before hashing. SQLite is the cross-process authority.
+        at = time()
+        keys = dict(account=hashlib.sha256(('account\0' + username.lower()).encode()).hexdigest(),
+                    source=hashlib.sha256(('source\0' + client).encode()).hexdigest(),
+                    legacy=hashlib.sha256(client.encode()).hexdigest())
+        limits = {keys['account']: 5, keys['source']: 60, keys['legacy']: 5}
+
+        def counters(connection):
+            return {row['client_hash']: row for row in connection.execute(text(
+                'SELECT * FROM login_attempts WHERE client_hash IN (:account,:source,:legacy)'), keys).mappings()
+                if at - row['window_start'] < LOGIN_WINDOW_SECONDS}
+
+        def blocked(rows):
+            candidates = [row for key, row in rows.items() if row['attempts'] >= limits[key]]
+            return max(candidates, key=lambda row: row['window_start'], default=None)
+
+        def throttled(row):
+            seconds = max(1, min(LOGIN_WINDOW_SECONDS, math.ceil(row['window_start'] + LOGIN_WINDOW_SECONDS - at)))
+            return TaskError('LOGIN_THROTTLED', '登录尝试过多，请稍后再试', 429, retry_after=seconds)
+
+        # Already recorded refusals need no writer lock, audit write or password work.
+        with self.engine.connect() as connection:
+            denied = blocked(counters(connection))
+        if denied is not None and denied['attempts'] > limits[denied['client_hash']]:
+            raise throttled(denied)
         with self.transaction() as c:
-            row=c.execute(text('SELECT * FROM login_attempts WHERE client_hash=:key'),{'key':key}).mappings().first()
-            if row and now-row['window_start'] < 300 and row['attempts'] >= 5:
-                raise TaskError('LOGIN_THROTTLED', '尝试次数过多，请五分钟后再试', 429)
-            active = row is not None and now-row['window_start'] < 300
-            start=row['window_start'] if active else now
-            count=row['attempts']+1 if active else 1
-            c.execute(text('''INSERT INTO login_attempts VALUES (:key,:start,:count)
-                ON CONFLICT(client_hash) DO UPDATE SET window_start=:start,attempts=:count'''),dict(key=key,start=start,count=count))
-        return key
+            rows = counters(c)
+            denied = blocked(rows)
+            if denied is not None:
+                key = denied['client_hash']
+                if denied['attempts'] == limits[key]:
+                    # The extra count marks the first refusal; do not extend the window.
+                    c.execute(text('UPDATE login_attempts SET attempts=attempts+1 WHERE client_hash=:key'), {'key': key})
+                    audit.append(c, self.storage, 'login', 'anonymous', outcome='failure',
+                                 code='LOGIN_THROTTLED', http_status=429)
+            else:
+                c.execute(text('DELETE FROM login_attempts WHERE window_start<=:cutoff'),
+                          {'cutoff': at - LOGIN_WINDOW_SECONDS})
+                for kind in ('account', 'source'):
+                    row = rows.get(keys[kind])
+                    if kind == 'source' and row is None:
+                        row = rows.get(keys['legacy'])
+                    start = row['window_start'] if row else at
+                    count = row['attempts'] + 1 if row else 1
+                    c.execute(text('''INSERT INTO login_attempts VALUES (:key,:start,:count)
+                        ON CONFLICT(client_hash) DO UPDATE SET window_start=:start,attempts=:count'''),
+                        dict(key=keys[kind], start=start, count=count))
+                    if kind == 'account':
+                        account_start = start
+        if denied is not None:
+            raise throttled(denied)
+        return keys['account'], account_start
 
     def login(self, username, password, client, previous_token=None):
-        client_key=self._attempt(client)
+        if not self._login_slots.acquire(blocking=False):
+            raise TaskError('LOGIN_THROTTLED', '登录验证繁忙，请稍后再试', 429, retry_after=1)
+        try:
+            return self._login(username, password, client, previous_token)
+        finally:
+            self._login_slots.release()
+
+    def _login(self, username, password, client, previous_token):
+        account_key, account_start = self._attempt(username, client)
         if not self.configured():
             raise TaskError('AUTH_NOT_CONFIGURED', '账号尚未配置，请联系管理员', 503)
         with self.engine.connect() as c:
@@ -279,7 +331,8 @@ class Accounts:
                 c.execute(text('DELETE FROM web_sessions WHERE token_hash=:hash'),{'hash':hashlib.sha256(previous_token.encode()).hexdigest()})
             c.execute(text('INSERT INTO web_sessions VALUES (:hash,:user,:expires)'),
                       dict(hash=hashlib.sha256(token.encode()).hexdigest(),user=row['id'],expires=time()+SESSION_SECONDS))
-            c.execute(text('DELETE FROM login_attempts WHERE client_hash=:key'),{'key':client_key})
+            c.execute(text('DELETE FROM login_attempts WHERE client_hash=:key AND window_start=:start'),
+                      dict(key=account_key, start=account_start))
             audit.bind_actor(dict(current, user_id=row['id']))
             audit.append(c, self.storage, 'login', row['id'], target_type='account', target_id=row['id'],
                          revoked_sessions=replaced)

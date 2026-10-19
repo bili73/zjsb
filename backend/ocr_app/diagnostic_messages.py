@@ -31,9 +31,12 @@ EVENT_DESCRIPTIONS = {
     'upload_rejected': '上传材料未通过检查。', 'pipeline_failed': '识别任务处理失败。',
     'watchdog_timeout': '任务超过处理时限，已触发超时保护。',
     'retention_failed': '到期材料清理失败。', 'batch_cleanup_failed': '批次文件清理未完成。',
+    'task_cleanup_failed': '任务记录已删除，但部分文件清理未完成，将在下次启动时重试。',
 }
 
 ERROR_DESCRIPTIONS = {
+    'AUDIT_FILTER_INVALID': '审计筛选或分页参数无效，请检查日期范围和筛选条件。',
+    'AUDIT_EXPORT_TOO_LARGE': '匹配记录超过10000条，请缩小日期范围或增加筛选条件后再导出。',
     'REGION_OCR_BUSY': '框选识别正在处理中，请稍后再试。',
     'REGION_OCR_TIMEOUT': '框选识别超时，可缩小选区或手工填写。',
     'REGION_OCR_EMPTY': '选区没有读出文字，请重新框选或手工填写。',
@@ -87,7 +90,7 @@ OPERATION_DESCRIPTIONS = {
     'upload': '上传材料', 'classify': '材料分类', 'region_ocr': '框选识别',
     'result': '读取结果', 'cancel': '取消任务', 'rerun': '重新识别',
     'review': '保存修改', 'preview': '原件预览', 'export': '导出文件',
-    'interface': '网页界面', 'diagnostics': '诊断日志', 'batch_delete': '删除批次',
+    'interface': '网页界面', 'diagnostics': '诊断日志', 'batch_delete': '删除批次', 'task_delete': '删除任务',
     'account_create': '创建账号', 'account_update': '修改账号', 'account_delete': '删除账号',
     'password_change': '修改密码', 'retention_save': '文件保留设置',
     'required_settings_save': '必填字段设置',

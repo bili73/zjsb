@@ -22,6 +22,7 @@ const emit = defineEmits<{
   (e: 'open-result', task: Task, batchId: string): void
   (e: 'unauthorized'): void
   (e: 'batch-deleted', batchId: string, taskIds: string[]): void
+  (e: 'task-deleted', batchId: string, taskId: string): void
   (e: 'preview', files: File[], tasks: Task[]): void
 }>()
 
@@ -188,6 +189,41 @@ async function deleteBatch(batchId: string) {
       else if (shouldRefreshResult(error) || error.card.http_status === 404) {
         props.monitor.start()
         ElMessage.warning('批次已变化或不存在，未执行本次删除；请刷新核对后再操作。')
+      } else ElMessage.error(errorMessages[error.card.code])
+    } else ElMessage.error(errorMessages.UNKNOWN_ERROR)
+  } finally { acting.value = '' }
+}
+
+async function deleteTask(batchId: string, task: Task) {
+  if (!props.canWrite || acting.value || runningStatuses.has(task.status)) return
+  const version = { ...task }
+  acting.value = `delete-task:${task.task_id}`
+  try {
+    await ElMessageBox.confirm(`确认永久删除「${task.file_name ?? '该文件'}」？服务器保存的该文件、识别结果和处理历史会一起删除，无法恢复。其他任务不受影响；删除最后一个任务后空批次也会移除。`, '删除任务', {
+      type: 'warning', confirmButtonText: '永久删除', cancelButtonText: '取消',
+    })
+  } catch { acting.value = ''; return }
+  if (disposed) { acting.value = ''; return }
+  actionController = new AbortController()
+  try {
+    const result = await props.monitor.deleteTask(batchId, version, actionController.signal)
+    if (disposed || actionController.signal.aborted) return
+    selected[batchId] = (selected[batchId] ?? []).filter(item => item.task_id !== task.task_id)
+    if (result.batch_deleted) {
+      delete selected[batchId]
+      delete missingOnly[batchId]
+      delete disputedOnly[batchId]
+    }
+    emit('task-deleted', batchId, task.task_id)
+    if (result.cleanup_pending) ElMessage.warning('任务记录已删除，但部分文件暂未清理；请联系维护人员重启服务完成清理。')
+    else ElMessage.success('任务及其识别文件、结果已删除。')
+  } catch (error) {
+    if (isAbort(error)) return
+    if (error instanceof ApiFailure) {
+      if (error.card.http_status === 401) emit('unauthorized')
+      else if (shouldRefreshResult(error) || error.card.http_status === 404 || error.card.code === 'INVALID_STATE') {
+        props.monitor.start()
+        ElMessage.warning('任务已变化或不存在，未执行本次删除；请刷新核对后再操作。')
       } else ElMessage.error(errorMessages[error.card.code])
     } else ElMessage.error(errorMessages.UNKNOWN_ERROR)
   } finally { acting.value = '' }
@@ -367,7 +403,7 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
               </el-tooltip>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="210" align="left">
+          <el-table-column label="操作" width="255" align="left">
             <template #default="{ row }">
               <el-button v-if="hasResult(row as Task)" link type="primary" :icon="View" @click.stop="openResult(row as Task, id)">{{ canWrite && hasMissingRequiredFields(row as Task) ? '补填' : canWrite && hasExportDisputes(row as Task) ? '核对' : '查看' }}</el-button>
               <el-button
@@ -387,6 +423,11 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
                 :loading="acting === `rerun:${row.task_id}`"
                 @click.stop="runRerun(id, row as Task)"
               >重跑</el-button>
+              <el-button v-if="canWrite" link type="danger" :icon="Delete"
+                :loading="acting === `delete-task:${row.task_id}`"
+                :disabled="!!acting || runningStatuses.has(row.status)"
+                :title="runningStatuses.has(row.status) ? '请先取消任务，等待识别停止后再删除' : '删除该任务'"
+                @click.stop="deleteTask(id, row as Task)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>

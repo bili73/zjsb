@@ -18,6 +18,8 @@ Upload and export filter choices include their historical event aliases, avoidin
 
 ## Related decisions
 
+[Audit query error codes](../bug-fix/2026-10-19-audit-query-error-codes.md) adds safe, actionable filter/export-limit messages without expanding the concise event scope or changing the separate error-only diagnostic policy.
+
 Partially supersedes [broad account-operation audit](../../implemented/feature/2026-10-16-account-operation-audit.md): transaction integrity, account identity snapshots, admin-only permission rechecks, safe storage and migration remain; event scope, granularity and presentation change. The existing diagnosis/retention/account notes remain applicable. Scope query and proposed/rejected inspection found no competing account-audit proposal; hosted-auth and model-deployment proposals are unrelated.
 
 ## Alternatives considered

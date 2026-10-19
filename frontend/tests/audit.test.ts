@@ -1,12 +1,27 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { BusinessApi } from '../src/api.ts'
+import { ApiFailure, BusinessApi } from '../src/api.ts'
+import { errorMessages } from '../src/diagnostics.ts'
 import { auditActor, auditFailure, auditQuery, parseAuditDetail, parseAuditOptions, parseAuditPage, parseNumberedAuditPage } from '../src/audit.ts'
 import { guideSteps } from '../src/guide.ts'
 
 const row = { id: 'event-id', actor: 'old-user-id', identity: {}, event: 'export_full', description: '请求导出材料', outcome: 'legacy',
   outcome_label: '历史记录，结果未确认', created_at: '2026-10-16T00:00:00+00:00', task_id: null, run_id: null,
   batch_id: null, target_type: null, target_id: null, request_id: null, details: {}, legacy: true }
+
+test('audit errors retain their specific safe recovery guidance without arbitrary server text', async () => {
+  for (const code of ['AUDIT_FILTER_INVALID', 'AUDIT_EXPORT_TOO_LARGE']) {
+    const api = new BusinessApi(async () => Response.json({ error: { code, message: 'PRIVATE_RAW_SERVER_TEXT' } }, { status: 422 }))
+    await assert.rejects(api.auditExport({}, new AbortController().signal), error => {
+      assert.ok(error instanceof ApiFailure)
+      assert.equal(error.card.code, code)
+      assert.doesNotMatch(JSON.stringify(error.card), /PRIVATE_RAW_SERVER_TEXT/)
+      assert.match(errorMessages[error.card.code], /日期范围.*筛选条件/)
+      if (code === 'AUDIT_EXPORT_TOO_LARGE') assert.match(errorMessages[error.card.code], /10000/)
+      return true
+    })
+  }
+})
 
 test('legacy audit remains unknown; actors are never invented', () => {
   const result = parseAuditPage({ items: [row], next_cursor: null })

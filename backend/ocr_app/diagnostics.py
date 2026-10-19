@@ -37,7 +37,7 @@ close_started close_completed close_failed process_exited startup_started startu
 runtime_started runtime_failed runtime_stopped cleanup_failed storage_probe_failed
 health_snapshot_failed gpu_lease_failed settings_failed server_stopped task_created task_claimed
 task_stage task_completed task_cancelled task_interrupted task_expired request_completed request_failed
-upload_rejected pipeline_failed watchdog_timeout migration_failed retention_failed batch_cleanup_failed'''.split())
+upload_rejected pipeline_failed watchdog_timeout migration_failed retention_failed batch_cleanup_failed task_cleanup_failed'''.split())
 ERROR_CODES = set('''SERVICE_BUSY OPERATION_THROTTLED REGION_OCR_BUSY REGION_OCR_TIMEOUT REGION_OCR_EMPTY REGION_OCR_UNAVAILABLE
 RESOURCE_LIMIT MODEL_LOAD_FAILED MODEL_WARMUP_FAILED MODEL_PROCESS_EXITED
 SUPERVISION_FAILED MODEL_REQUEST_TIMEOUT INPUT_INVALID INVALID_REQUEST RUNTIME_STARTING
@@ -47,7 +47,8 @@ INTERNAL_ERROR RETENTION_VERSION_CONFLICT WORKBENCH_DEFAULT_VERSION_CONFLICT WOR
 UNAUTHORIZED FORBIDDEN NOT_FOUND LOGIN_THROTTLED AUTH_NOT_CONFIGURED USERNAME_EXISTS ACCOUNT_PROTECTED
 CURRENT_PASSWORD_INCORRECT SETTINGS_VERSION_CONFLICT DIAGNOSTICS_BUSY DIAGNOSTICS_UNAVAILABLE DIAGNOSTICS_RATE_LIMITED
 CLIENT_ERROR NETWORK_ERROR REQUEST_TIMEOUT INVALID_RESPONSE
-UNSAFE_CARD_INPUT CARD_ADMISSION_FAILED EXPORT_BLOCKED EXPORT_VALUE_TOO_LONG PREVIEW_MASK_UNAVAILABLE'''.split())
+UNSAFE_CARD_INPUT CARD_ADMISSION_FAILED EXPORT_BLOCKED EXPORT_VALUE_TOO_LONG PREVIEW_MASK_UNAVAILABLE
+AUDIT_FILTER_INVALID AUDIT_EXPORT_TOO_LARGE'''.split())
 ENUMS = {
     'model': {'glm_ocr', 'paddleocr_vl', 'glm-ocr', 'paddleocr-vl'},
     'phase': {'loading', 'warming', 'ready', 'starting', 'stopping', 'recognize', 'unloaded', 'failed'},
@@ -55,7 +56,7 @@ ENUMS = {
                   'audit', 'health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete',
                   'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save',
                   'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks',
-                  'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun',
+                  'batch_delete', 'task_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun',
                   'interface', 'catalogue', 'review', 'preview', 'export', 'diagnostics'},
     'http_method': {'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'},
     'origin': {'vue', 'window', 'promise', 'http'},

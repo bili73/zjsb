@@ -9,6 +9,8 @@ info:
     Task.progress_detail提供真实页/区域处理计数；总计划未知时返回null，不估算推理长度或剩余时间。progress保留兼容但不再作为整体进度依据。
     管理员支持创建、启用/禁用、删除其他账号及重置密码；所有角色可凭原密码修改自己的密码。删除保留历史任务，禁用及改密撤销全部会话；保护当前账号和最后一个启用的管理员。
     业务路由默认要求登录，并独立校验角色及批次归属。写入在同一数据库事务内复验有效会话及权限；预览、Excel和自动分类等耗时处理完成后再复验，不向已撤销会话返回内容。撤销不回滚此前已合法提交的操作或召回已发送的数据。登录和静态网页公开；根路径GET /health仅返回status，完整引擎状态在本API的GET /health且要求登录。
+    审计列表与导出使用相同可见范围及筛选逻辑，各请求独立读取快照；列表total可辅助预检查10000条导出上限，后端始终重新判定。审计选项GET幂等可重试；审计读取后复验，失效会话401、权限不足403，未发送结果丢弃。审计Excel单缓冲生成，服务端失败不返回成功文件响应，不承诺网络中断下的完整下载。
+    审计日期无31天上限；列表和导出参数错误为422 AUDIT_FILTER_INVALID，导出匹配超过10000条为422 AUDIT_EXPORT_TOO_LARGE。预览rendition默认original保留原尺寸；display等比缩小至长边最多1800px、不放大。放大查看及框选使用original，不降低识别证据质量。身份证id_cn_v1校验位失败提示明确核对方式；仅文案更新保留历史异议编号及人工确认，不改号码或历史密文。
     六类检查包含肝功，优先汇总明确异常；无小结时按有来源的正常检测明细汇总为“已识别明细未见异常”，不宣称整组完整。明确原文正常结论和人工值保持不变；报告A级可作摘要依据，不覆盖阳性、异常或矛盾，也不修改检测行分类/复核。
     明细缺失或未知不默认正常；完整有序且已闭合的原生PDF项目意义表可证明未载明，使用value=null/absence_reason=NOT_ON_DOCUMENT、derived和项目来源，页面/医疗Excel显示报告未载明。保留人工优先、历史密文与既有复核要求。
 
@@ -368,7 +370,7 @@ paths:
       tags: [system]
       summary: 账号密码登录
       security: []
-      description: 仅同源Origin接受登录，JSON正文最多8192字节；每个直接客户端地址五分钟内最多五次尝试，下一次返回429。无默认账号，部署时用本地管理命令创建。成功设置host-only、HttpOnly、SameSite=Strict的ocr_session，HTTPS增加Secure，仅当前loopback HTTP开发模式可省略Secure。新登录成功后原子撤销同一账号全部旧会话，数据库保证每账号仅一个浏览器会话；同浏览器多标签共享，其他浏览器/配置文件也视为新设备；不返回密码或Cookie令牌正文。会话绝对有效期30天，不因轮询续期。
+      description: 仅同源Origin接受登录，JSON正文最多8192字节。账号名按大小写归一后五分钟最多五次尝试，直接客户端地址五分钟最多六十次；在密码校验前原子预留次数，成功仅清除该账号当前窗口，不清除来源计数。超限429 LOGIN_THROTTLED并附剩余秒数Retry-After，自动到期，不影响已有会话；计数持久化，重启不重置，不信任转发头。同一应用进程最多同时校验两个登录密码，超额立即429及Retry-After为1秒。无默认账号，部署时用本地管理命令创建。成功设置host-only、HttpOnly、SameSite=Strict的ocr_session，HTTPS增加Secure，仅当前loopback HTTP开发模式可省略Secure。新登录成功后原子撤销同一账号全部旧会话，数据库保证每账号仅一个浏览器会话；同浏览器多标签共享，其他浏览器/配置文件也视为新设备；不返回密码或Cookie令牌正文。会话绝对有效期30天，不因轮询续期。
       requestBody:
         required: true
         content:
@@ -390,7 +392,15 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '413': {$ref: '#/components/responses/BadRequest'}
         '422': {$ref: '#/components/responses/UnprocessableEntity'}
-        '429': {$ref: '#/components/responses/ErrorResponse'}
+        '429':
+          description: LOGIN_THROTTLED，等待Retry-After秒后手动重试；不自动重放密码
+          headers:
+            Retry-After:
+              description: 账号或来源窗口剩余秒数；密码验证并发已满时为1秒
+              schema: {type: integer, minimum: 1, maximum: 300}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
         '503': {$ref: '#/components/responses/ErrorResponse'}
   /auth/logout:
     post:
@@ -406,7 +416,7 @@ paths:
     get:
       tags: [system]
       summary: 管理员读取审计筛选选项
-      description: 仅有效管理员，返回前复验会话；只提供精简账号操作范围内的事件、结果和操作者，包括仍有可见历史的已删除账号。排除系统过程、保存修正、原图访问及requested阶段；未知历史姓名不补造。
+      description: 仅有效管理员，返回前复验会话；只提供精简账号操作范围内的事件、结果和操作者，包括仍有可见历史的已删除账号。排除系统过程、保存修正、原图访问及requested阶段；未知历史姓名不补造。GET只读、幂等，可安全重试；会话失效401或管理员权限不足403时丢弃未发送的结果，不返回已计算内容。
       responses:
         '200':
           description: 操作者、中文操作和结果选项
@@ -419,7 +429,7 @@ paths:
     get:
       tags: [system]
       summary: 管理员查询操作审计
-      description: 默认最近7个北京时间自然日；后台先过滤账号操作范围，再按created_at和id降序分页。page/page_size支持直接跳页，省略其中一个时分别默认1/50；不能与cursor/limit同时传入。不传页码参数时兼容原游标模式。total是当前筛选下全部可见记录数量，不是游标之后的剩余数量，计数与本页使用同一SQLite读取快照。并发新增记录可能改变后续请求的页码位置。新批量操作一次提交一条，多批次导出可按任一关联批次筛选；历史噪声只过滤不删除。读取后复验管理员，与严重故障日志分离。
+      description: 默认最近7个北京时间自然日，日期无31天上限；后台先过滤账号操作范围，再按created_at和id降序分页。page/page_size支持直接跳页，省略其中一个时分别默认1/50；不能与cursor/limit同时传入。不传页码参数时兼容原游标模式。超出末页返回空items和实际total；非法日期、筛选、页码、游标或混用分页参数返回422 AUDIT_FILTER_INVALID，不回显原始参数。total是当前筛选下全部可见记录数量，不是游标之后的剩余数量，计数与本页使用同一SQLite读取快照。并发新增记录可能改变后续请求的页码位置。新批量操作一次提交一条，多批次导出可按任一关联批次筛选；历史噪声只过滤不删除。读取后复验管理员，与严重故障日志分离。
       parameters:
         - {$ref: '#/components/parameters/AuditDateFrom'}
         - {$ref: '#/components/parameters/AuditDateTo'}
@@ -468,7 +478,7 @@ paths:
     get:
       tags: [system]
       summary: 管理员导出筛选后的审计摘要
-      description: 与列表使用同一精简范围及筛选，默认近7日，导出全部匹配摘要（最多10000条，超限422）。列为时间、姓名、账号、操作、关联对象、结果，不含技术编号或业务修改值。生成后事务内复验管理员并记录audit_export，成功不代表浏览器已保存文件。
+      description: 与列表使用同一精简范围及筛选逻辑，默认近7日，日期无31天上限，导出全部匹配摘要。最多10000条，匹配10001条起返回422 AUDIT_EXPORT_TOO_LARGE，提示缩小日期范围或增加筛选条件；非法日期或筛选参数返回422 AUDIT_FILTER_INVALID，不回显原始参数。列表total可用于预禁用导出，但导出使用独立快照并重新检查上限，不能用较早total代替服务端门禁。列为时间、姓名、账号、操作、关联对象、结果，不含技术编号或业务修改值。采用内存单缓冲生成完整XLSX后再响应，不做边生成边发送；校验、生成或返回前复验失败时不返回成功Excel响应，但网络中断仍可能造成不完整下载。生成后事务内复验管理员并记录audit_export，失效会话401、权限不足403，未发送的结果丢弃；成功不代表浏览器已保存文件。
       parameters:
         - {$ref: '#/components/parameters/AuditDateFrom'}
         - {$ref: '#/components/parameters/AuditDateTo'}
@@ -1133,24 +1143,20 @@ paths:
     delete:
       tags:
       - tasks
-      summary: 删除任务（仅 admin）
-      description: 未实现的未来合同；当前服务不提供删除操作。
-      parameters:
-      - name: expected_revision
-        in: query
+      summary: 删除一个已停止的识别任务
+      description: operator仅可删除自己上传的任务，admin可删除所有账号任务，viewer禁止。要求同源Origin和CSRF，事务内复验会话、归属、run_id和expected_revision。仅NEED_REVIEW及终态可删除；排队或识别中必须先取消并等待停止，否则409 INVALID_STATE。删除该任务全部运行、尝试和专属原文件/页面/修正访问历史，保留删除审计；不影响同批其他任务，包括仍在识别的任务。剩余批次package_revision递增；删除最后一个任务时移除空批次。提交后清理专属文件；失败返回cleanup_pending=true并写中文诊断，启动孤立文件清理可补清。外部素材、日志、备份和已下载文件不删除。不自动重试。
+      requestBody:
         required: true
-        schema:
-          type: integer
-          minimum: 0
-      - name: run_id
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TaskMutationVersion'}
       responses:
-        '204':
-          description: 已删除，审计保留
+        '200':
+          description: 任务记录已删除，审计保留；检查cleanup_pending确认文件清理状态
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskDeleteResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1159,7 +1165,6 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
-      x-implemented: false
 
   /tasks/{task_id}/result:
     parameters: [{$ref: '#/components/parameters/TaskId'}]
@@ -1192,7 +1197,7 @@ paths:
       tags:
       - tasks
       summary: 预处理后的证件图（复核页左侧对照用）
-      description: operator/admin鉴权后直接返回绑定run_id、result_revision和page的完整corrected PNG；viewer返回403，仅支持corrected阶段。保留受控访问历史，不进入账号操作审计列表，无需额外理由。
+      description: operator/admin鉴权后直接返回绑定run_id、result_revision和page的corrected PNG；viewer返回403，仅支持corrected阶段。rendition默认original，保持完整原尺寸；display等比缩小到长边最多1800px，不放大较小图片。二者均不裁剪正文、不改存储原图、清除元数据，计算在写锁外完成，发布前再校验会话、归属和版本。X-Preview-Rendition标记返回版本；列表用display，放大查看及框选用original，归一化bbox不变。保留受控访问历史，不进入账号操作审计列表，无需额外理由。
       parameters:
       - name: run_id
         in: query
@@ -1226,7 +1231,11 @@ paths:
           type: boolean
           default: true
         deprecated: true
-        description: 历史兼容参数，true/false均忽略；鉴权后均返回完整corrected图。
+        description: 历史兼容参数，true/false均忽略；鉴权后返回所选rendition的corrected图，不做脱敏。
+      - name: rendition
+        in: query
+        description: original保持原尺寸；display等比缩小至长边最多1800px，不放大。框选识别和放大查看应请求original。
+        schema: {type: string, enum: [original, display], default: original}
       responses:
         '200':
           description: 图片二进制
@@ -1241,6 +1250,8 @@ paths:
                 type: string
                 enum:
                 - corrected
+            X-Preview-Rendition:
+              schema: {type: string, enum: [original, display]}
             X-Result-Revision:
               schema:
                 type: integer
@@ -1257,7 +1268,7 @@ paths:
       tags:
       - tasks
       summary: 按版本查看完整原件
-      description: 历史兼容入口，保留operator/admin权限及run/revision/page校验；reason可选，不是完整图访问门槛。返回完整corrected PNG。
+      description: 历史兼容入口，保留operator/admin权限及run/revision/page校验；reason可选，不是完整图访问门槛。rendition默认original保持原尺寸；display等比缩小至长边最多1800px、不放大，返回PNG及X-Preview-Rendition；沿用GET的元数据清除、写锁外计算和返回前复验规则。
       requestBody:
         required: true
         content:
@@ -1278,6 +1289,8 @@ paths:
                 type: string
                 enum:
                 - corrected
+            X-Preview-Rendition:
+              schema: {type: string, enum: [original, display]}
             X-Result-Revision:
               schema:
                 type: integer
@@ -1738,6 +1751,7 @@ components:
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
+    Conflict: {$ref: '#/components/responses/ErrorResponse'}
     ErrorResponse:
       description: 同步业务错误；409 区分 INVALID_STATE 与 RESULT_VERSION_CONFLICT，异步识别错误由 Task.error 返回
       content:
@@ -2005,6 +2019,8 @@ components:
           type: string
           enum:
             - INVALID_REQUEST
+            - AUDIT_FILTER_INVALID
+            - AUDIT_EXPORT_TOO_LARGE
             - UNAUTHORIZED
             - FORBIDDEN
             - LOGIN_THROTTLED
@@ -2570,6 +2586,7 @@ components:
 
     ValidationCheck:
       type: object
+      description: 身份证id_cn_v1的CHECKSUM=FAIL说明末位校验位不符并要求对照原件核对，强调本地校验、不联网核验；PASS保持原说明。格式、日历合法性和交叉一致性仍为独立检查，不据此修补号码或认定真实性。
       required: [kind, status, rule_id, message]
       properties:
         kind: {type: string, enum: [FORMAT, CHECKSUM, CROSS_DOCUMENT, OFFICIAL]}
@@ -3516,6 +3533,16 @@ components:
             - NOT_APPLICABLE
       description: 项目补正只能修改原始业务值，数值解析、异常判定、来源和置信度均由服务端维护。新增项目禁止item_id。
 
+    TaskDeleteResponse:
+      type: object
+      additionalProperties: false
+      required: [task_id, batch_id, batch_deleted, cleanup_pending]
+      properties:
+        task_id: {type: string, format: uuid}
+        batch_id: {type: string, format: uuid}
+        batch_deleted: {type: boolean}
+        cleanup_pending: {type: boolean}
+
     BatchDeleteRequest:
       type: object
       additionalProperties: false
@@ -3930,6 +3957,11 @@ components:
           type: integer
           minimum: 1
           default: 1
+        rendition:
+          type: string
+          enum: [original, display]
+          default: original
+          description: original保持原尺寸；display等比缩小至长边最多1800px，不放大；不改存储原图。
         reason:
           type: string
           nullable: true
@@ -3938,6 +3970,7 @@ components:
 
     ExportDispute:
       type: object
+      description: 仅身份证id_cn_v1校验位失败的中性旧提示升级为明确失败提示，历史dispute_id及人工确认继续有效；号码、语义来源或run变化仍使原确认失效。不修补或猜测号码。
       additionalProperties: false
       required: [dispute_id, field, label, code, message, can_confirm]
       properties:

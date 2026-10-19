@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ApiFailure, BusinessApi } from '../api.ts'
 import { errorMessages } from '../diagnostics.ts'
@@ -25,11 +25,26 @@ const username = ref('')
 const password = ref('')
 const verifying = ref(false)
 const gateError = ref<string | null>(null)
+const retryUntil = ref(0)
+const clockNow = ref(Date.now())
+const retrySeconds = computed(() => Math.max(0, Math.ceil((retryUntil.value - clockNow.value) / 1000)))
+let retryTimer: ReturnType<typeof setInterval> | undefined
 let controller: AbortController | undefined
+onUnmounted(() => { controller?.abort(); clearInterval(retryTimer) })
+
+function waitToRetry(seconds: number) {
+  clearInterval(retryTimer)
+  clockNow.value = Date.now()
+  retryUntil.value = clockNow.value + seconds * 1000
+  retryTimer = setInterval(() => {
+    clockNow.value = Date.now()
+    if (retrySeconds.value === 0) clearInterval(retryTimer)
+  }, 1000)
+}
 
 async function verify() {
+  if (verifying.value || retrySeconds.value > 0) return
   if (!username.value.trim() || !password.value) { gateError.value = '请输入账号和密码。'; return }
-  if (verifying.value) return
   controller?.abort()
   controller = new AbortController()
   verifying.value = true
@@ -40,6 +55,7 @@ async function verify() {
     emit('authenticated', client, user)
   } catch (error) {
     if (error instanceof ApiFailure) {
+      if (error.card.http_status === 429 && error.retryAfterSeconds) waitToRetry(error.retryAfterSeconds)
       const suffix = error.card.error_id ? `（错误编号 ${error.card.error_id}）` : ''
       gateError.value = `${loginMessages[error.card.code] ?? errorMessages[error.card.code]}${suffix}`
     } else {
@@ -91,8 +107,9 @@ function onEnterKey(event: Event | KeyboardEvent) {
         @keydown.enter="onEnterKey"
       />
       <div v-if="gateError" class="gate-error">{{ gateError }}</div>
+      <div v-if="retrySeconds" class="gate-error" role="status">请在 {{ retrySeconds }} 秒后重试。</div>
 
-      <el-button class="gate-submit" type="primary" size="large" :loading="verifying" @click="verify">
+      <el-button class="gate-submit" type="primary" size="large" :loading="verifying" :disabled="retrySeconds > 0" @click="verify">
         {{ verifying ? '验证中…' : '进入工作台' }}
       </el-button>
 

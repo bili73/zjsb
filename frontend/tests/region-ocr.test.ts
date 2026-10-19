@@ -129,7 +129,7 @@ test('dialog starts at current PDF page and copies edited multiline text without
   let selectedPage = 0, copied = '', closes = 0
   clipboard(async text => { copied = text })
   const h = mount({ initialPage: 2, onCancel: () => { closes++ },
-    api: { preview: async (_t: Task, page: number) => { selectedPage = page; return { blob: new Blob(['synthetic']), corrected: true } },
+    api: { preview: async (_t: Task, page: number, _signal: AbortSignal, _reason?: string, rendition?: string) => { selectedPage = page; assert.equal(rendition, 'original'); return { blob: new Blob(['synthetic']), corrected: true } },
       ocrRegion: async (_t: Task, field: string | null, page: number) => { assert.equal(field, null); assert.equal(page, 2); return { text: '00123\n原始文字', confidence: .4 } } } })
   try {
     await vue.nextTick(); await Promise.resolve()

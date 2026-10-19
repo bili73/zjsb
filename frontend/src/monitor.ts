@@ -365,6 +365,29 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
     return result
   }
 
+  async function deleteTask(batchId: string, task: Task, signal: AbortSignal) {
+    const client = getApi()
+    if (!client) throw new Error('NOT_CONNECTED')
+    const generation = sessionGeneration
+    const result = await client.deleteTask(batchId, task, signal)
+    if (disposed || signal.aborted || generation !== sessionGeneration || getApi() !== client) return result
+    stop()
+    listGeneration++
+    delete state.pending[task.task_id]
+    if (result.batch_deleted) {
+      const wasListed = state.listedIds.includes(batchId)
+      removeBatch(batchId, [task.task_id])
+      if (wasListed) state.serverTotal = Math.max(0, state.serverTotal - 1)
+      state.page = Math.min(state.page, Math.max(1, Math.ceil(state.serverTotal / state.pageSize)))
+    } else {
+      const entry = state.entries[batchId]
+      if (entry) entry.tasks = entry.tasks.filter(item => item.task_id !== task.task_id)
+      taskRefreshNeeded.add(batchId)
+    }
+    start()
+    return result
+  }
+
   function pendingNotice(taskId: string): string {
     const pending = state.pending[taskId]
     if (!pending) return ''
@@ -393,6 +416,6 @@ export function createMonitor(getApi: () => BusinessApi | null, options: Monitor
 
   function dispose() { disposed = true; clear() }
 
-  return { state, pollOnce, start, stop, onVisible, changePage, loadTasks, setDateRange, setExpanded, submitUpload, confirmPerson, runAction, deleteBatch, pendingNotice, entryOf, clear, dispose }
+  return { state, pollOnce, start, stop, onVisible, changePage, loadTasks, setDateRange, setExpanded, submitUpload, confirmPerson, runAction, deleteBatch, deleteTask, pendingNotice, entryOf, clear, dispose }
 }
 export type Monitor = ReturnType<typeof createMonitor>

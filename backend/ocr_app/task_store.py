@@ -80,10 +80,16 @@ def masked(value, phone_patterns=()):
 
 def public_result(value, required_overrides=None):
     """Authenticated internal responses retain full values, never private helpers."""
+    from .validation import ID_CHECKSUM_LEGACY_MESSAGE, ID_CHECKSUM_FAILURE_MESSAGE
     def strip_private(item):
         if isinstance(item, dict):
-            return {key: strip_private(val) for key, val in item.items()
-                    if not key.startswith('_') and key != 'value_masked'}
+            public = {key: strip_private(val) for key, val in item.items()
+                      if not key.startswith('_') and key != 'value_masked'}
+            if (item.get('message') == ID_CHECKSUM_LEGACY_MESSAGE and (
+                    item.get('code') == 'VALIDATION_FAILED' or
+                    item.get('kind') == 'CHECKSUM' and item.get('rule_id') == 'id_cn_v1' and item.get('status') == 'FAIL')):
+                public['message'] = ID_CHECKSUM_FAILURE_MESSAGE
+            return public
         if isinstance(item, list):
             return [strip_private(val) for val in item]
         return item
@@ -861,6 +867,35 @@ class TaskStore:
     def active(self):
         with self.engine.connect() as connection:
             return [dict(row) for row in connection.execute(text("SELECT * FROM tasks WHERE status IN ('PREPROCESSING','OCR','EXTRACTING','VALIDATING')")).mappings()]
+
+    def delete_task(self, task_id, run_id, revision, actor, *, user, authorize):
+        with self.transaction() as connection:
+            authorize(connection)
+            row = self._row(connection, task_id, user=user)
+            self._expected(row, run_id, revision)
+            if row['status'] not in TERMINAL | {'NEED_REVIEW'}:
+                raise TaskError('INVALID_STATE', '请先取消任务，等待识别停止后再删除')
+            batch_id = row['batch_id']
+            references = connection.execute(text('SELECT reference FROM artifacts WHERE task_id=:id'),
+                                            {'id': task_id}).scalars().all()
+            self._audit(connection, 'task_deleted', actor, task=row, task_count=1)
+            connection.execute(text('DELETE FROM tasks WHERE id=:id'), {'id': task_id})
+            remaining = connection.execute(text('SELECT 1 FROM tasks WHERE batch_id=:id LIMIT 1'),
+                                           {'id': batch_id}).first()
+            if remaining:
+                connection.execute(text('UPDATE batches SET package_revision=package_revision+1 WHERE id=:id'),
+                                   {'id': batch_id})
+            else:
+                connection.execute(text('DELETE FROM batches WHERE id=:id'), {'id': batch_id})
+        cleanup_pending = False
+        for reference in set(references):
+            try:
+                self.storage.delete(reference)
+            except OSError as error:
+                cleanup_pending = True
+                if self.logger:
+                    self.logger.exception('task_cleanup_failed', error, task_id=task_id, batch_id=batch_id)
+        return dict(task_id=task_id, batch_id=batch_id, batch_deleted=not remaining, cleanup_pending=cleanup_pending)
 
     def delete_batch(self, batch_id, versions, actor, *, authorize):
         references = []

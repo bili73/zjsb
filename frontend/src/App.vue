@@ -121,6 +121,10 @@ function batchDeleted(batchId: string, taskIds: string[]) {
   previews.remove(taskIds)
   if (drawerInfo.batchId === batchId) drawerInfo.open = false
 }
+function taskDeleted(batchId: string, taskId: string) {
+  previews.remove([taskId])
+  if (drawerInfo.batchId === batchId && drawerInfo.taskId === taskId) drawerInfo.open = false
+}
 async function onHeaderCommand(command: string | number | object) {
   if (command === 'password') { passwordOpen.value = true; return }
   if (command !== 'logout' || !api.value) return
@@ -223,7 +227,7 @@ onBeforeUnmount(() => {
           <UploadPanel :key="user.user_id" :api="api" :catalogue="catalogue" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" @submitted="handleSubmitted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane label="任务批次" name="batches" data-guide-scope="page-batches">
-          <BatchBoard :active="activeTab === 'batches' && !drawerInfo.open && !helpOpen && !diagnosticsOpen && !passwordOpen" :api="api" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" :upload-reset="uploadReset" :catalogue="catalogue" @open-result="openResult" @batch-deleted="batchDeleted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
+          <BatchBoard :active="activeTab === 'batches' && !drawerInfo.open && !helpOpen && !diagnosticsOpen && !passwordOpen" :api="api" :monitor="monitor" :can-write="canWrite" :is-admin="user.role === 'admin'" :upload-reset="uploadReset" :catalogue="catalogue" @open-result="openResult" @batch-deleted="batchDeleted" @task-deleted="taskDeleted" @preview="registerPreviews" @unauthorized="handleUnauthorized" />
         </el-tab-pane>
         <el-tab-pane label="引擎状态" name="engine" data-guide-scope="page-engine">
           <EngineStatus :engine="engine" />

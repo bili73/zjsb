@@ -47,6 +47,7 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
                       'result': 'result', 'preview': 'preview', 'cancel': 'cancel', 'rerun': 'rerun',
                       'login': 'auth', 'logout': 'auth', 'me': 'auth', 'batches': 'batch_list', 'tasks': 'batch_tasks',
                       'classify_upload': 'classify', 'region_ocr': 'region_ocr', 'delete_batch': 'batch_delete',
+                      'delete_task': 'task_delete',
                       'batch_tasks': 'batch_tasks', 'confirm_person': 'person_update', 'full_preview': 'preview',
                       'users': 'account_list', 'create_user': 'account_create', 'update_user': 'account_update',
                       'delete_user': 'account_delete', 'reset_user_password': 'password_change', 'change_password': 'password_change',
@@ -108,7 +109,7 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
 
     @app.exception_handler(TaskError)
     async def task_error(request, error):
-        overloaded = error.code in {'SERVICE_BUSY', 'OPERATION_THROTTLED'}
+        overloaded = error.code in {'SERVICE_BUSY', 'OPERATION_THROTTLED', 'LOGIN_THROTTLED'}
         if business and not overloaded:
             from .audit import failure
             await run_in_threadpool(failure, business, request, error.code, error.status)
@@ -118,8 +119,9 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
         payload = dict(code=error.code, message=error.message, error_id=error_id, request_id=request_id)
         if getattr(error, 'details', None) is not None:
             payload['details'] = error.details
+        retry_after = error.retry_after if error.retry_after is not None else 2 if overloaded else None
         return JSONResponse(payload, status_code=error.status,
-                            headers={'Retry-After': '2'} if overloaded else None)
+                            headers={'Retry-After': str(retry_after)} if retry_after is not None else None)
 
     from sqlalchemy.exc import OperationalError
     @app.exception_handler(OperationalError)
@@ -132,6 +134,8 @@ def create_app(runtime, static_dir: Path, storage_dir: Path, business=None, logg
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request, error):
         # Pydantic error.details can include submitted values. Never echo those.
+        if getattr(request.scope.get('endpoint'), '__name__', '') in {'audit_events', 'audit_export'}:
+            return await task_error(request, TaskError('AUDIT_FILTER_INVALID', '审计筛选或分页参数无效，请检查日期范围和筛选条件', 422))
         return await task_error(request, TaskError('INVALID_REQUEST', '请求参数无效，请刷新后重试', 422))
 
     @app.middleware('http')

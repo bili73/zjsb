@@ -45,12 +45,12 @@ async function mount(name: string, expose: string, props: Record<string, unknown
   return { app, vm: component.value, state }
 }
 
-async function preview() {
-  const calls: { page: number; revision: number; signal: AbortSignal; resolve: () => void }[] = []
-  const api = { preview: (current: typeof task, page: number, signal: AbortSignal) => new Promise(resolve => {
-    calls.push({ page, revision: current.result_revision, signal, resolve: () => resolve({ blob: new Blob(['synthetic pixels']), corrected: true }) })
+async function preview(extra: Record<string, unknown> = {}) {
+  const calls: { page: number; revision: number; signal: AbortSignal; rendition?: string; resolve: () => void }[] = []
+  const api = { preview: (current: typeof task, page: number, signal: AbortSignal, _reason?: string, rendition?: string) => new Promise(resolve => {
+    calls.push({ page, revision: current.result_revision, signal, rendition, resolve: () => resolve({ blob: new Blob(['synthetic pixels']), corrected: true }) })
   }) }
-  const mounted = await mount('SourcePreview', 'loadPage,onIntersect,goTo,entries,setPageRef,scrollViewportFor', { task: { ...task }, api, source: null, canWrite: true, active: true })
+  const mounted = await mount('SourcePreview', 'loadPage,onIntersect,goTo,entries,setPageRef,scrollViewportFor,openOriginal,closeOriginal,originalUrl,originalLoading,localOpen,onLocalToggle', { task: { ...task }, api, source: null, canWrite: true, active: true, ...extra })
   return { ...mounted, calls, visible: (pages: number[]) => mounted.vm.onIntersect(pages.map(page => ({ isIntersecting: true, target: { dataset: { page: String(page) } } }))) }
 }
 
@@ -62,6 +62,56 @@ test('preview bounds background requests and prioritizes the explicitly selected
     vm.goTo(8)
     calls[0]!.resolve(); await flush(); await flush()
     assert.deepEqual(calls.map(c => c.page), [1,2,8])
+    assert.ok(calls.every(c => c.rendition === 'display'))
+  } finally { app.unmount(); calls.forEach(c => c.resolve()); await flush() }
+})
+
+test('enlargement fetches the original on demand and releases only its URL on close', async t => {
+  const revoked: string[] = []
+  t.mock.method(URL, 'revokeObjectURL', url => { revoked.push(String(url)) })
+  const { app, vm, calls } = await preview({ ocrEnabled: false })
+  try {
+    calls[0]!.resolve(); await flush()
+    const displayUrl = vm.entries[0].url
+    const enlarged = vm.openOriginal(1)
+    assert.equal(calls.at(-1)!.rendition, 'original'); assert.equal(vm.originalLoading, true)
+    calls.at(-1)!.resolve(); await enlarged
+    const original = vm.originalUrl
+    assert.ok(original); assert.notEqual(original, displayUrl)
+    vm.closeOriginal()
+    assert.deepEqual(revoked, [original]); assert.equal(vm.originalUrl, '')
+    assert.equal(vm.entries[0].url, displayUrl)
+  } finally { app.unmount(); calls.forEach(c => c.resolve()); await flush() }
+})
+
+test('late original images cannot survive cancellation, revision, account, permission or unmount', async () => {
+  for (const change of ['close', 'revision', 'account', 'permission', 'inactive', 'unmount']) {
+    const { app, vm, state, calls } = await preview({ ocrEnabled: false })
+    try {
+      const pending = vm.openOriginal(1), old = calls.at(-1)!
+      if (change === 'close') vm.closeOriginal()
+      if (change === 'revision') state.task = { ...task, result_revision: 4 }
+      if (change === 'account') state.api = { preview: async () => ({ blob: new Blob(['new account']), corrected: true }) }
+      if (change === 'permission') state.canWrite = false
+      if (change === 'inactive') state.active = false
+      if (change === 'unmount') app.unmount()
+      await flush()
+      assert.equal(old.signal.aborted, true, change)
+      old.resolve(); await pending
+      assert.equal(vm.originalUrl, '', change); assert.equal(vm.originalLoading, false, change)
+    } finally { if (change !== 'unmount') app.unmount(); calls.forEach(c => c.resolve()); await flush() }
+  }
+})
+
+test('local originals stay closed until explicitly expanded and reset with task context', async () => {
+  const { app, vm, state, calls } = await preview({ preview: { kind: 'image', url: 'blob:local' } })
+  try {
+    assert.equal(vm.localOpen, false)
+    vm.onLocalToggle({ currentTarget: { open: true } }); assert.equal(vm.localOpen, true)
+    vm.onLocalToggle({ currentTarget: { open: false } }); assert.equal(vm.localOpen, false)
+    vm.onLocalToggle({ currentTarget: { open: true } })
+    state.task = { ...task, result_revision: 4 }; await flush()
+    assert.equal(vm.localOpen, false)
   } finally { app.unmount(); calls.forEach(c => c.resolve()); await flush() }
 })
 

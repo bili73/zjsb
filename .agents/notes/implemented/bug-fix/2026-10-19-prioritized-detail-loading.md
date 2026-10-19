@@ -16,6 +16,8 @@ Open/task-key result watchers coalesce into one update without discarding dirty 
 
 ## Related decisions
 
+[Preview renditions](../feature/2026-10-19-preview-renditions.md) partially changes the full-pixel list choice to a bounded display image, retaining original pixels for explicit enlargement and region OCR. Its separate original request is cancellable; the two-request queue remains the background-page bound.
+
 [Read amplification](../../implemented/bug-fix/2026-10-19-batch-read-amplification.md) removes unnecessary history polling. [Preview/diagnostic repair](../../implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md) shortens actual writer holds. [Smooth location](../../implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md) keeps visual navigation behavior. [Measured progress](../../implemented/bug-fix/2026-10-10-measured-task-progress.md) still owns counters and checkpoints; identical snapshots are not a separate heartbeat contract. No decision is completely superseded.
 
 ## Alternatives considered

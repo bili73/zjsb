@@ -26,7 +26,7 @@ Batch新增owner={user_id:string|null,username:string|null,display_name:string|n
 
 ## 当前可用入口
 
-使用账号密码与同源Cookie会话。POST auth/login发送username/password，成功返回身份、权限和csrf_token并设置HttpOnly Cookie；GET auth/me刷新恢复身份；POST auth/logout撤销服务端会话。非GET/HEAD/OPTIONS请求附X-CSRF-Token，浏览器自动附同源Origin。csrf_token只留在内存，密码和Cookie不写URL、localStorage、sessionStorage或诊断。30天绝对过期后401返回登录，任务继续。无默认账号，需管理员本地配置；未配置返回AUTH_NOT_CONFIGURED，五分钟五次尝试后LOGIN_THROTTLED。当前服务仍只绑定loopback，创建任何账号后旧Key认证永久关闭。
+使用账号密码与同源Cookie会话。POST auth/login发送username/password，成功返回身份、权限和csrf_token并设置HttpOnly Cookie；GET auth/me刷新恢复身份；POST auth/logout撤销服务端会话。非GET/HEAD/OPTIONS请求附X-CSRF-Token，浏览器自动附同源Origin。csrf_token只留在内存，密码和Cookie不写URL、localStorage、sessionStorage或诊断。30天绝对过期后401返回登录，任务继续。无默认账号，需管理员本地配置；未配置返回AUTH_NOT_CONFIGURED，账号五分钟最多五次尝试，直接来源五分钟最多六十次，超限LOGIN_THROTTLED并携带Retry-After剩余秒数；登录成功仅清除该账号窗口，来源计数及重启保留。最多同时验证两个登录密码，繁忙时429与Retry-After:1；前端显示倒计时并禁用提交，禁止自动重放密码。当前服务仍只绑定loopback，创建任何账号后旧Key认证永久关闭。
 
 | 请求 | 用途 |
 |---|---|
@@ -53,8 +53,8 @@ Batch新增owner={user_id:string|null,username:string|null,display_name:string|n
 | 请求 | 用途 |
 |---|---|
 | `POST /api/v1/tasks/{id}/review` | operator补录/确认，携带run_id/expected_revision |
-| `GET /api/v1/tasks/{id}/preview` | 鉴权同版本corrected完整PNG；无需理由 |
-| `POST /api/v1/tasks/{id}/preview` | 旧调用兼容，同版本corrected PNG，body含page |
+| `GET /api/v1/tasks/{id}/preview` | 鉴权同版本corrected PNG；rendition默认original，display长边最多1800px；无需理由 |
+| `POST /api/v1/tasks/{id}/preview` | 旧调用兼容，同版本corrected PNG，body可含page及rendition |
 | `POST /api/v1/tasks/{id}/reveal` | 旧调用兼容；字段已完整返回，UI无需再揭示 |
 | `POST /api/v1/export` | 批次全部或明确task_ids，整选门禁XLSX |
 | `GET /api/v1/admin/required-fields` | admin读取各类型必填字段、uses_defaults及全局revision |
@@ -238,11 +238,17 @@ finding 保留 `finding_id / reported_number / text / sources`；新增可选 `p
 
 ## 原图定位与人工操作
 
-字段定位仅在体检报告开放，保留基础信息、检测行、诊断、总检清单及各项目来源。证件和户口本成员不显示字段定位/相关来源按钮，仍可连续浏览、放大整页原图并人工填写。体检选择同页不同字段或重复选择同一字段时，均重新滚动到当前来源框；等校正图片加载完成后才叠加坐标，来源不足则显示整页。此变更不增加位置检测模型或 API，不改识别字段、审核及导出规则。
+来源导航按材料类型开放：体检报告、TABLE、GENERIC、BANK_CARD、INTERVIEW_FORM可按已有来源定位，户口本另按下述页级规则对照。毕业证、学位证、身份证、营业执照、学信网报告和护照不开放自动字段定位，仍可连续浏览、放大整页原图并人工填写。体检保留基础信息、检测行、诊断、总检清单及各项目来源；选择同页不同字段或重复选择同一字段时，均重新滚动到当前来源框。只有图片加载完成、同版本corrected来源和已有bbox都满足时才叠加坐标；来源不足则显示整页。不增加位置检测模型或API，不改识别字段、审核及导出规则。
+
+户口本`HOUSEHOLD_REGISTER`支持页级来源导航：已有“查看来源”入口提供`source.page`时，跳到同一run/revision的服务端corrected整页，供人工核对；成员`source_page`只记录来源页，不代表该成员各字段都有定位按钮或精确坐标。当前不生成或叠加户口本字段/成员bbox红框，不宣称逐字定位；来源不足时可浏览整页人工核对，不伪造来源或坐标。户口本仍缺真实样本，页级导航的代码接入不等于识别精度或真实材料验收通过。
 
 source 可含 `page`（从1起）、`region_id`、`extraction_method=pdf_text/ocr`、`bbox=[x0,y0,x1,y1]`（0–1归一化）、`bbox_kind=region/block/row/cell`、`raw_text`。有值不保证有精确框；没有cell框时可退化为row/block。bbox对应后端处理页，未经对齐的用户原图不应直接叠框。
 
 历史材料已有登录后校正页预览接口，优先用当前run/revision绑定的服务端原图。同批相同内容文件会被后端去重，上传[A,A,B]可能只返回两个task_id，不能按原始提交索引直接绑定本地后备原图。本地File字节SHA256与任务公开content_hash核对后，以task_id绑定Object URL；同哈希原件相同，不能按文件名猜配；退出和卸载释放URL，本地后备图刷新后可能丢失。点击缺失/待核对字段时展示可靠来源，来源不足则允许查看整页，不伪造定位。
+
+抽屉页列表请求`rendition=display`，等比缩小至长边最多1800px且不放大，整页与归一化bbox不变。放大查看、框选对话框及服务端RapidOCR均使用`original`；服务端原图不修改。GET/POST默认original，响应含`X-Preview-Rendition: original|display`，并继续校验`X-Preview-Stage`及`X-Result-Revision`。旧服务缺rendition头视为original；明确display响应不能用于original请求。关闭原图或切换任务、版本、账号和权限时中止请求并释放Object URL。本地上传材料默认收起，展开后才挂载图片/PDF；关闭后卸载，避免同时解码完整本地原图。
+
+身份证CHECKSUM规则`id_cn_v1`的FAIL现显示“末位校验位与计算结果不符，请对照原件核对；系统仅本地校验，不联网核验。”，PASS说明及其他校验保持不变。旧失败说明在返回副本中更新，不要求重新识别或重新确认；既有异议编号及人工确认保留，号码、语义来源或run变化时仍须重新核对。不根据校验位修补号码。
 
 复核与导出使用独立判定，置信度仍未标定。审核状态由后端重新校验决定，前端不能自改COMPLETED；业务材料导出要求已保存结果、必填有值且无未处理的明确识别异议，TABLE另按表头、结构和完整性门禁判断。
 
@@ -413,7 +419,7 @@ Task.expires_at和Batch.expires_at支持null，显示“永不自动清除”；
 
 新增管理员标签页“操作审计”，仅当前登录角色为admin且标签页激活时挂载；退出、切账号和离开页面会清空数据并终止读取。GET `/admin/audit/options` 提供操作者、操作与结果选项；GET `/admin/audit/events` 支持 `date_from/date_to/actor/event/outcome/batch_id/page/page_size`，返回 `items/total/page/page_size/next_cursor`；兼容旧 `cursor/limit` 模式，但不得混传，旧模式也返回筛选后全量 `total`。默认近7个北京时间自然日，每页50条，按时间和事件ID降序；更换筛选回到首页。`actor` 为不可变账号ID，显示使用事件当时的 `identity`，不得用当前账号姓名回填旧记录。
 
-列表只提供账号登录/管理、上传/追加、导出、删除批次、手动重跑/取消和全局设置操作。后台先按同一规则过滤历史，再分页、生成筛选选项和导出；系统状态、原图/字段访问、框选识别、人员确认、保存修正及导出requested过程不在产品审计中出现。新上传/追加/删除/导出按一次提交合并记录，缺少request_id的旧单份记录不强行合并。匿名登录失败标为未验证身份，不冒充输入账号。
+列表只提供账号登录/管理、上传/追加、导出、删除批次/单个任务、手动重跑/取消和全局设置操作。后台先按同一规则过滤历史，再分页、生成筛选选项和导出；系统状态、原图/字段访问、框选识别、人员确认、保存修正及导出requested过程不在产品审计中出现。新上传/追加/删除/导出按一次提交合并记录，缺少request_id的旧单份记录不强行合并。匿名登录失败标为未验证身份，不冒充输入账号。
 
 表格显示北京时间、操作者、中文操作说明、关联对象和结果；移除技术详情和修改前后抽屉。`description`包含材料数量及设置变化，`object_label`为加密快照解出的批次类型/时间或目标账号；旧记录关联批次已清理时回退编号，不编造名称。`outcome`沿用success/failure/requested/legacy契约，但新产品查询不返回requested；legacy仍表示未知。`export_generated`仅代表服务端生成文件，不代表浏览器已保存。
 
@@ -421,5 +427,12 @@ GET `/admin/audit/events/{event_id}` 保留兼容的摘要/context结构，但�
 
 GET `/admin/audit/export` 使用当前筛选条件导出全部匹配摘要，最多10000条，超限422要求缩小范围；列为时间、姓名、账号、操作、关联对象、结果。接口均须管理员权限，读取或生成后复验会话；前端隐藏入口不能替代后端鉴权。
 
+审计查询和导出参数错误使用422 `AUDIT_FILTER_INVALID`；超过10000条使用422 `AUDIT_EXPORT_TOO_LARGE`，界面固定提示“匹配记录超过10000条，请缩小日期范围或增加筛选条件后再导出”，不展示原始服务端message。默认近7日，无31天日期上限；页码超过末页返回空列表及实际total。total与本页同快照，导出使用相同可见范围/筛选逻辑另取快照，前端按total预检查不能代替后端检查。`GET /admin/audit/options`只读、幂等，可安全重试；结果返回前复验，失效会话401、权限不足403且丢弃未发内容。导出在内存完整生成后响应，服务端失败不返回成功Excel响应，网络中断仍可能导致不完整下载。
+
 
 任务批次、操作审计和账号管理统一使用数字分页（总数、每页20/50/100条、上一页、页码、下一页、跳转），批次/审计默认50条，账号默认20条。批次复用既有服务端分页，当前页ID与监控缓存分开；翻页不清除其他任务的进度、版本或待处理操作。账号保留全量读取和客户端分页，最后管理员判断仍基于全部账号。切日期/提交筛选/改每页数量回到首页；删除或数量减少导致页码越界时回到有效末页。失败保留已显示页，旧日期/页码/会话的迟到响应不能覆盖新页。审计总数与列表同一读取快照，实时新增可能改变后续页的位置；Excel仍按完整筛选导出，最多10000条。
+
+
+## 单任务删除
+
+任务行“删除”向 `DELETE /tasks/{task_id}` 提交 JSON `{run_id, expected_revision}`。operator仅可删除自己的任务，admin可删除所有账号任务；viewer无入口。排队/识别中的任务先取消，确认停止后才能删。打开确认框时冻结版本，409/404保留现有结果并提示刷新；禁止自动重试。成功响应为 `{task_id,batch_id,batch_deleted,cleanup_pending}`，仅清除目标任务的选择、预览和匹配详情；废弃旧列表/任务请求，刷新批次计数、人员建议及身份证配套。最后一个任务删除时移除空批次。`cleanup_pending=true`明确提示文件清理未完成。整批删除仍仅管理员可用。

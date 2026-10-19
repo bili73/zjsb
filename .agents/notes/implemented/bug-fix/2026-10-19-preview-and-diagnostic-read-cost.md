@@ -14,6 +14,8 @@ Latest medical runs complete without a task timeout but contain per-region time_
 
 Read the preview's version-bound artifact reference through an ordinary connection, then decrypt, encode and durably stage its encrypted access history outside the SQLite writer lock. Recheck account, owner, run and result revision immediately before atomically attaching the history. Remove staged history on rejection/rollback, preserve final response authorization and retain existing fsync and pixel output.
 
+[Preview renditions](../feature/2026-10-19-preview-renditions.md) partially extends pixel output: original remains the default, while display uses bounded pixels for page lists. Its resize follows this same staging and final-revalidation boundary; diagnostic scan reuse remains unchanged.
+
 Reuse a single bounded in-memory collection of allowlisted ERROR/CRITICAL records for an unchanged file-signature set and coarse UTC day window. Check the actual retained raw/archive file set and signatures on every request. Changed/new/deleted files invalidate it. Cache only complete scans within8MiB, retain pagination/filtering and exact requested dates, and never use the cache to authorize archive deletion. Every HTTP response retains its administrator/session recheck.
 
 ## Related decisions

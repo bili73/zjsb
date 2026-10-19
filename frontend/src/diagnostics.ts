@@ -3,6 +3,8 @@ import { randomId } from './browserCapabilities.ts'
 import type { App } from 'vue'
 
 export const errorMessages = {
+  AUDIT_FILTER_INVALID: '审计筛选或分页参数无效，请检查日期范围和筛选条件后重新查询。',
+  AUDIT_EXPORT_TOO_LARGE: '匹配记录超过10000条，请缩小日期范围或增加筛选条件后再导出。',
   SERVICE_BUSY: '服务器繁忙，请保留当前输入，稍后检查任务状态再重试；不要连续提交。',
   OPERATION_THROTTLED: '该账号已有同类操作正在处理，请等待完成后再试。',
   DIAGNOSTICS_BUSY: '日志正在读取，请稍后重试。', DIAGNOSTICS_UNAVAILABLE: '日志记录或读取暂不可用，请下载本页诊断信息并联系管理员。', DIAGNOSTICS_RATE_LIMITED: '诊断上报过于频繁，请稍后重试。',
@@ -28,7 +30,7 @@ export const errorMessages = {
   TASK_NOT_REVIEWABLE: '任务当前不能复核。', FORBIDDEN_REVEAL: '没有查看完整敏感值的权限。',
   INVALID_STATE: '任务状态已变化，当前操作不可执行。', INTERNAL_ERROR: '服务处理失败，请保留错误编号。',
   UNAUTHORIZED: '账号或密码错误，或登录已失效，请重新登录。', FORBIDDEN: '登录校验或权限无效，请刷新工作台后重试。',
-  LOGIN_THROTTLED: '登录尝试过多，请五分钟后再试。', AUTH_NOT_CONFIGURED: '账号尚未配置，请联系管理员。',
+  LOGIN_THROTTLED: '登录尝试过多或验证繁忙，请等待后重试。', AUTH_NOT_CONFIGURED: '账号尚未配置，请联系管理员。',
   USERNAME_EXISTS: '账号已存在，请使用其他账号名；原账号不会被修改。',
   ACCOUNT_PROTECTED: '当前账号或最后一个启用的管理员受保护，不能执行该操作；自己的密码请从右上角修改。',
   CURRENT_PASSWORD_INCORRECT: '原密码不正确，请重新输入。',
@@ -37,12 +39,12 @@ export const errorMessages = {
   CLIENT_ERROR: '界面发生错误，请复制诊断信息交给维护人员。', UNKNOWN_ERROR: '操作未完成，请查看错误编号。',
 } as const
 export type ErrorCode = keyof typeof errorMessages
-export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'retention_read' | 'retention_save' | 'required_settings_read' | 'required_settings_save' | 'workbench_layout_read' | 'workbench_layout_save' | 'workbench_default_save' | 'batch_list' | 'batch_tasks' | 'batch_delete' | 'person_update' | 'upload' | 'classify' | 'region_ocr' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export' | 'diagnostics' | 'audit'
+export type Operation = 'health' | 'auth' | 'account_list' | 'account_create' | 'account_update' | 'account_delete' | 'password_change' | 'retention_read' | 'retention_save' | 'required_settings_read' | 'required_settings_save' | 'workbench_layout_read' | 'workbench_layout_save' | 'workbench_default_save' | 'batch_list' | 'batch_tasks' | 'batch_delete' | 'task_delete' | 'person_update' | 'upload' | 'classify' | 'region_ocr' | 'result' | 'cancel' | 'rerun' | 'interface' | 'catalogue' | 'review' | 'preview' | 'export' | 'diagnostics' | 'audit'
 export type Stage = 'BOOTSTRAP' | 'QUEUED' | 'PREPROCESSING' | 'OCR' | 'EXTRACTING' | 'VALIDATING' | 'PUBLISHING' | 'CLEANUP'
 export type DiagnosticOrigin = 'http' | 'task' | 'vue' | 'window' | 'promise'
 const stages = new Set(['BOOTSTRAP', 'QUEUED', 'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING', 'PUBLISHING', 'CLEANUP'])
 const origins = new Set(['http', 'task', 'vue', 'window', 'promise'])
-const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save', 'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks', 'batch_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export', 'diagnostics', 'audit'])
+const operations = new Set(['health', 'auth', 'account_list', 'account_create', 'account_update', 'account_delete', 'password_change', 'retention_read', 'retention_save', 'required_settings_read', 'required_settings_save', 'workbench_layout_read', 'workbench_layout_save', 'workbench_default_save', 'batch_list', 'batch_tasks', 'batch_delete', 'task_delete', 'person_update', 'upload', 'classify', 'region_ocr', 'result', 'cancel', 'rerun', 'interface', 'catalogue', 'review', 'preview', 'export', 'diagnostics', 'audit'])
 const exceptionNames = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'URIError', 'EvalError', 'DOMException'])
 const browserEvents = ['javascript_error', 'resize_observer', 'opaque_script', 'promise_rejection', 'vue_error'] as const
 type BrowserEvent = typeof browserEvents[number]

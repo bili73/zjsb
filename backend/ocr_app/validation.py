@@ -12,6 +12,8 @@ RULE_SOURCES = {
     'xuexin_compat_v1': 'https://www.chsi.com.cn/xlcx/bgcx.jsp',
 }
 USCC_CHARS = '0123456789ABCDEFGHJKLMNPQRTUWXY'
+ID_CHECKSUM_LEGACY_MESSAGE = '仅校验号码校验位。'
+ID_CHECKSUM_FAILURE_MESSAGE = '末位校验位与计算结果不符，请对照原件核对；系统仅本地校验，不联网核验。'
 
 
 def check(kind, status, rule_id, message):
@@ -46,7 +48,9 @@ def validate_field(doc_type, key, value, fields=None):
             add('FORMAT','PASS' if valid else 'UNKNOWN','id_cn_v1','18位公民身份号码格式；历史或其他编号需复核。')
             if valid:
                 expected='10X98765432'[sum(int(c)*w for c,w in zip(text[:17],[7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2])) % 11]
-                add('CHECKSUM','PASS' if text[-1].upper()==expected else 'FAIL','id_cn_v1','仅校验号码校验位。')
+                passed = text[-1].upper() == expected
+                add('CHECKSUM', 'PASS' if passed else 'FAIL', 'id_cn_v1',
+                    ID_CHECKSUM_LEGACY_MESSAGE if passed else ID_CHECKSUM_FAILURE_MESSAGE)
                 dob=f'{text[6:10]}-{text[10:12]}-{text[12:14]}'
                 add('FORMAT','PASS' if _calendar(dob) else 'FAIL','id_birth_v1','号码中的出生日期合法性。')
                 for sibling, derived in [('birth_date',dob),('gender','M' if int(text[16])%2 else 'F')]:

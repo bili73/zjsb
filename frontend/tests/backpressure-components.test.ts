@@ -10,9 +10,10 @@ const require = createRequire(import.meta.url)
 const { parse, compileScript } = require('@vue/compiler-sfc'), ts = require('typescript')
 const vue = await import(pathToFileURL(require.resolve('vue')).href)
 const dataUrl = (value: string) => `data:text/javascript;base64,${Buffer.from(value).toString('base64')}`
-const element = dataUrl('export const ElMessage={error(){},warning(){},info(){}}; export const ElMessageBox={async confirm(){}}')
+const element = dataUrl('let hook;export function setConfirmHook(value){hook=value};export const ElMessage={error(){},warning(){},info(){},success(){}}; export const ElMessageBox={async confirm(){await hook?.()}}')
+const { setConfirmHook } = await import(element)
 const child = dataUrl('export default {render(){return null}}')
-const icons = dataUrl('export const Download={render(){return null}}')
+const icons = dataUrl('export const Download={render(){return null}}; export const CircleClose=Download,Delete=Download,RefreshRight=Download,UploadFilled=Download,User=Download,View=Download,WarningFilled=Download')
 const renderer = vue.createRenderer({ patchProp(){}, insert(){}, remove(){}, createElement(){return{}},
   createText(){return{}}, createComment(){return{}}, setText(){}, setElementText(){}, parentNode(){return null}, nextSibling(){return null} })
 
@@ -23,7 +24,7 @@ async function mount(name: string, expose: string, props: Record<string, unknown
   const code = ts.transpileModule(compiled.content, { compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext } }).outputText
     .replace(/from ['"]([^'"]+)['"]/g, (_: string, specifier: string) => {
       const resolved = specifier.startsWith('.') ? path.resolve(path.dirname(filename), specifier) : require.resolve(specifier)
-      return `from '${specifier.endsWith('.vue') ? child : specifier === 'element-plus' ? element : specifier === '@element-plus/icons-vue' ? icons : pathToFileURL(resolved).href}'`
+      return `from '${specifier.endsWith('.vue') ? child : specifier.endsWith('.png') ? dataUrl("export default 'test-logo'") : specifier === 'element-plus' ? element : specifier === '@element-plus/icons-vue' ? icons : pathToFileURL(resolved).href}'`
     })
   const Component = (await import(dataUrl(code))).default
   Component.render = () => null
@@ -71,4 +72,65 @@ test('actual export controls retain selection mode and show retry guidance', asy
     assert.match(vm.message, /2 秒后重试/)
     assert.equal(calls, 1)
   } finally { app.unmount() }
+})
+
+test('login countdown blocks repeated submission, clears password and never submits automatically', async () => {
+  const previous = globalThis.fetch
+  let requests = 0
+  globalThis.fetch = async () => {
+    requests++
+    return new Response(JSON.stringify({ code: 'LOGIN_THROTTLED' }), { status: 429, headers: { 'Retry-After': '3' } })
+  }
+  const { app, vm } = await mount('LoginGate', 'username,password,verify,retrySeconds,retryUntil,clockNow',
+    { engine: { state: { connection: 'connected' } } })
+  try {
+    vm.username = 'synthetic'; vm.password = 'synthetic password'
+    await vm.verify()
+    assert.equal(vm.password, '')
+    assert.equal(vm.retrySeconds, 3)
+    vm.password = 'synthetic retry'
+    await vm.verify()
+    assert.equal(requests, 1)
+    vm.clockNow = vm.retryUntil
+    assert.equal(vm.retrySeconds, 0)
+    assert.equal(requests, 1)
+    await vm.verify()
+    assert.equal(requests, 2)
+  } finally { app.unmount(); globalThis.fetch = previous }
+})
+
+test('task row deletion removes only matching selection and notifies preview cleanup', async () => {
+  const first = { ...task, task_id: crypto.randomUUID(), batch_id: id }, peer = { ...task, task_id: crypto.randomUUID(), batch_id: id }
+  const removed: string[] = []
+  const monitor = { state: { dateRange: null, entries: {}, order: [], pending: {} }, setDateRange(){},
+    async deleteTask(batch: string, version: typeof first) {
+      assert.equal(batch, id); assert.equal(version.task_id, first.task_id)
+      return { task_id: version.task_id, batch_id: batch, batch_deleted: false, cleanup_pending: false }
+    } }
+  const { app, vm } = await mount('BatchBoard', 'selected,deleteTask', { monitor, canWrite: true, isAdmin: false,
+    api: null, uploadReset: 0, catalogue: [], onTaskDeleted: (_batch: string, taskId: string) => removed.push(taskId) })
+  try {
+    vm.selected[id] = [first, peer]
+    await vm.deleteTask(id, first)
+    assert.deepEqual(vm.selected[id].map((t: typeof peer) => t.task_id), [peer.task_id])
+    assert.deepEqual(removed, [first.task_id])
+  } finally { app.unmount() }
+})
+
+test('cancelling deletion or leaving its confirmation never sends a delete request', async () => {
+  for (const leave of [false, true]) {
+    let release: (() => void) | undefined, requests = 0
+    const monitor = { state: { dateRange: null, entries: {}, order: [], pending: {} }, setDateRange(){},
+      async deleteTask() { requests++; throw new Error('Must not delete') } }
+    setConfirmHook(leave ? () => new Promise<void>(resolve => { release = resolve }) :
+      () => Promise.reject(new Error('cancel')))
+    const { app, vm } = await mount('BatchBoard', 'deleteTask', { monitor, canWrite: true, isAdmin: false,
+      api: null, uploadReset: 0, catalogue: [] })
+    try {
+      const pending = vm.deleteTask(id, task)
+      if (leave) { app.unmount(); release?.() }
+      await pending
+      assert.equal(requests, 0)
+    } finally { if (!leave) app.unmount(); setConfirmHook(undefined) }
+  }
 })

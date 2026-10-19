@@ -29,7 +29,7 @@ class APIAuthorizationTests(unittest.TestCase):
                  'tasks/{task_id}/cancel', 'tasks/{task_id}/rerun'],
         'PATCH': ['admin/users/{user_id}', 'batches/{batch_id}/person'],
         'PUT': ['admin/required-fields', 'admin/retention', 'auth/me/workbench', 'admin/workbench-default'],
-        'DELETE': ['admin/users/{user_id}', 'batches/{batch_id}'],
+        'DELETE': ['admin/users/{user_id}', 'batches/{batch_id}', 'tasks/{task_id}'],
     }
 
     def calls(self):
@@ -45,7 +45,7 @@ class APIAuthorizationTests(unittest.TestCase):
                 elif path.endswith('/person'): body = dict(person_name='synthetic', expected_revision=0)
                 elif method == 'DELETE' and path == 'batches/{batch_id}':
                     body = dict(versions=[dict(version, task_id=identifier)])
-                options = {'json': body} if method not in {'GET', 'DELETE'} or path.startswith('batches/') else {}
+                options = {'json': body} if method not in {'GET', 'DELETE'} or path.startswith(('batches/', 'tasks/')) else {}
                 if method == 'GET' and path.endswith('/preview'):
                     options = {'params': dict(run_id=identifier, result_revision=0)}
                 yield method, url, options
@@ -94,7 +94,8 @@ class APIAuthorizationTests(unittest.TestCase):
 
     def test_roles_guard_admin_routes_and_viewer_material_actions(self):
         _, operator, _ = self.account('operator')
-        self.assert_denied_everywhere(operator, 403, lambda m, p: '/admin/' in p or m == 'DELETE')
+        self.assert_denied_everywhere(operator, 403, lambda m, p: '/admin/' in p or
+                                     m == 'DELETE' and '/batches/' in p)
         _, viewer, _ = self.account('viewer', 'viewer')
         self.assert_denied_everywhere(viewer, 403, lambda m, p:
             '/admin/' in p or '/preview' in p or (m != 'GET' and '/auth/' not in p and p != '/api/v1/diagnostics/frontend'))

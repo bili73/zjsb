@@ -32,6 +32,8 @@ const previewEl = ref<HTMLElement>()
 const pageListEl = ref<HTMLElement>()
 const pageToolsEl = ref<HTMLElement>()
 const ocrOpen = ref(false), ocrPage = ref(1), ocrCinema = ref(false)
+const originalUrl = ref(''), originalLoading = ref(false), localOpen = ref(false)
+let originalController: AbortController | undefined
 let observer: IntersectionObserver | undefined
 let layoutObserver: ResizeObserver | undefined
 let previewViewport: HTMLElement | null = null
@@ -78,6 +80,8 @@ function clearPage(page: number) {
 
 function resetAll() {
   requestEpoch++
+  closeOriginal()
+  localOpen.value = false
   for (const job of pageLoads.values()) job.resolve()
   pageLoads.clear()
   pendingPages.clear()
@@ -120,7 +124,7 @@ async function readPage(job: PageLoad) {
   const current = new AbortController()
   controllers.set(page, current)
   try {
-    const response = await props.api!.preview(props.task, page, current.signal)
+    const response = await props.api!.preview(props.task, page, current.signal, undefined, 'display')
     if (current.signal.aborted || epoch !== requestEpoch || disposed) return
     entry.url = URL.createObjectURL(response.blob)
     entry.corrected = response.corrected
@@ -212,9 +216,39 @@ function openOcrAt(page: number) {
   ocrCinema.value = true
   ocrOpen.value = true
 }
+function closeOriginal() {
+  originalController?.abort()
+  originalController = undefined
+  originalLoading.value = false
+  if (originalUrl.value) URL.revokeObjectURL(originalUrl.value)
+  originalUrl.value = ''
+}
+async function openOriginal(page: number) {
+  if (!props.api || !props.canWrite || !props.active || disposed) return
+  cancelNavigation()
+  closeOriginal()
+  const current = new AbortController(), epoch = requestEpoch
+  originalController = current
+  originalLoading.value = true
+  failure.value = ''
+  try {
+    const response = await props.api.preview(props.task, page, current.signal, undefined, 'original')
+    if (current.signal.aborted || epoch !== requestEpoch || disposed) return
+    originalUrl.value = URL.createObjectURL(response.blob)
+  } catch (error) {
+    if (isAbort(error) || current.signal.aborted || epoch !== requestEpoch || disposed) return
+    if (error instanceof ApiFailure) { failure.value = errorMessages[error.card.code]; if (error.card.http_status === 401) emit('unauthorized') }
+  } finally {
+    if (originalController === current) { originalController = undefined; originalLoading.value = false }
+  }
+}
+function onLocalToggle(event: Event) {
+  localOpen.value = props.active && (event.currentTarget as HTMLDetailsElement).open
+}
 // 点击页面图：支持框选识别的材料直接进入原图识别对话框；否则保留原全屏缩放查看器。
 function onPageClick(page: number) {
   if (props.ocrEnabled) openOcrAt(page)
+  else void openOriginal(page)
 }
 // 定位红框会一直遮着校正页；点击版面空白处（非图片、非交互控件）取消定位，图片和按钮各有自己的语义不动。
 function onSectionClick(event: MouseEvent) {
@@ -222,7 +256,7 @@ function onSectionClick(event: MouseEvent) {
   if (!props.source) return
   emit('clear-source')
 }
-watch([() => props.active, () => props.api, () => props.canWrite, () => props.ocrEnabled, () => resultKey(props.task)], () => { ocrOpen.value = false }, { flush: 'sync' })
+watch([() => props.active, () => props.api, () => props.canWrite, () => props.ocrEnabled, () => resultKey(props.task)], () => { ocrOpen.value = false; closeOriginal() }, { flush: 'sync' })
 
 function overlayFor(page: number) {
   if (!['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD','INTERVIEW_FORM'].includes(props.task.doc_type ?? '') || !entries[page - 1]?.corrected || !entries[page - 1]?.loaded || !props.source?.bbox || props.source.page !== page) return null
@@ -286,24 +320,27 @@ void (async () => {
       </el-tooltip>
     </div>
     <el-alert v-if="failure" type="warning" :closable="false">{{ failure }}</el-alert>
+    <div v-if="originalLoading" role="status">正在读取清晰原图… <el-button link @click="closeOriginal">取消</el-button></div>
     <ol ref="pageListEl" class="page-list">
       <li v-for="n in maxPage" :key="n" :ref="el => setPageRef(el, n)" :data-page="n" class="page-item">
         <span class="page-no">第 {{ n }} 页</span>
         <div v-if="entries[n - 1]?.status === 'error'" class="page-error">该页读取失败。<el-button link type="primary" @click="loadPage(n, true)">重试</el-button></div>
         <el-skeleton v-else-if="entries[n - 1]?.status === 'loading'" animated class="page-skeleton" />
-        <figure v-if="entries[n - 1]?.url" class="img-wrap" :class="{ 'ocr-ready': ocrEnabled }" :title="ocrEnabled ? '点击查看原图并框选识别' : undefined" @click="onPageClick(n)">
-          <el-image v-if="ocrEnabled" :src="entries[n - 1]!.url" fit="scale-down" decoding="async" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
-          <el-image v-else :src="entries[n - 1]!.url" :preview-src-list="[entries[n - 1]!.url]" preview-teleported hide-on-click-modal fit="scale-down" decoding="async" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
+        <figure v-if="entries[n - 1]?.url" class="img-wrap" :title="ocrEnabled ? '点击查看原图并框选识别' : '点击查看清晰原图'" @click="onPageClick(n)">
+          <el-image :src="entries[n - 1]!.url" fit="scale-down" decoding="async" class="page-image" :alt="`材料校正页 ${n}`" @load="entries[n - 1]!.loaded = true" />
           <span v-if="overlayFor(n)" class="bbox-overlay" :style="overlayFor(n)!" />
         </figure>
         <div v-else-if="entries[n - 1]?.status !== 'error' && entries[n - 1]?.status !== 'loading'" class="page-holder">滚动到此处时加载本页</div>
       </li>
     </ol>
-    <details v-if="preview" open class="local-preview">
+    <el-image-viewer v-if="originalUrl" :url-list="[originalUrl]" teleported hide-on-click-modal @close="closeOriginal" />
+    <details v-if="preview" :open="localOpen" class="local-preview" @toggle="onLocalToggle">
       <summary>本地上传材料（会话内，未经校正，不叠加来源框）</summary>
-      <iframe v-if="preview.kind === 'pdf'" class="pdf-frame" :src="`${preview.url}#page=${jumpPage}`" title="本地原件" />
-      <el-image v-else-if="preview.kind === 'image'" :src="preview.url" :preview-src-list="[preview.url]" preview-teleported hide-on-click-modal fit="scale-down" class="local-image" alt="本地上传材料" />
-      <el-alert v-else type="info" :closable="false">本浏览器可能无法直接渲染 HEIC，请在全屏查看器中确认或换用图像格式。</el-alert>
+      <template v-if="localOpen">
+        <iframe v-if="preview.kind === 'pdf'" class="pdf-frame" :src="`${preview.url}#page=${jumpPage}`" title="本地原件" />
+        <el-image v-else-if="preview.kind === 'image'" :src="preview.url" :preview-src-list="[preview.url]" preview-teleported hide-on-click-modal fit="scale-down" class="local-image" alt="本地上传材料" />
+        <el-alert v-else type="info" :closable="false">本浏览器可能无法直接渲染 HEIC，请在全屏查看器中确认或换用图像格式。</el-alert>
+      </template>
     </details>
     <RegionOcrDialog :open="ocrOpen && active && ocrEnabled" :cinema="ocrCinema" :api="api" :task="task" :initial-page="ocrPage" :can-write="canWrite" @cancel="ocrOpen = false" @unauthorized="emit('unauthorized')" />
   </section>
@@ -318,8 +355,7 @@ void (async () => {
 .page-item { scroll-margin-top: 8px; content-visibility: auto; contain-intrinsic-size: auto 820px; }
 .page-no { display: block; font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 4px; }
 .page-image { width: 100%; height: 100%; display: block; }
-.img-wrap.ocr-ready { cursor: zoom-in; }
-.img-wrap { position: relative; display: block; width: 100%; margin: 0; aspect-ratio: 210 / 297; }
+.img-wrap { position: relative; display: block; width: 100%; margin: 0; aspect-ratio: 210 / 297; cursor: zoom-in; }
 .page-holder { border: 1px dashed var(--el-border-color); border-radius: 6px; min-height: 160px; aspect-ratio: 210 / 297; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--el-text-color-secondary); }
 .page-skeleton { min-height: 160px; aspect-ratio: 210 / 297; }
 .page-error { font-size: 13px; color: var(--el-color-danger); }

@@ -18,6 +18,8 @@ The administrator sees a batch deletion button and an irreversible confirmation 
 
 ## Decision audit
 
+- [Individual task deletion](2026-10-19-delete-individual-tasks.md) adds a separately authorized owner/admin action for one stopped task. Whole-batch deletion remains administrator-only; removing the final individually deletable task also removes its empty batch.
+
 - The [process/package repairs](../../implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md) remove the request's 100-version-entry ceiling because appendable packages can exceed100 tasks. Whole-package membership, transaction authorization and every task version remain mandatory.
 - [Durable tasks](../../implemented/feature/2026-09-30-durable-document-tasks.md): partial overlap; retain transaction, retention, audit and artifact ownership rules, add explicit user deletion.
 - [Calendar browsing](../../implemented/feature/2026-10-09-batch-calendar-browser.md): partial overlap; retain date filtering and hidden running jobs while removing deleted cache entries.

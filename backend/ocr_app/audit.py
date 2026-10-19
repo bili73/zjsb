@@ -35,7 +35,7 @@ OUTCOMES = {'success': '成功', 'failure': '失败', 'requested': '已请求', 
 ACCOUNT_EVENTS = {key: EVENTS[key] for key in (
     'login', 'logout', 'account_created', 'account_configured', 'account_enabled',
     'account_disabled', 'account_deleted', 'account_name_changed', 'password_reset', 'password_changed',
-    'upload', 'task_created', 'package_appended', 'cancel_requested', 'task_rerun', 'batch_deleted',
+    'upload', 'task_created', 'package_appended', 'cancel_requested', 'task_rerun', 'batch_deleted', 'task_deleted',
     'export_full', 'export_generated', 'required_fields_changed', 'retention_changed',
     'workbench_default_changed', 'audit_export', 'account_update')}
 ACCOUNT_EVENTS.update(export_full='导出表格', export_generated='导出表格')
@@ -48,6 +48,7 @@ ENDPOINT_EVENTS = {
     'delete_user': 'account_deleted', 'reset_user_password': 'password_reset', 'change_password': 'password_changed',
     'upload': 'upload', 'append_upload': 'package_appended', 'confirm_person': 'package_person_confirmed',
     'review': 'human_review', 'cancel': 'cancel_requested', 'rerun': 'task_rerun', 'delete_batch': 'batch_deleted',
+    'delete_task': 'task_deleted',
     'preview': 'preview_full', 'full_preview': 'preview_full', 'reveal': 'reveal', 'region_ocr': 'field_region_ocr',
     'export': 'export_full', 'update_required_fields': 'required_fields_changed',
     'update_retention_settings': 'retention_changed', 'update_workbench_default': 'workbench_default_changed',
@@ -201,7 +202,7 @@ class AuditService:
             page_size = 50 if page_size is None else page_size
             if (cursor is not None or type(page) is not int or not 1 <= page <= 2147483647
                     or type(page_size) is not int or not 1 <= page_size <= 100):
-                raise TaskError('INVALID_REQUEST', '审计日期或分页参数无效', 422)
+                raise TaskError('AUDIT_FILTER_INVALID', '审计日期或分页参数无效', 422)
             limit = page_size
         today = datetime.now(SHANGHAI).date()
         try:
@@ -212,13 +213,13 @@ class AuditService:
             if start >= end or not 1 <= limit <= 10001:
                 raise ValueError()
         except (TypeError, ValueError, OverflowError):
-            raise TaskError('INVALID_REQUEST', '审计日期或分页参数无效', 422) from None
+            raise TaskError('AUDIT_FILTER_INVALID', '审计日期或分页参数无效', 422) from None
         clauses = [VISIBLE_SQL, 'created_at>=:start', 'created_at<:end']
         params = dict(start=start.astimezone(timezone.utc).isoformat(), end=end.astimezone(timezone.utc).isoformat())
         for name, value in dict(actor=actor, event=event, outcome=outcome, batch_id=batch_id).items():
             if value is not None:
                 if not isinstance(value, str) or len(value) > 100 or name == 'event' and value not in EVENTS or name == 'outcome' and value not in OUTCOMES:
-                    raise TaskError('INVALID_REQUEST', '审计筛选条件无效', 422)
+                    raise TaskError('AUDIT_FILTER_INVALID', '审计筛选条件无效', 422)
                 if name == 'event' and value in EVENT_GROUPS:
                     clauses.append('event IN (' + ','.join("'" + item + "'" for item in EVENT_GROUPS[value]) + ')')
                     continue
@@ -237,7 +238,7 @@ class AuditService:
                     raise ValueError()
                 uuid.UUID(identifier)
             except (ValueError, TypeError, KeyError):
-                raise TaskError('INVALID_REQUEST', '审计分页参数无效', 422) from None
+                raise TaskError('AUDIT_FILTER_INVALID', '审计分页参数无效', 422) from None
             clauses.append('(created_at<:before OR (created_at=:before AND id<:before_id))')
             params.update(before=stamp, before_id=identifier)
         params['limit'] = limit + 1
@@ -291,7 +292,7 @@ class AuditService:
         from openpyxl.styles import Alignment, Font, PatternFill
         page = self.query(limit=10000, **filters)
         if page['next_cursor']:
-            raise TaskError('INVALID_REQUEST', '审计导出最多10000条，请缩小筛选范围', 422)
+            raise TaskError('AUDIT_EXPORT_TOO_LARGE', '审计导出最多10000条，请缩小日期范围或增加筛选条件', 422)
         book = Workbook()
         sheet = book.active
         sheet.title = '操作审计'

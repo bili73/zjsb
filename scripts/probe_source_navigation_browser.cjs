@@ -25,7 +25,7 @@ let server, browser;
     report.component_sha256 = require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(root, 'frontend/src/components/SourcePreview.vue'))).digest('hex');
     browser = await chromium.launch({ executablePath: process.env.EDGE_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true });
 
-    async function open(delays = {}, kind = 'MEDICAL_REPORT') {
+    async function open(delays = {}, kind = 'MEDICAL_REPORT', ocrEnabled = true, localKind = 'image') {
       const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
       page.on('pageerror', error => report.errors.push(error.message));
       await page.route('**/api/**', route => { report.business_requests++; return route.abort(); });
@@ -33,24 +33,28 @@ let server, browser;
         <div id="app"></div><script type="module">
         import {createApp,ref,h} from '${vue}'; import ElementPlus from '${elementPlus}';
         import SourcePreview from '/src/components/SourcePreview.vue'; import '/src/style.css'; import '/node_modules/element-plus/dist/index.css';
-        window.scrollCalls=[]; const native=Element.prototype.scrollIntoView;
+        window.scrollCalls=[];window.previewRequests=[];window.revoked=[]; const native=Element.prototype.scrollIntoView;
+        const revoke=URL.revokeObjectURL.bind(URL);URL.revokeObjectURL=url=>{window.revoked.push(url);revoke(url)};
         Element.prototype.scrollIntoView=function(options){window.scrollCalls.push({page:this.closest('[data-page]')?.dataset.page,time:performance.now(),behavior:options?.behavior});return native.call(this,options)};
         const source=ref(null),task=ref({task_id:'synthetic',run_id:'one',result_revision:1,page_count:8,actual_source_page_count:8,doc_type:'${kind}'});
-        const api={preview:async(t,n,signal)=>{const response=await fetch('/synthetic-image?page='+n,{signal});if(!response.ok)throw Error('Synthetic preview failure');return{blob:await response.blob(),corrected:true}}};
+        const api={preview:async(t,n,signal,reason,rendition='original')=>{window.previewRequests.push({page:n,rendition});const response=await fetch('/synthetic-image?page='+n+'&rendition='+rendition,{signal});if(!response.ok)throw Error('Synthetic preview failure');return{blob:await response.blob(),corrected:true}}};
+        const local={kind:'${localKind}',url:${localKind === 'pdf' ? "'about:blank'" : "URL.createObjectURL(new Blob(['<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"3000\"><rect width=\"800\" height=\"3000\" fill=\"white\"/></svg>'],{type:'image/svg+xml'}))"}};
         window.select=(page,box=true)=>source.value={page,...(box?{bbox:[.1,.6,.9,.65]}:{})};
         createApp({setup:()=>()=>h('main',{},[
           ...[5,7].map(n=>h('button',{id:'locate-'+n,onClick:()=>window.select(n)},'Locate '+n)),
           h('button',{id:'reset',onClick:()=>{source.value=null;task.value={...task.value,run_id:'two'}}},'New version'),
           h('button',{id:'unmount',onClick:()=>task.value=null},'Close'),
           task.value?h('aside',{class:'fixture-pane',style:'width:500px;height:680px;overflow:auto;position:relative;margin:40px'},[
-            h(SourcePreview,{task:task.value,api,source:source.value,canWrite:true})]):null
+            h(SourcePreview,{task:task.value,api,source:source.value,canWrite:true,ocrEnabled:${ocrEnabled},preview:local})]):null
         ])}).use(ElementPlus).mount('#app');
         </script>` }));
       await page.route('**/synthetic-image?*', async route => {
-        const n = Number(new URL(route.request().url()).searchParams.get('page'));
+        const params = new URL(route.request().url()).searchParams;
+        const n = Number(params.get('page'));
+        const height = params.get('rendition') === 'display' ? 1800 : 3000;
         await new Promise(resolve => setTimeout(resolve, delays[n] ?? (180 + n * 20)));
         await route.fulfill(n === delays.failPage ? { status: 503, body: 'Synthetic failure' } : {
-          contentType: 'image/svg+xml', body: `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="3000"><rect width="800" height="3000" fill="white"/><text x="40" y="70" font-size="32">Synthetic page ${n}</text><rect x="80" y="1800" width="640" height="150" fill="pink"/></svg>`,
+          contentType: 'image/svg+xml', body: `<svg xmlns="http://www.w3.org/2000/svg" width="${height * 4 / 15}" height="${height}"><rect width="100%" height="100%" fill="white"/><text x="40" y="70" font-size="32">Synthetic page ${n}</text><rect x="10%" y="60%" width="80%" height="5%" fill="pink"/></svg>`,
         }).catch(() => {});
       });
       await page.goto(origin + '__fixture');
@@ -75,6 +79,41 @@ let server, browser;
       catch (error) { entry.failure = String(error.message).slice(0, 700); }
       report.checks.push(entry);
     }
+
+    for (const kind of ['image', 'pdf']) await check('local_' + kind + '_mounts_only_when_open', async () => {
+      const page = await open({ 1: 20 }, 'MEDICAL_REPORT', true, kind);
+      try {
+        const local = page.locator('.local-preview'), content = local.locator('iframe, .local-image');
+        assert.equal(await local.getAttribute('open'), null);
+        assert.equal(await content.count(), 0);
+        await local.locator('summary').click(); await content.waitFor();
+        await local.locator('summary').click(); await content.waitFor({ state: 'detached' });
+        return { closed_content_elements: await content.count() };
+      } finally { await page.close(); }
+    });
+    await check('display_list_and_original_enlargement_with_close', async () => {
+      const page = await open({ 1: 20 }, 'DIPLOMA', false);
+      try {
+        const image = page.locator('[data-page="1"] .page-image img');
+        await image.waitFor();
+        await page.waitForFunction(() => document.querySelector('[data-page="1"] .page-image img')?.naturalHeight > 0);
+        const displayUrl = await image.getAttribute('src');
+        assert.equal(await image.evaluate(el => el.naturalHeight), 1800);
+        assert.ok(await page.evaluate(() => window.previewRequests.every(r => r.rendition === 'display')));
+        await image.click();
+        const original = page.locator('.el-image-viewer__img');
+        await original.waitFor();
+        await page.waitForFunction(() => document.querySelector('.el-image-viewer__img')?.naturalHeight === 3000);
+        const originalUrl = await original.getAttribute('src');
+        assert.notEqual(originalUrl, displayUrl);
+        assert.equal(await page.evaluate(() => window.previewRequests.at(-1).rendition), 'original');
+        await page.locator('.el-image-viewer__close').click(); await original.waitFor({ state: 'detached' });
+        assert.ok(await page.evaluate(url => window.revoked.includes(url), originalUrl));
+        assert.equal(await image.getAttribute('src'), displayUrl);
+        await page.screenshot({ path: path.join(out, 'display-after-original-close.png') });
+        return { display_height: 1800, original_height: 3000, original_url_revoked: true };
+      } finally { await page.close(); }
+    });
 
     for (const delay of [180, 350, 600]) await check('first_click_with_preceding_loads_' + delay, async () => {
       const page = await open({ 1: delay + 20, 2: delay + 40, 3: delay + 60, 4: delay + 80, 5: 50 });

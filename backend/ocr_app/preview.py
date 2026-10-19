@@ -1,4 +1,4 @@
-"""Version-bound full corrected evidence with existing operator permissions."""
+"""Version-bound original evidence and bounded display previews."""
 from io import BytesIO
 import json
 from sqlalchemy import text
@@ -8,9 +8,11 @@ from .task_store import TaskError, identity, now
 from .review import reason, optional_reason, invalid
 
 
-def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, masked=True, access_reason=None, user=None, authorize=None):
+def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, masked=True, access_reason=None, user=None, authorize=None, rendition='original'):
     if type(page) is not int or page < 1:
         invalid()
+    if rendition not in {'original', 'display'}:
+        invalid('预览图版本无效')
     with store.engine.connect() as connection:
         if authorize:
             authorize(connection)
@@ -28,7 +30,11 @@ def corrected_preview(store, task_id, run_id, revision, page, *, actor, role, ma
     # Re-encode metadata-free pixels; content must have passed admission safety.
     target = BytesIO()
     with Image.open(BytesIO(data)) as image:
-        image.convert('RGB').save(target, format='PNG')
+        pixels = image.convert('RGB')
+        pixels.info.clear()
+        if rendition == 'display':
+            pixels.thumbnail((1800, 1800), Image.Resampling.LANCZOS)
+        pixels.save(target, format='PNG')
     history = dict(event='preview_full', actor=actor, reason=access_reason, at=now(),
                    run_id=run_id, result_revision=revision, page=page)
     reference = store.storage.put(json.dumps(history, ensure_ascii=False).encode())

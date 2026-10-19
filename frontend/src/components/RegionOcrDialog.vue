@@ -172,7 +172,7 @@ async function loadPage() {
   const current = generation, client = props.api, task = { ...props.task }, selectedPage = page.value
   const controller = new AbortController(); pageController = controller; loading.value = true
   try {
-    const result = await client.preview(task, selectedPage, controller.signal)
+    const result = await client.preview(task, selectedPage, controller.signal, undefined, 'original')
     if (current !== generation || controller.signal.aborted || props.api !== client || disposed) return
     if (!result.corrected) throw new Error('UNCORRECTED_PREVIEW')
     url.value = URL.createObjectURL(result.blob)

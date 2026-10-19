@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-19T04:34:06.275Z",
+  "generatedAt": "2026-10-19T09:03:22.155Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 132,
+    "activeNotes": 138,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 726,
+    "relations": 749,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 127,
+      "implemented": 133,
       "rejected": 3
     },
     "staleNotes": []
@@ -2932,7 +2932,9 @@
         "implemented/feature/2026-10-12-thirty-day-single-session.md",
         "implemented/feature/2026-10-13-source-region-ocr-copy.md",
         "implemented/feature/2026-10-15-admin-file-retention.md",
-        "implemented/feature/2026-10-16-account-operation-audit.md"
+        "implemented/feature/2026-10-16-account-operation-audit.md",
+        "implemented/feature/2026-10-19-delete-individual-tasks.md",
+        "implemented/feature/2026-10-19-preview-renditions.md"
       ],
       "lastVerified": "2026-10-13",
       "archivedDate": null,
@@ -3602,6 +3604,7 @@
         "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
         "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
+        "implemented/feature/2026-10-19-login-bruteforce-protection.md",
         "implemented/simplification/2026-10-16-account-action-audit.md",
         "implemented/testing/2026-10-16-http-concurrency-capacity.md"
       ],
@@ -3670,11 +3673,13 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
-        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md"
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+        "implemented/feature/2026-10-19-preview-renditions.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
-        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md"
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+        "implemented/feature/2026-10-19-preview-renditions.md"
       ],
       "lastVerified": "2026-10-18",
       "archivedDate": null,
@@ -3684,7 +3689,7 @@
         "rule": "最近复核 2026-10-18"
       },
       "summary": "- All page placeholders share one A4 aspect-ratio reservation: .img-wrap, .page-holder, .page-skeleton get aspect-ratio: 210 / 297, and .page-image fills the reserved box (height: 100%). The list reaches final height before any bytes arrive",
-      "bodySha256": "929399c3335f1202",
+      "bodySha256": "049c787c6e25e4c6",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3709,15 +3714,94 @@
           },
           {
             "title": "Verification",
-            "line": 30
+            "line": 32
           },
           {
             "title": "Consequences",
-            "line": 34
+            "line": 36
           }
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
+      "title": "Distinguish recoverable audit query and export-limit failures",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-19",
+      "scope": [
+        "backend/ocr_app/audit.py",
+        "backend/ocr_app/api.py",
+        "backend/ocr_app/diagnostics.py",
+        "backend/ocr_app/diagnostic_messages.py",
+        "backend/ocr_app/routes.py",
+        "frontend/src/diagnostics.ts",
+        "tests",
+        "frontend/tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-16-numbered-list-pagination.md",
+        "implemented/simplification/2026-10-16-account-action-audit.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-16-numbered-list-pagination.md",
+        "implemented/simplification/2026-10-16-account-action-audit.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "Use AUDIT_FILTER_INVALID for audit list/export filter and paging failures, including FastAPI query validation, and AUDIT_EXPORT_TOO_LARGE when the current export snapshot exceeds10000 rows. Both remain HTTP422, with fixed Chinese backend an",
+      "bodySha256": "4db0494f80eebf6f",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Testing",
+            "line": 27
+          },
+          {
+            "title": "Consequences",
+            "line": 35
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-19-audit-query-error-codes.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
@@ -3795,6 +3879,81 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-19-batch-read-amplification.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-19-id-checksum-presentation.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-19-id-checksum-presentation.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-19-id-checksum-presentation.md",
+      "title": "Explain failed ID checks without invalidating human confirmations",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-19",
+      "scope": [
+        "backend/ocr_app/validation.py",
+        "backend/ocr_app/export_disputes.py",
+        "backend/ocr_app/task_store.py",
+        "tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+        "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+        "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "Keep PASS wording and every check outcome/value unchanged. FAIL says the last check digit disagrees, asks the operator to inspect the original, and states local-only verification. Normalize only this known new ID-checksum failure message to",
+      "bodySha256": "9888d878ab3f0a46",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Testing",
+            "line": 27
+          },
+          {
+            "title": "Consequences",
+            "line": 33
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-19-id-checksum-presentation.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md",
@@ -3952,6 +4111,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/feature/2026-10-19-preview-renditions.md",
         "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
         "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
@@ -3960,7 +4120,8 @@
       "citedBy": [
         "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
-        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md"
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+        "implemented/feature/2026-10-19-preview-renditions.md"
       ],
       "lastVerified": "2026-10-19",
       "archivedDate": null,
@@ -3970,7 +4131,7 @@
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Read the preview's version-bound artifact reference through an ordinary connection, then decrypt, encode and durably stage its encrypted access history outside the SQLite writer lock. Recheck account, owner, run and result revision immediat",
-      "bodySha256": "b3653ffb754aca06",
+      "bodySha256": "341ec69820dfe4ef",
       "lines": {
         "title": 1,
         "status": 3,
@@ -3991,19 +4152,19 @@
           },
           {
             "title": "Related decisions",
-            "line": 19
+            "line": 21
           },
           {
             "title": "Alternatives considered",
-            "line": 23
+            "line": 25
           },
           {
             "title": "Testing",
-            "line": 29
+            "line": 31
           },
           {
             "title": "Consequences",
-            "line": 37
+            "line": 39
           }
         ]
       },
@@ -4029,6 +4190,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/feature/2026-10-19-preview-renditions.md",
         "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
         "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
         "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md",
@@ -4047,7 +4209,7 @@
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Active preview requests are limited to two per mounted component, same-page callers share a promise, and explicit location/jump requests precede pending background pages. The observer uses the actual scroll viewport and75percent margin afte",
-      "bodySha256": "1dff9614a8358adf",
+      "bodySha256": "31a11fafb9d0c2cc",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4072,15 +4234,15 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 21
+            "line": 23
           },
           {
             "title": "Testing",
-            "line": 27
+            "line": 29
           },
           {
             "title": "Consequences",
-            "line": 35
+            "line": 37
           }
         ]
       },
@@ -5666,6 +5828,7 @@
       "supersededBy": [],
       "cites": [
         "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
+        "implemented/feature/2026-10-19-login-bruteforce-protection.md",
         "implemented/feature/2026-10-12-thirty-day-single-session.md",
         "implemented/feature/2026-10-09-admin-account-creation.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -5683,7 +5846,8 @@
         "implemented/feature/2026-10-10-account-lifecycle-management.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
         "implemented/feature/2026-10-10-web-user-manual.md",
-        "implemented/feature/2026-10-12-thirty-day-single-session.md"
+        "implemented/feature/2026-10-12-thirty-day-single-session.md",
+        "implemented/feature/2026-10-19-login-bruteforce-protection.md"
       ],
       "lastVerified": "2026-10-09",
       "archivedDate": null,
@@ -5693,7 +5857,7 @@
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Add an additive SQLite migration for named users, hashed opaque sessions and login throttling. Deployment operators create/change/disable accounts with a masked-password CLI; no default password, registration or browser account administrati",
-      "bodySha256": "d7467c289d79dfd0",
+      "bodySha256": "82eea005740cc634",
       "lines": {
         "title": 1,
         "status": 3,
@@ -5718,19 +5882,19 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 29
+            "line": 31
           },
           {
             "title": "Verified invariants",
-            "line": 36
+            "line": 38
           },
           {
             "title": "Verification",
-            "line": 40
+            "line": 42
           },
           {
             "title": "Consequences",
-            "line": 44
+            "line": 46
           }
         ]
       },
@@ -5874,7 +6038,8 @@
         "implemented/feature/2026-10-13-photo-table-to-excel-replan.md",
         "implemented/feature/2026-10-14-account-workbench-layout.md",
         "implemented/feature/2026-10-16-account-operation-audit.md",
-        "implemented/feature/2026-10-16-numbered-list-pagination.md"
+        "implemented/feature/2026-10-16-numbered-list-pagination.md",
+        "implemented/feature/2026-10-19-delete-individual-tasks.md"
       ],
       "lastVerified": "2026-10-10",
       "archivedDate": null,
@@ -6038,6 +6203,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/feature/2026-10-19-delete-individual-tasks.md",
         "implemented/bug-fix/2026-10-13-region-ocr-and-package-repairs.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
@@ -6054,7 +6220,8 @@
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
         "implemented/feature/2026-10-10-account-lifecycle-management.md",
         "implemented/feature/2026-10-10-account-owned-batches.md",
-        "implemented/feature/2026-10-12-person-material-packages.md"
+        "implemented/feature/2026-10-12-person-material-packages.md",
+        "implemented/feature/2026-10-19-delete-individual-tasks.md"
       ],
       "lastVerified": "2026-10-13",
       "archivedDate": null,
@@ -6064,7 +6231,7 @@
         "rule": "最近复核 2026-10-13"
       },
       "summary": "DELETE /batches/{batch_id} accepts a complete task/run/revision snapshot. Within the same BEGIN IMMEDIATE transaction, recheck the current administrator session, batch membership, allowed states and each version. Only NEED_REVIEW, COMPLETED",
-      "bodySha256": "8507a86f315edcd0",
+      "bodySha256": "7a0144cddb8cc6af",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6089,15 +6256,15 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 28
+            "line": 30
           },
           {
             "title": "Verification",
-            "line": 34
+            "line": 36
           },
           {
             "title": "Consequences",
-            "line": 42
+            "line": 44
           }
         ]
       },
@@ -6933,7 +7100,8 @@
         "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md",
         "implemented/feature/2026-10-09-web-password-sessions.md",
         "implemented/feature/2026-10-12-person-package-name-suggestions-and-export.md",
-        "implemented/feature/2026-10-16-account-operation-audit.md"
+        "implemented/feature/2026-10-16-account-operation-audit.md",
+        "implemented/feature/2026-10-19-login-bruteforce-protection.md"
       ],
       "lastVerified": "2026-10-12",
       "archivedDate": null,
@@ -7863,6 +8031,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-19-id-checksum-presentation.md",
         "implemented/simplification/2026-10-08-required-fields-only-export.md",
         "implemented/feature/2026-10-14-number-length-review-hints.md",
         "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
@@ -7872,6 +8041,7 @@
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+        "implemented/bug-fix/2026-10-19-id-checksum-presentation.md",
         "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
         "implemented/feature/2026-10-14-number-length-review-hints.md",
         "implemented/feature/2026-10-14-save-confirms-export-disputes.md",
@@ -7885,7 +8055,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Keep required-value and table-structure gates. Add one server projection for explicit number-length warnings, current format/checksum failures and unresolved recognition conflicts. Uncalibrated confidence, no official lookup and uncovered r",
-      "bodySha256": "30bacd6494b41ba5",
+      "bodySha256": "08f327af08c8fc8b",
       "lines": {
         "title": 1,
         "status": 3,
@@ -7910,23 +8080,23 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 27
+            "line": 29
           },
           {
             "title": "Verification",
-            "line": 34
+            "line": 36
           },
           {
             "title": "Consequences",
-            "line": 40
+            "line": 42
           },
           {
             "title": "Local activation",
-            "line": 47
+            "line": 49
           },
           {
             "title": "Save interaction update",
-            "line": 52
+            "line": 54
           }
         ]
       },
@@ -8204,6 +8374,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-19-id-checksum-presentation.md",
         "implemented/feature/2026-10-14-disputed-results-export-gate.md",
         "implemented/feature/2026-10-14-export-disputes-section-removed.md",
         "implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md",
@@ -8211,6 +8382,7 @@
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-15-review-integrity-and-table-performance.md",
+        "implemented/bug-fix/2026-10-19-id-checksum-presentation.md",
         "implemented/feature/2026-10-14-disputed-results-export-gate.md",
         "implemented/feature/2026-10-14-export-disputes-section-removed.md"
       ],
@@ -8222,7 +8394,7 @@
         "rule": "最近复核 2026-10-15"
       },
       "summary": "The ordinary non-table review editor sends confirm_export_disputes=true with its existing version-bound save. Apply all edits and current validation first, then acknowledge every remaining confirmable dispute against that resulting value/co",
-      "bodySha256": "56ad0605ed683353",
+      "bodySha256": "30b5eeb510735480",
       "lines": {
         "title": 1,
         "status": 3,
@@ -8247,19 +8419,19 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 24
+            "line": 26
           },
           {
             "title": "Verification",
-            "line": 29
+            "line": 31
           },
           {
             "title": "Consequences",
-            "line": 33
+            "line": 35
           },
           {
             "title": "Local activation",
-            "line": 39
+            "line": 41
           }
         ]
       },
@@ -9120,6 +9292,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
         "implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md",
         "implemented/feature/2026-10-16-accounts-panel-restyle.md",
         "implemented/simplification/2026-10-16-account-action-audit.md",
@@ -9127,6 +9300,7 @@
         "implemented/bug-fix/2026-10-12-qualified-normal-and-refresh-retry.md"
       ],
       "citedBy": [
+        "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
         "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
         "implemented/feature/2026-10-16-accounts-panel-restyle.md",
@@ -9140,7 +9314,7 @@
         "rule": "最近复核 2026-10-16"
       },
       "summary": "The three lists use the installed Element Plus pagination control. Keep batch/audit defaults at 50 and accounts at 20, with 20/50/100 choices. Audit accepts page/page_size and returns items/total/page/page_size; legacy cursor/limit calls an",
-      "bodySha256": "52bb9cb49c434910",
+      "bodySha256": "7a35a67c4b6197c1",
       "lines": {
         "title": 1,
         "status": 3,
@@ -9165,19 +9339,19 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 21
+            "line": 23
           },
           {
             "title": "Verification",
-            "line": 28
+            "line": 30
           },
           {
             "title": "Consequences",
-            "line": 34
+            "line": 36
           },
           {
             "title": "Windows activation — 2026-10-16",
-            "line": 38
+            "line": 40
           }
         ]
       },
@@ -9365,6 +9539,308 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-18-review-usability-fixes.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-19-delete-individual-tasks.md",
+      "path": ".agents/notes/implemented/feature/2026-10-19-delete-individual-tasks.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-19-delete-individual-tasks.md",
+      "title": "Delete one stopped task without deleting its peers",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-19",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src",
+        "frontend/tests",
+        "tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-10-delete-recognized-batches.md",
+        "implemented/feature/2026-10-10-account-owned-batches.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-10-delete-recognized-batches.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "DELETE /tasks/{task_id} accepts run_id and expected_revision. In one write transaction revalidate the session/role, task ownership, stopped state and exact version; capture only task-owned artifact references; append a value-free deletion a",
+      "bodySha256": "d40eb1049a6088a9",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Verification",
+            "line": 27
+          },
+          {
+            "title": "Consequences",
+            "line": 31
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-19-delete-individual-tasks.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-19-login-bruteforce-protection.md",
+      "path": ".agents/notes/implemented/feature/2026-10-19-login-bruteforce-protection.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-19-login-bruteforce-protection.md",
+      "title": "Bound account and source login attempts before password verification",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-19",
+      "scope": [
+        "backend/ocr_app",
+        "frontend/src/components/LoginGate.vue",
+        "frontend/src/diagnostics.ts",
+        "frontend/tests",
+        "tests",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-09-web-password-sessions.md",
+        "implemented/feature/2026-10-12-thirty-day-single-session.md",
+        "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-09-web-password-sessions.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "Reuse login_attempts with domain-separated hashed account/source keys. Atomically reserve attempts before Argon2: five attempts per normalized username per 300-second window, sixty per direct peer per 300-second window. A successful login c",
+      "bodySha256": "bfb9a8656f05b73f",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 17
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Verification",
+            "line": 27
+          },
+          {
+            "title": "Consequences",
+            "line": 31
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-19-login-bruteforce-protection.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-19-preview-renditions.md",
+      "path": ".agents/notes/implemented/feature/2026-10-19-preview-renditions.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-19-preview-renditions.md",
+      "title": "Serve a bounded display preview and retain original evidence pixels",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-19",
+      "scope": [
+        "backend/ocr_app/preview.py",
+        "backend/ocr_app/routes.py",
+        "backend/ocr_app/region_ocr.py",
+        "frontend/src/api.ts",
+        "frontend/src/components/SourcePreview.vue",
+        "frontend/src/components/RegionOcrDialog.vue",
+        "tests",
+        "frontend/tests",
+        "scripts/probe_source_navigation_browser.cjs",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "frontend/public/help"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+        "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md",
+        "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md",
+        "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+        "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md"
+      ],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "GET/POST preview accept rendition=original|display, default original. Display returns metadata-free corrected PNG with longest edge at most1800 pixels and unchanged aspect ratio, never upscaling. Original retains existing dimensions. X-Prev",
+      "bodySha256": "073ff86a806c74fd",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Decision audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Testing",
+            "line": 29
+          },
+          {
+            "title": "Consequences",
+            "line": 39
+          },
+          {
+            "title": "Windows activation",
+            "line": 45
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-19-preview-renditions.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/feature/2026-10-19-review-usability-fixes-batch-c.md",
+      "path": ".agents/notes/implemented/feature/2026-10-19-review-usability-fixes-batch-c.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-19-review-usability-fixes-batch-c.md",
+      "title": "Review usability fixes from the 2026-10-18 visual audit (batch C)",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-19",
+      "scope": [
+        "frontend/src/components/TaskResultDrawer.vue",
+        "frontend/src/components/ReviewEditor.vue",
+        "frontend/src/review.ts",
+        "frontend/tests/review.test.ts",
+        "IMPLEMENTATION_PLAN.md",
+        "FRONTEND_FIELDS.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "rejected/feature/2026-10-09-certificate-field-localization.md"
+      ],
+      "citedBy": [],
+      "lastVerified": "2026-10-19",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-19"
+      },
+      "summary": "- locate allowlist adds HOUSEHOLD_REGISTER: page-level source navigation only. The rejected certificate helper concerns manufacturing bbox coordinates and stays rejected; SourcePreview's red-box gating remains unchanged and excludes househo",
+      "bodySha256": "a40d9794a948b62a",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 9
+          },
+          {
+            "title": "Decision",
+            "line": 16
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Verification",
+            "line": 31
+          },
+          {
+            "title": "Consequences",
+            "line": 35
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-19-review-usability-fixes-batch-c.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/process/2026-09-29-dde-project-workflow.md",
@@ -10195,11 +10671,13 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
         "implemented/feature/2026-10-16-account-operation-audit.md",
         "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+        "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
         "implemented/feature/2026-10-16-account-operation-audit.md",
         "implemented/feature/2026-10-16-numbered-list-pagination.md",
         "implemented/testing/2026-10-16-http-concurrency-capacity.md"
@@ -10212,7 +10690,7 @@
         "rule": "最近复核 2026-10-16"
       },
       "summary": "Keep account login/logout and account management, upload/append, completed or failed export, batch deletion, explicit rerun/cancel, and global settings. Stop new worker/maintenance, preview/reveal/region OCR, person confirmation and review ",
-      "bodySha256": "45fc49931d85f15c",
+      "bodySha256": "2d98b8dbb8315110",
       "lines": {
         "title": 1,
         "status": 3,
@@ -10237,19 +10715,19 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 23
+            "line": 25
           },
           {
             "title": "Testing",
-            "line": 29
+            "line": 31
           },
           {
             "title": "Consequences",
-            "line": 35
+            "line": 37
           },
           {
             "title": "Windows activation",
-            "line": 41
+            "line": 43
           }
         ]
       },
@@ -11035,7 +11513,8 @@
         "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
         "implemented/bug-fix/2026-10-12-degree-school-and-award-mapping.md",
         "implemented/feature/2026-10-12-certificate-image-upright.md",
-        "implemented/feature/2026-10-13-field-region-ocr.md"
+        "implemented/feature/2026-10-13-field-region-ocr.md",
+        "implemented/feature/2026-10-19-review-usability-fixes-batch-c.md"
       ],
       "lastVerified": "2026-10-09",
       "archivedDate": null,
@@ -12468,6 +12947,21 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md",
+      "to": "implemented/feature/2026-10-19-preview-renditions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
+      "to": "implemented/feature/2026-10-16-numbered-list-pagination.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
+      "to": "implemented/simplification/2026-10-16-account-action-audit.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-19-batch-read-amplification.md",
       "to": "implemented/feature/2026-10-16-numbered-list-pagination.md"
     },
@@ -12493,6 +12987,16 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-id-checksum-presentation.md",
+      "to": "implemented/feature/2026-10-14-disputed-results-export-gate.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-id-checksum-presentation.md",
+      "to": "implemented/feature/2026-10-14-save-confirms-export-disputes.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-19-index-check-snapshot-clock.md",
       "to": "implemented/process/2026-09-29-dde-project-workflow.md"
     },
@@ -12514,6 +13018,11 @@
     {
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
+      "to": "implemented/feature/2026-10-19-preview-renditions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
       "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
     },
     {
@@ -12530,6 +13039,11 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md",
       "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-prioritized-detail-loading.md",
+      "to": "implemented/feature/2026-10-19-preview-renditions.md"
     },
     {
       "type": "cite",
@@ -13394,6 +13908,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-09-web-password-sessions.md",
+      "to": "implemented/feature/2026-10-19-login-bruteforce-protection.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-09-web-password-sessions.md",
       "to": "implemented/feature/2026-10-12-thirty-day-single-session.md"
     },
     {
@@ -13540,6 +14059,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-10-configurable-required-fields.md",
       "to": "implemented/feature/2026-10-09-admin-account-creation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-10-delete-recognized-batches.md",
+      "to": "implemented/feature/2026-10-19-delete-individual-tasks.md"
     },
     {
       "type": "cite",
@@ -14164,6 +14688,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-14-disputed-results-export-gate.md",
+      "to": "implemented/bug-fix/2026-10-19-id-checksum-presentation.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-disputed-results-export-gate.md",
       "to": "implemented/simplification/2026-10-08-required-fields-only-export.md"
     },
     {
@@ -14275,6 +14804,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-14-number-length-review-hints.md",
       "to": "implemented/feature/2026-10-14-disputed-results-export-gate.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-14-save-confirms-export-disputes.md",
+      "to": "implemented/bug-fix/2026-10-19-id-checksum-presentation.md"
     },
     {
       "type": "cite",
@@ -14469,6 +15003,11 @@
     {
       "type": "cite",
       "from": "implemented/feature/2026-10-16-numbered-list-pagination.md",
+      "to": "implemented/bug-fix/2026-10-19-audit-query-error-codes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-16-numbered-list-pagination.md",
       "to": "implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md"
     },
     {
@@ -14490,6 +15029,56 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-16-numbered-list-pagination.md",
       "to": "implemented/bug-fix/2026-10-12-qualified-normal-and-refresh-retry.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-19-delete-individual-tasks.md",
+      "to": "implemented/feature/2026-10-10-delete-recognized-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-19-delete-individual-tasks.md",
+      "to": "implemented/feature/2026-10-10-account-owned-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-19-delete-individual-tasks.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-19-login-bruteforce-protection.md",
+      "to": "implemented/feature/2026-10-09-web-password-sessions.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-19-login-bruteforce-protection.md",
+      "to": "implemented/feature/2026-10-12-thirty-day-single-session.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-19-login-bruteforce-protection.md",
+      "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-19-preview-renditions.md",
+      "to": "implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-19-preview-renditions.md",
+      "to": "implemented/bug-fix/2026-10-18-source-preview-scroll-performance.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-19-preview-renditions.md",
+      "to": "implemented/bug-fix/2026-10-13-api-authorization-boundaries.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-19-review-usability-fixes-batch-c.md",
+      "to": "rejected/feature/2026-10-09-certificate-field-localization.md"
     },
     {
       "type": "cite",
@@ -14655,6 +15244,11 @@
       "type": "cite",
       "from": "implemented/simplification/2026-10-15-serious-diagnostic-query.md",
       "to": "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-16-account-action-audit.md",
+      "to": "implemented/bug-fix/2026-10-19-audit-query-error-codes.md"
     },
     {
       "type": "cite",

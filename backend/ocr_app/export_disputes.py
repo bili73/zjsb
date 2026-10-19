@@ -6,7 +6,7 @@ import re
 
 from .bank_bins import _data, normalize_pan
 from .doc_profiles import profile
-from .validation import validate_field
+from .validation import validate_field, ID_CHECKSUM_LEGACY_MESSAGE, ID_CHECKSUM_FAILURE_MESSAGE
 
 DISPUTE_CODES = {'VALIDATION_FAILED', 'CONFLICT', 'MULTI_CANDIDATES', 'LOW_CONFIDENCE'}
 
@@ -136,11 +136,16 @@ def export_disputes(result, *, include_confirmed=False):
                     continue
                 problems.append((issue['code'], issue.get('rule_id', ''), issue['message'], None))
         for code, rule, message, siblings in problems:
-            binding = [1, result.get('run_id'), kind, path, code, rule, message, evidence, siblings]
+            # This editorial alias keeps v1 IDs (including legacy task issues) stable.
+            identity_message = ID_CHECKSUM_LEGACY_MESSAGE if (code == 'VALIDATION_FAILED' and
+                rule in (None, '', 'id_cn_v1') and message == ID_CHECKSUM_FAILURE_MESSAGE) else message
+            display_message = ID_CHECKSUM_FAILURE_MESSAGE if (code == 'VALIDATION_FAILED' and
+                rule in (None, '', 'id_cn_v1') and message == ID_CHECKSUM_LEGACY_MESSAGE) else message
+            binding = [1, result.get('run_id'), kind, path, code, rule, identity_message, evidence, siblings]
             identifier = 'd_' + hashlib.sha256(json.dumps(binding, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
             if not include_confirmed and can_confirm and identifier in confirmed:
                 continue
-            output.append(dict(dispute_id=identifier, field=path, label=label, code=code, message=message,
+            output.append(dict(dispute_id=identifier, field=path, label=label, code=code, message=display_message,
                                can_confirm=can_confirm))
     return output
 

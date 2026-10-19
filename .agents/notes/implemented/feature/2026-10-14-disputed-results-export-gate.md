@@ -18,6 +18,8 @@ Task summaries expose safe DISPUTED field paths; detail exposes opaque dispute I
 
 ## Decision audit
 
+- [ID-checksum presentation](../bug-fix/2026-10-19-id-checksum-presentation.md): only the known editorial failure-message change aliases its v1 fingerprint text. Existing IDs and human confirmation remain valid; evidence, run and all unrelated rule bindings retain their semantics.
+
 - [Presence-only export](../../implemented/simplification/2026-10-08-required-fields-only-export.md): partially superseded only for explicit disputes; required profiles, atomic snapshots and frozen measurements remain.
 - [Number hints](../../implemented/feature/2026-10-14-number-length-review-hints.md): partially superseded because warning-level hints now have a backend gate; informational legacy/unknown rules remain informational.
 - [One-click review](../../implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md): still applies to informational issues, not explicit disputes.

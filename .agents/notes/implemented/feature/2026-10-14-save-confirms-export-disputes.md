@@ -16,6 +16,8 @@ A save with acknowledgment but no data edits can preserve a failed task's execut
 
 ## Decision audit
 
+- [ID-checksum presentation](../bug-fix/2026-10-19-id-checksum-presentation.md) preserves historical confirmation IDs/actor/time through the wording-only update, including reads, ordinary save and export. The save acknowledgment interaction remains unchanged.
+
 - [Disputed export gate](../../implemented/feature/2026-10-14-disputed-results-export-gate.md): partially superseded only for the confirmation interaction. Shared gating, evidence, ownership and revision fences remain.
 - [Removed confirmation panel](../../implemented/feature/2026-10-14-export-disputes-section-removed.md): removal remains; this decision replaces its lack of an exception remedy. Keep the panel removed.
 - [One-click review](../../implemented/feature/2026-10-08-internal-unmasking-and-review-friction.md): consistent with save-as-review; explicit disputes now have separate private fingerprints rather than accepted_issues.

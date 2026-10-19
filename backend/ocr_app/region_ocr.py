@@ -144,7 +144,7 @@ def transcribe_region(store, task_id, body, user, authorize):
     with store.engine.connect() as connection:
         verify(connection)
     data = corrected_preview(store, task_id, body['run_id'], body['expected_revision'], body['page'],
-                             actor=user['user_id'], role=user['role'], user=user, authorize=authorize)
+                             actor=user['user_id'], role=user['role'], user=user, authorize=authorize, rendition='original')
     result = recognize_crop(crop_region(data, body['bbox']))
     # A later login, edit, rerun or deletion must not receive old OCR content.
     with store.transaction() as connection:

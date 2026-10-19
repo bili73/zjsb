@@ -16,6 +16,8 @@ Batch monitor separates the current page IDs from cached task state. Page change
 
 ## Related decisions
 
+[Audit query error codes](../bug-fix/2026-10-19-audit-query-error-codes.md) makes invalid/mixed filters and pagination AUDIT_FILTER_INVALID and oversized exports AUDIT_EXPORT_TOO_LARGE, both422. Page/cursor compatibility, empty beyond-end pages and snapshot semantics remain unchanged.
+
 Partially replaces the cursor-stack paragraph in [audit toolbar](../../implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md), while keeping its presentation and concise summaries. [Account panel](../../implemented/feature/2026-10-16-accounts-panel-restyle.md) retains local pagination. [Account action audit](../../implemented/simplification/2026-10-16-account-action-audit.md), [batch isolation](../../implemented/feature/2026-10-10-account-owned-batches.md) and [refresh retry](../../implemented/bug-fix/2026-10-12-qualified-normal-and-refresh-retry.md) remain constraints. Scope/topic inspection found no competing numbered-pagination proposal.
 
 ## Alternatives considered

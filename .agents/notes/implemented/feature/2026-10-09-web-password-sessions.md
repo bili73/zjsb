@@ -20,6 +20,8 @@ Until a deployment-created user exists, the old local key remains available to e
 
 ## Decision audit
 
+- [Login brute-force protection](2026-10-19-login-bruteforce-protection.md) replaces peer-only throttling with persistent normalized-account and source budgets, two concurrent password checks and bounded refusal auditing. Session/password/origin behavior remains owned by this note and its existing successors.
+
 The [thirty-day single-session decision](2026-10-12-thirty-day-single-session.md) partially replaces the original twelve-hour/multi-browser policy below. New successful logins expire absolutely after30 days and revoke prior account sessions atomically; the existing cryptographic, CSRF, restoration and network-boundary decisions remain active.
 
 The implemented [administrator creation](2026-10-09-admin-account-creation.md) partially replaces CLI-only administration with admin-only listing/creation and the ten-character floor with eight, preserving sessions, CLI reset/disable and every-request authorization. Excel stays pending the business template with its separately authorized manual-opinion placeholder. The initial credential is supplied directly by the user and never recorded in repository files.
