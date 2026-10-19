@@ -31,6 +31,11 @@ LABELS = dict(zip(PROFILES, ['身份证人像面','身份证国徽面','毕业�
 LABELS['TABLE'] = '表格'
 PROFILES['INTERVIEW_FORM'] = _fields('name:姓名:required|gender:性别:required:enum|age:年龄:required:integer|id_number:身份证号:required|mobile_number:手机号:required')
 LABELS['INTERVIEW_FORM'] = '面试登记表'
+BANK_CARD_TYPES = frozenset({'BANK_CARD', 'BANK_CARD_COPY'})
+PROFILES['BANK_CARD_COPY'] = deepcopy(PROFILES['BANK_CARD'])
+for field in PROFILES['BANK_CARD_COPY']:
+    field['required'] = field['key'] in {'holder_name', 'card_number', 'bank_name', 'branch_name'}
+LABELS['BANK_CARD_COPY'] = '银行卡复印件'
 SUPPORTED = frozenset(PROFILES)
 
 

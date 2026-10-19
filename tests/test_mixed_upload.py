@@ -20,7 +20,7 @@ class ClassificationTests(unittest.TestCase):
             '教育部学历证书电子注册备案表 学位证书 毕业证书': 'XUEXIN_DIPLOMA_TABLE',
             '健康体检报告': 'MEDICAL_REPORT', '营业执照 统一社会信用代码': 'BUSINESS_LICENSE',
             'PASSPORT 中华人民共和国护照': 'PASSPORT', '居民户口簿': 'HOUSEHOLD_REGISTER',
-            '测试银行 6222 0000 1111 2222 333': 'BANK_CARD',
+            '测试银行 6222 0000 1111 2222 333': None,
         }
         for value, expected in cases.items():
             with self.subTest(expected=expected):

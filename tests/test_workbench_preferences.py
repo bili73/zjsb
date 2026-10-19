@@ -99,11 +99,11 @@ class WorkbenchPreferencesTests(unittest.TestCase):
         with self.business.engine.connect() as c:
             self.assertEqual(c.execute(text('SELECT count(*) FROM workbench_preferences')).scalar_one(), 0)
 
-    def test_full_thirteen_type_catalogue_can_be_saved_without_forcing_old_layouts(self):
+    def test_full_fourteen_type_catalogue_can_be_saved_without_forcing_old_layouts(self):
         from ocr_app.doc_profiles import catalogue
         _, headers, _ = self.account('all_types')
         types=[entry['doc_type'] for entry in catalogue()]
-        self.assertEqual(len(types),13)
+        self.assertEqual(len(types),14)
         self.assertEqual(self.save(headers,types).status_code,200)
         self.assertEqual(self.client.get(self.path,headers=headers).json()['layout'],types)
 

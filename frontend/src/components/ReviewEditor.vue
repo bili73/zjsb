@@ -160,7 +160,7 @@ function save() {
           <el-input v-else :type="['exam_projects','blood_routine','urine_routine','ecg','dr_imaging','abdominal_ultrasound','liver_function'].includes(field.key) ? 'textarea' : 'text'" :rows="3" :model-value="String((field.key === 'exam_project_count' ? projectCount : values[field.key]) ?? '')" :disabled="!editable(field.key)" @update:model-value="v => setField(field.key,v)" />
           <p v-if="lengthHints[field.key]" role="status" :class="['number-length-hint', lengthHints[field.key]?.level]">{{ lengthHints[field.key]?.message }}</p>
           <p v-for="issue in fieldIssues(field)" :key="issue.issue_id" role="status" class="field-issue">{{ issue.message }}</p>
-          <div v-if="['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type) && field.candidates?.length" class="bank-candidates">
+          <div v-if="['BANK_CARD','BANK_CARD_COPY','INTERVIEW_FORM'].includes(result.doc_type) && field.candidates?.length" class="bank-candidates">
             <div v-for="(candidate,index) in field.candidates" :key="index" class="candidate-pick">
               <el-icon class="candidate-icon"><InfoFilled /></el-icon>
               <span class="candidate-body">
@@ -171,7 +171,7 @@ function save() {
               <el-button size="small" type="primary" plain @click="setField(field.key, String(candidate.value ?? ''))">采用</el-button>
             </div>
           </div>
-          <el-button v-if="['BANK_CARD','INTERVIEW_FORM','HOUSEHOLD_REGISTER'].includes(result.doc_type) && field.source" link type="primary" @click="emit('locate', field.source)">查看来源</el-button>
+          <el-button v-if="['BANK_CARD','BANK_CARD_COPY','INTERVIEW_FORM','HOUSEHOLD_REGISTER'].includes(result.doc_type) && field.source" link type="primary" @click="emit('locate', field.source)">查看来源</el-button>
           <el-button v-if="result.doc_type === 'MEDICAL_REPORT'" link type="primary" @click="emit('locate', field.source ?? {})">查看来源 / 整页</el-button>
         </el-form-item>
       </div>

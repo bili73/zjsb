@@ -15,7 +15,7 @@ from .task_errors import TaskError
 ACTIVE = {'PREPROCESSING', 'OCR', 'EXTRACTING', 'VALIDATING'}
 RETENTION_PROTECTED = ACTIVE | {'QUEUED'}
 TERMINAL = {'COMPLETED', 'FAILED', 'REJECTED', 'CANCELLED'}
-from .doc_profiles import SUPPORTED, LABELS
+from .doc_profiles import SUPPORTED, LABELS, BANK_CARD_TYPES
 
 
 def now():
@@ -94,12 +94,12 @@ def public_result(value, required_overrides=None):
             return [strip_private(val) for val in item]
         return item
     projected = strip_private(value)
-    if isinstance(projected, dict) and projected.get('doc_type') == 'BANK_CARD' and 'fields' in projected:
+    if isinstance(projected, dict) and projected.get('doc_type') in BANK_CARD_TYPES and 'fields' in projected:
         from .doc_profiles import profile
         from .extraction import _field
         fields = {field['key']:field for field in projected.get('fields', [])}
         projected['fields'] = [dict(fields.get(meta['key']) or _field(meta['key'],meta['label'],[],meta['required']),
-            label=meta['label'],required=meta['required'],editable=meta['editable']) for meta in profile('BANK_CARD')]
+            label=meta['label'],required=meta['required'],editable=meta['editable']) for meta in profile(projected['doc_type'])]
     if (isinstance(projected, dict) and projected.get('doc_type') == 'MEDICAL_REPORT'
             and ('fields' in projected or 'basic_info' in projected)):
         from .doc_profiles import profile
@@ -202,9 +202,9 @@ class TaskStore:
                 raise TaskError('INVALID_REQUEST', '人员名称需1至80个可打印字符，不能全为空白', 422)
             person_name = person_name.strip()
         for file, kind in zip(files, kinds):
-            if kind in {'BANK_CARD','TABLE'}:
+            if kind in BANK_CARD_TYPES | {'TABLE'}:
                 if file.get('mime') not in {'image/png', 'image/jpeg', 'image/heic', 'image/heif'} or file.get('actual_source_page_count') != 1:
-                    raise TaskError('UNSUPPORTED_FORMAT', '银行卡和表格请上传已解码的单张照片', 415)
+                    raise TaskError('UNSUPPORTED_FORMAT', '银行卡、银行卡复印件和表格请上传已解码的单张照片', 415)
         batch, created, references, task_ids = batch_id or identity(), now(), [], []
         prepared, used = {}, set()
         try:

@@ -13,7 +13,7 @@ MODEL_URL = f'https://huggingface.co/PaddlePaddle/PP-LCNet_x1_0_doc_ori_onnx/res
 MODEL_PATH = Path(__file__).resolve().parents[2] / 'models/pp-lcnet-doc-ori/inference.onnx'
 VERSION = 'certificate-upright-v1'
 MAX_CORRECTED_PIXELS = 40_000_000
-from .doc_profiles import SUPPORTED
+from .doc_profiles import SUPPORTED, BANK_CARD_TYPES
 UPRIGHT_DOCUMENT_TYPES = SUPPORTED
 
 
@@ -197,7 +197,7 @@ def estimate_skew(image, check=lambda: None):
 def prepare_image(image, check=lambda: None, *, doc_type=None):
     """Classification scores are uncalibrated orientation evidence, never OCR confidence."""
     started = time.monotonic()
-    decision = dict(version='bank-card-upright-v1' if doc_type == 'BANK_CARD' else VERSION,
+    decision = dict(version='bank-card-upright-v1' if doc_type in BANK_CARD_TYPES else VERSION,
                     model_sha256=MODEL_SHA256, rotation_degrees=0, deskew_degrees=0.,
                     orientation_score=None, orientation_margin=None, status='unchanged', warning=None)
     check()
@@ -206,7 +206,7 @@ def prepare_image(image, check=lambda: None, *, doc_type=None):
         decision.update(status='insufficient_text', elapsed_seconds=time.monotonic() - started)
         return image, decision
     try:
-        angle, score, margin = classify_bank_orientation(image, check) if doc_type == 'BANK_CARD' else classify_orientation(image)
+        angle, score, margin = classify_bank_orientation(image, check) if doc_type in BANK_CARD_TYPES else classify_orientation(image)
     except (ImportError, OSError, ValueError, RuntimeError):
         decision.update(status='unavailable', warning='IMAGE_UPRIGHT_UNAVAILABLE')
     else:

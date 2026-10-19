@@ -16,6 +16,8 @@ Extract PANs by line context, excluding labelled non-card numbers and independen
 
 ## Related-note audit
 
+[Stable bank-name spelling](2026-10-19-stable-bank-script-spelling.md) records the limited Mac backport; the later [non-name bank conversion](../feature/2026-10-19-bank-non-name-simplification.md) expands new bank/branch text to offline t2s conversion. Source evidence, genuine conflicts, PAN and personal names remain under this correction; stored/manual results are not converted.
+
 This is a correction to [photocopy support](../../implemented/feature/2026-10-14-bank-photocopy-handwriting.md), partially replacing its positive-text-only supplement gate and same-column restriction. Its source/conflict/privacy/model-budget decisions remain. [Automatic admission](../../implemented/feature/2026-10-09-bank-auto-recognition.md) and [orientation](../../implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md) remain in force. Proposed Mac/auth work and rejected generic certificate localization are unrelated; nothing is archived.
 
 ## Alternatives considered

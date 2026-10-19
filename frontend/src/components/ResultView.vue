@@ -43,7 +43,7 @@ function basisText(item: MedicalItem): string {
 }
 const statText = (value: number | null) => (value === null ? '未确认' : String(value))
 function onFilterChange(value: string | number | boolean | undefined) { emit('update:filter', value as ItemsFilter) }
-function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BANK_CARD','INTERVIEW_FORM','HOUSEHOLD_REGISTER'].includes(props.result.doc_type)) && source) emit('locate', source) }
+function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BANK_CARD','BANK_CARD_COPY','INTERVIEW_FORM','HOUSEHOLD_REGISTER'].includes(props.result.doc_type)) && source) emit('locate', source) }
 </script>
 
 <template>
@@ -55,15 +55,15 @@ function locate(source: FieldSource | undefined) { if ((isMedical.value || ['BAN
           <span class="field-value">
             {{ fieldText(field) }}
           </span>
-          <el-button v-if="(isMedical || ['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type)) && field.source" link type="primary" size="small" @click="locate(field.source)">定位</el-button>
-          <el-dropdown v-if="(isMedical || ['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type)) && field.sources?.length" @command="index => locate(field.sources?.[Number(index)])">
+          <el-button v-if="(isMedical || ['BANK_CARD','BANK_CARD_COPY','INTERVIEW_FORM'].includes(result.doc_type)) && field.source" link type="primary" size="small" @click="locate(field.source)">定位</el-button>
+          <el-dropdown v-if="(isMedical || ['BANK_CARD','BANK_CARD_COPY','INTERVIEW_FORM'].includes(result.doc_type)) && field.sources?.length" @command="index => locate(field.sources?.[Number(index)])">
             <el-button link type="primary" size="small">{{ field.key === 'exam_projects' ? '各项目来源' : '相关来源' }}</el-button>
             <template #dropdown><el-dropdown-menu><el-dropdown-item v-for="(source,index) in field.sources" :key="index" :command="index">第{{ source.page }}页 · {{ source.raw_text }}</el-dropdown-item></el-dropdown-menu></template>
           </el-dropdown>
         </span>
         <p v-if="lengthHints[field.key]" role="status" :class="['number-length-hint', lengthHints[field.key]?.level]">{{ lengthHints[field.key]?.message }}</p>
         <p v-for="issue in fieldIssues(field)" :key="issue.issue_id" role="status" class="field-issue">{{ issue.message }}</p>
-        <div v-if="['BANK_CARD','INTERVIEW_FORM'].includes(result.doc_type) && field.candidates?.length">
+        <div v-if="['BANK_CARD','BANK_CARD_COPY','INTERVIEW_FORM'].includes(result.doc_type) && field.candidates?.length">
           <div v-for="(candidate,index) in field.candidates" :key="index" class="candidate-hint">
             <el-icon class="candidate-icon"><InfoFilled /></el-icon>
             <span>{{ candidate.reason ?? '候选值' }}：{{ candidate.value }}

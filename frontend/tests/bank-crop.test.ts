@@ -10,6 +10,8 @@ test('crop recovery is for missing or invalid PAN, not unknown confidence or BIN
   assert.equal(needsBankCrop(result('4111111111111111', [{ code: 'VALIDATION_FAILED', can_accept: false }])), true)
   assert.equal(needsBankCrop(result(null, [{ code: 'CONFLICT' }])), true)
   assert.equal(needsBankCrop({ doc_type: 'DIPLOMA' } as TaskResult), false)
+  assert.equal(needsBankCrop({ ...result(null), doc_type: 'BANK_CARD_COPY' }), true)
+  assert.equal(needsBankCrop({ ...result('4111111111111111'), doc_type: 'BANK_CARD_COPY' }), false)
 })
 
 const corners = [[.5,.5],[2.5,.5],[.5,1.5],[2.5,1.5]]

@@ -64,6 +64,14 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual([t['id'] for t in self.remaining], ['cert-two'])
         self.scheduler.close()
 
+    def test_photocopy_uses_same_glm_lane_as_ordinary_card(self):
+        self.remaining[:] = [task('copy', 'BANK_CARD_COPY'), task('card', 'BANK_CARD'), task('report', 'MEDICAL_REPORT')]
+        self.scheduler.poll()
+        self.assertEqual({job.task['id']: job.lane for job in self.scheduler.jobs.values()},
+                         {'copy': 'certificate', 'report': 'medical'})
+        self.assertEqual([row['id'] for row in self.remaining], ['card'])
+        self.scheduler.close()
+
     def test_single_fallback_claims_one_document_at_a_time(self):
         self.scheduler = TaskScheduler(self.store, SimpleNamespace(parallel_inference=False, metrics=[]),
             self.models, Mock(), self.logger, self.replies.append, factory=Child)

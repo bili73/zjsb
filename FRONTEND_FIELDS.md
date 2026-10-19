@@ -8,7 +8,7 @@ Task的`queued_at:string|null`为本次入队ISO时间（迁移前旧任务为nu
 
 上传/分类/追加及Excel导出可能短暂等待服务端名额，当前排队上限15秒。503 SERVICE_BUSY表示队列或数据库繁忙，429 OPERATION_THROTTLED表示该账号已有过多同类操作，Retry-After给出建议重试秒数（当前2秒）。ApiFailure.retryAfterSeconds保留可信的整数秒；这不触发写请求自动重试。上传失败保留所选文件，保存失败保留当前草稿，导出失败保留模式与勾选。断网/HTTP超时仍可能已经提交，不得提示为“确定未提交”。导出返回409 RESULT_VERSION_CONFLICT或SETTINGS_VERSION_CONFLICT时，应刷新并核对当前版本/必填要求。
 
-对应 SPEC v1.33、OpenAPI / 应用源码 1.27.0，更新日期：2026-10-19。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入；账号批次隔离、上传人署名和管理员姓名编辑已实现，各版本验收及实际服务切换见运行记录。
+对应 SPEC v1.34、OpenAPI / 应用源码 1.28.0，更新日期：2026-10-19。本文描述代码接口，完整 schema 见 [openapi.yaml](openapi.yaml)，业务规则见 [SPEC.md](SPEC.md)。Element Plus 前端已接入；账号批次隔离、上传人署名和管理员姓名编辑已实现，各版本验收及实际服务切换见运行记录。
 
 批次按上传账号的不可变ID隔离：管理员看全部，操作员/只读仅看自己的。列表先限制归属再计算total和分页，日期筛选不改变隔离；全部Task结果/原图/复核/取消/重跑/完整字段/导出接口独立校验，越权与不存在ID统一404，混合账号导出整次拒绝。批次删除仍仅管理员；材料目录及必填设置仍共享。账号切换清空任务、结果及预览，旧会话的迟到读取和写响应不得回填新会话。
 
@@ -38,7 +38,7 @@ Batch新增owner={user_id:string|null,username:string|null,display_name:string|n
 | `GET/POST /api/v1/admin/users` | 管理员查询／创建账号 |
 | `PATCH/DELETE /api/v1/admin/users/{user_id}` | 管理员编辑姓名／启用／禁用／删除账号，禁用/删除仍保护当前账号和最后管理员 |
 | `POST /api/v1/admin/users/{user_id}/password` | 管理员重置其他账号密码 |
-| `GET /api/v1/doc-types` | 13种材料目录（12种业务类型及TABLE）；返回数组，每项doc_type/label/fields |
+| `GET /api/v1/doc-types` | 14种材料目录（13种业务类型及TABLE）；返回数组，每项doc_type/label/fields |
 | `POST /api/v1/batches` | multipart 上传，返回202及显式 task_ids；必须指定 doc_type_hint |
 | `GET /api/v1/batches`、`GET /api/v1/batches/{id}` | 批次列表/详情 |
 | `GET /api/v1/batches/{id}/tasks`、`GET /api/v1/tasks` | 批次任务/分页任务列表 |
@@ -46,7 +46,7 @@ Batch新增owner={user_id:string|null,username:string|null,display_name:string|n
 | `GET /api/v1/tasks/{id}/result` | 当前已发布结果；无结果时409 INVALID_STATE |
 | `POST /api/v1/tasks/{id}/cancel`、`POST /api/v1/tasks/{id}/rerun` | 提交当前 run_id 与 expected_revision，返回202；409冲突后重新查询，不能自动重试写操作 |
 
-支持 `INTERVIEW_FORM / ID_CARD_FRONT / ID_CARD_BACK / DIPLOMA / DEGREE_CERT / MEDICAL_REPORT / BANK_CARD / BUSINESS_LICENSE / XUEXIN_DIPLOMA_TABLE / PASSPORT / HOUSEHOLD_REGISTER / GENERIC`，另有独立TABLE入口。支持JPG/JPEG、PNG、HEIC、未加密PDF（银行卡和TABLE只接收单张照片）；每批1–100文件，单文件50MB、总计500MB（MB=1024×1024字节），达到上限可上传。选择器、计数、超限提示与提交前校验共用 `uploadLimits`，后端仍独立校验；一文件一Task，同批重复内容沿用任务复用规则。
+支持 `INTERVIEW_FORM / ID_CARD_FRONT / ID_CARD_BACK / DIPLOMA / DEGREE_CERT / MEDICAL_REPORT / BANK_CARD / BANK_CARD_COPY / BUSINESS_LICENSE / XUEXIN_DIPLOMA_TABLE / PASSPORT / HOUSEHOLD_REGISTER / GENERIC`，另有独立TABLE入口。支持JPG/JPEG、PNG、HEIC、未加密PDF（银行卡和TABLE只接收单张照片）；每批1–100文件，单文件50MB、总计500MB（MB=1024×1024字节），达到上限可上传。选择器、计数、超限提示与提交前校验共用 `uploadLimits`，后端仍独立校验；一文件一Task，同批重复内容沿用任务复用规则。
 
 新增已实现入口如下；人员包追加已开放（见1.22.0节），拒绝/恢复/替换文件仍未开放。OpenAPI标记x-implemented:false的目标路径不能调用。
 
@@ -238,7 +238,7 @@ finding 保留 `finding_id / reported_number / text / sources`；新增可选 `p
 
 ## 原图定位与人工操作
 
-来源导航按材料类型开放：体检报告、TABLE、GENERIC、BANK_CARD、INTERVIEW_FORM可按已有来源定位，户口本另按下述页级规则对照。毕业证、学位证、身份证、营业执照、学信网报告和护照不开放自动字段定位，仍可连续浏览、放大整页原图并人工填写。体检保留基础信息、检测行、诊断、总检清单及各项目来源；选择同页不同字段或重复选择同一字段时，均重新滚动到当前来源框。只有图片加载完成、同版本corrected来源和已有bbox都满足时才叠加坐标；来源不足则显示整页。不增加位置检测模型或API，不改识别字段、审核及导出规则。
+来源导航按材料类型开放：体检报告、TABLE、GENERIC、BANK_CARD、BANK_CARD_COPY、INTERVIEW_FORM可按已有来源定位，户口本另按下述页级规则对照。毕业证、学位证、身份证、营业执照、学信网报告和护照不开放自动字段定位，仍可连续浏览、放大整页原图并人工填写。体检保留基础信息、检测行、诊断、总检清单及各项目来源；选择同页不同字段或重复选择同一字段时，均重新滚动到当前来源框。只有图片加载完成、同版本corrected来源和已有bbox都满足时才叠加坐标；来源不足则显示整页。不增加位置检测模型或API，不改识别字段、审核及导出规则。
 
 户口本`HOUSEHOLD_REGISTER`支持页级来源导航：已有“查看来源”入口提供`source.page`时，跳到同一run/revision的服务端corrected整页，供人工核对；成员`source_page`只记录来源页，不代表该成员各字段都有定位按钮或精确坐标。当前不生成或叠加户口本字段/成员bbox红框，不宣称逐字定位；来源不足时可浏览整页人工核对，不伪造来源或坐标。户口本仍缺真实样本，页级导航的代码接入不等于识别精度或真实材料验收通过。
 
@@ -261,7 +261,7 @@ source 可含 `page`（从1起）、`region_id`、`extraction_method=pdf_text/oc
 |---|---|---|
 | ID_CARD_FRONT | name/gender/ethnicity/birth_date/address/id_number | MOD11-2+日期/性别一致性，不证明真实性 |
 | ID_CARD_BACK | issuing_authority/valid_to | valid_to可长期，valid_from选填 |
-| BANK_CARD | card_number | 整图自动识别；失败单张旋转裁图重识别或补录；不收PDF；Luhn适用性未知不猜改号 |
+| BANK_CARD / BANK_CARD_COPY | 普通卡card_number；复印件holder_name/card_number/bank_name/branch_name | 整图自动识别；失败单张旋转裁图重识别或补录；不收PDF；Luhn适用性未知不猜改号 |
 | BUSINESS_LICENSE | unified_social_credit_code/company_name/company_type/legal_representative/registered_capital/established_date/business_scope/registered_address/registration_authority | 旧registration_no与个体/独资/合伙资本条件由结果元数据决定 |
 | XUEXIN_DIPLOMA_TABLE | name/gender/birth_date/graduate_date/school_name/major/education_level/certificate_no/online_verification_code/report_language | 只备案表；OTHER_REPORT/UNKNOWN不允许审核放行；ASCII字母数字12/16验证码仅兼容检查，官方核验UNKNOWN |
 | PASSPORT | passport_number/name/nationality/birth_date/expiry_date | TD3双行44字符MRZ检查；不猜两位年份世纪，冲突须更正 |
@@ -369,15 +369,17 @@ GENERIC主识别改为Paddle，复用CPU摆正与布局检测，失败/截断时
 人工draft通过source_pair_id引用原始pair，删除/排序/改名不串来源；新增字段及旧人工版本不按序号猜来源，后端拒绝伪造坐标或未知ID。详情允许GENERIC来源定位，原文和OCR标记以纯文本显示。保存版本始终优先，修改后必须保存才能导出；所有已保存键值、空值、重复值及正文沿用既有Excel导出，不改变人员包规则。
 
 
-## 银行卡复印件（1.25.0）
+## 银行卡与复印件（1.28.0）
 
-入口与doc_type保持BANK_CARD。profile前四项为holder_name（姓名）、card_number（卡号）、bank_name（开户行）、branch_name（开户支行）。分支新增为可编辑选填，管理员配置仍优先；旧结果读取时补空字段、更新显示标签和顺序，不重写已保存人工值。bank_name复用旧key，不能将其当作具体网点。
+BANK_CARD与BANK_CARD_COPY新识别的bank_name、branch_name、card_scheme、card_type、valid_thru中的繁体中文统一用本地OpenCC t2s转为简体，支持繁体字段标签。holder_name姓名保持原字形，卡号和BIN不参与文字转换。显示及Excel使用已保存字段值；原始OCR、sources/raw_text、其他材料、历史结果及人工输入/确认保持原样。繁简等价候选先转换再合并，不依赖返回顺序；不同银行/支行仍保留冲突，不能靠转换自动放行。仅新识别或显式重新识别使用新规则，前端不得再次对所有文本或人工草稿做繁简转换。
+
+独立入口BANK_CARD（银行卡）默认只必填card_number；BANK_CARD_COPY（银行卡复印件）默认必填holder_name（姓名）、card_number（卡号）、bank_name（开户行）、branch_name（开户支行）。两个profile保留同一组8个字段，管理员设置按类型独立保存。共享摆正、GLM优先识别、手写分区、候选、BIN参考和来源定位。旧BANK_CARD任务（含旧复印件）的类型、人工值、版本和确认不改，不自动迁移。bank_name表示银行机构，branch_name只能来自原件或人工，不能由BIN推断。两类只收单张JPG/PNG/HEIC；复印件裁图重试保留BANK_CARD_COPY及四项必填，不能裁图后变成普通银行卡。人员包支持两类，导出分组和总表列名保留类型；只有卡面文字无法区分两类时需要手选，文件名建议可修改。
 
 Field.candidates可带reason和source，用于区分卡面与补充文字候选；Field.sources保留相同值的多处证据。银行卡来源按钮复用corrected页和归一化bbox，属于区域定位，不是逐字定位。选择候选仅修改前端草稿，必须保存；旧识别候选仍保留供追溯。卡号冲突时后端value为空，默认阻止导出；人工保存后按必填值及明确异议门禁执行；仅信息性的待审核提示不阻止。照片裁剪恢复入口与整页框选OCR仍可使用。
 
 ## 个人工作台布局
 
-`GET /api/v1/auth/me/workbench` 返回 `{layout: string[] | null, revision: number, defaults: {layout: string[] | null, revision: number}}`；`PUT` 仅接受 `{layout, expected_revision}`。只使用当前命名账号会话和CSRF，不传user_id，管理员也只修改自己的布局。数组保存类型顺序偏好（兼容上一版最多13个键，不能重复或含未支持类型）；界面始终最多展示12张，多出的类型和未列出的类型自动收纳。个人layout=null继承defaults.layout，defaults.layout=null才回到系统目录；[]为全部收纳。新增类型在自定义布局中默认收纳。
+`GET /api/v1/auth/me/workbench` 返回 `{layout: string[] | null, revision: number, defaults: {layout: string[] | null, revision: number}}`；`PUT` 仅接受 `{layout, expected_revision}`。只使用当前命名账号会话和CSRF，不传user_id，管理员也只修改自己的布局。数组保存类型顺序偏好（最多14个键，兼容旧版13键布局，不能重复或含未支持类型）；界面始终最多展示12张，多出的类型和未列出的类型自动收纳。个人layout=null继承defaults.layout，defaults.layout=null才回到系统目录；[]为全部收纳。新增类型在自定义布局中默认收纳。
 
 读取成功后可编辑，拖拽和收纳先改草稿，点击“完成”才保存。网络失败保留草稿，409 WORKBENCH_VERSION_CONFLICT保留原版本并禁止自动重试；“重新读取”需确认放弃未保存调整，读失败仍保留原草稿。恢复默认先将草稿设为null，完成后保存。不导入旧浏览器共享键；切换账号取消请求并清空状态，迟到响应不能恢复上一账号布局。
 
@@ -390,7 +392,7 @@ Field.candidates可带reason和source，用于区分卡面与补充文字候选�
 
 默认Paddle表格识别基本信息区域，缺失、格式疑点、冲突或不完整时，剩余任务预算内最多一次GLM普通OCR补读；单次生成软预算20秒。候选保留来源，冲突不覆盖，错栏身份证号和栏外姓名只能人工采用后保存。性别必须来自本栏文字或明确勾选；不由身份证号推导性别和年龄，不从紧急联系人取本人手机号。复用银行卡候选“查看来源／采用”交互，采用只修改草稿。未标定confidence保持null。
 
-所有识别入口复用保守照片摆正；无可靠文字层的纯扫描PDF逐页摆正并缓存决定，两次解码像素和来源坐标一致。原生／混合文字页保持原路径，不自动透视矫正。既有自定义布局不重写，新类型默认收纳；识别目录当前有13种，但工作台最多展示12张，默认排列也受此限制。
+所有识别入口复用保守照片摆正；无可靠文字层的纯扫描PDF逐页摆正并缓存决定，两次解码像素和来源坐标一致。原生／混合文字页保持原路径，不自动透视矫正。既有自定义布局不重写，新类型默认收纳；识别目录当前有14种，但工作台最多展示12张，默认排列也受此限制。
 
 ## 编号位数提示
 

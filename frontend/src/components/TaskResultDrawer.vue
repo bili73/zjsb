@@ -118,7 +118,7 @@ watch(() => props.open, open => { if (!open) activeSource.value = null })
 function locate(source: FieldSource) {
   // 户口本页级定位（整页对照，无 bbox、无红框 overlay——SourcePreview 的红框门禁不含户口本）。
   // 契约见 FRONTEND_FIELDS.md“原图定位与人工操作”：户口本仅做页级来源对照，真实样本验收仍待补充。
-  if (['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD','INTERVIEW_FORM','HOUSEHOLD_REGISTER'].includes(result.value?.doc_type ?? '')) activeSource.value = sourceSelection(source)
+  if (['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD','BANK_CARD_COPY','INTERVIEW_FORM','HOUSEHOLD_REGISTER'].includes(result.value?.doc_type ?? '')) activeSource.value = sourceSelection(source)
 }
 // 点击抽屉版面任意空白（字段面板的间隙、说明文字、边缘等，非交互控件、非页面图片）取消定位红框；
 // 定位红框会一直遮着原图，需要一个随手可及的取消方式。交互控件与图片各自的点击语义不受影响。

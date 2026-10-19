@@ -1,9 +1,10 @@
 """Conservative photocopy regions and source-separated bank field candidates."""
 import re
 import unicodedata
+from .bank_text import normalize_bank_value, simplify_bank_text
 
 PAN = re.compile(r'(?<![0-9０-９])(?:[0-9０-９][ \t\u3000－-]*){13,19}(?![ \t\u3000－-]*[0-9０-９])')
-PHONE_NAME = re.compile(r'([\u4e00-\u9fff·]{2,8})\s*(?:电话[：:]?\s*)?1[3-9][0-9]{9}')
+PHONE_NAME = re.compile(r'([\u4e00-\u9fff·]{2,8})\s*(?:(?:电话|電話)[：:]?\s*)?1[3-9][0-9]{9}')
 BACK = re.compile(r'持卡人签名|SIGNATURE|AUTH[O0]?RIZED|AUTOHRIZED|安全码|CVV|CVC|网上银行|客服电话|本卡须|若遗失|社会保障卡', re.I)
 NON_PAN = re.compile(r'身份证|身份号码|社会保障号码|社保号|电话|热线|手机|行号|联行号|\b(?:TEL|PHONE|HOTLINE|CVV|CVC)\b',re.I)
 BANK = re.compile(r'^(?:[A-Z]{2,8}\s+)?([\u4e00-\u9fff]{2,24}?(?:银行|銀行|信用社|信合|农商行))')
@@ -23,18 +24,19 @@ def pan_numbers(text):
     """Line context wins over numeric length; never repair or choose by checksum."""
     lines=text.splitlines()
     for i,line in enumerate(lines):
-        if NON_PAN.search(line) or BACK.search(line):continue
-        if i and NON_PAN.fullmatch(lines[i-1].strip(' :：')):continue
+        context=simplify_bank_text(line)
+        if NON_PAN.search(context) or BACK.search(context):continue
+        if i and NON_PAN.fullmatch(simplify_bank_text(lines[i-1].strip(' :：'))):continue
         for match in PAN.finditer(line):
             if match.end()<len(line) and line[match.end()] in 'Xx':continue
             value=re.sub(r'[\s－-]','',unicodedata.normalize('NFKC',match[0]))
-            if chinese_id(value) and not re.search(r'(?:银行卡号|卡号|账号)\s*[:：]?\s*$',line[:match.start()]):continue
+            if chinese_id(value) and not re.search(r'(?:银行卡号|卡号|账号)\s*[:：]?\s*$',simplify_bank_text(line[:match.start()])):continue
             yield value,match[0]
 
 
 def bare_name(text):
     return bool(re.fullmatch(r'[\u4e00-\u9fff·]{2,6}',text) and
-                not re.search(r'银行|銀行|支行|姓名|电话|签名|卡号|开户|银联|借记|信用|信合|金卡|地址|有效|服务|热线|客服',text))
+                not re.search(r'银行|支行|姓名|电话|签名|卡号|开户|银联|借记|信用|信合|金卡|地址|有效|服务|热线|客服',simplify_bank_text(text)))
 
 
 def card_boxes(image, check=lambda: None):
@@ -151,21 +153,22 @@ def bank_candidates(evidence):
         lines=text.splitlines()
         for i,raw in enumerate(lines):
             line = unicodedata.normalize('NFKC',raw).strip().strip('|').strip()
-            if BACK.search(line):continue
-            name = re.fullmatch(r'(?:持卡人姓名|姓名|户名)\s*[:：]?\s*([\u4e00-\u9fff·]{2,8})(?:\s+1[3-9][0-9]{9})?',line)
+            context=simplify_bank_text(line)
+            if BACK.search(context):continue
+            name = re.fullmatch(r'(?:持卡人姓名|姓名|户名|戶名)\s*[:：]?\s*([\u4e00-\u9fff·]{2,8})(?:\s+1[3-9][0-9]{9})?',line)
             if not name:name=PHONE_NAME.fullmatch(re.sub(r'[,，、;；]',' ',line))
             if name and bare_name(name[1]):candidates['holder_name'].append((name[1],block,raw))
             elif bare_name(line) and (role=='supplement' or
                     (i+1<len(lines) and chinese_id(re.sub(r'\s','',lines[i+1])))):
                 candidates['holder_name'].append((line,block,raw))
-            clean=BRANCH_LABEL.sub('',re.sub(r'^发卡行\s*[:：]?\s*','',line))
+            clean=BRANCH_LABEL.sub('',re.sub(r'^发卡行\s*[:：]?\s*','',context))
             bank=BANK.match(clean)
             if bank:candidates['bank_name'].append((bank[1],block,raw))
             branch=clean if BRANCH.fullmatch(clean) else None
             branch_raw=raw
-            if branch and i and not BRANCH.fullmatch(BRANCH_LABEL.sub('',lines[i-1].strip())):
-                previous=BRANCH_LABEL.sub('',lines[i-1].strip())
-                if BANK.match(previous) and not BANK.fullmatch(previous) and re.fullmatch(r'[\u4e00-\u9fff（）()·]+',previous):
+            if branch and i:
+                previous=BRANCH_LABEL.sub('',simplify_bank_text(lines[i-1].strip()))
+                if not BRANCH.fullmatch(previous) and BANK.match(previous) and not BANK.fullmatch(previous) and re.fullmatch(r'[\u4e00-\u9fff（）()·]+',previous):
                     branch=previous+branch;branch_raw=lines[i-1]+'\n'+raw
             if branch:candidates['branch_name'].append((branch,block,branch_raw))
             # Latin cardholder names are source text, never a transliteration guess.
@@ -175,13 +178,15 @@ def bank_candidates(evidence):
     return candidates
 
 
-def build_bank_fields(evidence, fields):
+def build_bank_fields(evidence, fields, doc_type='BANK_CARD'):
     from .extraction import _field, source, issue
     from .validation import validate_field
     from .document_fields import _candidates
     from .doc_profiles import profile
     candidates = bank_candidates(evidence)
-    labelled=_candidates([b for b in evidence if b.get('_bank_role') not in {'back','ambiguous_front'}],profile('BANK_CARD'))
+    metadata = profile(doc_type)
+    required = {meta['key']: meta['required'] for meta in metadata}
+    labelled=_candidates([b for b in evidence if b.get('_bank_role') not in {'back','ambiguous_front'}],metadata,doc_type=doc_type)
     for index, old in enumerate(fields):
         key = old['key']
         if key not in candidates:continue
@@ -191,16 +196,11 @@ def build_bank_fields(evidence, fields):
         for value,origin,raw in labelled[key]:
             valid=(key=='holder_name' and not BACK.search(value) and
                    (bare_name(value) or re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,79}",value))) or (
-                   key=='bank_name' and (BANK.fullmatch(value) or (re.match(r'发卡行\s*[:：]',raw)
+                   key=='bank_name' and (BANK.fullmatch(value) or (re.match(r'[发發]卡行\s*[:：]',raw)
                                        and not BRANCH.fullmatch(value)))) or (key=='branch_name' and BRANCH.fullmatch(value))
             if valid and value not in {c[0] for c in choices}:choices.append((value,origin,raw))
-        if key=='bank_name':
-            spellings={};canonical=[]
-            for value,origin,raw in choices:
-                identity=value.translate(str.maketrans({'國':'国','銀':'银'}))
-                canonical.append((spellings.setdefault(identity,value),origin,raw))
-            choices=canonical
-        field = _field(key,old['label'],choices,key=='card_number')
+        choices=[(normalize_bank_value(key,value),origin,raw) for value,origin,raw in choices]
+        field = _field(key,old['label'],choices,required[key])
         sources = [source(block,raw) for _,block,raw in choices]
         if sources:field['sources'] = sources
         if field.get('candidates'):
@@ -208,7 +208,7 @@ def build_bank_fields(evidence, fields):
                 hits = [(block,raw) for value,block,raw in choices if value == candidate['value']]
                 candidate['source'] = source(*hits[0])
                 candidate['reason'] = ' / '.join(dict.fromkeys('补充文字识别' if b.get('_bank_role')=='supplement' else '卡面识别' for b,_ in hits))
-        field['validation_checks'] = validate_field('BANK_CARD',key,field['value'])
+        field['validation_checks'] = validate_field(doc_type,key,field['value'])
         if key == 'card_number' and field['value'] is not None:
             field['review_issues'].append(issue('UNKNOWN','离线匹配不验证账户或Luhn适用性，请对照原件确认卡号。',True))
         if any(c['status']=='FAIL' for c in field['validation_checks']):

@@ -5,12 +5,13 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
-from .doc_profiles import profile, MEMBER_PROFILE
+from .doc_profiles import profile, MEMBER_PROFILE, BANK_CARD_TYPES
 from .validation import validate_field
 
 ALIASES = {
-    'holder_name': ('持卡人姓名','户名'), 'bank_name': ('发卡行','开户银行'),
-    'branch_name': ('开户网点','支行名称'),
+    'holder_name': ('持卡人姓名','户名','戶名'), 'bank_name': ('发卡行','开户银行','發卡行','開戶銀行','開戶行'),
+    'branch_name': ('开户网点','支行名称','開戶網點','支行名稱','開戶支行'),
+    'card_number': ('卡號',), 'card_scheme': ('卡組織',), 'card_type': ('卡種',),
     'id_number': ('公民身份号码','公民身份证号码','身份证号码','身份证号'),
     'name': ('姓名','持有人姓名','Name'), 'gender': ('性别','Sex','Gender'),
     'birth_date': ('出生日期','出生年月日','出生','Date of Birth'),
@@ -59,7 +60,7 @@ def _normalize(key, value):
     return value
 
 
-def _candidates(evidence, metadata):
+def _candidates(evidence, metadata, *, doc_type=None):
     from .extraction import _cell_evidence, plain
     aliases={}
     for f in metadata:
@@ -106,6 +107,9 @@ def _candidates(evidence, metadata):
             if safe: add(neighbor,tail,block,original)
             value=match[1]
         normalized=_normalize(key,value)
+        if doc_type in BANK_CARD_TYPES and normalized is not None:
+            from .bank_text import normalize_bank_value
+            normalized=normalize_bank_value(key,normalized)
         if normalized is not None: candidates[key].append((normalized,block,original))
     pattern=re.compile(r'(?<![A-Za-z\u4e00-\u9fff])('+'|'.join(label_patterns)+r')(?:[ \t]*[:：][ \t]*|[ \t]*\n|[ \t]+|$)') if aliases else None
     # Table cells preserve rows. Free text requires an explicit label boundary.
@@ -159,7 +163,7 @@ def _candidates(evidence, metadata):
 def _build(evidence, doc_type, metadata=None):
     from .extraction import _field, issue
     metadata=metadata or profile(doc_type)
-    candidates=_candidates(evidence,metadata)
+    candidates=_candidates(evidence,metadata,doc_type=doc_type)
     resolved={key:values[0][0] for key,values in candidates.items() if len({str(v[0]) for v in values})==1}
     if metadata==profile(doc_type): metadata=profile(doc_type,resolved)
     result=[]
@@ -232,10 +236,11 @@ def extract_document_fields(evidence, doc_type):
         out['members']=[{f['key']:f for f in _build([b for b in evidence if b['page']==p],doc_type,MEMBER_PROFILE)} for p in sorted(member_pages)]
         if not member_pages:out['review_issues']=[issue('MISSING','未确认常住人口登记卡页面，需核对材料完整性。')]
         return out
-    out['fields']=_build([b for b in evidence if b.get('_bank_role') not in {'back','ambiguous_front'}] if doc_type=='BANK_CARD' else evidence,doc_type)
-    if doc_type=='BANK_CARD':
+    out['fields']=_build([b for b in evidence if b.get('_bank_role') not in {'back','ambiguous_front'}] if doc_type in BANK_CARD_TYPES else evidence,doc_type)
+    if doc_type in BANK_CARD_TYPES:
         from .bank_photocopy import build_bank_fields
-        build_bank_fields(evidence, out['fields'])
+        out['doc_type'] = doc_type
+        build_bank_fields(evidence, out['fields'], doc_type)
         refresh_bank_fields(out)
     if doc_type=='PASSPORT':
         lines=[]
@@ -295,7 +300,7 @@ def refresh_bank_fields(result, *, pan_changed=False):
         # may differ from a stale community table and can be confirmed as such.
         if conflicting:continue
         target.pop('derivation',None)
-        checks=validate_field('BANK_CARD',key,target.get('value'),values)
+        checks=validate_field(result['doc_type'],key,target.get('value'),values)
         target['validation_checks']=checks
         unknown={c['rule_id']:c for c in checks if c['status']=='UNKNOWN' and c['rule_id'].startswith('bin_reference_')}
         target['review_issues']=[p for p in target.get('review_issues',[]) if not p.get('rule_id','').startswith('bin_reference_') or p['rule_id'] in unknown]

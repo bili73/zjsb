@@ -2,6 +2,7 @@
 import re
 import unicodedata
 from datetime import date
+from .doc_profiles import BANK_CARD_TYPES
 
 RULE_SOURCES = {
     'id_cn_v1': 'https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=080D6FBF2BB468F9007657F26D60013E',
@@ -77,7 +78,7 @@ def validate_field(doc_type, key, value, fields=None):
             arithmetic='通过' if total%10==0 else '未通过'
             add('CHECKSUM','UNKNOWN','luhn_candidate_v1',f'Luhn算术{arithmetic}；缺少已确认的卡产品适用规则，不据此判定号码有效或自动改号。')
         add('OFFICIAL','UNKNOWN','official_not_requested_v1','未进行银行账户要素核验。')
-    elif doc_type=='BANK_CARD' and key in {'bank_name','card_type'}:
+    elif doc_type in BANK_CARD_TYPES and key in {'bank_name','card_type'}:
         from .bank_bins import lookup_bank
         matched=lookup_bank(fields.get('card_number'))
         same=matched['status']=='MATCHED' and text==matched[key]

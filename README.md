@@ -6,8 +6,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/app-1.27.0-0f9d8f?style=flat-square" alt="app 1.27.0">
-  <img src="https://img.shields.io/badge/SPEC-v1.33-0c7e72?style=flat-square" alt="SPEC v1.33">
+  <img src="https://img.shields.io/badge/app-1.28.0-0f9d8f?style=flat-square" alt="app 1.28.0">
+  <img src="https://img.shields.io/badge/SPEC-v1.34-0c7e72?style=flat-square" alt="SPEC v1.34">
   <img src="https://img.shields.io/badge/platform-Windows%2010%2B-0078d4?style=flat-square" alt="Windows 10+">
   <img src="https://img.shields.io/badge/Python-3.12-3776ab?style=flat-square" alt="Python 3.12">
   <img src="https://img.shields.io/badge/Vue-3.5-35495e?style=flat-square" alt="Vue 3">
@@ -36,9 +36,9 @@
 | 学位证 | `DEGREE_CERT` | 学信网备案表 | `XUEXIN_DIPLOMA_TABLE` |
 | 银行卡 | `BANK_CARD` | 通用识别 | `GENERIC` |
 | 体检报告 | `MEDICAL_REPORT` | 面试登记表 | `INTERVIEW_FORM` |
-| 表格照片转Excel | `TABLE` | | |
+| 表格照片转Excel | `TABLE` | 银行卡复印件 | `BANK_CARD_COPY` |
 
-> 识别路由：证件 / 银行卡 / 未知类型默认 GLM-OCR，体检报告默认 PaddleOCR-VL，互为备用。银行卡只收图片（不收 PDF），支持单卡及带手写补充的复印件，提取姓名、卡号、开户行、开户支行；卡号冲突需人工选择，离线 BIN 不推断具体支行。
+> 识别路由：证件 / 银行卡 / 银行卡复印件默认 GLM-OCR，体检报告默认 PaddleOCR-VL，互为备用。银行卡与复印件都只收图片（不收 PDF）；普通银行卡默认只必填卡号，复印件默认必填姓名、卡号、开户行、开户支行，两类管理员设置独立。旧任务及人工修正保留；卡号冲突需人工选择，离线 BIN 不推断具体支行。
 
 通用识别面向表单、申请单和登记资料：可靠PDF文字直接提取，照片由现有Paddle识别，必要时回退GLM；按文字位置和表格结构整理动态键值。重复、空值和原文保留，可查看来源、人工补改后导出。复杂记录型表格仍建议使用“表格”入口。
 
@@ -188,8 +188,8 @@ cd ..
 ├─ .venvs/             # app / glm-ocr / paddleocr-vl 等多套 Python 环境（另含 chandra、
 │                      # paddleocr-vl-1.6、image-upright 离线对照环境；gitignore）
 ├─ .runtime/           # SQLite 数据、加密密钥、诊断日志（gitignore，运行态）
-├─ SPEC.md             # 业务契约与验收基线（v1.33）
-├─ openapi.yaml        # 接口契约（/api/v1，版本 1.27.0）
+├─ SPEC.md             # 业务契约与验收基线（v1.34）
+├─ openapi.yaml        # 接口契约（/api/v1，版本 1.28.0）
 ├─ ARCHITECTURE.md     # 技术决策与实现边界
 ├─ RUNTIME.md          # 启动/运行方式与各轮验收记录
 ├─ LOCAL_OCR.md        # 模型环境与离线测试方法

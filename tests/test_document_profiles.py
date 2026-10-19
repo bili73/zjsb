@@ -14,7 +14,7 @@ def evidence(text, page=1, **extra):
 
 class DocumentProfileTests(unittest.TestCase):
     def test_catalogue_and_legacy_counts(self):
-        self.assertEqual(len(catalogue()), 13)
+        self.assertEqual(len(catalogue()), 14)
         for kind, count in [('DIPLOMA', 11), ('DEGREE_CERT', 10), ('MEDICAL_REPORT', 17)]:
             self.assertEqual(len(profile(kind)), count)
         self.assertNotIn('card_number_masked',{x['key'] for x in profile('BANK_CARD')})

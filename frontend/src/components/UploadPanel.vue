@@ -5,7 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadUserFile } from 'element-plus'
 import { CreditCard, Files, FirstAidKit, Grid, Medal, Notebook, OfficeBuilding, Plus, Postcard, Reading, Stamp, UploadFilled, User } from '@element-plus/icons-vue'
 import { ApiFailure, isAbort } from '../api.ts'
-import { docTypes, sampleQualification, uploadLimits, validateUpload } from '../business.ts'
+import { docTypes, isBankCardType, sampleQualification, uploadLimits, validateUpload } from '../business.ts'
 import type { BusinessApi } from '../api.ts'
 import type { Batch, DocProfile, Task, UploadDocType } from '../business.ts'
 import { errorMessages } from '../diagnostics.ts'
@@ -70,6 +70,7 @@ const typeMeta: Partial<Record<UploadDocType, { icon: Component; desc: string }>
   MEDICAL_REPORT: { icon: FirstAidKit, desc: '检测项目与报告清单分开核对。' },
   DIPLOMA: { icon: Reading, desc: '毕业证字段与来源核对。' }, DEGREE_CERT: { icon: Medal, desc: '学位级别与授予信息。' },
   BANK_CARD: { icon: CreditCard, desc: '整张照片自动识别，未读出卡号再单独裁剪或补录。' },
+  BANK_CARD_COPY: { icon: CreditCard, desc: '识别卡面及手写补充信息，姓名、卡号、开户行、开户支行默认必填。' },
   ID_CARD_FRONT: { icon: Postcard, desc: '身份证人像面。' }, ID_CARD_BACK: { icon: Postcard, desc: '身份证国徽面及有效期。' },
   PASSPORT: { icon: Stamp, desc: '护照 TD3 资料页和机读区。' }, HOUSEHOLD_REGISTER: { icon: Notebook, desc: '首页与成员页。' },
   BUSINESS_LICENSE: { icon: OfficeBuilding, desc: '按主体类型整理执照字段。' }, GENERIC: { icon: Files, desc: '表单、申请单和登记资料的正文与动态键值。' },
@@ -82,10 +83,10 @@ const invalidReason = computed(() => {
   const files = selectedFiles.value
   if (!files.length) return null
   if (!mixed.value && docType.value === 'TABLE' && files.some(isPdfFile)) return '表格识别暂不接收PDF，请上传单张照片。'
-  if (!mixed.value && docType.value === 'BANK_CARD' && files.some(isPdfFile)) return '银行卡请上传单张 JPG/PNG/HEIC 照片，不接收 PDF。'
+  if (!mixed.value && isBankCardType(docType.value) && files.some(isPdfFile)) return '银行卡及复印件请上传单张 JPG/PNG/HEIC 照片，不接收 PDF。'
   if (mixed.value) {
-    const offender = entries.value.find(item => rows[item.uid!]?.type === 'BANK_CARD' && item.raw instanceof File && isPdfFile(item.raw))
-    if (offender) return `「${offender.name}」是 PDF：银行卡请上传单张 JPG/PNG/HEIC 照片，不接收 PDF。`
+    const offender = entries.value.find(item => isBankCardType(rows[item.uid!]?.type) && item.raw instanceof File && isPdfFile(item.raw))
+    if (offender) return `「${offender.name}」是 PDF：银行卡及复印件请上传单张 JPG/PNG/HEIC 照片，不接收 PDF。`
   }
   return validateUpload(files)
 })
@@ -93,7 +94,7 @@ const entries = computed(() => fileList.value.filter(item => item.raw instanceof
 const unknownCount = computed(() => mixed.value ? entries.value.filter(item => !rows[item.uid!]?.type).length : 0)
 const hasMedical = computed(() => mixed.value ? entries.value.some(item => rows[item.uid!]?.type === 'MEDICAL_REPORT') : docType.value === 'MEDICAL_REPORT')
 // 银行卡/表格只收照片（invalidReason 已在选择当下拦截 PDF）；格式提示同步按类型区分，不再先暗示可传 PDF 再被拦。
-const photoOnly = computed(() => !mixed.value && (docType.value === 'BANK_CARD' || docType.value === 'TABLE'))
+const photoOnly = computed(() => !mixed.value && (isBankCardType(docType.value) || docType.value === 'TABLE'))
 watch([() => fileList.value.map(item => item.uid).join(','), mixed, () => props.api, () => props.canWrite], () => {
   const current = new Set(mixed.value ? entries.value.map(item => item.uid!) : [])
   Object.keys(rows).map(Number).filter(uid => !current.has(uid)).forEach(releaseRow)
@@ -269,8 +270,8 @@ async function submit() {
   if (!props.canWrite) { ElMessage.warning('当前账号为只读角色，无法上传文件。'); return }
   const types = useMixed ? entries.value.map(item => rows[item.uid!]?.type ?? '') : files.map(() => chosenType)
   if (types.some(type => !props.catalogue.some(p => p.doc_type === type))) { ElMessage.warning('请为每个文件选择材料类型；可以等待自动分类，也可以直接手动选择。'); return }
-  if (files.some((file, index) => types[index] === 'BANK_CARD' && !/\.(?:jpe?g|png|heic)$/i.test(file.name))) {
-    ElMessage.warning('银行卡请上传单张 JPG/PNG/HEIC 照片，不接收 PDF。'); return
+  if (files.some((file, index) => isBankCardType(types[index]) && !/\.(?:jpe?g|png|heic)$/i.test(file.name))) {
+    ElMessage.warning('银行卡及复印件请上传单张 JPG/PNG/HEIC 照片，不接收 PDF。'); return
   }
   const controller = new AbortController()
   submitController = controller

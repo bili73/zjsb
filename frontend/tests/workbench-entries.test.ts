@@ -25,7 +25,10 @@ test('legacy thirteen-key saved preferences remain readable and tuck the last ca
   assert.deepEqual(saved.layout, catalogue)
   assert.equal(saved.revision, 7)
   assert.deepEqual(splitEntries(catalogue, saved.layout), { visible: catalogue.slice(0, 12), hidden: ['M'] })
-  assert.throws(() => parseWorkbenchLayout({ layout: [...catalogue, 'N'], revision: 7 }))
+  const expanded = [...catalogue, 'N']
+  assert.deepEqual(parseWorkbenchLayout({ layout: expanded, revision: 7 }).layout, expanded)
+  assert.equal(splitEntries(expanded, expanded).visible.length, 12)
+  assert.throws(() => parseWorkbenchLayout({ layout: [...expanded, 'O'], revision: 7 }))
 })
 test('server contracts distinguish defaults from all tucked and reject malformed data', () => {
   for (const layout of [null, [], ['TABLE', 'BANK_CARD']]) {

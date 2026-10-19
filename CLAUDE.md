@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `IMPLEMENTATION_PLAN.md` | 当前实现状态与代码入口清单（头部更新日期/依据行＋现状表格＋按日期追加的补录章节） |
 | `FRONTEND_FIELDS.md` | 前端字段字典与当前可用 API 入口（字段交接契约，被 SPEC 引用） |
 
-各契约文档头部版本曾互相漂移，2026-10-18 已统一修复（当时基线：SPEC v1.33、openapi 1.26.0）；此后若再发现不一致，判断现状以 `SPEC.md`/`openapi.yaml` 版本号与 `RUNTIME.md` 置顶章节为准。当前应用版本1.27.0，唯一Python来源为`backend/ocr_app/version.py`，API和诊断导入该常量；`openapi.yaml` info.version、前端package/lock及变更记录同步。历史标签只指向已提交内容，不重写旧提交显示版本。
+各契约文档头部版本曾互相漂移，2026-10-18 已统一修复（当时基线：SPEC v1.33、openapi 1.26.0）；此后若再发现不一致，判断现状以 `SPEC.md`/`openapi.yaml` 版本号与 `RUNTIME.md` 置顶章节为准。当前应用版本1.28.0，唯一Python来源为`backend/ocr_app/version.py`，API和诊断导入该常量；`openapi.yaml` info.version、前端package/lock及变更记录同步。历史标签只指向已提交内容，不重写旧提交显示版本。
 
 不得宣称未验收的能力（Mac 迁移、16 GB 人资机、CPU-only、全报告准确率、日吞吐）。
 同一批次改动契约文档正文时，必须同步该文档头部（版本/依据/对应行/更新日期）及交叉引用版本号；规则见 [契约文档头部同步](.agents/notes/implemented/process/2026-10-18-contract-doc-header-sync.md)。
@@ -69,9 +69,9 @@ backend/launch.py → ocr_app/launcher.py（GPU 执行通道字节锁=单实例�
  │   复核与导出：review.py · preview.py · exporting.py（xlsx 仅文本单元格）· export_disputes.py（异议阻断导出）· required_fields.py · retention.py · person_packages.py · workbench_preferences.py · validation.py · privacy.py
  │   API 进程内 CPU 子系统：document_classification.py（POST /classify 分类建议）· region_ocr.py → 一次性子进程 region_ocr_worker.py（框选补录：RapidOCR onnx、单槽 10s、结果不落库仅审计）
  └─ runtime 协调器（runtime_worker.py，唯一任务与 GPU 调度入口；runtime.py ModelManager + model_queues.py 每模型 FIFO + task_scheduler.py 文件进程调度）
-     ├─ 文件进程（每任务一个；双 lane：certificate=其余 9 类（各类证书/身份证/护照/户口本/营业执照/学信表/银行卡），medical={MEDICAL_REPORT, TABLE, GENERIC, INTERVIEW_FORM}）：task_worker.py
+     ├─ 文件进程（每任务一个；双 lane：certificate=其余 10 类（各类证书/身份证/护照/户口本/营业执照/学信表/银行卡/银行卡复印件），medical={MEDICAL_REPORT, TABLE, GENERIC, INTERVIEW_FORM}）：task_worker.py
      │   pipeline.py（两遍解码、主备模型尝试与缓存、证据保全的部分结果）· documents.py（解码、保守分区、原生证据）· extraction.py（字段/表格整理）
-     │   文档域模块：doc_profiles.py（doc_type 权威元数据与 13 类型目录；跨进程共享，API 的 catalogue 端点与协调器的 lane 计算也导入它）· document_fields.py · medical_ledger.py · interview_form.py · generic_forms.py / generic_layout.py · photo_table_pipeline.py · table_recognition.py / table_format.py / table_export.py · bank_photocopy.py / bank_bins.py · image_admission.py / image_preprocessing.py（CPU 方向摆正 onnx）
+     │   文档域模块：doc_profiles.py（doc_type 权威元数据与 14 类型目录；跨进程共享，API 的 catalogue 端点与协调器的 lane 计算也导入它）· document_fields.py · medical_ledger.py · interview_form.py · generic_forms.py / generic_layout.py · photo_table_pipeline.py · table_recognition.py / table_format.py / table_export.py · bank_photocopy.py / bank_bins.py · image_admission.py / image_preprocessing.py（CPU 方向摆正 onnx）
      └─ 模型进程（仅 .venvs/glm-ocr 与 .venvs/paddleocr-vl）：model_worker.py 私有协议（load/recognize/recognize_batch）+ batch_generation.py 逐行停止/完成 + model_protocol.py 定向控制 + winjob.py Job Object 进程树监督
 ```
 
@@ -79,7 +79,7 @@ backend/launch.py → ocr_app/launcher.py（GPU 执行通道字节锁=单实例�
 - 模型路由：体检/表格/通用/面试表主用 Paddle（主备各一次）；证书类主用 GLM（glm×2 + paddle×1）；银行卡按 front/supplement/ambiguous_front 分区各一次，未检出分区的 whole 回退区域按证书类三连尝试。生成软预算分档：医疗与面试表 20 秒，通用、银行卡与拍照表格 40 秒（表格档在 `photo_table_pipeline.py` 单独定义），证书类无软预算。
 - 预算：Task 领取后共享 180 秒（含模型队列等待与换模），双层 watchdog——协调器在 deadline+1s 定向停止该任务，API 进程 Business.watch 以首次观察时刻 +181s 兜底；停止失败置 SUPERVISION_FAILED 并关闭整个 runtime。
 - 数据：SQLite 在 `.runtime/data/`（WAL、Alembic 迁移 `backend/migrations/`，当前 0001–0012）；敏感产物 AES-GCM 加密，部署密钥在 `.runtime/secrets/`（Windows DPAPI，跨用户复制不可恢复）；保留期管理员可配置（7/15/30 天或永不清除，初始 7 天）；schema0011 操作审计表升级后不可只回退旧代码（旧版按七列插入 audit 不兼容），回退须用备份先演练。
-- 上传与安全防线：每批 100 文件、单文件 50MB、每批 500MB；银行卡与表格只收照片（PDF 拒收）；CVV/CVC/CID 在上传、解码、模型输出三处拒收；时间戳线上 UTC、展示固定 Asia/Shanghai。
+- 上传与安全防线：每批 100 文件、单文件 50MB、每批 500MB；银行卡、银行卡复印件与表格只收照片（PDF 拒收）；CVV/CVC/CID 在上传、解码、模型输出三处拒收；时间戳线上 UTC、展示固定 Asia/Shanghai。
 - 前端：Vue3/Element Plus（`frontend/`，Node >= 22.12）。生产由后端同源静态托管 `frontend/dist/`（无 CORS；dev server 5173 代理到 8765）；`monitor.ts` 中央批次监视器 + `polling.ts` 串行可取消 ReadLoop；后端响应一律经手写严格解码器；工作台 12 卡片拖拽排序（`useDragReorder`，见 card-drag-reorder skill）与分步指引（`guide.ts` + OperationGuide，见 operation-guide skill）；`bankLengthReference.ts` 为生成文件勿手改。历史副本在 `output/frontend-retired-20261008-v1/`（不入库）。
 - `scripts/` 以五类为主：DDE 笔记工具链（TS/tsx）、Excel 工作簿构建器（.mjs）、离线实验/probe（Python，按轮次组织、串行执行）、浏览器 probe（.cjs）、模型下载与诊断收集工具；另有少量生成与驱动脚本（`build_bank_length_reference.py` 生成前端 BIN 参考表、`export-assets.sh`、`run_benchmark_rerun.ps1` 等）；`board.html` 是 `build-board.ts` 生成的 DDE 决策看板单文件。
 

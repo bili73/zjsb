@@ -14,6 +14,10 @@ The profile reuses holder_name and bank_name with labels 姓名 and 开户行, a
 
 ## Related-note audit
 
+- [Stable bank-name spelling](../bug-fix/2026-10-19-stable-bank-script-spelling.md) records the limited Mac spelling backport. The subsequent [non-name bank conversion](2026-10-19-bank-non-name-simplification.md) expands new bank/branch and other non-name text to offline t2s conversion. The original OCR and source.raw_text remain exact; personal names/PAN, history and manual values retain this note's preservation rules.
+
+- [Separate photocopy entry](2026-10-19-bank-photocopy-entry.md) replaces only the unified business-type choice: BANK_CARD_COPY has four default required account fields, while BANK_CARD retains its existing defaults and historical records. The shared bank algorithms, provenance and historical results in this note remain active; this partial replacement does not archive the recognition decision.
+
 - Partial overlap: [profiles](../../implemented/feature/2026-10-08-card-and-document-profiles.md), [bank orientation](../../implemented/bug-fix/2026-10-12-bank-card-roi-orientation.md), [automatic admission](../../implemented/feature/2026-10-09-bank-auto-recognition.md). Retain their ordinary-card and evidence rules; this adds photocopy regions and handwriting.
 - Retained constraints: independent model queues, configurable required fields and required-only export; no architecture reversal.
 - [Scan source-mapping correction](../bug-fix/2026-10-14-bank-scan-source-mapping.md) replaces the initial same-column/quick-text supplement gate with contextual side and adjacent-line coverage, and adds number semantics and issuer/branch corrections. The initial failed baseline below is retained as evidence; current results are recorded in that correction.

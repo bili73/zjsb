@@ -4,7 +4,7 @@ import unicodedata
 NAME_FIELDS = {
     'ID_CARD_FRONT': 'name', 'DIPLOMA': 'name', 'DEGREE_CERT': 'name',
     'XUEXIN_DIPLOMA_TABLE': 'name', 'MEDICAL_REPORT': 'name',
-    'PASSPORT': 'name', 'BANK_CARD': 'holder_name', 'INTERVIEW_FORM': 'name',
+    'PASSPORT': 'name', 'BANK_CARD': 'holder_name', 'BANK_CARD_COPY': 'holder_name', 'INTERVIEW_FORM': 'name',
 }
 
 

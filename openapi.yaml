@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
   title: 证件关键信息提取系统 API
-  version: 1.27.0
+  version: 1.28.0
   description: |
-    内部证件信息提取系统 API 契约（SPEC v1.33）。
+    内部证件信息提取系统 API 契约（SPEC v1.34）。
     批次按不可变上传账号ID隔离：管理员查看全部，operator/viewer仅能访问自己的批次和所属任务。列表先过滤归属再计算总数和分页，越权ID与不存在ID统一404；结果、原图、复核、取消、重跑、完整字段及导出同样校验。混合账号导出整次拒绝，不输出部分结果。删除批次仍仅管理员可操作。
     Batch.owner返回上传人署名；姓名使用当前账号信息，删除登录前保留加密署名快照。历史创建记录完整且操作者唯一才回填归属，无法关联账号的记录仅管理员可见，同名重建不继承。管理员可编辑显示姓名，不修改账号名、角色、密码、启用状态或会话。
     Task.progress_detail提供真实页/区域处理计数；总计划未知时返回null，不估算推理长度或剩余时间。progress保留兼容但不再作为整体进度依据。
@@ -14,9 +14,9 @@ info:
     六类检查包含肝功，优先汇总明确异常；无小结时按有来源的正常检测明细汇总为“已识别明细未见异常”，不宣称整组完整。明确原文正常结论和人工值保持不变；报告A级可作摘要依据，不覆盖阳性、异常或矛盾，也不修改检测行分类/复核。
     明细缺失或未知不默认正常；完整有序且已闭合的原生PDF项目意义表可证明未载明，使用value=null/absence_reason=NOT_ON_DOCUMENT、derived和项目来源，页面/医疗Excel显示报告未载明。保留人工优先、历史密文与既有复核要求。
 
-    当前实现13种材料目录（12种业务类型及独立TABLE入口）、受控上传、批次/任务查询、人工补正、完整原件预览、字段reveal及XLSX导出。
+    当前实现14种材料目录（13种业务类型及独立TABLE入口）、受控上传、批次/任务查询、人工补正、完整原件预览、字段reveal及XLSX导出。
     管理员可永久删除全部任务已停止的批次（包括NEED_REVIEW），同时清理关联文件与历史结果并保留审计；排队/运行中禁止删除，需提交完整任务版本快照。
-    银行卡支持整张照片自动识别，失败逐张裁图重识别或补录；不接收PDF，不声称通用CVV自动检测可靠。
+    银行卡BANK_CARD默认只必填card_number；银行卡复印件BANK_CARD_COPY默认必填holder_name/card_number/bank_name/branch_name，管理员分别设置。共享现有识别、摆正、候选和裁图流程，结果与重试保留业务类型。两类仅收JPG/PNG/HEIC、不接收PDF；新识别的bank_name/branch_name/card_scheme/card_type/valid_thru中文用本地OpenCC t2s繁转简，holder_name姓名、号码、原始OCR和来源原文不转换，等价候选合并但真实冲突保留。历史BANK_CARD任务不改类型，历史字段、人工修正及确认不重写，Excel沿用保存值。不声称通用CVV自动检测可靠。
     护照、身份证、执照与户口本暂无真实样本准确率验收；本地校验PASS不等于官方真实性。
     当前列表支持分页和UTC+8创建日期范围过滤，不支持关键词/状态过滤；重跑只接受run_id及expected_revision并沿用类型/选项。
     人员材料包支持一次选齐多种材料，以file_types按文件顺序指定类型；普通类型批次仍用doc_type_hint。自动分类仅提供可修改的建议，不判断人员归属。追加绑定package_revision；不按姓名自动合并，不转换历史批次。身份证配套仅检查同包两面材料存在，不证明同一人或真实性，不改变必填导出条件。
@@ -622,7 +622,7 @@ paths:
                   status:
                     type: string
                     enum: [ok, degraded]
-                  version: {type: string, description: 应用版本, example: "1.27.0"}
+                  version: {type: string, description: 应用版本, example: "1.28.0"}
                   queue_depth: {type: integer, minimum: 0, nullable: true, example: 3, description: 等待执行且未请求取消的QUEUED任务数；数据库不可查询时为null，不伪造0}
                   components:
                     type: object
@@ -778,7 +778,7 @@ paths:
       tags:
       - batches
       summary: 创建批次（人工上传）
-      description: 银行卡直接上传单张JPG/PNG/HEIC照片（可为整张正面或卡号裁图），PDF不支持。上传只做解码与大小检查，不调用模型；每张图片入独立Task，后台默认GLM识别并按现有规则提取卡号、离线匹配银行。卡号缺失、冲突或格式失败时，结果页可只裁这张重识别或手工补录；置信度未知/BIN未覆盖不强迫裁剪。裁图可左右90°旋转，使用真实旋转像素，作为新任务提交；原任务及其他卡片保留。裁图上传失败保留已生成文件，检查任务列表后可直接重试。整图现会加密保存在服务端，原文/尝试可能包含卡面其他内容；不新增安全码字段或导出列，仍拒绝检测到的明确CVV等文本，但不承诺通用安全码检测。 单批1–100文件、单文件50MB、总计500MB，MB按1024×1024字节计算，包含上限，超限返回FILE_TOO_LARGE/413，拒绝整批且不创建部分任务。一文件一Task；同批重复内容复用任务。
+      description: BANK_CARD和BANK_CARD_COPY仅接收单张JPG/PNG/HEIC照片，PDF不支持；普通卡默认仅卡号必填，复印件默认姓名、卡号、开户行、开户支行必填，两类可独立配置。裁图新任务保留所选业务类型，复印件仍需补齐四项。上传只做解码与大小检查，不调用模型；每张图片入独立Task，后台默认GLM识别并按现有规则提取卡号、离线匹配银行。卡号缺失、冲突或格式失败时，结果页可只裁这张重识别或手工补录；置信度未知/BIN未覆盖不强迫裁剪。裁图可左右90°旋转，使用真实旋转像素，作为新任务提交；原任务及其他卡片保留。裁图上传失败保留已生成文件，检查任务列表后可直接重试。整图现会加密保存在服务端，原文/尝试可能包含卡面其他内容；不新增安全码字段或导出列，仍拒绝检测到的明确CVV等文本，但不承诺通用安全码检测。 单批1–100文件、单文件50MB、总计500MB，MB按1024×1024字节计算，包含上限，超限返回FILE_TOO_LARGE/413，拒绝整批且不创建部分任务。一文件一Task；同批重复内容复用任务。
       requestBody:
         required: true
         content:
@@ -1886,7 +1886,7 @@ components:
         defaults: {$ref: '#/components/schemas/WorkbenchLayout'}
     WorkbenchEntries:
       type: [array, 'null']
-      maxItems: 13
+      maxItems: 14
       uniqueItems: true
       items: {type: string, minLength: 1, maxLength: 64}
     WorkbenchLayout:
@@ -2090,6 +2090,7 @@ components:
       - DIPLOMA
       - DEGREE_CERT
       - BANK_CARD
+      - BANK_CARD_COPY
       - INTERVIEW_FORM
       - MEDICAL_REPORT
       - HOUSEHOLD_REGISTER
@@ -2348,7 +2349,7 @@ components:
     ImagePreprocessing:
       type: object
       additionalProperties: false
-      description: '毕业证、学位证、身份证正反面、银行卡、营业执照、学信网备案表、护照及户口本照片的新识别结果返回。银行卡bank-card-upright-v1先检测卡片区域判向，区域仅供分析，校正与OCR保留完整照片。其余使用certificate-upright-v1。EXIF之后的CPU自动方向与小角度校正；预览和OCR使用同一校正决定。分数仅为未标定方向证据，不是字段置信度。原件、历史任务、PDF、体检及通用识别不改。'
+      description: '毕业证、学位证、身份证正反面、银行卡及银行卡复印件、营业执照、学信网备案表、护照及户口本照片的新识别结果返回。银行卡及复印件bank-card-upright-v1先检测卡片区域判向，区域仅供分析，校正与OCR保留完整照片。其余使用certificate-upright-v1。EXIF之后的CPU自动方向与小角度校正；预览和OCR使用同一校正决定。分数仅为未标定方向证据，不是字段置信度。原件、历史任务、PDF、体检及通用识别不改。'
       required: [version, model_sha256, rotation_degrees, deskew_degrees, status, elapsed_seconds]
       properties:
         version: {type: string}
@@ -3207,6 +3208,7 @@ components:
             - DIPLOMA
             - DEGREE_CERT
             - BANK_CARD
+            - BANK_CARD_COPY
             - INTERVIEW_FORM
             - HOUSEHOLD_REGISTER
             - BUSINESS_LICENSE

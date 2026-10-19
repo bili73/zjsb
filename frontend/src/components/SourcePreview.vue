@@ -259,7 +259,7 @@ function onSectionClick(event: MouseEvent) {
 watch([() => props.active, () => props.api, () => props.canWrite, () => props.ocrEnabled, () => resultKey(props.task)], () => { ocrOpen.value = false; closeOriginal() }, { flush: 'sync' })
 
 function overlayFor(page: number) {
-  if (!['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD','INTERVIEW_FORM'].includes(props.task.doc_type ?? '') || !entries[page - 1]?.corrected || !entries[page - 1]?.loaded || !props.source?.bbox || props.source.page !== page) return null
+  if (!['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD','BANK_CARD_COPY','INTERVIEW_FORM'].includes(props.task.doc_type ?? '') || !entries[page - 1]?.corrected || !entries[page - 1]?.loaded || !props.source?.bbox || props.source.page !== page) return null
   const [x1, y1, x2, y2] = props.source.bbox
   return { left: `${x1 * 100}%`, top: `${y1 * 100}%`, width: `${(x2 - x1) * 100}%`, height: `${(y2 - y1) * 100}%` }
 }

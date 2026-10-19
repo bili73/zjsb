@@ -8,6 +8,7 @@ import threading
 import unicodedata
 
 from .business import validate_upload
+from .doc_profiles import BANK_CARD_TYPES
 
 _lock = threading.Lock()
 _models = {
@@ -50,11 +51,17 @@ def content_types(text):
         kinds.add('PASSPORT')
     if any(word in t for word in ('居民户口簿', '户口登记簿', '常住人口登记卡')):
         kinds.add('HOUSEHOLD_REGISTER')
-    if not kinds.intersection({'ID_CARD_FRONT', 'ID_CARD_BACK'}) and (
+    if any(word in t for word in ('银行卡复印件', '银行卡扫描件')):
+        kinds.add('BANK_CARD_COPY')
+    elif not kinds.intersection({'ID_CARD_FRONT', 'ID_CARD_BACK'}) and (
         any(word in t for word in ('储蓄卡', '借记卡', '信用卡', 'DEBIT', 'CREDIT', 'UNIONPAY'))
         or '银行' in t and re.search(r'(?<![0-9])[0-9]{13,19}(?![0-9X])', t)
     ):
-        kinds.add('BANK_CARD')
+        if re.search(r'开户支行|开户网点|支行名称|[\u4e00-\u9fff]{2,30}(?:支行|分行|营业部)', t):
+            kinds.add('BANK_CARD_COPY')
+        else:
+            # A PAN/issuer header alone cannot distinguish a card from its copy.
+            kinds.update(BANK_CARD_TYPES)
     return kinds, False
 
 
@@ -77,12 +84,21 @@ def filename_types(name):
             kinds.add('ID_CARD_FRONT')
         if any(word in t for word in ('国徽', '背面', '反面')):
             kinds.add('ID_CARD_BACK')
+    if any(word in t for word in ('银行卡复印件', '银行卡扫描件')):
+        kinds.discard('BANK_CARD')
+        kinds.add('BANK_CARD_COPY')
     return kinds
 
 
 def suggestion(text, name, fallback_reason='内容不足，请核对原件并选择类型'):
     kinds, unsupported = content_types(text)
     hints = filename_types(name)
+    if not unsupported and kinds == BANK_CARD_TYPES and len(hints) == 1 and hints <= BANK_CARD_TYPES:
+        return dict(doc_type=next(iter(hints)), basis='filename', candidates=sorted(hints),
+                    reason='卡面内容不能区分单卡与复印件，仅根据文件名建议，请核对类型')
+    if kinds == BANK_CARD_TYPES and not unsupported:
+        return dict(doc_type=None, basis='unknown', candidates=sorted(kinds),
+                    reason='请确认是单张银行卡还是含手写补充信息的银行卡复印件')
     if unsupported or len(kinds) > 1:
         return dict(doc_type=None, basis='unknown', candidates=sorted(kinds),
                     reason='检测到多种材料或暂不支持的报告，请拆分或手动选择')
@@ -146,7 +162,7 @@ def classify_file(data, name):
                 text += '\n' + _ocr(image.rotate(90, expand=True))
             texts.append(text)
         observed = set().union(*(content_types(text)[0] for text in texts))
-        if len(observed) > 1 or any(content_types(text)[1] for text in texts):
+        if (len(observed) > 1 and observed != BANK_CARD_TYPES) or any(content_types(text)[1] for text in texts):
             return dict(doc_type=None, basis='unknown', candidates=sorted(observed),
                         reason='检测到多种材料或暂不支持的报告，请拆分或手动选择')
         return suggestion('\n'.join(texts), name)

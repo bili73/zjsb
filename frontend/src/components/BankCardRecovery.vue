@@ -11,6 +11,7 @@ import BankCropDialog from './BankCropDialog.vue'
 const props = defineProps<{ task: Task; api: BusinessApi; monitor: Monitor; disabled: boolean }>()
 const emit = defineEmits<{ (e: 'submitted'): void; (e: 'preview', files: File[], tasks: Task[]): void; (e: 'unauthorized'): void }>()
 const table = computed(() => props.task.doc_type === 'TABLE')
+const photocopy = computed(() => props.task.doc_type === 'BANK_CARD_COPY')
 const open = ref(false), busy = ref(false), source = ref<File[]>([]), crop = ref<File | null>(null), error = ref('')
 let controller: AbortController | undefined
 onBeforeUnmount(() => controller?.abort())
@@ -38,7 +39,7 @@ async function uploadCrop() {
   if (!file || busy.value || props.disabled) return
   busy.value = true; error.value = ''; controller = new AbortController()
   try {
-    const created = await props.monitor.submitUpload([file], table.value ? 'TABLE' : 'BANK_CARD', false, controller.signal)
+    const created = await props.monitor.submitUpload([file], table.value ? 'TABLE' : photocopy.value ? 'BANK_CARD_COPY' : 'BANK_CARD', false, controller.signal)
     if (controller.signal.aborted) return
     try { emit('preview', [file], await props.api.tasks(created.batch_id, controller.signal)) }
     catch { /* Accepted upload remains successful even if local preview binding fails. */ }
@@ -53,6 +54,7 @@ function confirmed(files: File[]) { open.value = false; crop.value = files[0] ??
 <template>
   <el-alert class="bank-recovery" type="warning" :closable="false" show-icon>
     <p>{{ table ? '主体选错或想识别另一张表，可调整裁剪后新建任务；当前表格和修正保留。' : '这张图片的卡号未可靠读出。可只裁剪这张重新识别，或在下方手工填写；其他卡片不受影响。' }}</p>
+    <p v-if="photocopy">请保留需要识别的姓名、开户行及支行文字；裁剪后的任务仍按银行卡复印件核对四项必填信息。</p>
     <el-button :disabled="disabled || busy" :loading="busy" @click="startCrop">{{ table ? '调整主体裁剪（新建任务）' : '裁剪这张重新识别' }}</el-button>
     <el-button v-if="crop" type="primary" :disabled="disabled || busy" @click="uploadCrop">重试上传已保存裁图</el-button>
     <p v-if="disabled">请先保存下方的字段修正。</p>

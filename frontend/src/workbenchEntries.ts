@@ -2,8 +2,8 @@
 // 所有布局最多展示十二项；其余类型收纳，识别类型总数不受展示容量限制。
 
 export const WORKBENCH_MAX_ENTRIES = 12
-// Accept the preceding version's saved thirteen-key preferences without rewriting them.
-const STORED_LAYOUT_MAX_KEYS = 13
+// Accept all fourteen catalogue keys, including unchanged older preferences.
+const STORED_LAYOUT_MAX_KEYS = 14
 export interface WorkbenchLayout { layout: string[] | null; revision: number }
 export interface WorkbenchPreferences extends WorkbenchLayout { defaults: WorkbenchLayout }
 

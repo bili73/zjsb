@@ -232,7 +232,7 @@ test('validateUpload covers count, type, size and batch limits', () => {
 })
 
 test('docTypes includes the independent photo-table entry and canonical identifiers', () => {
-  assert.equal(Object.keys(docTypes).length, 13)
+  assert.equal(Object.keys(docTypes).length, 14)
   assert.equal(docTypes.TABLE, '表格')
   assert.equal(docTypes.MEDICAL_REPORT, '体检报告')
   assert.equal(docTypes.BANK_CARD, '银行卡')

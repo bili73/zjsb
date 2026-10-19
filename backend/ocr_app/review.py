@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from .extraction import issue, confirmed_abnormal, medical_exclusion_reason, medical_statistics, _medical_item
 from .task_store import TaskError
+from .doc_profiles import BANK_CARD_TYPES
 
 ABSENCE = {'NOT_ON_DOCUMENT', 'NOT_APPLICABLE'}
 ITEM_KEYS = {'name', 'alias', 'category', 'result_raw', 'unit', 'reference_range',
@@ -127,11 +128,11 @@ def _field_patch(result, patches, absences, actor, definitions_override=None, re
         checks = validate_field(result['doc_type'], key, target.get('value'), fields=values)
         target['validation_checks'] = checks
         failed_rules = {c.get('rule_id') for c in checks if c.get('status') == 'FAIL'}
-        target['review_issues'] = [p for p in target['review_issues'] if not p.get('rule_id') or p['rule_id'] in failed_rules or (result['doc_type']=='BANK_CARD' and p['rule_id'].startswith('bin_reference_'))]
+        target['review_issues'] = [p for p in target['review_issues'] if not p.get('rule_id') or p['rule_id'] in failed_rules or (result['doc_type'] in BANK_CARD_TYPES and p['rule_id'].startswith('bin_reference_'))]
         for check in checks:
             if check.get('status') == 'FAIL' and check.get('rule_id') not in target.get('accepted_validation_rules', []) and not any(p.get('rule_id') == check.get('rule_id') for p in target['review_issues']):
                 conflict = check.get('kind') == 'CROSS_DOCUMENT'
-                blocking_pan = result['doc_type'] == 'BANK_CARD' and key == 'card_number' and check.get('rule_id') == 'pan_compat_v1'
+                blocking_pan = result['doc_type'] in BANK_CARD_TYPES and key == 'card_number' and check.get('rule_id') == 'pan_compat_v1'
                 problem = issue('CONFLICT' if conflict else 'VALIDATION_FAILED', '字段未通过格式或一致性校验，请核对原件。', not (conflict or blocking_pan))
                 problem['rule_id'] = check.get('rule_id')
                 target['review_issues'].append(problem)
@@ -380,7 +381,7 @@ def apply_review(original, body, *, actor, coverage_verified=False, required_ove
         informational = any(c.get('status') == 'UNKNOWN' and
             (c.get('rule_id') == problem.get('rule_id') if problem.get('rule_id') else c.get('message') == problem.get('message'))
             for c in target.get('validation_checks', []))
-        informational = informational or (original.get('doc_type') == 'BANK_CARD' and target.get('key') == 'card_number'
+        informational = informational or (original.get('doc_type') in BANK_CARD_TYPES and target.get('key') == 'card_number'
             and problem.get('message') == '离线匹配不验证账户或Luhn适用性，请对照原件确认卡号。')
         explicit_failure = problem['code'] == 'VALIDATION_FAILED' and not informational
         if not problem.get('can_accept') or explicit_failure or problem['code'] in {'MISSING', 'CONFLICT', 'INCOMPLETE_OUTPUT', 'MULTI_CANDIDATES', 'LOW_CONFIDENCE'}:
@@ -394,7 +395,7 @@ def apply_review(original, body, *, actor, coverage_verified=False, required_ove
         result.setdefault('review_issues', []).append(issue('CONFLICT', '人工官方核验不一致，不能放行。'))
     _field_patch(result, mapping(body.get('fields', {})), mapping(body.get('absence_reasons', {})), actor,
                  required_overrides=required_overrides)
-    if result['doc_type']=='BANK_CARD':
+    if result['doc_type'] in BANK_CARD_TYPES:
         from .bank_bins import normalize_pan
         from .document_fields import refresh_bank_fields
         old_pan=next((f.get('value') for f in original.get('fields',[]) if f['key']=='card_number'),None)

@@ -10,7 +10,7 @@ const { parse, compileScript } = require('@vue/compiler-sfc'), ts = require('typ
 const vue = await import(pathToFileURL(require.resolve('vue')).href)
 const dataUrl = (value: string) => `data:text/javascript;base64,${Buffer.from(value).toString('base64')}`
 const child = dataUrl('export default {render(){return null}}')
-const element = dataUrl('export const ElMessage={error(){},warning(){},info(){}}; export const ElMessageBox={async confirm(){}}')
+const element = dataUrl('export const ElMessage={error(){},warning(){},info(){},success(){}}; export const ElMessageBox={async confirm(){}}')
 const icons = dataUrl('export const Crop={};export const Download={}')
 const renderer = vue.createRenderer({ patchProp(){}, insert(){}, remove(){}, createElement(){return{}},
   createText(){return{}}, createComment(){return{}}, setText(){}, setElementText(){}, parentNode(){return null}, nextSibling(){return null} })
@@ -53,6 +53,22 @@ async function preview(extra: Record<string, unknown> = {}) {
   const mounted = await mount('SourcePreview', 'loadPage,onIntersect,goTo,entries,setPageRef,scrollViewportFor,openOriginal,closeOriginal,originalUrl,originalLoading,localOpen,onLocalToggle', { task: { ...task }, api, source: null, canWrite: true, active: true, ...extra })
   return { ...mounted, calls, visible: (pages: number[]) => mounted.vm.onIntersect(pages.map(page => ({ isIntersecting: true, target: { dataset: { page: String(page) } } }))) }
 }
+
+test('crop recovery preserves the ordinary/copy/table type in the actual upload call', async () => {
+  for (const kind of ['BANK_CARD', 'BANK_CARD_COPY', 'TABLE']) {
+    const seen: string[] = []
+    const { app, vm } = await mount('BankCardRecovery', 'uploadCrop,crop', {
+      task: { ...task, doc_type: kind }, disabled: false,
+      api: { tasks: async () => [] },
+      monitor: { submitUpload: async (_files: File[], type: string) => { seen.push(type); return { batch_id: id } } },
+    })
+    try {
+      vm.crop = new File(['synthetic pixels'], 'crop.png', { type: 'image/png' })
+      await vm.uploadCrop()
+      assert.deepEqual(seen, [kind])
+    } finally { app.unmount() }
+  }
+})
 
 test('preview bounds background requests and prioritizes the explicitly selected page', async () => {
   const { app, vm, calls, visible } = await preview()

@@ -25,7 +25,7 @@ class Version(BaseModel):
 
 class WorkbenchLayoutBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    layout: list[Annotated[str, Field(strict=True, min_length=1, max_length=64)]] | None = Field(max_length=13)
+    layout: list[Annotated[str, Field(strict=True, min_length=1, max_length=64)]] | None = Field(max_length=14)
     expected_revision: int = Field(ge=0, le=9007199254740991, strict=True)
 
 

@@ -5,9 +5,10 @@ export function quarterTurn(width: number, height: number, direction: 1 | -1) {
   return { width:height, height:width, transform }
 }
 import type { TaskResult } from './business.ts'
+import { isBankCardType } from './business.ts'
 
 export function needsBankCrop(result: TaskResult): boolean {
-  if (result.doc_type !== 'BANK_CARD') return false
+  if (!isBankCardType(result.doc_type)) return false
   const card = result.fields?.find(field => field.key === 'card_number')
   if (card?.value == null || String(card.value).trim() === '') return true
   return card.review_issues.some(issue => issue.code === 'CONFLICT' || issue.code === 'MISSING' ||

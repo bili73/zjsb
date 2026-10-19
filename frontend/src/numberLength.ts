@@ -16,7 +16,7 @@ export function numberLengthHint(docType: string, key: string, value: unknown): 
   if (!length) return null
   if (key === 'id_number') return fixedLength('身份证号', length, 18)
   if (docType === 'BUSINESS_LICENSE' && key === 'unified_social_credit_code') return fixedLength('统一社会信用代码', length, 18)
-  if (docType === 'BANK_CARD' && key === 'card_number') {
+  if (['BANK_CARD', 'BANK_CARD_COPY'].includes(docType) && key === 'card_number') {
     if (length < 10 || length > 19) return { level: 'warning',
       message: `卡号当前为${length}位，超出本系统10–19位兼容范围；不同卡种长度可能不同。${manual}` }
     const prefix = /^[0-9]+$/.test(compact) ? Object.keys(bankLengthReference)

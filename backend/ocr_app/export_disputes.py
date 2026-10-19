@@ -5,7 +5,7 @@ import json
 import re
 
 from .bank_bins import _data, normalize_pan
-from .doc_profiles import profile
+from .doc_profiles import profile, BANK_CARD_TYPES
 from .validation import validate_field, ID_CHECKSUM_LEGACY_MESSAGE, ID_CHECKSUM_FAILURE_MESSAGE
 
 DISPUTE_CODES = {'VALIDATION_FAILED', 'CONFLICT', 'MULTI_CANDIDATES', 'LOW_CONFIDENCE'}
@@ -34,7 +34,7 @@ def number_length_warning(kind, key, value):
     if key == 'id_number' or kind == 'BUSINESS_LICENSE' and key == 'unified_social_credit_code':
         if length != 18:
             return f'当前为{length}位，比18位{"多" if length > 18 else "少"}{abs(length-18)}位；请对照原件核对。'
-    elif kind == 'BANK_CARD' and key == 'card_number':
+    elif kind in BANK_CARD_TYPES and key == 'card_number':
         if not 10 <= length <= 19:
             return f'卡号当前为{length}位，超出本系统10–19位兼容范围；请对照原件核对。'
         try:

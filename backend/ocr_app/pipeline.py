@@ -14,6 +14,7 @@ from PIL import ImageOps
 from .documents import DocumentError, decode_pages, normalized_box, png_bytes, region_task, split_regions
 from .extraction import extract_result, issue
 from .image_preprocessing import UPRIGHT_DOCUMENT_TYPES
+from .doc_profiles import BANK_CARD_TYPES
 
 
 class _Stop(Exception):
@@ -51,7 +52,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     planning_complete = False
     stage, stop_code = 'PREPROCESSING', None
     preprocessing = {'doc_type': doc_type} if doc_type in UPRIGHT_DOCUMENT_TYPES else None
-    bank_admission = options.get('bank_admission') if doc_type == 'BANK_CARD' else None
+    bank_admission = options.get('bank_admission') if doc_type in BANK_CARD_TYPES else None
     if not isinstance(bank_admission, dict) or not bank_admission.get('text') or bank_admission.get('termination_reason') != 'eos':
         bank_admission = None
     medical = doc_type == 'MEDICAL_REPORT'
@@ -61,7 +62,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     model = 'paddleocr_vl' if paddle_primary else 'glm_ocr'
     alternate = 'glm_ocr' if paddle_primary else 'paddleocr_vl'
     attempt_models = (model, alternate) if paddle_primary else (model, model, alternate)
-    generation_timeout = 20.0 if medical or interview else 40.0 if generic or doc_type == 'BANK_CARD' else None
+    generation_timeout = 20.0 if medical or interview else 40.0 if generic or doc_type in BANK_CARD_TYPES else None
     revisions = model_revisions if model_revisions is not None else {}
     cache = {}  # Successful predictions only; never shared with another Task or rerun.
     signature = inspect.signature(recognize)
@@ -145,7 +146,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                     from .interview_form import plan_interview_regions
                     regions, notes = plan_interview_regions(page.image, box, check)
                     plans.extend(regions); limitations.extend(notes)
-                elif doc_type == 'BANK_CARD':
+                elif doc_type in BANK_CARD_TYPES:
                     from .bank_photocopy import plan_bank_regions
                     bank_plans, notes = plan_bank_regions(page.image, box, check)
                     plans.extend(bank_plans); limitations.extend(notes)
@@ -165,7 +166,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 info['regions'].append(region)
                 task = plan['task']
                 if generic:form_lines[region_id]=plan['lines']
-                if doc_type == 'BANK_CARD':bank_roles[region_id]=plan.get('bank_role','whole')
+                if doc_type in BANK_CARD_TYPES:bank_roles[region_id]=plan.get('bank_role','whole')
                 planned.append((box, region, task))
             if planned:
                 pending[page.index] = planned
@@ -248,7 +249,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                         if isinstance(text, str) and text.strip():
                             selected = dict(text=text, page=page.index, region_id=region_id,
                                             bbox=location, extraction_method='ocr')
-                            if doc_type == 'BANK_CARD':selected['_bank_role']=bank_roles.get(region_id,'whole')
+                            if doc_type in BANK_CARD_TYPES:selected['_bank_role']=bank_roles.get(region_id,'whole')
                             if interview:
                                 from .interview_form import needs_alternate
                                 selected['_interview_complete'] = successful
@@ -302,7 +303,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                 publish('OCR')
             info['extraction_method'] = 'mixed' if page.evidence else 'ocr'
             # Coordinate coverage is known; semantic OCR coverage remains unverified.
-            limitations.append('保留整页原图对照；银行卡分区或整图识别的完整性需人工核对。' if doc_type == 'BANK_CARD' else
+            limitations.append('保留整页原图对照；银行卡分区或整图识别的完整性需人工核对。' if doc_type in BANK_CARD_TYPES else
                                '已保留完整校正原图；主体内外文字及表格是否全部识别仍需核对。' if generic else
                                '自动分区保留整页像素覆盖；文字与表格行是否全部识别仍需原页复核。')
             del pending[page.index]

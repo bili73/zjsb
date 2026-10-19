@@ -48,7 +48,7 @@ class BankPhotocopyTests(unittest.TestCase):
 
     def test_bank_script_variants_keep_original_evidence_without_conflict(self):
         f=fields(extract_result([block('中國銀行','front'),block('中国银行测试市东城支行','supplement')],'BANK_CARD'))
-        self.assertEqual(f['bank_name']['value'],'中國銀行')
+        self.assertEqual(f['bank_name']['value'],'中国银行')
         self.assertFalse(f['bank_name'].get('candidates'))
         self.assertEqual(len(f['bank_name']['sources']),2)
         self.assertEqual(f['bank_name']['sources'][1]['raw_text'],'中国银行测试市东城支行')
@@ -100,8 +100,48 @@ class BankPhotocopyTests(unittest.TestCase):
 
     def test_traditional_bank_print_is_preserved_as_source(self):
         result=extract_result([block('中國銀行','front')],'BANK_CARD')
-        self.assertEqual(fields(result)['bank_name']['value'],'中國銀行')
+        self.assertEqual(fields(result)['bank_name']['value'],'中国银行')
         self.assertEqual(fields(result)['bank_name']['source']['raw_text'],'中國銀行')
+
+    def test_bank_name_spelling_is_stable_in_both_types_without_hiding_conflicts(self):
+        for kind in ('BANK_CARD', 'BANK_CARD_COPY'):
+            for texts in [('中國銀行', '中国银行'), ('中国银行', '中國銀行')]:
+                with self.subTest(kind=kind, texts=texts):
+                    result = extract_result([block(text) for text in texts], kind)
+                    bank = fields(result)['bank_name']
+                    self.assertEqual(bank['value'], '中国银行')
+                    self.assertEqual([s['raw_text'] for s in bank['sources']], list(texts))
+                    self.assertEqual(result['generic']['full_text'], '\n\n'.join(texts))
+                    self.assertFalse(bank.get('candidates'))
+            with self.subTest(kind=kind, different_banks=True):
+                bank = fields(extract_result([block('中國銀行'), block('合成銀行')], kind))['bank_name']
+                self.assertIsNone(bank['value'])
+                self.assertEqual({c['value'] for c in bank['candidates']}, {'中国银行', '合成银行'})
+                self.assertEqual({c['source']['raw_text'] for c in bank['candidates']}, {'中國銀行', '合成銀行'})
+
+    def test_bank_name_mapping_preserves_personal_names_old_results_and_manual_exports(self):
+        from copy import deepcopy
+        from openpyxl import load_workbook
+        for kind, label in [('BANK_CARD', '银行卡'), ('BANK_CARD_COPY', '银行卡复印件')]:
+            with self.subTest(kind=kind):
+                result = extract_result([block('中國銀行\n姓名：王國銀\n开户支行：中國銀行東城支行\n4111111111111111')], kind)
+                values = fields(result)
+                self.assertEqual(values['holder_name']['value'], '王國銀')
+                self.assertEqual(values['branch_name']['value'], '中国银行东城支行')
+                self.assertEqual(values['card_number']['value'], '4111111111111111')
+                historical = deepcopy(result)
+                fields(historical)['bank_name']['value'] = '中國銀行'
+                before = deepcopy(historical)
+                self.assertEqual(fields(public_result(historical, {}))['bank_name']['value'], '中國銀行')
+                self.assertEqual(historical, before)
+                fixed = apply_review(result, {'fields': {'bank_name': '中國銀行'}}, actor='synthetic')
+                projected = public_result(fixed, {})
+                self.assertEqual(fields(projected)['bank_name']['value'], '中國銀行')
+                self.assertEqual(fields(projected)['bank_name']['value_origin'], 'manual')
+                fixed.update(task_id=str(uuid4()), run_id=str(uuid4()), revision=1)
+                sheet = load_workbook(io.BytesIO(workbook_bytes([fixed])))[label]
+                headers = [c.value for c in sheet[1]]
+                self.assertEqual(sheet.cell(2, headers.index('开户行') + 1).value, '中國銀行')
 
     def test_conflicting_numbers_retain_both_sources_and_no_checksum_choice(self):
         result=extract_result([block('4111111111111111','front'),block('4111111111111112','supplement')],'BANK_CARD')

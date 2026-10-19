@@ -7,10 +7,11 @@ import type { GenericDraft, GenericResult } from './generic-review.ts'
 
 export const docTypes = {
   INTERVIEW_FORM: '面试登记表', TABLE: '表格', MEDICAL_REPORT: '体检报告', DIPLOMA: '毕业证', DEGREE_CERT: '学位证',
-  BANK_CARD: '银行卡', ID_CARD_FRONT: '身份证人像面', ID_CARD_BACK: '身份证国徽面', PASSPORT: '护照',
+  BANK_CARD: '银行卡', BANK_CARD_COPY: '银行卡复印件', ID_CARD_FRONT: '身份证人像面', ID_CARD_BACK: '身份证国徽面', PASSPORT: '护照',
   HOUSEHOLD_REGISTER: '户口本', BUSINESS_LICENSE: '营业执照', GENERIC: '通用识别', XUEXIN_DIPLOMA_TABLE: '学历证书电子注册备案表',
 } as const
 export type UploadDocType = keyof typeof docTypes
+export const isBankCardType = (kind: unknown): kind is 'BANK_CARD' | 'BANK_CARD_COPY' => kind === 'BANK_CARD' || kind === 'BANK_CARD_COPY'
 export interface Classification { doc_type: UploadDocType | null; basis: 'content' | 'filename' | 'unknown'; reason: string; candidates: UploadDocType[] }
 export function parseClassification(value: unknown): Classification {
   requireValue(isRecord(value) && (value.doc_type === null || typeof value.doc_type === 'string' && Object.hasOwn(docTypes, value.doc_type)) &&
@@ -40,7 +41,7 @@ export const pairingLabels: Record<IdCardPairing, string> = { unassigned: '未�
 export function sampleQualification(kind: UploadDocType): string {
   if (kind === 'TABLE') return '上传JPG/PNG/HEIC表格照片，自动摆正并识别主体；请核对标题、表头、划除行及表外手写补录。每张独立导出，暂不接收PDF或自动拼接续表。'
   if (kind === 'INTERVIEW_FORM') return '已测试8张同版式登记表；请核对手写姓名、号码和性别勾选。错栏或冲突内容需人工采用候选或补填。'
-  return ['DIPLOMA', 'DEGREE_CERT', 'BANK_CARD', 'XUEXIN_DIPLOMA_TABLE', 'MEDICAL_REPORT'].includes(kind)
+  return ['DIPLOMA', 'DEGREE_CERT', 'BANK_CARD', 'BANK_CARD_COPY', 'XUEXIN_DIPLOMA_TABLE', 'MEDICAL_REPORT'].includes(kind)
     ? '已有有限真实样本测试，尚不代表所有版式准确率；请对照原件核对。'
     : '规则已接入，尚缺真实样本验收；请逐项对照原件核对。'
 }
