@@ -22,14 +22,15 @@ export interface ReviewBody {
 export type ReviewDraft = Omit<ReviewBody, 'run_id' | 'expected_revision'>
 export const canAcceptIssue = (issue: ReviewIssue) => issue.can_accept === true && !['MISSING','CONFLICT','INCOMPLETE_OUTPUT','MULTI_CANDIDATES','LOW_CONFIDENCE'].includes(issue.code) &&
   (issue.code !== 'VALIDATION_FAILED' || issue.rule_id?.startsWith('bin_reference_') === true)
-export function collectIssues(result: TaskResult): { scope: string; issue: ReviewIssue }[] {
-  const rows: { scope: string; issue: ReviewIssue }[] = []
-  const append = (scope: string, issues?: ReviewIssue[]) => issues?.forEach(issue => rows.push({ scope, issue }))
+export interface IssueJump { kind: 'field' | 'item' | 'finding' | 'member'; id: string }
+export function collectIssues(result: TaskResult): { scope: string; issue: ReviewIssue; jump?: IssueJump }[] {
+  const rows: { scope: string; issue: ReviewIssue; jump?: IssueJump }[] = []
+  const append = (scope: string, issues?: ReviewIssue[], jump?: IssueJump) => issues?.forEach(issue => rows.push(jump ? { scope, issue, jump } : { scope, issue }))
   append('任务', result.review_issues)
-  for (const field of result.fields ?? Object.values(result.basic_info ?? {})) append(field.label, field.review_issues)
-  for (const item of result.items ?? []) if (isMedicalReviewItem(item)) append(`项目：${item.name}`, item.review_issues)
-  for (const [index, finding] of (result.report_summary?.findings ?? []).entries()) append(`清单 ${index + 1}`, finding.review_issues)
-  for (const [index, member] of (result.members ?? []).entries()) for (const field of memberFields(member)) append(`成员 ${index + 1} / ${field.label}`, field.review_issues)
+  for (const field of result.fields ?? Object.values(result.basic_info ?? {})) append(field.label, field.review_issues, { kind: 'field', id: field.key })
+  for (const item of result.items ?? []) if (isMedicalReviewItem(item)) append(`项目：${item.name}`, item.review_issues, { kind: 'item', id: item.item_id })
+  for (const [index, finding] of (result.report_summary?.findings ?? []).entries()) append(`清单 ${index + 1}`, finding.review_issues, { kind: 'finding', id: finding.finding_id })
+  for (const [index, member] of (result.members ?? []).entries()) for (const field of memberFields(member)) append(`成员 ${index + 1} / ${field.label}`, field.review_issues, { kind: 'member', id: String(index) })
   return rows.filter((row, i) => rows.findIndex(other => other.issue.issue_id === row.issue.issue_id) === i)
 }
 export const looksMasked = (value: unknown) => typeof value === 'string' && /[*＊•●]{2,}/.test(value)

@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { householdMemberLabels as memberLabels } from '../business.ts'
 import { memberFieldRequired } from '../requiredFields.ts'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { genderText, isGenderKey, isMedicalReviewItem, medicalProjectCount } from '../business.ts'
 import { numberLengthHint } from '../numberLength.ts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { DocProfile, Field, FieldSource, TaskResult } from '../business.ts'
 import { addedMember, buildReview, canAcceptIssue, changedValues, collectIssues, looksMasked, memberFields, summaryPatch } from '../review.ts'
-import type { ReviewBody, Scalar } from '../review.ts'
+import type { ReviewBody, Scalar, IssueJump } from '../review.ts'
 import { genericDraft, genericPairSource } from '../generic-review.ts'
-const props = defineProps<{ result: TaskResult; profile?: DocProfile; canWrite: boolean; busy: boolean; pageCount: number; regions?: { region_id: string; page: number }[] }>()
+const props = defineProps<{ result: TaskResult; profile?: DocProfile; canWrite: boolean; busy: boolean; pageCount: number; regions?: { region_id: string; page: number }[]; focus?: (IssueJump & { seq: number }) | null }>()
 const emit = defineEmits<{ (e: 'save', body: ReviewBody): void; (e: 'dirty', value: boolean): void; (e: 'locate', source: FieldSource): void }>()
 const fields = computed(() => props.result.fields ?? Object.values(props.result.basic_info ?? {}))
 const values = reactive<Record<string, Scalar>>(Object.fromEntries(fields.value.map(f => [f.key, f.value])))
@@ -51,6 +51,26 @@ const membersWithMissing = computed(() => members.reduce((count, member, index) 
 }, 0))
 const memberTitle = computed(() => members.length ? `户口本成员（${members.length} 人${membersWithMissing.value ? `，${membersWithMissing.value} 人必填缺失` : ''}）` : '户口本成员（未识别到成员）')
 const memberOpen = ref<string[]>(membersWithMissing.value ? ['members'] : [])
+// 顶部红字点击定位：目标所在折叠面板先展开，再滚动到锚点并闪烁一次；items/findings 默认收起，需要受控展开。
+const openPanels = ref<string[]>([])
+const anchorId = (focus: IssueJump) => focus.kind === 'field' ? `rev-field-${focus.id}` : focus.kind === 'item' ? `rev-item-${focus.id}` : focus.kind === 'finding' ? `rev-finding-${focus.id}` : `rev-member-${focus.id}`
+watch(() => props.focus, async focus => {
+  if (!focus) return
+  if (focus.kind === 'item' && !openPanels.value.includes('items')) openPanels.value = [...openPanels.value, 'items']
+  if (focus.kind === 'finding' && !openPanels.value.includes('findings')) openPanels.value = [...openPanels.value, 'findings']
+  if (focus.kind === 'member' && !memberOpen.value.includes('members')) memberOpen.value = [...memberOpen.value, 'members']
+  await nextTick()
+  const el = document.getElementById(anchorId(focus))
+  if (!el) return
+  // 与 OperationGuide 的跳转一致：减少动态偏好下不平滑滚动（CSS 媒体查询管不到 JS scrollIntoView）。
+  el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' })
+  // 把焦点交给目标条目：否则焦点留在抽屉顶部已滚出视口的红字按钮上，键盘用户下一次 Tab 会把滚动拉回顶部、跳转被撤销。
+  el.tabIndex = -1
+  el.focus({ preventScroll: true })
+  el.classList.remove('jump-flash')
+  void el.offsetWidth
+  el.classList.add('jump-flash')
+})
 // 体检的核对主对象是检测项目与清单：折叠标题带上数量与异常摘要，主对象不必点开才知道。
 const itemsTitle = computed(() => {
   const stats = props.result.stats
@@ -134,7 +154,7 @@ function save() {
     <h3 data-guide="review-fields">人工核对与修正</h3>
     <el-form label-position="top" :disabled="!canWrite || busy">
       <div class="field-grid">
-        <el-form-item v-for="field in fields" :key="field.key" :class="{ 'field-missing': missingRequired(field.key) }" :label="`${field.label}${required(field.key) ? '（必填）' : ''}`">
+        <el-form-item v-for="field in fields" :id="`rev-field-${field.key}`" :key="field.key" :class="{ 'field-missing': missingRequired(field.key) }" :label="`${field.label}${required(field.key) ? '（必填）' : ''}`">
           <el-select v-if="fieldKind(field.key) === 'boolean'" v-model="values[field.key]"><el-option label="是" :value="true"/><el-option label="否" :value="false"/></el-select>
           <el-select v-else-if="isGenderKey(field.key)" :model-value="genderText(values[field.key])" placeholder="未识别" clearable @update:model-value="v => setField(field.key, v ?? '')"><el-option label="男" value="男" /><el-option label="女" value="女" /></el-select>
           <el-input v-else :type="['exam_projects','blood_routine','urine_routine','ecg','dr_imaging','abdominal_ultrasound','liver_function'].includes(field.key) ? 'textarea' : 'text'" :rows="3" :model-value="String((field.key === 'exam_project_count' ? projectCount : values[field.key]) ?? '')" :disabled="!editable(field.key)" @update:model-value="v => setField(field.key,v)" />
@@ -155,9 +175,9 @@ function save() {
           <el-button v-if="result.doc_type === 'MEDICAL_REPORT'" link type="primary" @click="emit('locate', field.source ?? {})">查看来源 / 整页</el-button>
         </el-form-item>
       </div>
-      <el-collapse v-if="items.length || result.doc_type === 'MEDICAL_REPORT'">
+      <el-collapse v-if="items.length || result.doc_type === 'MEDICAL_REPORT'" v-model="openPanels">
         <el-collapse-item :title="itemsTitle" name="items">
-          <article v-for="(item, index) in items" :key="item.item_id" class="edit-row">
+          <article v-for="(item, index) in items" :id="`rev-item-${item.item_id}`" :key="item.item_id" class="edit-row">
             <el-checkbox v-model="item.removed">删除该项目（提交后生效）</el-checkbox>
             <div v-if="!item.removed" class="field-grid"><el-form-item v-for="key in itemKeys" :key="key" :label="itemLabels[key]"><el-input v-model="item.values[key]" /></el-form-item></div>
             <el-button link type="primary" @click="emit('locate', reviewItems[index]?.source ?? {})">检测行来源</el-button>
@@ -167,7 +187,7 @@ function save() {
           <el-button @click="added.push(Object.fromEntries(itemKeys.map(k => [k,''])))">新增检测项目</el-button>
         </el-collapse-item>
       </el-collapse>
-      <el-collapse v-if="findings.length"><el-collapse-item :title="findingsTitle" name="findings"><article v-for="(finding,index) in findings" :key="finding.finding_id" class="edit-row">
+      <el-collapse v-if="findings.length" v-model="openPanels"><el-collapse-item :title="findingsTitle" name="findings"><article v-for="(finding,index) in findings" :id="`rev-finding-${finding.finding_id}`" :key="finding.finding_id" class="edit-row">
         <el-checkbox v-model="finding.removed">删除此清单条目（需下方清单修正理由与来源页）</el-checkbox>
         <el-form-item label="报告条目原文"><el-input v-model="finding.values.text" type="textarea" /></el-form-item>
         <div class="field-grid"><el-form-item label="报告等级"><el-input v-model="finding.values.risk_grade" /></el-form-item><el-form-item label="异常诊断"><el-input v-model="finding.values.diagnosis" /></el-form-item></div>
@@ -175,7 +195,7 @@ function save() {
         <el-button v-for="(source,si) in result.report_summary?.findings[index]?.sources ?? []" :key="si" link type="primary" @click="emit('locate',source)">清单来源 {{ si + 1 }}</el-button>
       </article></el-collapse-item></el-collapse>
       <el-collapse v-if="result.doc_type === 'MEDICAL_REPORT'"><el-collapse-item :title="summaryEditTitle" name="summary-edit"><el-checkbox v-model="summaryEnabled">修正报告清单（不影响实验室计数）</el-checkbox><template v-if="summaryEnabled"><el-select v-model="summaryScope" aria-label="清单作用域"><el-option label="需检查治疗清单" value="follow_up_required"/><el-option label="总检结论" value="overall_conclusion"/><el-option label="未识别" value="unidentified"/></el-select><el-input v-model="summaryTitle" placeholder="原报告清单标题（改声明数量或作用域时必填）"/><el-form-item label="原件明确声明数量；未声明留空，不用条目长度代填"><el-input-number :disabled="summaryScope !== 'follow_up_required'" v-model="summaryCount" :min="0" :precision="0" /></el-form-item><el-form-item label="声明或清单所在原件页"><el-input-number v-model="summaryPage" :min="1" :max="pageCount" :precision="0" /></el-form-item><el-input v-model="summaryReason" placeholder="说明修正的原件依据（必填）"/><article v-for="(f,index) in addedFindings" :key="index" class="edit-row"><el-input v-model="f.text" placeholder="清单条目原文"/><el-input v-model="f.risk_grade" placeholder="报告等级"/><el-input v-model="f.diagnosis" placeholder="异常诊断"/><el-select v-model="f.result_item_id" clearable placeholder="关联检测项目"><el-option v-for="item in result.items ?? []" :key="item.item_id" :label="item.name" :value="item.item_id"/></el-select><el-button @click="addedFindings.splice(index,1)">撤销新增</el-button></article><el-button @click="addedFindings.push({text:'',risk_grade:'',diagnosis:''})">新增清单条目</el-button></template></el-collapse-item></el-collapse>
-      <el-collapse v-if="result.doc_type === 'HOUSEHOLD_REGISTER'" v-model="memberOpen"><el-collapse-item :title="memberTitle" name="members"><article v-for="(member,index) in members" :key="index" class="edit-row"><h4>成员 {{ index + 1 }}</h4><el-checkbox v-model="member.removed">删除此成员（提交后生效）</el-checkbox><div v-if="!member.removed" class="field-grid"><el-form-item v-for="field in memberFields(result.members![index]!)" :key="field.key" :class="{ 'field-missing': memberMissing(member, field.key) }" :label="`${field.label}${memberFieldRequired(result, field.key) ? '（必填）' : ''}`"><el-select v-if="isGenderKey(field.key)" :model-value="genderText(member.values[field.key])" placeholder="未识别" clearable @update:model-value="v => member.values[field.key] = v ?? ''"><el-option label="男" value="男" /><el-option label="女" value="女" /></el-select><el-input v-else :model-value="String(member.values[field.key] ?? '')" @update:model-value="v => member.values[field.key] = v" /></el-form-item></div></article></el-collapse-item></el-collapse>
+      <el-collapse v-if="result.doc_type === 'HOUSEHOLD_REGISTER'" v-model="memberOpen"><el-collapse-item :title="memberTitle" name="members"><article v-for="(member,index) in members" :id="`rev-member-${index}`" :key="index" class="edit-row"><h4>成员 {{ index + 1 }}</h4><el-checkbox v-model="member.removed">删除此成员（提交后生效）</el-checkbox><div v-if="!member.removed" class="field-grid"><el-form-item v-for="field in memberFields(result.members![index]!)" :key="field.key" :class="{ 'field-missing': memberMissing(member, field.key) }" :label="`${field.label}${memberFieldRequired(result, field.key) ? '（必填）' : ''}`"><el-select v-if="isGenderKey(field.key)" :model-value="genderText(member.values[field.key])" placeholder="未识别" clearable @update:model-value="v => member.values[field.key] = v ?? ''"><el-option label="男" value="男" /><el-option label="女" value="女" /></el-select><el-input v-else :model-value="String(member.values[field.key] ?? '')" @update:model-value="v => member.values[field.key] = v" /></el-form-item></div></article></el-collapse-item></el-collapse>
       <el-collapse v-if="result.doc_type === 'HOUSEHOLD_REGISTER'"><el-collapse-item title="补录遗漏成员" name="new-members"><p>成员字段按当前必填设置填写，原件页必须指定；全户完整性仍需逐页覆盖确认。</p><article v-for="(member,index) in addedMembers" :key="index" class="edit-row"><el-form-item label="新增成员原件页"><el-input-number v-model="member.source_page" :min="1" :max="pageCount" :precision="0"/></el-form-item><div class="field-grid"><el-form-item v-for="(label,key) in memberLabels" :key="key" :class="{ 'field-missing': addedMemberMissing(member, key) }" :label="`${label}${memberFieldRequired(result, key) ? '（必填）' : ''}`"><el-input :model-value="String(member.fields[key] ?? '')" @update:model-value="v => member.fields[key] = v"/></el-form-item></div><el-button @click="addedMembers.splice(index,1)">撤销新增成员</el-button></article><el-button @click="addedMembers.push({fields:{},source_page:1})">新增成员</el-button></el-collapse-item></el-collapse><template v-if="result.doc_type === 'GENERIC'"><h4 data-guide="generic-edit">通用全文与键值{{ result.required_field_keys?.includes('generic.full_text') ?? true ? '（正文必填）' : '（正文选填）' }}</h4><el-input v-model="generic.full_text" type="textarea" :rows="6" :class="{ 'field-missing': genericFullTextRequired && !generic.full_text }" /><div v-for="(pair,index) in generic.key_values" :key="index" class="generic-row"><el-input v-model="pair.key" placeholder="字段名"/><el-input v-model="pair.value" type="textarea" autosize placeholder="字段值（原文为空可留空）"/><el-button v-if="genericPairSource(result,pair)" @click="emit('locate',genericPairSource(result,pair)!)">原始来源</el-button><el-button link type="danger" @click="removePair(index)">删除</el-button></div><el-button @click="generic.key_values.push({key:'',value:''})">新增键值</el-button></template>
       <el-collapse><el-collapse-item title="全页覆盖确认（仅实际逐页核对后填写）" name="coverage"><el-checkbox v-model="coverageEnabled">我已逐页检查原件及遗漏内容</el-checkbox><template v-if="coverageEnabled"><p>原始材料共 {{ pageCount || '未知' }} 页；未知总页数时不能提交完整覆盖声明。</p><el-checkbox-group v-model="checkedPages"><el-checkbox v-for="page in pageCount" :key="page" :value="page">第 {{ page }} 页</el-checkbox></el-checkbox-group><el-input v-model="coverageReason" placeholder="说明人工补齐与完整性核对依据" type="textarea"/><article v-for="region in regions ?? []" :key="region.region_id" class="edit-row"><span>第 {{ region.page }} 页区域 {{ region.region_id.slice(0,8) }}</span><el-select v-model="regionActions[region.region_id]" clearable placeholder="未补充覆盖声明"><el-option value="TRANSCRIBED" label="已补录"/><el-option value="NO_CONTENT" label="已确认无业务文字"/></el-select><el-input v-if="regionActions[region.region_id]" v-model="regionReasons[region.region_id]" placeholder="该区域核对理由"/><el-select v-if="regionActions[region.region_id] === 'TRANSCRIBED'" v-model="regionItems[region.region_id]" multiple placeholder="对应已存在项目"><el-option v-for="item in result.items ?? []" :key="item.item_id" :label="item.name" :value="item.item_id"/></el-select><template v-if="regionActions[region.region_id] === 'TRANSCRIBED'"><el-select v-model="regionFields[region.region_id]" multiple placeholder="本次补录字段"><el-option v-for="f in fields" :key="f.key" :label="f.label" :value="f.key"/></el-select><el-select v-model="regionAdded[region.region_id]" multiple placeholder="本次新增检测项目"><el-option v-for="(item,index) in added" :key="index" :label="item.name || `新增 ${index+1}`" :value="index"/></el-select><el-select v-model="regionFindings[region.region_id]" multiple placeholder="本次修正清单"><el-option v-for="(f,index) in findings" :key="f.finding_id" :label="`清单 ${index+1}`" :value="f.finding_id"/></el-select><el-select v-model="regionMembers[region.region_id]" multiple placeholder="本次修正成员"><el-option v-for="(_,index) in members" :key="index" :label="`成员 ${index+1}`" :value="index"/></el-select><el-select v-if="result.doc_type === 'HOUSEHOLD_REGISTER'" v-model="regionAddedMembers[region.region_id]" multiple placeholder="本次新增成员"><el-option v-for="(member,index) in addedMembers" :key="index" :value="index" :label="String(member.fields.name || `新增成员 ${index+1}`)"/></el-select><el-checkbox v-if="result.doc_type === 'GENERIC'" v-model="regionGeneric[region.region_id]">本次补录通用全文</el-checkbox></template></article></template></el-collapse-item></el-collapse>
       <el-alert v-if="message" type="warning" :closable="false">{{ message }}</el-alert>
@@ -197,6 +217,10 @@ function save() {
 .field-missing :deep(.el-input__wrapper), .field-missing :deep(.el-select__wrapper) { box-shadow: 0 0 0 1px var(--el-color-danger) inset; background-color: var(--el-color-danger-light-9); }
 .field-missing :deep(.el-textarea__inner) { box-shadow: 0 0 0 1px var(--el-color-danger) inset; background-color: var(--el-color-danger-light-9); }
 .field-missing :deep(.el-form-item__label) { color: var(--el-color-danger); }
+/* 红字跳转定位后的短暂高亮；减少动态偏好下不动画，只滚动到位。 */
+.jump-flash { animation: jump-flash 1.5s ease 1; }
+@keyframes jump-flash { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 3px var(--el-color-warning-light-5); } }
+@media (prefers-reduced-motion: reduce) { .jump-flash { animation: none; } }
 .bank-candidates { width: 100%; min-width: 0; margin-top: 6px; display: grid; gap: 6px; }
 /* 候选采用行：与识别字段表格的候选提示条同族（浅黄底 + 图标）；原因小字常规字重，候选值加粗，操作右置。 */
 .candidate-pick { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 6px 10px; border-radius: 6px; background: var(--el-color-warning-light-9); }

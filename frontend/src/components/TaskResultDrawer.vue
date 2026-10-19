@@ -8,6 +8,7 @@ import { resultKey } from '../business.ts'
 import type { DocProfile, ItemsFilter, Task, TaskResult, FieldSource } from '../business.ts'
 import type { ReviewBody } from '../review.ts'
 import { canAcceptIssue, collectIssues, downloadBlob, exportBlockReason, spreadsheetName } from '../review.ts'
+import type { IssueJump } from '../review.ts'
 import { errorMessages } from '../diagnostics.ts'
 import type { ErrorCode } from '../diagnostics.ts'
 import type { LocalPreviewBatch } from '../workbench.ts'
@@ -115,7 +116,9 @@ const previewTask = computed(() => props.task && result.value ? { ...props.task,
 watch(() => result.value ? resultKey(result.value) : '', () => { activeSource.value = null })
 watch(() => props.open, open => { if (!open) activeSource.value = null })
 function locate(source: FieldSource) {
-  if (['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD','INTERVIEW_FORM'].includes(result.value?.doc_type ?? '')) activeSource.value = sourceSelection(source)
+  // 户口本页级定位（整页对照，无 bbox、无红框 overlay——SourcePreview 的红框门禁不含户口本）。
+  // 注意：FRONTEND_FIELDS.md 的定位授权行尚只覆盖体检/表格/通用/银行卡/面试表，户口本条款待该文档下次同步补录（该文件当前由后端线程在途修改，不在本批内）。
+  if (['MEDICAL_REPORT','TABLE','GENERIC','BANK_CARD','INTERVIEW_FORM','HOUSEHOLD_REGISTER'].includes(result.value?.doc_type ?? '')) activeSource.value = sourceSelection(source)
 }
 // 点击抽屉版面任意空白（字段面板的间隙、说明文字、边缘等，非交互控件、非页面图片）取消定位红框；
 // 定位红框会一直遮着原图，需要一个随手可及的取消方式。交互控件与图片各自的点击语义不受影响。
@@ -133,16 +136,17 @@ const blockingIssues = computed(() => {
   const fieldLabels = new Set((result.value.fields ?? Object.values(result.value.basic_info ?? {})).map(field => field.label))
   return collectIssues(result.value).filter(row => !canAcceptIssue(row.issue) && !(row.issue.code === 'MISSING' && fieldLabels.has(row.scope)))
 })
-const issueSummary = computed(() => {
-  const rows = blockingIssues.value
-  if (!rows.length) return ''
-  // scope 形如"项目：谷丙转氨酶"时直接取项目名，避免渲染出"项目：谷丙转氨酶：…"双冒号；余量附项目名便于搜索定位。
-  const label = (scope: string) => (scope.startsWith('项目：') ? scope.slice(3) : scope)
-  const head = rows.slice(0, 2).map(row => `${label(row.scope)}：${row.issue.message.replace(/。$/, '')}`).join('；')
-  const restNames = [...new Set(rows.slice(2).map(row => label(row.scope)))]
-  const tail = restNames.length ? `；另有${restNames.slice(0, 4).join('、')}${restNames.length > 4 ? `等${restNames.length}项` : ''}` : ''
-  return `（${head}${tail}）`
+// scope 形如"项目：谷丙转氨酶"时直接取项目名，避免渲染出"项目：谷丙转氨酶：…"双冒号；余量附项目名便于搜索定位。
+const issueLabel = (scope: string) => (scope.startsWith('项目：') ? scope.slice(3) : scope)
+const noticeSegments = computed(() => blockingIssues.value.slice(0, 2).map(row => ({ text: `${issueLabel(row.scope)}：${row.issue.message.replace(/。$/, '')}`, jump: row.jump })))
+const noticeTail = computed(() => {
+  const restNames = [...new Set(blockingIssues.value.slice(2).map(row => issueLabel(row.scope)))]
+  return restNames.length ? `；另有${restNames.slice(0, 4).join('、')}${restNames.length > 4 ? `等${restNames.length}项` : ''}` : ''
 })
+// 红字里的前两条问题可点击：展开并滚动到复核编辑区中对应字段/项目/清单/成员；seq 递增让重复点击同一目标也能再次触发。
+const issueFocus = ref<(IssueJump & { seq: number }) | null>(null)
+let issueFocusSeq = 0
+function jumpToIssue(jump: IssueJump) { issueFocus.value = { ...jump, seq: ++issueFocusSeq } }
 
 // 左右分栏宽度：可拖动的分隔条，双击复位；仅内存保存，不落任何存储。
 const leftWidth = ref(40)
@@ -226,8 +230,9 @@ async function runExport() {
           >
             <span data-guide="detail-export"><el-button :icon="Download" disabled>导出 Excel</el-button></span>
           </el-tooltip>
+          <!-- NEED_REVIEW 时保存修正才是主操作：导出降为普通按钮（导出门禁不变，仍可点）。 -->
           <span v-else-if="result && task" data-guide="detail-export">
-            <el-button type="primary" :icon="Download" :loading="exporting" @click="runExport()">导出 Excel</el-button>
+            <el-button :type="task.status === 'NEED_REVIEW' ? 'default' : 'primary'" :icon="Download" :loading="exporting" @click="runExport()">导出 Excel</el-button>
           </span>
         </span>
       </div>
@@ -245,7 +250,7 @@ async function runExport() {
       </el-result>
       <template v-else-if="result && task">
         <el-alert v-if="stale || reviewError" type="warning" :closable="false">{{ reviewError || '任务结果或必填设置已更新，当前草稿已保留；请明确刷新后重新核对。' }}<el-button @click="refreshDraft">读取最新版本</el-button></el-alert>
-        <p v-if="task.status === 'NEED_REVIEW'" class="drawer-notice" role="note">该任务包含需要人工核对的内容{{ issueSummary }}，请结合左侧原图核对后再使用。</p>
+        <p v-if="task.status === 'NEED_REVIEW'" class="drawer-notice" role="note">该任务包含需要人工核对的内容<span v-if="noticeSegments.length">（<template v-for="(segment, i) in noticeSegments" :key="i">{{ i ? '；' : '' }}<button v-if="segment.jump && result.doc_type !== 'TABLE'" type="button" class="issue-jump" title="定位到人工核对与修正区的对应条目" @click="segment.jump && jumpToIssue(segment.jump)">{{ segment.text }}</button><span v-else>{{ segment.text }}</span></template>{{ noticeTail }}）</span>，请结合左侧原图核对后再使用。</p>
         <el-alert v-if="task.error" type="error" :closable="false" show-icon class="drawer-alert">
           {{ errorMessages[task.error.code] }}{{ task.error.error_id ? `（错误编号 ${task.error.error_id}）` : '' }}
         </el-alert>
@@ -264,7 +269,7 @@ async function runExport() {
               @update:filter="value => (filter = value)"
             />
             <GenericSources v-if="result.doc_type === 'GENERIC' && result.generic" :original="result.generic" @locate="locate" />
-            <ReviewEditor v-if="result.doc_type !== 'TABLE'" :key="resultKey(result)" :result="result" :profile="catalogue.find(p => p.doc_type === result!.doc_type)" :can-write="canWrite && !stale" :busy="saving" :page-count="task.actual_source_page_count ?? 0" :regions="regions" @dirty="dirty = $event" @save="saveReview" @locate="locate" />
+            <ReviewEditor v-if="result.doc_type !== 'TABLE'" :key="resultKey(result)" :result="result" :profile="catalogue.find(p => p.doc_type === result!.doc_type)" :can-write="canWrite && !stale" :busy="saving" :page-count="task.actual_source_page_count ?? 0" :regions="regions" :focus="issueFocus" @dirty="dirty = $event" @save="saveReview" @locate="locate" />
           </div>
         </div>
       </template>
@@ -299,6 +304,9 @@ async function runExport() {
 .drawer-alert { margin-bottom: 12px; }
 /* 人工核对提示：与字段下的号码校验提示（number-length-hint）同款，一句红字，不用告警大条。 */
 .drawer-notice { margin: 0 0 10px; color: var(--el-color-danger); line-height: 1.5; }
+/* 红字问题段可点击定位：保持红字观感，虚线下划示意可点，悬停/聚焦转为实线；不动浏览器默认聚焦轮廓。 */
+.issue-jump { padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.issue-jump:hover, .issue-jump:focus-visible { text-decoration-style: solid; }
 .drawer-hint { color: var(--el-text-color-secondary); font-size: 12px; }
 .drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-right: 28px; min-width: 0; }
 .drawer-title { font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
