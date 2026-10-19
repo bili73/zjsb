@@ -230,9 +230,9 @@ async function runExport() {
           >
             <span data-guide="detail-export"><el-button :icon="Download" disabled>导出 Excel</el-button></span>
           </el-tooltip>
-          <!-- NEED_REVIEW 时保存修正才是主操作：导出降为普通按钮（导出门禁不变，仍可点）。 -->
+          <!-- NEED_REVIEW 时保存修正才是主操作：导出降为 plain 次级按钮（白底蓝描边），与不可导出的灰色禁用态明确区分；导出门禁不变，仍可点。 -->
           <span v-else-if="result && task" data-guide="detail-export">
-            <el-button :type="task.status === 'NEED_REVIEW' ? 'default' : 'primary'" :icon="Download" :loading="exporting" @click="runExport()">导出 Excel</el-button>
+            <el-button type="primary" :plain="task.status === 'NEED_REVIEW'" :icon="Download" :loading="exporting" @click="runExport()">导出 Excel</el-button>
           </span>
         </span>
       </div>
