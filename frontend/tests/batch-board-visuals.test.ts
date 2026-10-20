@@ -25,12 +25,14 @@ type FakeBatch = { batch_id: string; display_name?: string; created_at?: string 
 type FakeEntry = { batch: FakeBatch | null; tasks: unknown[]; tasksLoaded: boolean; expanded: boolean }
 
 function fakeMonitor(entries: Record<string, FakeEntry>) {
-  return { state: { dateRange: null, entries, order: Object.keys(entries), listedIds: [], pending: {} }, setDateRange() {} }
+  const setExpandedCalls: Array<[string, boolean]> = []
+  return { state: { dateRange: null, entries, order: Object.keys(entries), listedIds: [], pending: {} }, setDateRange() {}, setExpandedCalls,
+    setExpanded(id: string, expanded: boolean) { setExpandedCalls.push([id, expanded]) } }
 }
 
 async function mountBoard(monitor: ReturnType<typeof fakeMonitor>) {
   const filename = fileURLToPath(new URL('../src/components/BatchBoard.vue', import.meta.url))
-  const source = (await readFile(filename, 'utf8')).replace('</script>', `defineExpose({batchTitle, visibleTasks, taskNumbers, missingOnly, disputedOnly})\n</script>`)
+  const source = (await readFile(filename, 'utf8')).replace('</script>', `defineExpose({batchTitle, visibleTasks, taskNumbers, missingOnly, disputedOnly, expandedNames})\n</script>`)
   const compiled = compileScript(parse(source, { filename }).descriptor, { id: 'BatchBoard' })
   const code = ts.transpileModule(compiled.content, { compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext } }).outputText
     .replace(/from ['"]([^'"]+)['"]/g, (_: string, specifier: string) => {
@@ -110,5 +112,22 @@ test('batch board keeps full-batch file numbers through filtering, refresh and f
     assert.equal(vm.taskNumbers.other, 1)
     assert.deepEqual(ids('not-loaded'), [])
     assert.deepEqual(tasks.map(item => item.task_id), ['ten', 'two', 'one'], 'source arrays stay untouched')
+  } finally { app.unmount(); await flush() }
+})
+
+test('collapse-all folds every session-known batch and write-backs honor membership', async () => {
+  const entry = (expanded: boolean): FakeEntry => ({ batch: null, tasks: [], tasksLoaded: true, expanded })
+  const monitor = vue.reactive(fakeMonitor({ stale: entry(true), listed: entry(true), folded: entry(false) }))
+  monitor.state.listedIds = ['listed', 'folded']
+  const { app, vm } = await mountBoard(monitor)
+  try {
+    assert.deepEqual(vm.expandedNames, ['stale', 'listed'], 'getter spans session-known order, not just the listed page')
+    vm.expandedNames = []
+    assert.deepEqual(monitor.setExpandedCalls, [['stale', false], ['listed', false], ['folded', false]],
+      'collapse-all must also fold expanded batches that fell off the current page/date filter')
+    monitor.setExpandedCalls.length = 0
+    vm.expandedNames = ['listed']
+    assert.deepEqual(monitor.setExpandedCalls, [['stale', false], ['listed', true], ['folded', false]],
+      'a single header toggle write-back must keep its own members open')
   } finally { app.unmount(); await flush() }
 })

@@ -42,7 +42,7 @@ export function expiryText(iso?: string | null): string {
   if (!iso) return ''
   const value = new Date(iso)
   if (!Number.isFinite(value.getTime())) return ''
-  return `最近材料 ${formatTime(iso)} 到期清理`
+  return `${formatTime(iso).slice(0, 10)} 到期清理`
 }
 
 const progressLabels: Record<TaskStatus, string> = {

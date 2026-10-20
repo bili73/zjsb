@@ -50,7 +50,7 @@ test('display timestamps use Shanghai across UTC midnight and explicit offsets',
 })
 
 test('expiry displays only server deadlines and never without a seven-day fallback', () => {
-  assert.equal(expiryText('2026-10-03T18:00:00Z'), '最近材料 2026-10-04 02:00:00 到期清理')
+  assert.equal(expiryText('2026-10-03T18:00:00Z'), '2026-10-04 到期清理')
   assert.equal(expiryText(null), '永不自动清除')
   for (const value of [undefined, '', 'broken']) assert.equal(expiryText(value), '')
 })

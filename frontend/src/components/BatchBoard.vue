@@ -65,7 +65,8 @@ const isTableEntry = (entry: BatchEntry) => entry.tasks.some(task => task.doc_ty
 
 const expandedNames = computed<string[]>({
   get: () => props.monitor.state.order.filter(id => props.monitor.state.entries[id]?.expanded),
-  set: names => { props.monitor.state.listedIds.forEach(id => props.monitor.setExpanded(id, names.includes(id))) },
+  // setter 与 getter 同源遍历 order：翻页/换日期后掉出列表的已展开批次也能被「全部收起」折起，避免按钮对陈旧状态失效。
+  set: names => { props.monitor.state.order.forEach(id => props.monitor.setExpanded(id, names.includes(id))) },
 })
 
 const taskTagTypes: Record<TaskStatus, 'primary' | 'success' | 'warning' | 'danger' | 'info'> = {
@@ -93,10 +94,9 @@ function batchMeta(batchId: string) {
   if (!entry) return ''
   const batch = entry.batch
   const parts = [`${batch?.file_count ?? entry.tasks.length} 个文件`]
-  if (batch?.need_review_count) parts.push(`待核对 ${batch.need_review_count}`)
   if (batch?.failed_count) parts.push(`失败 ${batch.failed_count}`)
   if (entryRunning(entry)) parts.push('执行中')
-  parts.push(`创建于 ${formatTime(batch?.created_at)}（UTC+8）`)
+  parts.push(`创建于 ${formatTime(batch?.created_at).slice(0, 16)}`)
   const expiry = expiryText(batch?.expires_at)
   if (expiry) parts.push(expiry)
   return parts.join(' · ')
@@ -291,6 +291,7 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
       <span v-if="monitor.state.lastCheckedAt" class="poll-hint">上次检查 {{ formatTime(monitor.state.lastCheckedAt) }}</span>
       <div class="toolbar-spacer" />
       <span class="board-actions" data-guide="batch-refresh">
+        <el-button v-if="expandedNames.length" @click="expandedNames = []">全部收起</el-button>
         <el-button :icon="RefreshRight" @click="monitor.start()">刷新</el-button>
       </span>
     </div>
@@ -317,12 +318,12 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
               <el-tag size="small" :type="entry.batch ? batchTagTypes[entry.batch.status] : 'info'" effect="light">
                 {{ entry.batch ? batchLabels[entry.batch.status] : '已提交' }}
               </el-tag>
-              <el-tag v-if="entryNeedsReview(entry)" size="small" type="warning" effect="plain">有待核对</el-tag>
+              <el-tag v-if="entryNeedsReview(entry)" size="small" type="warning" effect="plain">{{ entry.batch?.need_review_count ? `待核对 ${entry.batch.need_review_count}` : '待核对' }}</el-tag>
               <el-tag v-if="entry.tasksLoaded && missingTasks[id]?.length" size="small" type="danger" effect="light">{{ missingTasks[id]?.length }} 个任务缺必填</el-tag>
               <el-tag v-else-if="!entry.tasksLoaded" size="small" type="info" effect="plain">必填检查中</el-tag>
               <el-tag v-if="entry.tasksLoaded && disputedTasks[id]?.length" size="small" type="warning" effect="light">{{ disputedTasks[id]?.length }} 个任务有异议</el-tag>
               <span class="batch-meta">{{ batchMeta(id) }}</span>
-              <span v-if="entry.batch" class="batch-meta batch-owner">上传人：{{ batchOwnerLabel(entry.batch.owner) }}</span>
+              <span v-if="entry.batch && isAdmin" class="batch-meta batch-owner">上传人：{{ batchOwnerLabel(entry.batch.owner) }}</span>
             </span>
           </template>
 

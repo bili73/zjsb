@@ -18,7 +18,7 @@ Task的`queued_at:string|null`为本次入队ISO时间（迁移前旧任务为nu
 
 批次按上传账号的不可变ID隔离：管理员看全部，操作员/只读仅看自己的。列表先限制归属再计算total和分页，日期筛选不改变隔离；全部Task结果/原图/复核/取消/重跑/完整字段/导出接口独立校验，越权与不存在ID统一404，混合账号导出整次拒绝。批次删除仍仅管理员；材料目录及必填设置仍共享。账号切换清空任务、结果及预览，旧会话的迟到读取和写响应不得回填新会话。
 
-Batch新增owner={user_id:string|null,username:string|null,display_name:string|null,account_exists:boolean}，列表与详情同源。account_exists=true时三个身份字段均非空；显示“上传人：姓名（账号）”。删除账号后保留原ID及删除前加密署名，显示“姓名（账号，已删除）”；无法恢复姓名的历史ID显示“历史账号（未关联）”，归属不明显示“未知上传人”，两者仅管理员可见。旧服务缺owner时前端兼容显示未知，不推测归属。修改姓名按下一次读取更新批次，管理员修改自己时即时更新顶部姓名。
+Batch新增owner={user_id:string|null,username:string|null,display_name:string|null,account_exists:boolean}，列表与详情同源。account_exists=true时三个身份字段均非空；显示“上传人：姓名（账号）”，该标注行仅管理员可见（普通账号列表只含自己的批次）。删除账号后保留原ID及删除前加密署名，显示“姓名（账号，已删除）”；无法恢复姓名的历史ID显示“历史账号（未关联）”，归属不明显示“未知上传人”，两者仅管理员可见。旧服务缺owner时前端兼容显示未知，不推测归属。修改姓名按下一次读取更新批次，管理员修改自己时即时更新顶部姓名。
 
 管理员在展开的批次中可“删除批次”，需二次确认，待人工核对也可删除；未加载完整任务或包含排队/运行任务时禁用。DELETE /batches/{batch_id}提交{versions:[{task_id,run_id,expected_revision}]}，使用确认框打开时冻结的完整快照。成功200返回{batch_id,task_ids,cleanup_pending}，移除列表、选择和原图缓存，关闭对应详情，作废迟到读取并保留日期范围；409刷新核对后重新确认，不盲重试。cleanup_pending=true须明确提示记录已删除但文件待维护清理。操作员/只读不显示删除入口，后端仍独立校验管理员权限。
 
