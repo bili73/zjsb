@@ -65,6 +65,9 @@ class CertificateRecoveryPipelineTests(unittest.TestCase):
         self.assertLess(self.calls[1]['size'][1], self.calls[0]['size'][1])
         self.assertLessEqual(self.calls[1]['size'][0] / self.calls[1]['size'][1], 2.3)
         self.assertEqual(self.calls[1]['generation_timeout_seconds'], 20.)
+        self.assertNotIn('batch_policy', self.calls[0]['context'])
+        self.assertEqual(self.calls[1]['context']['batch_policy'], 'single')
+        self.assertEqual(self.attempts[1]['batch_policy'], 'single')
         self.assertLessEqual(self.calls[1]['timeout'], self.calls[0]['timeout'])
         for key, value in [('name', '测试甲'), ('school_name', '示例大学'), ('certificate_no', '000123')]:
             self.assertEqual(fields[key]['value'], value)

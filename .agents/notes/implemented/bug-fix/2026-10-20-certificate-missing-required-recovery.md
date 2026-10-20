@@ -20,6 +20,8 @@ Observed page context extends to width/height at most2.3 when possible, avoiding
 
 ## Related-note audit
 
+The [single-image recovery barrier](2026-10-20-certificate-recovery-single-image.md) narrows grouping eligibility after real concurrent evidence: this local GLM recovery uses batch_policy=single in private context and encrypted attempts, so it never joins another image. Ordinary requests retain batching and FIFO is unchanged. The original serial evidence below stays separate from that concurrent qualification.
+
 The [evidence-bound mapper](../../implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md) and [diploma mapping](../../implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md) partially overlap: keep their conservative value/alias/conflict/date semantics rather than adding sample-specific defaults. [Configurable requirements](../../implemented/feature/2026-10-10-configurable-required-fields.md), [bounded medical recognition](../../implemented/bug-fix/2026-10-08-bounded-medical-recognition.md) and [runtime batches](../../implemented/architecture/2026-10-19-runtime-two-image-batches.md) retain their snapshot, task-budget and ownership contracts. The [cancelled certificate positioning proposal](../../rejected/feature/2026-10-09-certificate-field-localization.md) remains rejected: this authorized recovery uses the already installed helper, with no restored positioning API, UI, helper dependency or historical rewrite. These notes partly overlap or are unrelated; none is wholly superseded or archived. Scope/topic searches find no competing missing-required-field recovery owner.
 
 ## Alternatives considered

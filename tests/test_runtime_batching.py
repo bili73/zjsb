@@ -131,9 +131,55 @@ class BatchQueueTests(unittest.TestCase):
         queues = ModelQueues(manager)
         self.addCleanup(queues.close)
         return manager, queues
-    def submit(self, queues, name, task='ocr'):
+    def submit(self, queues, name, task='ocr', *, context=None, duration=5):
         return queues.submit('glm_ocr',dict(image='synthetic',task=task),task_id=name,run_id=name,
-                             deadline=time.monotonic()+5)
+                             context=context, deadline=time.monotonic()+duration)
+
+    def test_recovery_is_a_single_image_fifo_barrier_at_either_position(self):
+        for names, expected in [
+            (['recovery', 'a', 'b'], [['recovery'], ['a', 'b']]),
+            (['a', 'recovery', 'b', 'c'], [['a'], ['recovery'], ['b', 'c']]),
+            (['recovery-one', 'recovery-two', 'a', 'b'], [['recovery-one'], ['recovery-two'], ['a', 'b']]),
+        ]:
+            with self.subTest(names=names):
+                manager, queues = self.make()
+                first = self.submit(queues, 'busy')
+                self.assertEqual(manager.entered.get(timeout=1), ['busy'])
+                pending = [self.submit(queues, name, context={'batch_policy': 'single'}
+                           if name.startswith('recovery') else None) for name in names]
+                manager.release.set()
+                first.result(1)
+                self.assertEqual([f.result(1)['text'] for f in pending], names)
+                self.assertEqual(manager.calls, [['busy'], *expected])
+
+    def test_pending_recovery_cancel_and_expiry_do_not_stop_another_call_or_break_pairing(self):
+        manager, queues = self.make()
+        first = self.submit(queues, 'busy')
+        self.assertEqual(manager.entered.get(timeout=1), ['busy'])
+        cancelled = self.submit(queues, 'cancel', context={'batch_policy': 'single'})
+        expired = self.submit(queues, 'expire', context={'batch_policy': 'single'}, duration=.05)
+        a, b = self.submit(queues, 'a'), self.submit(queues, 'b')
+        queues.stop_run('cancel', 'cancel')
+        with self.assertRaisesRegex(RuntimeFailure, 'CANCELLED'):
+            cancelled.result(1)
+        with self.assertRaisesRegex(RuntimeFailure, 'EXTRACT_TIMEOUT'):
+            expired.result(1)
+        self.assertFalse(first.done())
+        manager.release.set()
+        for future in (first, a, b):
+            future.result(1)
+        self.assertEqual(manager.calls, [['busy'], ['a', 'b']])
+
+    def test_single_image_recovery_does_not_block_the_paddle_lane(self):
+        manager, queues = self.make()
+        recovery = self.submit(queues, 'recovery', context={'batch_policy': 'single'})
+        self.assertEqual(manager.entered.get(timeout=1), ['recovery'])
+        medical = queues.submit('paddleocr_vl', dict(image='synthetic', task='ocr'),
+                                task_id='medical', run_id='medical', deadline=time.monotonic()+5)
+        self.assertEqual(medical.result(1)['text'], 'medical')
+        self.assertFalse(recovery.done())
+        manager.release.set()
+        recovery.result(1)
 
     def test_single_starts_immediately_then_existing_backlog_pairs_without_wait(self):
         manager, queues = self.make()

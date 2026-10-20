@@ -225,7 +225,8 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                                    cache_hit=cached is not None, inference_performed=cached is None,
                                    timeout_seconds=max(0., deadline - started))
                     if recovering:
-                        attempt.update(recovery_fields=recoveries[region_id], recovery_reason='MISSING_REQUIRED_FIELDS')
+                        attempt.update(recovery_fields=recoveries[region_id], recovery_reason='MISSING_REQUIRED_FIELDS',
+                                       batch_policy='single')
                     if page.image_preprocessing is not None:
                         attempt['image_preprocessing'] = dict(page.image_preprocessing)
                     fatal_error, timed_out = None, False
@@ -237,6 +238,8 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                                            reused_from_attempt=cached['attempt'])
                         else:
                             extra = {'context': dict(page=page.index, region_id=region_id, stage=stage)} if accepts_context else {}
+                            if recovering and accepts_context:
+                                extra['context']['batch_policy'] = 'single'
                             if soft_timeout is not None and accepts_generation_timeout:
                                 extra['generation_timeout_seconds'] = soft_timeout
                             prediction = recognize(used_model, base64.b64encode(png).decode('ascii'),

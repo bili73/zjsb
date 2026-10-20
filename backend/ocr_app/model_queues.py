@@ -139,7 +139,11 @@ class ModelQueues:
                     return
                 pending = self._pending[model]
                 selected = [pending.popleft()]
-                if pending and compatible(selected[0].payload, pending[0].payload):
+                # Recovery crops keep document context better in a single-image call.
+                # Never skip a marked head to find a different batch partner.
+                if (pending and selected[0].context.get('batch_policy') != 'single'
+                        and pending[0].context.get('batch_policy') != 'single'
+                        and compatible(selected[0].payload, pending[0].payload)):
                     selected.append(pending.popleft())
                 self._active[model] = selected
             live = []

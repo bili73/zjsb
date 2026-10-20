@@ -124,6 +124,23 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual([t['doc_type'] for t in self.remaining],['TABLE'])
         self.scheduler.close()
 
+    def test_local_recovery_policy_survives_the_private_document_message(self):
+        self.scheduler.poll()
+        job = next(job for job in self.scheduler.jobs.values() if job.lane == 'certificate')
+        future = Future()
+        self.models.submit.return_value = future
+        context = dict(page=1, region_id='crop', stage='OCR', batch_policy='single')
+        job.child.messages.put(dict(id=1, op='recognize', model='glm_ocr', task='ocr',
+                                    image_base64='synthetic', timeout=20, context=context))
+        self.scheduler.poll()
+        self.assertEqual(self.models.submit.call_args.kwargs['context'], context)
+        self.assertEqual(self.models.submit.call_args.kwargs['task_id'], job.task['id'])
+        self.assertEqual(self.models.submit.call_args.kwargs['run_id'], job.task['run_id'])
+        future.set_result(dict(text='synthetic crop', batch_size=1))
+        self.scheduler.poll()
+        self.assertEqual(job.child.sent[0]['result']['batch_size'], 1)
+        self.scheduler.close()
+
     def test_pending_stop_never_blocks_poll_or_touches_other_child(self):
         self.scheduler.poll()
         jobs = {j.task['id']: j for j in self.scheduler.jobs.values()}

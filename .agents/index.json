@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-20T03:17:44.737Z",
+  "generatedAt": "2026-10-20T03:44:50.927Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 148,
+    "activeNotes": 150,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 785,
+    "relations": 791,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 143,
+      "implemented": 145,
       "rejected": 3
     },
     "staleNotes": []
@@ -423,6 +423,7 @@
         "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
         "implemented/bug-fix/2026-10-10-measured-task-progress.md",
         "implemented/bug-fix/2026-10-16-bounded-http-writes.md",
+        "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
@@ -682,6 +683,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/architecture/2026-10-16-account-fair-document-queue.md",
         "implemented/testing/2026-10-19-windows-model-batching.md",
@@ -695,6 +697,7 @@
         "implemented/architecture/2026-10-16-account-fair-document-queue.md",
         "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md",
         "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+        "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
         "implemented/testing/2026-10-19-windows-model-batching.md"
       ],
       "lastVerified": "2026-10-19",
@@ -705,7 +708,7 @@
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Expose an internal batch-size limit of1 or2, default1 for direct/benchmark RuntimeConfig callers and2 for the qualified Windows launcher. Successful dual startup enables at most three short single-page documents per existing lane and at mos",
-      "bodySha256": "95ac11b7bae9c1ca",
+      "bodySha256": "275a8974c12ed6d7",
       "lines": {
         "title": 1,
         "status": 3,
@@ -730,15 +733,15 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 30
+            "line": 31
           },
           {
             "title": "Testing",
-            "line": 39
+            "line": 40
           },
           {
             "title": "Consequences",
-            "line": 49
+            "line": 50
           }
         ]
       },
@@ -3753,7 +3756,8 @@
       "supersededBy": [],
       "cites": [
         "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
-        "implemented/bug-fix/2026-10-20-help-toc-groups.md"
+        "implemented/bug-fix/2026-10-20-help-toc-groups.md",
+        "implemented/bug-fix/2026-10-20-save-failure-locate.md"
       ],
       "citedBy": [],
       "lastVerified": "2026-10-19",
@@ -3764,7 +3768,7 @@
         "rule": "最近复核 2026-10-19"
       },
       "summary": "- Options load independently with their own loading/error state and a 重新加载筛选项 retry (options GET is idempotent per the backend note); the first page always fires. The retry stays mounted while in flight — optionsError clears only on success",
-      "bodySha256": "f87651b110d0d3fc",
+      "bodySha256": "2994764c412c22a3",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4558,6 +4562,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
         "implemented/feature/2026-10-10-configurable-required-fields.md",
@@ -4568,6 +4573,7 @@
       "citedBy": [
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+        "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
         "implemented/feature/2026-10-10-configurable-required-fields.md"
       ],
       "lastVerified": "2026-10-20",
@@ -4578,7 +4584,7 @@
         "rule": "最近复核 2026-10-20"
       },
       "summary": "The pipeline inspects missing editable required fields after primary OCR for single-page DIPLOMA/DEGREE_CERT documents. It uses the administrator required-field snapshot at recognition start, excluding optional fields and fields with existi",
-      "bodySha256": "b108d0aa60150c89",
+      "bodySha256": "91f5ad718e24fb6f",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4603,19 +4609,100 @@
           },
           {
             "title": "Alternatives considered",
-            "line": 25
+            "line": 27
           },
           {
             "title": "Verification",
-            "line": 34
+            "line": 36
           },
           {
             "title": "Consequences",
-            "line": 42
+            "line": 44
           }
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
+      "title": "Keep certificate recovery crops out of two-image batches",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-20",
+      "scope": [
+        "backend/ocr_app/pipeline.py",
+        "backend/ocr_app/model_queues.py",
+        "tests/test_certificate_recovery.py",
+        "tests/test_runtime_batching.py",
+        "tests/test_task_scheduler.py",
+        "tests/test_worker_pipeline.py",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "ARCHITECTURE.md",
+        "CHANGELOG.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+        "implemented/architecture/2026-10-08-independent-model-queues.md"
+      ],
+      "citedBy": [
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md"
+      ],
+      "lastVerified": "2026-10-20",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-20"
+      },
+      "summary": "The pipeline adds a private context marker batch_policy=single only to required-field recovery requests and records that policy in the encrypted attempt. Existing worker and scheduler context forwarding carries it to ModelQueues. A marked F",
+      "bodySha256": "c8a3084722b271ce",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 13
+          },
+          {
+            "title": "Related-note audit",
+            "line": 19
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 23
+          },
+          {
+            "title": "Verification",
+            "line": 30
+          },
+          {
+            "title": "Consequences",
+            "line": 40
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/bug-fix/2026-10-20-help-toc-groups.md",
@@ -4680,6 +4767,71 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-20-help-toc-groups.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-20-save-failure-locate.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-20-save-failure-locate.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-20-save-failure-locate.md",
+      "title": "Locate save failures by expanding and scrolling to the error block",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-20",
+      "scope": [
+        "frontend/src/reveal.ts",
+        "frontend/src/components/ReviewEditor.vue",
+        "frontend/src/components/TaskResultDrawer.vue",
+        "frontend/tests/review-save-locate.test.ts",
+        "frontend/tests/detail-loading.test.ts",
+        "frontend/tests/backpressure-components.test.ts"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-19-audit-panel-recovery.md"
+      ],
+      "lastVerified": "2026-10-20",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-20"
+      },
+      "summary": "- New shared helper revealAnchor(el, { block, flash }) in reveal.ts (scroll with prefers-reduced-motion handling; optional focus handoff plus jump-flash), extracted from ReviewEditor's issue-jump watch so both locate surfaces share one mech",
+      "bodySha256": "736d3bb0f5897c5a",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 9
+          },
+          {
+            "title": "Decision",
+            "line": 15
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 24
+          },
+          {
+            "title": "Verification",
+            "line": 30
+          },
+          {
+            "title": "Consequences",
+            "line": 34
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-20-save-failure-locate.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -12797,6 +12949,11 @@
     {
       "type": "cite",
       "from": "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+      "to": "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
       "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
     },
     {
@@ -13726,6 +13883,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-audit-panel-recovery.md",
+      "to": "implemented/bug-fix/2026-10-20-save-failure-locate.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
       "to": "implemented/feature/2026-10-16-numbered-list-pagination.md"
     },
@@ -13882,6 +14044,11 @@
     {
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+      "to": "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
       "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
     },
     {
@@ -13908,6 +14075,21 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
       "to": "rejected/feature/2026-10-09-certificate-field-localization.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
+      "to": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
+      "to": "implemented/architecture/2026-10-19-runtime-two-image-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md",
+      "to": "implemented/architecture/2026-10-08-independent-model-queues.md"
     },
     {
       "type": "cite",

@@ -22,6 +22,7 @@ Keep API parsing, SQLite durability, required fields, human drafts and image loa
 
 ## Related decision audit
 
+- [Certificate recovery isolation](../bug-fix/2026-10-20-certificate-recovery-single-image.md) adds a private single-image barrier for required-field crops after observed label loss in two-row calls. Ordinary compatible requests still batch; no skipping, collection wait, model duplication, new public setting or altered task deadline is introduced.
 - [Independent model queues](2026-10-08-independent-model-queues.md) and [account-fair claiming](2026-10-16-account-fair-document-queue.md) partially overlap: replace their one-file/one-image ownership limit only in qualified Windows batch mode. Per-model exclusive execution, fairness, fallback queues and run fences remain.
 - [Windows qualification](../testing/2026-10-19-windows-model-batching.md) and [Paddle isolation](../bug-fix/2026-10-19-paddle-packed-image-isolation.md) provide experimental evidence, not runtime acceptance. Keep original failures and serial accuracy protocol.
 - [Bounded HTTP writes](../bug-fix/2026-10-16-bounded-http-writes.md), [detail loading](../bug-fix/2026-10-19-prioritized-detail-loading.md) and [API authorization](../bug-fix/2026-10-13-api-authorization-boundaries.md) retain their boundaries and tests.

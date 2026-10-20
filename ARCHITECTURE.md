@@ -10,7 +10,7 @@
 
 原件预览先读取版本绑定的来源引用，在SQLite写锁外读取及重新编码像素，并准备加密访问历史；最终短事务重验账号、归属和run/revision后提交历史，拒绝或回滚时清理准备文件。保留落盘保障及完整授权，不通过省略记录提升速度。诊断查询仅对文件集合及签名未变、完整且不超过8MiB的严重日志扫描复用内存结果；精确日期、过滤与分页照常执行，修改/新增/删除文件失效，损坏扫描不缓存，归档删除仍须读内容验证。冷查询仍扫描历史。边界及测量见[预览与诊断修复](.agents/notes/implemented/bug-fix/2026-10-19-preview-and-diagnostic-read-cost.md)。
 
-Windows运行时保留每模型单消费者FIFO和独占执行锁，每次生成最多2张相邻兼容请求，不等待凑批、不跳过不兼容队首；双模型可同时运行。单页非体检材料每通道最多3份准备/执行；体检报告、多页及页数未知材料独占通道，公平队首暂不能入场时保留QUEUED及账号游标，不提前计算180秒预算。每行独立归属、取消、截止和完成通知；取消未获确认或共享模型故障须明确失败并确认清理，不能伪造同批其他任务成功。Windows默认2，可显式降到1；单模型/启动降级和独立准确率基准仍为1。决定与真实HTTP/GPU验收见[运行时批处理](.agents/notes/implemented/architecture/2026-10-19-runtime-two-image-batches.md)。
+Windows运行时保留每模型单消费者FIFO和独占执行锁，每次生成最多2张相邻兼容请求，不等待凑批、不跳过不兼容队首；双模型可同时运行。证书缺项局部补读通过私有context的batch_policy=single固定单张生成；普通请求不能与它合批，也不能越过它找伙伴，普通证件主识别仍可两张合批。单页非体检材料每通道最多3份准备/执行；体检报告、多页及页数未知材料独占通道，公平队首暂不能入场时保留QUEUED及账号游标，不提前计算180秒预算。每行独立归属、取消、截止和完成通知；取消未获确认或共享模型故障须明确失败并确认清理，不能伪造同批其他任务成功。Windows默认2，可显式降到1；单模型/启动降级和独立准确率基准仍为1。决定与真实HTTP/GPU验收见[运行时批处理](.agents/notes/implemented/architecture/2026-10-19-runtime-two-image-batches.md)和[局部补读隔离](.agents/notes/implemented/bug-fix/2026-10-20-certificate-recovery-single-image.md)。
 
 原版Paddle的SDPA视觉attention按cu_seqlens逐图隔离，RoPE和已有mask同步切片，语言解码可批量；单图沿用原路径。离线1/2/4资格试验中，修复后8张合成样本均与单图一致，4批吞吐约为本轮单图的2.44倍。权重/模型缓存/环境未改，初轮不一致及两份长报告错误并行的失败证据保留；不把Windows结果推用于Mac。见[初轮试验](.agents/notes/implemented/testing/2026-10-19-windows-model-batching.md)及[隔离修复](.agents/notes/implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md)。
 

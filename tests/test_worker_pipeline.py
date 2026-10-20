@@ -99,6 +99,18 @@ class WorkerPipelineTests(unittest.TestCase):
         self.assertEqual(pipeline.call_args.kwargs['required_overrides'], policy['overrides'])
         self.store.required_policy.assert_called_once_with()
 
+    def test_local_recovery_policy_is_forwarded_to_the_model_owner(self):
+        context = dict(page=1, region_id='crop', stage='OCR', batch_policy='single')
+        def pipeline(*args, **kwargs):
+            kwargs['recognize']('glm_ocr', 'synthetic', context=context)
+            return dict(status='NEED_REVIEW')
+        with patch('ocr_app.pipeline.process_document', side_effect=pipeline):
+            runtime_worker.process_task(self.store, self.manager, dict(TASK, doc_type='DIPLOMA'), self.logger)
+        passed = self.manager.recognize.call_args.kwargs['context']
+        self.assertEqual(passed['batch_policy'], 'single')
+        self.assertEqual(passed['task_id'], TASK['id'])
+        self.assertEqual(passed['run_id'], TASK['run_id'])
+
     def test_main_closes_manager_and_stops_claiming_after_fatal_task(self):
         inbox = Mock()
         inbox.get.side_effect = [queue.Empty(), None]
