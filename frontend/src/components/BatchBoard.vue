@@ -13,7 +13,7 @@ import type { Batch, BatchStatus, DocProfile, IdCardPairing, Task, TaskStatus } 
 import { errorMessages } from '../diagnostics.ts'
 import { entryNeedsReview, entryRunning } from '../monitor.ts'
 import type { BatchEntry, Monitor } from '../monitor.ts'
-import { batchOwnerLabel, expiryText, fairQueueHint, formatTime, sortBatchTasks, taskProgressView } from '../presentation.ts'
+import { batchOwnerLabel, expiryText, formatTime, sortBatchTasks, taskProgressView } from '../presentation.ts'
 import { groupBatchEntries, periodBounds, rangeSuffix } from '../batchCalendar.ts'
 import type { BatchPeriod } from '../batchCalendar.ts'
 
@@ -53,7 +53,6 @@ const entries = computed(() => props.monitor.state.listedIds
   .map(id => ({ id, entry: props.monitor.state.entries[id] }))
   .filter((item): item is { id: string; entry: BatchEntry } => item.entry !== undefined))
 const groups = computed(() => groupBatchEntries(entries.value, period.value))
-const hasQueuedTasks = computed(() => entries.value.some(({ entry }) => entry.tasks.some(task => task.status === 'QUEUED')))
 const missingTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, entry.tasks.filter(hasMissingRequiredFields)])))
 const disputedTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, entry.tasks.filter(hasExportDisputes)])))
 const orderedTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, sortBatchTasks(entry.tasks)])))
@@ -305,148 +304,145 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
       :title="`与服务连接中断，正在自动重试（第 ${monitor.state.failureCount} 次，间隔逐次加长）…`"
     />
 
-    <div data-guide="batch-list" class="guide-batch-hint">展开批次查看文件、导出检查与本批次指引。</div>
-    <p v-if="hasQueuedTasks" class="guide-batch-hint">{{ fairQueueHint }}将鼠标移到“处理进度”可查看入队和实际开始时间。</p>
-    <el-empty v-if="entries.length === 0" :description="anchor ? '该时间段暂无批次，可更换日期或查看全部日期。' : '暂无批次；切换到「上传识别」提交第一批文件。'" />
+    <div data-guide="batch-list" class="batch-list-area">
+      <el-empty v-if="entries.length === 0" :description="anchor ? '该时间段暂无批次，可更换日期或查看全部日期。' : '暂无批次；切换到「上传识别」提交第一批文件。'" />
 
-    <el-collapse v-else v-model="expandedNames" class="batch-collapse">
-      <section v-for="group in groups" :key="group.key" class="batch-time-group">
-        <h3 class="group-heading">{{ group.label }} <span>{{ group.entries.length }} 个批次</span></h3>
-      <el-collapse-item v-for="{ id, entry } in group.entries" :key="id" :name="id">
-        <template #title>
-          <span class="batch-title">
-            <span class="batch-name">{{ entry.batch ? batchTitle(id) : '新批次 · 创建中' }}</span>
-            <el-tag size="small" :type="entry.batch ? batchTagTypes[entry.batch.status] : 'info'" effect="light">
-              {{ entry.batch ? batchLabels[entry.batch.status] : '已提交' }}
-            </el-tag>
-            <el-tag v-if="entryNeedsReview(entry)" size="small" type="warning" effect="plain">有待核对</el-tag>
-            <el-tag v-if="entry.tasksLoaded && missingTasks[id]?.length" size="small" type="danger" effect="light">{{ missingTasks[id]?.length }} 个任务缺必填</el-tag>
-            <el-tag v-else-if="!entry.tasksLoaded" size="small" type="info" effect="plain">必填检查中</el-tag>
-            <el-tag v-if="entry.tasksLoaded && disputedTasks[id]?.length" size="small" type="warning" effect="light">{{ disputedTasks[id]?.length }} 个任务有异议</el-tag>
-            <span class="batch-meta">{{ batchMeta(id) }}</span>
-            <span v-if="entry.batch" class="batch-meta batch-owner">上传人：{{ batchOwnerLabel(entry.batch.owner) }}</span>
-          </span>
-        </template>
-
-        <div :data-guide-scope="`batch-${id}`">
-        <div class="batch-actions">
-          <ExportControls :api="api" :tasks="entry.tasks" :selected="entry.tasks.filter(t => (selected[id] ?? []).some(s => s.task_id === t.task_id))" :batch-id="id" :batch="entry.batch ?? undefined" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
-          <OperationGuide label="本批次指引" :context="entry.batch && isPersonPackage(entry.batch) ? 'package' : 'batch'" :scope="`batch-${id}`" :can-write="canWrite" :is-admin="isAdmin" :active="active !== false && expandedNames.includes(id) && !appendTarget" />
-          <el-tooltip v-if="isAdmin" placement="top" :disabled="!deleteBlockReason(entry)" :content="deleteBlockReason(entry)">
-            <span>
-              <el-button type="danger" plain :icon="Delete" :loading="acting === `delete:${id}`" :disabled="!!acting || !!deleteBlockReason(entry)" @click="deleteBatch(id)">删除批次</el-button>
+      <el-collapse v-else v-model="expandedNames" class="batch-collapse">
+        <section v-for="group in groups" :key="group.key" class="batch-time-group">
+          <h3 class="group-heading">{{ group.label }} <span>{{ group.entries.length }} 个批次</span></h3>
+        <el-collapse-item v-for="{ id, entry } in group.entries" :key="id" :name="id">
+          <template #title>
+            <span class="batch-title">
+              <span class="batch-name">{{ entry.batch ? batchTitle(id) : '新批次 · 创建中' }}</span>
+              <el-tag size="small" :type="entry.batch ? batchTagTypes[entry.batch.status] : 'info'" effect="light">
+                {{ entry.batch ? batchLabels[entry.batch.status] : '已提交' }}
+              </el-tag>
+              <el-tag v-if="entryNeedsReview(entry)" size="small" type="warning" effect="plain">有待核对</el-tag>
+              <el-tag v-if="entry.tasksLoaded && missingTasks[id]?.length" size="small" type="danger" effect="light">{{ missingTasks[id]?.length }} 个任务缺必填</el-tag>
+              <el-tag v-else-if="!entry.tasksLoaded" size="small" type="info" effect="plain">必填检查中</el-tag>
+              <el-tag v-if="entry.tasksLoaded && disputedTasks[id]?.length" size="small" type="warning" effect="light">{{ disputedTasks[id]?.length }} 个任务有异议</el-tag>
+              <span class="batch-meta">{{ batchMeta(id) }}</span>
+              <span v-if="entry.batch" class="batch-meta batch-owner">上传人：{{ batchOwnerLabel(entry.batch.owner) }}</span>
             </span>
-          </el-tooltip>
-        </div>
-        <PersonNameEditor v-if="entry.batch && isPersonPackage(entry.batch)" :batch="entry.batch" :monitor="monitor" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
-        <div v-if="entry.batch && isPersonPackage(entry.batch)" class="package-toolbar" data-guide="package-pairing" :class="{ 'has-warning': entry.batch.warnings?.length }">
-          <el-icon class="package-icon"><User /></el-icon>
-          <el-tag size="small" :type="pairingTagTypes[entry.batch.id_card_pairing ?? 'not_provided']" effect="light">{{ pairingLabels[entry.batch.id_card_pairing ?? 'not_provided'] }}</el-tag>
-          <span class="poll-hint">配套仅检查两面材料是否存在；请人工核对归属，不影响必填导出条件。</span>
-          <span class="toolbar-spacer" />
-          <el-button v-if="canWrite" data-guide="package-append" type="primary" plain :icon="UploadFilled" @click="appendTarget = { ...entry.batch }">补充上传</el-button>
-        </div>
-        <div class="required-toolbar">
-          <span class="filter-checks" data-guide="batch-filter">
-            <el-check-tag v-if="entry.tasksLoaded" class="tag-missing" :checked="!!missingOnly[id]" @change="value => setMissingOnly(id, value)">{{ isTableEntry(entry) ? '只看导出待处理' : '只看必填未填' }}（{{ missingTasks[id]?.length ?? 0 }}）</el-check-tag>
-            <el-check-tag v-if="entry.tasksLoaded && !isTableEntry(entry)" class="tag-disputed" :checked="!!disputedOnly[id]" @change="value => setDisputedOnly(id, value)">只看有异议（{{ disputedTasks[id]?.length ?? 0 }}）</el-check-tag>
-          </span>
-          <span v-if="!entry.tasksLoaded" class="poll-hint">正在获取任务，检查必填信息…</span>
-          <span class="poll-hint">{{ isTableEntry(entry) ? '完整表格可直接导出；有修改时才需保存。' : '补齐并保存后标记自动更新；' }}筛选不改变“本批次全部”的导出范围。</span>
-        </div>
-        <p data-guide="batch-tasks" class="guide-batch-hint">文件按文件名自然排序；筛选后保留原序号。点击文件行或操作列中的按钮查看识别结果。</p>
-        <el-table :data="visibleTasks(id)" row-key="task_id" :row-class-name="({ row }) => hasMissingRequiredFields(row as Task) || hasExportDisputes(row as Task) ? 'required-missing-row' : ''" @selection-change="rows => selected[id] = rows" @row-click="row => onRowClick(id, row)">
-          <template #empty>{{ missingOnly[id] || disputedOnly[id] ? '本批次没有符合筛选条件的任务' : entry.tasksLoaded ? '暂无任务' : '正在获取任务…' }}</template>
-          <el-table-column type="selection" width="45" :reserve-selection="true" />
-          <el-table-column label="序号" width="65" align="center">
-            <template #default="{ row }">{{ taskNumbers[row.task_id] }}</template>
-          </el-table-column>
-          <el-table-column label="文件" min-width="220">
-            <template #default="{ row }">
-              <div class="file-cell">
-                <span>{{ row.file_name ?? '（未提供文件名）' }}</span>
-                <span v-if="monitor.pendingNotice(row.task_id)" class="pending-note">{{ monitor.pendingNotice(row.task_id) }}</span>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="类型" width="110">
-            <template #default="{ row }">{{ row.doc_type ? docTypes[row.doc_type as keyof typeof docTypes] ?? row.doc_type : '—' }}</template>
-          </el-table-column>
-          <el-table-column label="状态" width="150">
-            <template #default="{ row }">
-              <span class="status-cell">
-                <el-tag size="small" :type="taskTagTypes[row.status as TaskStatus]" effect="light">{{ taskLabels[row.status as TaskStatus] }}</el-tag>
-                <el-tooltip v-if="row.error" placement="top" :content="errorTip(row as Task)">
-                  <el-icon class="status-warn"><WarningFilled /></el-icon>
-                </el-tooltip>
+          </template>
+
+          <div :data-guide-scope="`batch-${id}`">
+          <div class="batch-actions">
+            <ExportControls :api="api" :tasks="entry.tasks" :selected="entry.tasks.filter(t => (selected[id] ?? []).some(s => s.task_id === t.task_id))" :batch-id="id" :batch="entry.batch ?? undefined" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
+            <OperationGuide label="本批次指引" :context="entry.batch && isPersonPackage(entry.batch) ? 'package' : 'batch'" :scope="`batch-${id}`" :can-write="canWrite" :is-admin="isAdmin" :active="active !== false && expandedNames.includes(id) && !appendTarget" />
+            <el-tooltip v-if="isAdmin" placement="top" :disabled="!deleteBlockReason(entry)" :content="deleteBlockReason(entry)">
+              <span>
+                <el-button type="danger" plain :icon="Delete" :loading="acting === `delete:${id}`" :disabled="!!acting || !!deleteBlockReason(entry)" @click="deleteBatch(id)">删除批次</el-button>
               </span>
-            </template>
-          </el-table-column>
-          <el-table-column label="导出检查" min-width="220">
-            <template #default="{ row }">
-              <span v-if="runningStatuses.has(row.status)" class="poll-hint">识别中，尚未检查</span>
-              <template v-else-if="hasMissingRequiredFields(row as Task) || hasExportDisputes(row as Task)"><div v-if="hasMissingRequiredFields(row as Task)" class="required-fields-cell">
-                <el-tag size="small" type="danger" effect="light">{{ row.doc_type === 'TABLE' ? '导出待处理' : '必填未填' }}</el-tag>
-                <span class="missing-field-names">{{ requiredFieldLabels(row as Task, catalogue).join('、') || '请打开结果查看缺失项' }}</span>
-              </div>
-              <div v-if="hasExportDisputes(row as Task)" class="required-fields-cell">
-                <el-tag size="small" type="warning" effect="light">有异议</el-tag>
-                <span class="missing-field-names">{{ disputedFieldLabels(row as Task, catalogue).join('、') }}</span>
-              </div></template>
-              <el-tag v-else-if="row.export_ready === true" size="small" type="success" effect="plain">{{ row.doc_type === 'TABLE' ? '可直接导出' : '必填已齐' }}</el-tag>
-              <span v-else-if="row.export_blockers?.some((blocker: { field: string }) => ['task', 'doc_type'].includes(blocker.field))" class="poll-hint">暂无识别结果</span>
-              <span v-else class="poll-hint">尚未检查</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="处理进度" width="235">
-            <template #default="{ row }">
-              <el-tooltip v-if="progressViews[row.task_id]" placement="top" :disabled="!progressViews[row.task_id]!.tooltip" :content="progressViews[row.task_id]!.tooltip">
-                <div class="task-progress">
-                  <div class="task-progress__label">
-                    <span v-if="progressViews[row.task_id]!.active" class="rainbow-spinner task-progress__spin" aria-hidden="true"></span>
-                    <span>{{ progressViews[row.task_id]!.label }}</span>
-                  </div>
-                  <el-progress v-if="progressViews[row.task_id]!.percentage !== null"
-                    :percentage="progressViews[row.task_id]!.percentage!" :show-text="false" :stroke-width="6"
-                    :status="progressViews[row.task_id]!.incomplete > 0 ? 'warning' : undefined" aria-label="图像识别区域处理量" />
-                  <div v-if="progressViews[row.task_id]!.amount" class="task-progress__amount">{{ progressViews[row.task_id]!.amount }}</div>
-                  <div v-if="progressViews[row.task_id]!.incomplete > 0" class="task-progress__warning">{{ progressViews[row.task_id]!.incomplete }} 个区域不完整，请核对</div>
+            </el-tooltip>
+          </div>
+          <PersonNameEditor v-if="entry.batch && isPersonPackage(entry.batch)" :batch="entry.batch" :monitor="monitor" :can-write="canWrite" @unauthorized="emit('unauthorized')" />
+          <div v-if="entry.batch && isPersonPackage(entry.batch)" class="package-toolbar" data-guide="package-pairing" :class="{ 'has-warning': entry.batch.warnings?.length }">
+            <el-icon class="package-icon"><User /></el-icon>
+            <el-tag size="small" :type="pairingTagTypes[entry.batch.id_card_pairing ?? 'not_provided']" effect="light">{{ pairingLabels[entry.batch.id_card_pairing ?? 'not_provided'] }}</el-tag>
+            <span class="toolbar-spacer" />
+            <el-button v-if="canWrite" data-guide="package-append" type="primary" plain :icon="UploadFilled" @click="appendTarget = { ...entry.batch }">补充上传</el-button>
+          </div>
+          <div class="required-toolbar">
+            <span class="filter-checks" data-guide="batch-filter">
+              <el-check-tag v-if="entry.tasksLoaded" class="tag-missing" :checked="!!missingOnly[id]" @change="value => setMissingOnly(id, value)">{{ isTableEntry(entry) ? '只看导出待处理' : '只看必填未填' }}（{{ missingTasks[id]?.length ?? 0 }}）</el-check-tag>
+              <el-check-tag v-if="entry.tasksLoaded && !isTableEntry(entry)" class="tag-disputed" :checked="!!disputedOnly[id]" @change="value => setDisputedOnly(id, value)">只看有异议（{{ disputedTasks[id]?.length ?? 0 }}）</el-check-tag>
+            </span>
+            <span v-if="!entry.tasksLoaded" class="poll-hint">正在获取任务，检查必填信息…</span>
+          </div>
+          <el-table data-guide="batch-tasks" :data="visibleTasks(id)" row-key="task_id" :row-class-name="({ row }) => hasMissingRequiredFields(row as Task) || hasExportDisputes(row as Task) ? 'required-missing-row' : ''" @selection-change="rows => selected[id] = rows" @row-click="row => onRowClick(id, row)">
+            <template #empty>{{ missingOnly[id] || disputedOnly[id] ? '本批次没有符合筛选条件的任务' : entry.tasksLoaded ? '暂无任务' : '正在获取任务…' }}</template>
+            <el-table-column type="selection" width="45" :reserve-selection="true" />
+            <el-table-column label="序号" width="65" align="center">
+              <template #default="{ row }">{{ taskNumbers[row.task_id] }}</template>
+            </el-table-column>
+            <el-table-column label="文件" min-width="220">
+              <template #default="{ row }">
+                <div class="file-cell">
+                  <span>{{ row.file_name ?? '（未提供文件名）' }}</span>
+                  <span v-if="monitor.pendingNotice(row.task_id)" class="pending-note">{{ monitor.pendingNotice(row.task_id) }}</span>
                 </div>
-              </el-tooltip>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="255" align="left">
-            <template #default="{ row }">
-              <el-button v-if="hasResult(row as Task)" link type="primary" :icon="View" @click.stop="openResult(row as Task, id)">{{ canWrite && hasMissingRequiredFields(row as Task) ? '补填' : canWrite && hasExportDisputes(row as Task) ? '核对' : '查看' }}</el-button>
-              <el-button
-                v-if="canCancel(row as Task)"
-                link
-                type="danger"
-                :icon="CircleClose"
-                :loading="acting === `cancel:${row.task_id}`"
-                @click.stop="runCancel(id, row as Task)"
-              >取消</el-button>
-              <el-tag v-else-if="row.cancel_requested && runningStatuses.has(row.status)" size="small" type="info" effect="plain">取消中</el-tag>
-              <el-button
-                v-if="canRerun(row as Task)"
-                link
-                type="primary"
-                :icon="RefreshRight"
-                :loading="acting === `rerun:${row.task_id}`"
-                @click.stop="runRerun(id, row as Task)"
-              >重跑</el-button>
-              <el-button v-if="canWrite" link type="danger" :icon="Delete"
-                :loading="acting === `delete-task:${row.task_id}`"
-                :disabled="!!acting || runningStatuses.has(row.status)"
-                :title="runningStatuses.has(row.status) ? '请先取消任务，等待识别停止后再删除' : '删除该任务'"
-                @click.stop="deleteTask(id, row as Task)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-        </div>
-      </el-collapse-item>
-      </section>
-    </el-collapse>
+              </template>
+            </el-table-column>
+            <el-table-column label="类型" width="110">
+              <template #default="{ row }">{{ row.doc_type ? docTypes[row.doc_type as keyof typeof docTypes] ?? row.doc_type : '—' }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="150">
+              <template #default="{ row }">
+                <span class="status-cell">
+                  <el-tag size="small" :type="taskTagTypes[row.status as TaskStatus]" effect="light">{{ taskLabels[row.status as TaskStatus] }}</el-tag>
+                  <el-tooltip v-if="row.error" placement="top" :content="errorTip(row as Task)">
+                    <el-icon class="status-warn"><WarningFilled /></el-icon>
+                  </el-tooltip>
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="导出检查" min-width="220">
+              <template #default="{ row }">
+                <span v-if="runningStatuses.has(row.status)" class="poll-hint">识别中，尚未检查</span>
+                <template v-else-if="hasMissingRequiredFields(row as Task) || hasExportDisputes(row as Task)"><div v-if="hasMissingRequiredFields(row as Task)" class="required-fields-cell">
+                  <el-tag size="small" type="danger" effect="light">{{ row.doc_type === 'TABLE' ? '导出待处理' : '必填未填' }}</el-tag>
+                  <span class="missing-field-names">{{ requiredFieldLabels(row as Task, catalogue).join('、') || '请打开结果查看缺失项' }}</span>
+                </div>
+                <div v-if="hasExportDisputes(row as Task)" class="required-fields-cell">
+                  <el-tag size="small" type="warning" effect="light">有异议</el-tag>
+                  <span class="missing-field-names">{{ disputedFieldLabels(row as Task, catalogue).join('、') }}</span>
+                </div></template>
+                <el-tag v-else-if="row.export_ready === true" size="small" type="success" effect="plain">{{ row.doc_type === 'TABLE' ? '可直接导出' : '必填已齐' }}</el-tag>
+                <span v-else-if="row.export_blockers?.some((blocker: { field: string }) => ['task', 'doc_type'].includes(blocker.field))" class="poll-hint">暂无识别结果</span>
+                <span v-else class="poll-hint">尚未检查</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="处理进度" width="235">
+              <template #default="{ row }">
+                <el-tooltip v-if="progressViews[row.task_id]" placement="top" :disabled="!progressViews[row.task_id]!.tooltip" :content="progressViews[row.task_id]!.tooltip">
+                  <div class="task-progress">
+                    <div class="task-progress__label">
+                      <span v-if="progressViews[row.task_id]!.active" class="rainbow-spinner task-progress__spin" aria-hidden="true"></span>
+                      <span>{{ progressViews[row.task_id]!.label }}</span>
+                    </div>
+                    <el-progress v-if="progressViews[row.task_id]!.percentage !== null"
+                      :percentage="progressViews[row.task_id]!.percentage!" :show-text="false" :stroke-width="6"
+                      :status="progressViews[row.task_id]!.incomplete > 0 ? 'warning' : undefined" aria-label="图像识别区域处理量" />
+                    <div v-if="progressViews[row.task_id]!.amount" class="task-progress__amount">{{ progressViews[row.task_id]!.amount }}</div>
+                    <div v-if="progressViews[row.task_id]!.incomplete > 0" class="task-progress__warning">{{ progressViews[row.task_id]!.incomplete }} 个区域不完整，请核对</div>
+                  </div>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="255" align="left">
+              <template #default="{ row }">
+                <el-button v-if="hasResult(row as Task)" link type="primary" :icon="View" @click.stop="openResult(row as Task, id)">{{ canWrite && hasMissingRequiredFields(row as Task) ? '补填' : canWrite && hasExportDisputes(row as Task) ? '核对' : '查看' }}</el-button>
+                <el-button
+                  v-if="canCancel(row as Task)"
+                  link
+                  type="danger"
+                  :icon="CircleClose"
+                  :loading="acting === `cancel:${row.task_id}`"
+                  @click.stop="runCancel(id, row as Task)"
+                >取消</el-button>
+                <el-tag v-else-if="row.cancel_requested && runningStatuses.has(row.status)" size="small" type="info" effect="plain">取消中</el-tag>
+                <el-button
+                  v-if="canRerun(row as Task)"
+                  link
+                  type="primary"
+                  :icon="RefreshRight"
+                  :loading="acting === `rerun:${row.task_id}`"
+                  @click.stop="runRerun(id, row as Task)"
+                >重跑</el-button>
+                <el-button v-if="canWrite" link type="danger" :icon="Delete"
+                  :loading="acting === `delete-task:${row.task_id}`"
+                  :disabled="!!acting || runningStatuses.has(row.status)"
+                  :title="runningStatuses.has(row.status) ? '请先取消任务，等待识别停止后再删除' : '删除该任务'"
+                  @click.stop="deleteTask(id, row as Task)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          </div>
+        </el-collapse-item>
+        </section>
+      </el-collapse>
+    </div>
     <!-- 空列表（含筛选后 serverTotal 为 0）不显示分页器；有记录才给翻页入口。 -->
     <el-pagination v-if="monitor.state.serverTotal > 0" background :current-page="monitor.state.page" :page-size="monitor.state.pageSize" :total="monitor.state.serverTotal"
       :page-sizes="[20, 50, 100]" :disabled="loadingMore || !!acting" layout="total, sizes, prev, pager, next, jumper" class="list-pager"
@@ -458,7 +454,6 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
 </template>
 
 <style scoped>
-.guide-batch-hint { margin: 8px 16px; font-size: 13px; color: var(--el-text-color-secondary); }
 .board-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .list-pager { justify-content: flex-end; flex-wrap: wrap; row-gap: 8px; margin-top: 16px; }
 .calendar-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }

@@ -338,7 +338,6 @@ async function submit() {
           <el-icon><Files /></el-icon>按类型批量
         </button>
       </div>
-      <span class="mode-hint">{{ personPackage ? '选齐此人的各类材料，核对类型后整包提交；识别后再确认姓名。' : '选定一种材料类型，集中批量处理同一种材料。' }}</span>
     </div>
     <div v-if="!mixed" class="type-section" :class="{ editing: editMode }">
       <el-alert v-if="preferenceState.error" :closable="false" type="warning">
@@ -433,7 +432,7 @@ async function submit() {
     </div>
 
     <el-card shadow="never" class="upload-card">
-      <el-alert type="info" :closable="false" class="upload-tip">{{ mixed ? '自动分类只是建议，可以直接修改下方类型。每个文件应是一种材料；混合了不同证件的PDF请先拆分。部分类型尚缺真实样本验收，识别结果仍需对照原件核对。' : sampleQualification(docType) }}</el-alert>
+      <el-alert type="info" :closable="false" class="upload-tip">{{ mixed ? '自动分类只是建议，可直接修改下方类型；每个文件应是一种材料，混合了不同证件的 PDF 请先拆分。部分类型尚缺真实样本验收，结果仍需对照原件核对。' : sampleQualification(docType) }}</el-alert>
       <el-upload data-guide="upload-files"
         v-model:file-list="fileList"
         drag
@@ -528,7 +527,6 @@ async function submit() {
 .mode-option.active { background: #fff; color: var(--el-color-primary); font-weight: 600; box-shadow: 0 1px 4px rgba(16, 60, 54, .14); }
 .mode-option:disabled { cursor: not-allowed; opacity: .6; }
 .mode-option .el-icon { font-size: 15px; }
-.mode-hint { color: var(--el-text-color-secondary); font-size: 13px; }
 .package-person-input { max-width: 320px; }
 .package-summary { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 10px; }
 .upload-footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--el-border-color-lighter); }
