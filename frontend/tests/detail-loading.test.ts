@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { ApiFailure } from '../src/api.ts'
+import { makeDiagnostic } from '../src/diagnostics.ts'
 
 const require = createRequire(import.meta.url)
 const { parse, compileScript } = require('@vue/compiler-sfc'), ts = require('typescript')
@@ -24,6 +26,9 @@ Object.assign(globalThis, { IntersectionObserver: Observer, ResizeObserver: Obse
   requestAnimationFrame: (callback: () => void) => { frames.set(++frameId, callback); return frameId },
   getComputedStyle: (element: FakeElement) => ({ overflowY: element.overflowY }),
   cancelAnimationFrame: (id: number) => { frames.delete(id) } })
+// 保存失败指位（revealAnchor）需要 document.getElementById 与 matchMedia；锚点元素按测试登记，未登记返回 null（与真实 DOM 行为一致）。
+const elementsById = new Map<string, FakeElement>()
+Object.assign(globalThis, { matchMedia: () => ({ matches: false }), document: { getElementById: (key: string) => elementsById.get(key) ?? null } })
 const id = '11111111-2222-4333-8444-555555555555'
 const task = { task_id: id, run_id: id, result_revision: 3, doc_type: 'MEDICAL_REPORT', page_count: 8, actual_source_page_count: 8, status: 'NEED_REVIEW' }
 const flush = async () => { await Promise.resolve(); await vue.nextTick(); await Promise.resolve() }
@@ -210,4 +215,23 @@ test('opening a drawer with its task in one update reads the result only once an
     assert.equal(calls, 1); assert.equal(vm.dirty, true); assert.equal(vm.stale, true)
     assert.equal(vm.result.result_revision, 3)
   } finally { app.unmount() }
+})
+
+test('a failed review save scrolls the drawer-top warning into view', async () => {
+  const scrolls: unknown[] = []
+  const alert = new FakeElement()
+  alert.scrollIntoView = options => { scrolls.push(options) }
+  elementsById.set('drawer-review-error', alert)
+  const api = {
+    result: async () => ({ ...task, fields: [] }),
+    review: async () => { throw new ApiFailure(makeDiagnostic({ origin: 'http', operation: 'review', code: 'SERVICE_BUSY', status: 503 }), 2) },
+  }
+  const { app, vm, state } = await mount('TaskResultDrawer', 'result,dirty,stale,reviewError,saveReview',
+    { open: false, task: null, api, monitor: {}, previews: new Map(), canWrite: true, catalogue: [] })
+  try {
+    state.open = true; state.task = { ...task }; await flush(); await flush()
+    await vm.saveReview({ run_id: id, expected_revision: 3 })
+    assert.ok(vm.reviewError.includes('可在 2 秒后重试'))
+    assert.deepEqual(scrolls, [{ behavior: 'smooth', block: 'start' }])
+  } finally { elementsById.delete('drawer-review-error'); app.unmount() }
 })

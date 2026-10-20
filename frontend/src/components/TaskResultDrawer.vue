@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, WarningFilled } from '@element-plus/icons-vue'
 import { ApiFailure, isAbort, resultConflictAction } from '../api.ts'
@@ -11,6 +11,7 @@ import { canAcceptIssue, collectIssues, downloadBlob, exportBlockReason, spreads
 import type { IssueJump } from '../review.ts'
 import { errorMessages } from '../diagnostics.ts'
 import type { ErrorCode } from '../diagnostics.ts'
+import { revealAnchor } from '../reveal.ts'
 import type { LocalPreviewBatch } from '../workbench.ts'
 import ResultView from './ResultView.vue'
 import SourcePreview from './SourcePreview.vue'
@@ -104,6 +105,9 @@ async function saveReview(body: ReviewBody) {
     if (isAbort(error)) return
     if (error instanceof ApiFailure) { if (error.card.http_status === 401) emit('unauthorized'); if (error.card.http_status === 409) stale.value = true; reviewError.value = errorMessages[error.card.code] + (error.retryAfterSeconds === undefined ? `（错误编号 ${error.card.error_id}）` : `可在 ${error.retryAfterSeconds} 秒后重试。`) }
     else reviewError.value = '提交未确认，草稿已保留。请查任务状态，不要盲目重复提交。'
+    // 保存失败提示固定在抽屉顶部：长材料滚到底部点保存的操作员看不见它，会误以为没有反馈而重复提交；滚动到顶部告警把失败原因带到眼前。
+    await nextTick()
+    revealAnchor(document.getElementById('drawer-review-error'), { block: 'start', flash: false })
   } finally { saving.value = false }
 }
 async function beforeClose(done: () => void) {
@@ -251,7 +255,7 @@ async function runExport() {
         </template>
       </el-result>
       <template v-else-if="result && task">
-        <el-alert v-if="stale || reviewError" type="warning" :closable="false">{{ reviewError || '任务结果或必填设置已更新，当前草稿已保留；请明确刷新后重新核对。' }}<el-button @click="refreshDraft">读取最新版本</el-button></el-alert>
+        <el-alert id="drawer-review-error" v-if="stale || reviewError" type="warning" :closable="false">{{ reviewError || '任务结果或必填设置已更新，当前草稿已保留；请明确刷新后重新核对。' }}<el-button @click="refreshDraft">读取最新版本</el-button></el-alert>
         <p v-if="task.status === 'NEED_REVIEW'" class="drawer-notice" role="note">该任务包含需要人工核对的内容<span v-if="noticeSegments.length">（<template v-for="(segment, i) in noticeSegments" :key="i">{{ i ? '；' : '' }}<button v-if="segment.jump && result.doc_type !== 'TABLE'" type="button" class="issue-jump" title="定位到人工核对与修正区的对应条目" @click="segment.jump && jumpToIssue(segment.jump)">{{ segment.text }}</button><span v-else>{{ segment.text }}</span></template>{{ noticeTail }}）</span>，请结合左侧原图核对后再使用。</p>
         <el-alert v-if="task.error" type="error" :closable="false" show-icon class="drawer-alert">
           {{ errorMessages[task.error.code] }}{{ task.error.error_id ? `（错误编号 ${task.error.error_id}）` : '' }}

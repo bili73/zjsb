@@ -16,6 +16,8 @@ const child = dataUrl('export default {render(){return null}}')
 const icons = dataUrl('export const Download={render(){return null}}; export const CircleClose=Download,Delete=Download,RefreshRight=Download,UploadFilled=Download,User=Download,View=Download,WarningFilled=Download')
 const renderer = vue.createRenderer({ patchProp(){}, insert(){}, remove(){}, createElement(){return{}},
   createText(){return{}}, createComment(){return{}}, setText(){}, setElementText(){}, parentNode(){return null}, nextSibling(){return null} })
+// TaskResultDrawer 保存失败指位（revealAnchor）需要 document.getElementById 与 matchMedia；与 detail-loading harness 同款桩，返回 null 即不滚动。
+Object.assign(globalThis, { matchMedia: () => ({ matches: false }), document: { getElementById: () => null } })
 
 async function mount(name: string, expose: string, props: Record<string, unknown>) {
   const filename = fileURLToPath(new URL(`../src/components/${name}.vue`, import.meta.url))
