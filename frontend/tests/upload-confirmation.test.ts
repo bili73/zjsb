@@ -14,7 +14,7 @@ const ts = require('typescript')
 const vue = await import(pathToFileURL(require.resolve('vue')).href)
 const sourcePath = fileURLToPath(new URL('../src/components/UploadPanel.vue', import.meta.url))
 const source = (await readFile(sourcePath, 'utf8')).replace('</script>',
-  'defineExpose({submit, fileList, personPackage, manualType, submitting, cancelSubmit})\n</script>')
+  'defineExpose({submit, fileList, personPackage, manualType, submitting, cancelSubmit, docType, invalidReason, photoOnly})\n</script>')
 const compiled = compileScript(parse(source, { filename: sourcePath }).descriptor, { id: 'upload-confirmation-test' })
 const dataUrl = (code: string) => `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
 const elementStub = dataUrl(`
@@ -183,4 +183,60 @@ test('busy or throttled uploads retain selected files and do not replay the subm
       assert.equal(h.exposed.submitting.value, false)
     } finally { h.app.unmount() }
   }
+})
+
+// f0804c0 完整性审计补测：银行卡复印件（BANK_CARD_COPY）与银行卡共用同一组上传门禁。
+// 这些门禁此前按 BANK_CARD 硬编码，f0804c0 改为 isBankCardType 泛化后无任何测试钉住；
+// 本组用例锁住泛化边界——既覆盖复印件，也不放宽非银行类型。
+function bankFile(name: string) { return Object.assign(new File(['synthetic-copy'], name), { uid: 1 }) }
+
+test('single-type bank photocopy rejects PDF at selection and shows the photo-only tip', async () => {
+  const h = harness()
+  try {
+    h.exposed.personPackage.value = false
+    h.exposed.fileList.value = [{ name: 'copy.pdf', uid: 1, raw: bankFile('copy.pdf') }]
+    h.exposed.docType.value = 'BANK_CARD_COPY'
+    assert.equal(h.exposed.photoOnly.value, true)
+    assert.equal(h.exposed.invalidReason.value, '银行卡及复印件请上传单张 JPG/PNG/HEIC 照片，不接收 PDF。')
+    h.exposed.docType.value = 'DIPLOMA'
+    assert.equal(h.exposed.photoOnly.value, false)
+    assert.equal(h.exposed.invalidReason.value, null)
+  } finally { h.app.unmount() }
+})
+
+test('mixed packages name the bank-photocopy PDF offender at selection time', async () => {
+  const h = harness()
+  try {
+    h.exposed.fileList.value = [{ name: '复印件.pdf', uid: 1, raw: bankFile('复印件.pdf') }]
+    h.exposed.manualType(1, 'BANK_CARD_COPY')
+    assert.equal(h.exposed.invalidReason.value, '「复印件.pdf」是 PDF：银行卡及复印件请上传单张 JPG/PNG/HEIC 照片，不接收 PDF。')
+  } finally { h.app.unmount() }
+})
+
+test('submit refuses a bank-photocopy PDF even though the generic extension check accepts it', async () => {
+  const h = harness()
+  try {
+    h.app._instance.props.catalogue = [{ doc_type: 'BANK_CARD_COPY', label: '银行卡复印件' }]
+    h.exposed.personPackage.value = false
+    h.exposed.fileList.value = [{ name: 'copy.pdf', uid: 1, raw: bankFile('copy.pdf') }]
+    h.exposed.docType.value = 'BANK_CARD_COPY'
+    await h.exposed.submit()
+    assert.equal(h.submissions.length, 0)
+    assert.equal(h.exposed.fileList.value.length, 1)
+    assert.equal(h.confirmations.length, 0)
+  } finally { h.app.unmount() }
+})
+
+test('a bank photocopy photo submits with its own type', async () => {
+  const h = harness()
+  try {
+    h.app._instance.props.catalogue = [{ doc_type: 'BANK_CARD_COPY', label: '银行卡复印件' }]
+    h.exposed.personPackage.value = false
+    h.exposed.fileList.value = [{ name: 'copy.jpg', uid: 1, raw: bankFile('copy.jpg') }]
+    h.exposed.docType.value = 'BANK_CARD_COPY'
+    await h.exposed.submit()
+    assert.equal(h.submissions.length, 1)
+    assert.equal(h.submissions[0]!.type, 'BANK_CARD_COPY')
+    assert.equal(h.submissions[0]!.options.fileTypes, undefined)
+  } finally { h.app.unmount() }
 })
