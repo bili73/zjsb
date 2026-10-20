@@ -7,6 +7,18 @@ export function batchOwnerLabel(owner?: BatchOwner): string {
   return `${owner.display_name ?? owner.username}（${owner.username}${owner.account_exists ? '' : '，已删除'}）`
 }
 
+const filenameOrder = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' })
+const exactOrder = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0
+
+export function sortBatchTasks(tasks: readonly Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    const left = a.file_name?.trim() ?? '', right = b.file_name?.trim() ?? ''
+    if (!left && right) return 1
+    if (left && !right) return -1
+    return filenameOrder.compare(left, right) || exactOrder(left, right) || exactOrder(a.task_id, b.task_id)
+  })
+}
+
 // Business timestamps stay UTC on the wire; display never follows the host timezone.
 const clock = new Intl.DateTimeFormat('sv-SE', {
   timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',

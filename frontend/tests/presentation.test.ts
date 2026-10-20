@@ -1,7 +1,37 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { batchOwnerLabel, expiryText, fairQueueHint, formatTime, shanghaiDate, taskProgressView } from '../src/presentation.ts'
-import type { ProgressDetail, TaskStatus } from '../src/business.ts'
+import { batchOwnerLabel, expiryText, fairQueueHint, formatTime, shanghaiDate, sortBatchTasks, taskProgressView } from '../src/presentation.ts'
+import type { ProgressDetail, Task, TaskStatus } from '../src/business.ts'
+
+function namedTask(task_id: string, file_name?: string): Task {
+  return { task_id, file_name, run_id: 'run', result_revision: 1, cancel_requested: false,
+    status: 'QUEUED', page_count: 1, pages: [] }
+}
+
+test('batch files use natural numeric filename order without changing inputs or task references', () => {
+  const input = Object.freeze(['10.jpg', '2.jpg', '1.jpg', '材料10.pdf', '材料2.pdf'].map(name => Object.freeze(namedTask(name, name))))
+  const ordered = sortBatchTasks(input)
+  assert.deepEqual(ordered.map(task => task.file_name), ['1.jpg', '2.jpg', '10.jpg', '材料2.pdf', '材料10.pdf'])
+  assert.deepEqual(input.map(task => task.file_name), ['10.jpg', '2.jpg', '1.jpg', '材料10.pdf', '材料2.pdf'])
+  for (const task of input) assert.strictEqual(ordered.find(item => item.task_id === task.task_id), task)
+})
+
+test('filename ties and missing names stay deterministic when the response order changes', () => {
+  const tasks = [namedTask('z', 'same.jpg'), namedTask('b', ' '), namedTask('a'),
+    namedTask('a2', 'same.jpg'), namedTask('lower', 'a.jpg'), namedTask('upper', 'A.jpg')]
+  const ids = (input: readonly Task[]) => sortBatchTasks(input).map(task => task.task_id)
+  assert.deepEqual(ids(tasks), ['upper', 'lower', 'a2', 'z', 'a', 'b'])
+  assert.deepEqual(ids([...tasks].reverse()), ids(tasks))
+  assert.deepEqual(sortBatchTasks([]), [])
+})
+
+test('recognition completion, review saves and reruns do not move batch files', () => {
+  const tasks = [namedTask('ten', '10.jpg'), namedTask('two', '2.jpg'), namedTask('one', '1.jpg')]
+  const refreshed = [...tasks].reverse().map((task, index) => ({ ...task,
+    run_id: `new-run-${index}`, result_revision: index + 2,
+    status: (index === 0 ? 'COMPLETED' : index === 1 ? 'NEED_REVIEW' : 'QUEUED') as TaskStatus }))
+  assert.deepEqual(sortBatchTasks(refreshed).map(task => task.task_id), ['one', 'two', 'ten'])
+})
 
 test('batch attribution distinguishes named, deleted, historical and unknown uploaders', () => {
   const owner = { user_id: 'immutable-id', username: 'alice', display_name: '张三', account_exists: true }

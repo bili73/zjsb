@@ -13,7 +13,7 @@ import type { Batch, BatchStatus, DocProfile, IdCardPairing, Task, TaskStatus } 
 import { errorMessages } from '../diagnostics.ts'
 import { entryNeedsReview, entryRunning } from '../monitor.ts'
 import type { BatchEntry, Monitor } from '../monitor.ts'
-import { batchOwnerLabel, expiryText, fairQueueHint, formatTime, taskProgressView } from '../presentation.ts'
+import { batchOwnerLabel, expiryText, fairQueueHint, formatTime, sortBatchTasks, taskProgressView } from '../presentation.ts'
 import { groupBatchEntries, periodBounds, rangeSuffix } from '../batchCalendar.ts'
 import type { BatchPeriod } from '../batchCalendar.ts'
 
@@ -56,7 +56,11 @@ const groups = computed(() => groupBatchEntries(entries.value, period.value))
 const hasQueuedTasks = computed(() => entries.value.some(({ entry }) => entry.tasks.some(task => task.status === 'QUEUED')))
 const missingTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, entry.tasks.filter(hasMissingRequiredFields)])))
 const disputedTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, entry.tasks.filter(hasExportDisputes)])))
-const visibleTasks = (id: string, tasks: Task[]) => tasks.filter(t =>
+const orderedTasks = computed(() => Object.fromEntries(entries.value.map(({ id, entry }) => [id, sortBatchTasks(entry.tasks)])))
+// Number the complete batch before filtering so a file keeps its reference number.
+const taskNumbers = computed(() => Object.fromEntries(Object.values(orderedTasks.value)
+  .flatMap(tasks => tasks.map((task, index) => [task.task_id, index + 1]))))
+const visibleTasks = (id: string) => (orderedTasks.value[id] ?? []).filter(t =>
   !missingOnly[id] && !disputedOnly[id] || !!missingOnly[id] && hasMissingRequiredFields(t) || !!disputedOnly[id] && hasExportDisputes(t))
 const isTableEntry = (entry: BatchEntry) => entry.tasks.some(task => task.doc_type === 'TABLE')
 
@@ -350,10 +354,13 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
           <span v-if="!entry.tasksLoaded" class="poll-hint">正在获取任务，检查必填信息…</span>
           <span class="poll-hint">{{ isTableEntry(entry) ? '完整表格可直接导出；有修改时才需保存。' : '补齐并保存后标记自动更新；' }}筛选不改变“本批次全部”的导出范围。</span>
         </div>
-        <p data-guide="batch-tasks" class="guide-batch-hint">点击文件行或操作列中的按钮查看识别结果。</p>
-        <el-table :data="visibleTasks(id, entry.tasks)" row-key="task_id" :row-class-name="({ row }) => hasMissingRequiredFields(row as Task) || hasExportDisputes(row as Task) ? 'required-missing-row' : ''" @selection-change="rows => selected[id] = rows" @row-click="row => onRowClick(id, row)">
+        <p data-guide="batch-tasks" class="guide-batch-hint">文件按文件名自然排序；筛选后保留原序号。点击文件行或操作列中的按钮查看识别结果。</p>
+        <el-table :data="visibleTasks(id)" row-key="task_id" :row-class-name="({ row }) => hasMissingRequiredFields(row as Task) || hasExportDisputes(row as Task) ? 'required-missing-row' : ''" @selection-change="rows => selected[id] = rows" @row-click="row => onRowClick(id, row)">
           <template #empty>{{ missingOnly[id] || disputedOnly[id] ? '本批次没有符合筛选条件的任务' : entry.tasksLoaded ? '暂无任务' : '正在获取任务…' }}</template>
           <el-table-column type="selection" width="45" :reserve-selection="true" />
+          <el-table-column label="序号" width="65" align="center">
+            <template #default="{ row }">{{ taskNumbers[row.task_id] }}</template>
+          </el-table-column>
           <el-table-column label="文件" min-width="220">
             <template #default="{ row }">
               <div class="file-cell">

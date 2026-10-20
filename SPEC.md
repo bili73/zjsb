@@ -925,6 +925,8 @@ Review提交 `fields`/`items` 修正或 `accepted_issues=[{issue_id,reason?}]` �
 
 任务批次直接标记缺少业务必填值的任务数量，任务行突出显示缺失字段名称并提供补填入口。判定复用服务端已保存版本的export_ready/export_blockers，不把NEED_REVIEW、选填为空或未标定置信度直接视为必填漏填。运行中、无结果及未知历史标志分别展示；未加载任务不显示零缺失保证。“只看必填未填”仅筛选列表，保持完整批次导出范围与隐藏行勾选；补填保存后标记自动更新，草稿不改变标记。
 
+批次展开后的任务表按文件名自然升序展示，数字按数值比较（1、2、10），中文采用zh-CN排序；空文件名最后，同名按task_id稳定排序。增加批次内序号，先按完整列表编号再筛选，筛选隐藏行时不重新编号。识别进度、完成、保存修正和重跑不改变行的位置；新增或删除文件时重新排序编号。仅调整客户端展示，不改变任务接口顺序、模型队列、导出顺序与范围；序号不代表识别先后或固定排队名次。
+
 缺失字段由人工填写；选填可标记`NOT_ON_DOCUMENT`或`NOT_APPLICABLE`，必填不能用缺省理由放行。未修改掩码不作为完整值回写，缺失/冲突/多候选/不完整输出不能直接接受。允许确认的问题按issue_id提交，可一键确认全部当前can_accept=true的问题；理由选填。人工修正重新执行格式与跨字段校验，保留原始source/OCR/运行记录；reviewed与value_origin描述人工操作，confidence仍null。医疗可修正/新增/删除项目与清单，清单检测结果通过result_item_id关联实际项目；数量声明可由人工核对源页后修正，但保留recognition_declared_count。
 
 FAILED有部分结果且原文件可读、全部实际源页均有唯一corrected证据时，可创建独立人工版本。coverage必须枚举实际全部源页及每个未完成区域：TRANSCRIBED关联本次具体字段/项目/清单/成员/通用文本修正，NO_CONTENT写明理由；缺页或只点击“完整”不能放行。任务可最终COMPLETED，原run仍FAILED且错误/耗时不改，结果附recognition_status、recognition_error及completion_origin=human_review。医疗统计仅在全页覆盖核对后重算，人工完整声明不是模型准确率。

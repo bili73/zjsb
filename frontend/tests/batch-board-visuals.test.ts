@@ -5,6 +5,7 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { rangeSuffix } from '../src/batchCalendar.ts'
+import type { Task } from '../src/business.ts'
 
 // 视觉审查 #19/#20：rangeSuffix 是纯函数直接断言；batchTitle 用 detail-loading/audit-panel 同款
 // 编译挂载 harness 驱动 setup（模板渲染 no-op）。分页器 v-if 与工具栏阅读顺序属模板级改动，
@@ -29,7 +30,7 @@ function fakeMonitor(entries: Record<string, FakeEntry>) {
 
 async function mountBoard(monitor: ReturnType<typeof fakeMonitor>) {
   const filename = fileURLToPath(new URL('../src/components/BatchBoard.vue', import.meta.url))
-  const source = (await readFile(filename, 'utf8')).replace('</script>', `defineExpose({batchTitle})\n</script>`)
+  const source = (await readFile(filename, 'utf8')).replace('</script>', `defineExpose({batchTitle, visibleTasks, taskNumbers, missingOnly, disputedOnly})\n</script>`)
   const compiled = compileScript(parse(source, { filename }).descriptor, { id: 'BatchBoard' })
   const code = ts.transpileModule(compiled.content, { compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext } }).outputText
     .replace(/from ['"]([^'"]+)['"]/g, (_: string, specifier: string) => {
@@ -69,5 +70,45 @@ test('batchTitle falls back to a minute-precision stamp, not the uuid prefix', a
     assert.equal(vm.batchTitle('unparseable'), '未命名批次', '无效 created_at 不留「—」残留')
     assert.equal(vm.batchTitle('creating'), '未命名批次')
     assert.equal(vm.batchTitle('missing'), '未命名批次')
+  } finally { app.unmount(); await flush() }
+})
+
+test('batch board keeps full-batch file numbers through filtering, refresh and file changes', async () => {
+  const task = (id: string, name: string, code?: 'MISSING' | 'DISPUTED'): Task => ({
+    task_id: id, file_name: name, run_id: `run-${id}`, result_revision: 1, cancel_requested: false,
+    status: 'NEED_REVIEW', doc_type: 'DIPLOMA', page_count: 1, pages: [], export_ready: !code,
+    export_blockers: code ? [{ field: 'major', code }] : [],
+  })
+  const tasks = [task('ten', '10.jpg', 'MISSING'), task('two', '2.jpg', 'DISPUTED'), task('one', '1.jpg')]
+  const entry = (files: Task[]): FakeEntry => ({ batch: null, tasks: files, tasksLoaded: true, expanded: true })
+  const monitor = vue.reactive(fakeMonitor({ first: entry(tasks), second: entry([task('other', '9.jpg')]) }))
+  monitor.state.listedIds = ['first', 'second']
+  const { app, vm } = await mountBoard(monitor)
+  const ids = (batch = 'first') => vm.visibleTasks(batch).map((item: Task) => item.task_id)
+  try {
+    assert.deepEqual(ids(), ['one', 'two', 'ten'])
+    assert.deepEqual(vm.taskNumbers, { one: 1, two: 2, ten: 3, other: 1 })
+    vm.missingOnly.first = true
+    assert.deepEqual(ids(), ['ten'])
+    assert.equal(vm.taskNumbers.ten, 3, 'filtering must retain the complete-batch sequence')
+    vm.missingOnly.first = false
+    vm.disputedOnly.first = true
+    assert.deepEqual(ids(), ['two'])
+    assert.equal(vm.taskNumbers.two, 2)
+    vm.disputedOnly.first = false
+    monitor.state.entries.first!.tasks = [...tasks].reverse().map(item => ({ ...item,
+      status: 'COMPLETED', run_id: `rerun-${item.task_id}`, result_revision: 2 }))
+    assert.deepEqual(ids(), ['one', 'two', 'ten'])
+    assert.equal(vm.taskNumbers.ten, 3)
+    monitor.state.entries.first!.tasks.push(task('three', '3.jpg'))
+    assert.deepEqual(ids(), ['one', 'two', 'three', 'ten'])
+    assert.equal(vm.taskNumbers.ten, 4)
+    monitor.state.entries.first!.tasks = monitor.state.entries.first!.tasks.filter((item: Task) => item.task_id !== 'two')
+    assert.deepEqual(ids(), ['one', 'three', 'ten'])
+    assert.equal(vm.taskNumbers.ten, 3)
+    assert.deepEqual(ids('second'), ['other'])
+    assert.equal(vm.taskNumbers.other, 1)
+    assert.deepEqual(ids('not-loaded'), [])
+    assert.deepEqual(tasks.map(item => item.task_id), ['ten', 'two', 'one'], 'source arrays stay untouched')
   } finally { app.unmount(); await flush() }
 })
