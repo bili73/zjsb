@@ -16,6 +16,7 @@ Visual review finding #14 remainder (save failures did not locate the problem); 
 
 - New shared helper `revealAnchor(el, { block, flash })` in reveal.ts (scroll with prefers-reduced-motion handling; optional focus handoff plus jump-flash), extracted from ReviewEditor's issue-jump watch so both locate surfaces share one mechanism.
 - ReviewEditor: the save catch now calls revealSaveError(code), which maps each validation code to a block (INVALID_ITEM → first offending added row `rev-added-N`, GENERIC_MASKED → `rev-generic`, MEMBER_SOURCE → `rev-new-members`, SUMMARY* → `rev-summary`, COVERAGE → `rev-coverage`), opens the owning collapse through the shared openPanels state, then scrolls and flashes exactly like the red-text issue jumps.
+- Panel-dependent reveals wait for the actual expansion layout and discard stale requests as specified in the [expanded-layout correction](2026-10-20-save-locate-expanded-layout.md). `nextTick()` alone does not establish a usable scroll range.
 - The three previously uncontrolled collapses are now v-model bound to openPanels; anchor ids ride on the el-collapse-item / h4 roots, which are single-root Element Plus components whose attrs fall through (verified in the compiled EP output, so document.getElementById works on the live DOM even while collapsed).
 - Generic masked full_text / key_values now throws GENERIC_MASKED (same copy as MASKED_VALUE) so only the generic section is targeted; MASKED_VALUE from field/item/finding/member changes stays message-only because changedValues can throw from several sites and a guessed target would misdirect.
 - SUMMARY_SOURCE / SUMMARY_COUNT / SUMMARY_TITLE sub-codes gained their own copy (they previously fell to the generic fallback line) plus the summary block jump.
@@ -30,10 +31,11 @@ Visual review finding #14 remainder (save failures did not locate the problem); 
 ## Verification
 
 - vue-tsc --noEmit exit 0; full suite 299/299 pass (289 before this batch + 9 in the new review-save-locate.test.ts + 1 drawer scroll case appended to detail-loading.test.ts). backpressure-components.test.ts needed the same document/matchMedia globals (surfaced by the suite, fixed in the same batch). vite build exit 0 (chunk-size warning = known noise). Root npm run verify green with this note.
+- The initial renderless tests did not verify real scroll geometry. The [expanded-layout correction](2026-10-20-save-locate-expanded-layout.md) records the subsequent failing browser reproduction and passing 9-case real-browser regression; the updated frontend suite passes 306/306.
 
 ## Consequences
 
 - A local save rejection now takes the operator to the place to fix: the panel opens, scrolls into view centered and flashes once, with keyboard focus handed to the anchor.
 - Server-side save failures are always on screen after the click; the silent-resubmit failure mode is gone.
 - The issue jump and the save-failure locate share revealAnchor; future locate surfaces should reuse it instead of re-implementing reduced-motion and focus handling.
-- #14 fully closed; the parked list is left with #18 and the auditDetail dead path (product decision).
+- Finding #14 now has real-browser coverage for long expanded panels as well as error mapping; the initial 299-test result alone was insufficient evidence of scroll visibility.

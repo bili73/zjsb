@@ -43,5 +43,5 @@ Frontend typecheck, node tests (246 pass) and production build pass; `npm run ve
 - The medical table is quieter (no per-row 等级未识别 spam) but missing results are now louder (red 未填写). Rows whose grade/diagnosis is genuinely absent read as — instead of prose; the 判定 tag still carries the abnormality state.
 - Household results with missing required member fields open expanded by default; on a clean result nothing changes except the title now always shows the member count.
 - Generic pair deletion now costs one confirmation click; accidental data loss in the draft is prevented, but the confirm does not protect against closing the drawer without saving (that remains dirty-state-discarded as before).
-- Save failures point at the section to fix but do not auto-scroll to it; the collapse sections still need manual opening (matching the existing per-section acknowledgment pattern).
+- Save failures use the [save-failure locate mechanism](../bug-fix/2026-10-20-save-failure-locate.md) to open the error panel and scroll to its anchor; the [expanded-layout correction](../bug-fix/2026-10-20-save-locate-expanded-layout.md) waits for long panels to finish expanding.
 - Upload submit being disabled at 0 files changes no API behavior; the empty-parens cleanup is cosmetic.

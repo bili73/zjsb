@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { householdMemberLabels as memberLabels } from '../business.ts'
 import { memberFieldRequired } from '../requiredFields.ts'
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { genderText, isGenderKey, isMedicalReviewItem, medicalProjectCount } from '../business.ts'
 import { numberLengthHint } from '../numberLength.ts'
@@ -54,14 +54,33 @@ const memberTitle = computed(() => members.length ? `户口本成员（${members
 const memberOpen = ref<string[]>(membersWithMissing.value ? ['members'] : [])
 // 顶部红字点击定位：目标所在折叠面板先展开，再滚动到锚点并闪烁一次；items/findings 默认收起，需要受控展开。
 const openPanels = ref<string[]>([])
+let revealGeneration = 0
+onBeforeUnmount(() => { revealGeneration++ })
+async function revealEditorAnchor(id: string) {
+  const generation = ++revealGeneration
+  await nextTick()
+  const anchor = document.getElementById(id)
+  if (!anchor) return
+  const panel = anchor.closest('.el-collapse-item')?.querySelector<HTMLElement>('.el-collapse-item__wrap')
+  if (panel) {
+    // Element Plus starts expansion in rAF; nextTick alone still leaves the collapsed scroll range.
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    if (generation !== revealGeneration || !anchor.isConnected) return
+    await Promise.allSettled(panel.getAnimations().map(animation => animation.finished))
+    // Let the transition cleanup commit its final height before scrolling once.
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  }
+  if (generation !== revealGeneration || !anchor.isConnected || panel?.getAttribute('aria-hidden') === 'true') return
+  revealAnchor(anchor)
+}
 const anchorId = (focus: IssueJump) => focus.kind === 'field' ? `rev-field-${focus.id}` : focus.kind === 'item' ? `rev-item-${focus.id}` : focus.kind === 'finding' ? `rev-finding-${focus.id}` : `rev-member-${focus.id}`
-watch(() => props.focus, async focus => {
+watch(() => props.focus, focus => {
+  revealGeneration++
   if (!focus) return
   if (focus.kind === 'item' && !openPanels.value.includes('items')) openPanels.value = [...openPanels.value, 'items']
   if (focus.kind === 'finding' && !openPanels.value.includes('findings')) openPanels.value = [...openPanels.value, 'findings']
   if (focus.kind === 'member' && !memberOpen.value.includes('members')) memberOpen.value = [...memberOpen.value, 'members']
-  await nextTick()
-  revealAnchor(document.getElementById(anchorId(focus)))
+  void revealEditorAnchor(anchorId(focus))
 })
 // 体检的核对主对象是检测项目与清单：折叠标题带上数量与异常摘要，主对象不必点开才知道。
 const itemsTitle = computed(() => {
@@ -97,14 +116,14 @@ function saveErrorTarget(code: string): { panel?: string; id: string } | null {
   if (code === 'COVERAGE') return { panel: 'coverage', id: 'rev-coverage' }
   return null
 }
-async function revealSaveError(code: string) {
+function revealSaveError(code: string) {
   const target = saveErrorTarget(code)
   if (!target) return
   if (target.panel && !openPanels.value.includes(target.panel)) openPanels.value = [...openPanels.value, target.panel]
-  await nextTick()
-  revealAnchor(document.getElementById(target.id))
+  void revealEditorAnchor(target.id)
 }
 function save() {
+  revealGeneration++
   message.value = ''
   try {
     const body = buildReview(props.result, { fields: values, confirm_export_disputes: true, accepted_issues: issues.value.filter(row => canAcceptIssue(row.issue)).map(row => ({ issue_id: row.issue.issue_id })) })

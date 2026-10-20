@@ -34,13 +34,22 @@ const renderer = vue.createRenderer({
   createComment() { return {} }, setText() {}, setElementText() {}, parentNode() { return null }, nextSibling() { return null },
 })
 
+class FakePanel {
+  hidden = false
+  animations: { finished: Promise<unknown> }[] = []
+  getAnimations() { return this.animations }
+  getAttribute(name: string) { return name === 'aria-hidden' ? String(this.hidden) : null }
+}
 class FakeAnchor {
   tabIndex = 0
+  isConnected = true
+  panel: FakePanel | null = null
   scrolled: unknown = null
   focused: unknown = null
   readonly classes = new Set<string>()
   scrollIntoView(options: unknown) { this.scrolled = options }
   focus(options: unknown) { this.focused = options }
+  closest() { return this.panel ? { querySelector: () => this.panel } : null }
   get offsetWidth() { return 0 }
   get classList() {
     return { add: (name: string) => this.classes.add(name), remove: (name: string) => this.classes.delete(name), has: (name: string) => this.classes.has(name) }
@@ -48,6 +57,8 @@ class FakeAnchor {
 }
 // revealAnchor 依赖 document.getElementById 与 matchMedia；未登记的 id 返回 null（与真实 DOM 一致）。
 const anchors = new Map<string, FakeAnchor>()
+const frames: FrameRequestCallback[] = []
+Reflect.set(globalThis, 'requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback))
 Reflect.set(globalThis, 'matchMedia', () => ({ matches: false }))
 Reflect.set(globalThis, 'document', { getElementById: (id: string) => anchors.get(id) ?? null })
 
@@ -55,6 +66,7 @@ const id = '11111111-2222-4333-8444-555555555555'
 const base = { task_id: id, run_id: id, result_revision: 3 }
 const medical = () => ({ ...base, doc_type: 'MEDICAL_REPORT', fields: [], items: [], report_summary: { declared_count: 2, scope: 'follow_up_required', findings: [{ finding_id: 'f1', text: '建议复查' }] } })
 const flush = async () => { await Promise.resolve(); await vue.nextTick(); await Promise.resolve() }
+const nextFrame = async () => { frames.splice(0).forEach(callback => callback(0)); await flush() }
 
 async function mountEditor(result: Record<string, unknown>) {
   // 模板 ref 拿公开代理：exposed refs 在代理上自动解包（与 detail-loading harness 同款；_instance.exposed 不解包）。
@@ -94,6 +106,54 @@ test('an incomplete added item jumps to the offending added row', async () => {
     assert.deepEqual(anchors.get('rev-added-0')!.scrolled, { behavior: 'smooth', block: 'center' })
   } finally { anchors.clear(); app.unmount() }
 })
+
+test('a long panel is revealed once only after its expansion finishes', async () => {
+  const anchor = new FakeAnchor(), panel = new FakePanel()
+  let finish!: () => void
+  panel.animations = [{ finished: new Promise<void>(resolve => { finish = resolve }) }]
+  anchor.panel = panel
+  anchors.set('rev-added-0', anchor)
+  const { app, vm } = await mountEditor(medical())
+  try {
+    vm.added.push({ name: '保留草稿', result_raw: '' })
+    vm.save()
+    await flush(); await nextFrame(); await nextFrame()
+    assert.equal(anchor.scrolled, null, 'the old collapsed scroll range must not be used')
+    assert.equal(anchor.focused, null)
+    finish(); await flush(); await nextFrame()
+    assert.deepEqual(anchor.scrolled, { behavior: 'smooth', block: 'center' })
+    assert.deepEqual(anchor.focused, { preventScroll: true })
+    assert.equal(vm.added[0].name, '保留草稿')
+  } finally { app.unmount(); anchors.clear(); frames.length = 0 }
+})
+
+for (const interruption of ['unmount', 'newer-error', 'valid-save', 'collapsed', 'detached', 'cancelled-animation']) {
+  test(`a pending panel reveal handles ${interruption} without stealing focus`, async () => {
+    const anchor = new FakeAnchor(), panel = new FakePanel()
+    let finish!: () => void, cancel!: () => void
+    panel.animations = [{ finished: new Promise<void>((resolve, reject) => { finish = resolve; cancel = () => reject(new Error('transition cancelled')) }) }]
+    anchor.panel = panel
+    anchors.set('rev-added-0', anchor)
+    const summary = new FakeAnchor()
+    anchors.set('rev-summary', summary)
+    const { app, vm } = await mountEditor(medical())
+    try {
+      vm.added.push({ name: '保留草稿', result_raw: '' })
+      vm.save()
+      await flush(); await nextFrame(); await nextFrame()
+      if (interruption === 'unmount') app.unmount()
+      if (interruption === 'newer-error') { vm.added = []; vm.findings[0].removed = true; vm.save() }
+      if (interruption === 'valid-save') { vm.added[0].result_raw = '正常'; vm.save() }
+      if (interruption === 'collapsed') panel.hidden = true
+      if (interruption === 'detached') anchor.isConnected = false
+      if (interruption === 'cancelled-animation') { panel.hidden = true; cancel() } else finish()
+      await flush(); await nextFrame(); await flush()
+      assert.equal(anchor.scrolled, null)
+      assert.equal(anchor.focused, null)
+      if (interruption === 'newer-error') assert.deepEqual(summary.scrolled, { behavior: 'smooth', block: 'center' })
+    } finally { if (interruption !== 'unmount') app.unmount(); anchors.clear(); frames.length = 0 }
+  })
+}
 
 test('an incomplete coverage declaration jumps to the coverage block', async () => {
   anchors.set('rev-coverage', new FakeAnchor())
