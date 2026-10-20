@@ -72,7 +72,9 @@ def _process_task(store, manager, task, logger, *, deadline=None):
                                   cancelled=lambda: store.cancelled(task['id'], task['run_id']),
                                   deadline=began+180 if deadline is None else deadline,
                                   options=store.storage.unpack(task['options_enc'], {}),
-                                  model_revisions=model_revisions)
+                                  model_revisions=model_revisions,
+                                  required_overrides=store.required_policy()['overrides']
+                                  if task['doc_type'] in {'DIPLOMA', 'DEGREE_CERT'} else None)
         if result.get('error'):
             if not result['error'].get('error_id'):
                 result['error']['error_id'] = logger.exception('pipeline_failed', RuntimeError(result['error']['code']), **context,

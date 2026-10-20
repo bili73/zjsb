@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-19T11:20:56.333Z",
+  "generatedAt": "2026-10-20T02:54:40.338Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 142,
+    "activeNotes": 146,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 769,
+    "relations": 782,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 137,
+      "implemented": 141,
       "rejected": 3
     },
     "staleNotes": []
@@ -60,7 +60,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep current recognition optimization independent of the host backend. When the Mac is available, qualify its native Apple GPU route using the existing frozen evidence and separate measurements. The official GLM MLX guide and Paddle Apple S",
@@ -147,7 +147,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Use a single shared HR workbench with one or two named accounts. Keep username/password login and server-side sessions. Create or reset accounts through a deployment command; omit public registration, email recovery and a user-management ap",
@@ -250,7 +250,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "The launcher exposes the lightweight local UI/service first and starts an independent runtime worker. It sequentially loads and warms GLM-OCR then PaddleOCR-VL in their existing isolated environments. Both remain resident in default dual_re",
@@ -338,7 +338,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.6,
+        "monthsSinceVerify": 0.7,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "PaddlePaddle/PaddleOCR-VL-1.6 is installed at pinned revision c5630abae1d940eafe0697512a0325494b02ab42 in models/paddleocr-vl-1.6 and a separate .venvs/paddleocr-vl-1.6 environment with native Transformers 5.17.0 and Torch 2.10.0+cu128. Ori",
@@ -693,6 +693,7 @@
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/architecture/2026-10-16-account-fair-document-queue.md",
         "implemented/bug-fix/2026-10-19-paddle-packed-image-isolation.md",
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
         "implemented/testing/2026-10-19-windows-model-batching.md"
       ],
       "lastVerified": "2026-10-19",
@@ -764,6 +765,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
         "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
         "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -785,6 +787,7 @@
         "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md",
         "implemented/bug-fix/2026-10-12-adjacent-document-field-boundaries.md",
         "implemented/bug-fix/2026-10-12-degree-school-and-award-mapping.md",
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-08-hr-document-field-profile.md",
         "implemented/feature/2026-10-08-human-review-and-xlsx-export.md",
@@ -796,11 +799,11 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.6,
+        "monthsSinceVerify": 0.7,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The implementation restores native medical structure and repairs the confirmed certificate mapping defects under the user's approved scope. Both deployed recognition models, the production default, serial GPU ownership, confidence semantics",
-      "bodySha256": "6b7361b951dfe684",
+      "bodySha256": "704b650192650455",
       "lines": {
         "title": 1,
         "status": 3,
@@ -817,27 +820,27 @@
           },
           {
             "title": "Decision",
-            "line": 21
+            "line": 23
           },
           {
             "title": "Decision audit",
-            "line": 54
+            "line": 56
           },
           {
             "title": "Alternatives considered",
-            "line": 58
+            "line": 60
           },
           {
             "title": "Testing",
-            "line": 67
+            "line": 69
           },
           {
             "title": "Consequences",
-            "line": 83
+            "line": 85
           },
           {
             "title": "Related verification",
-            "line": 89
+            "line": 91
           }
         ]
       },
@@ -878,7 +881,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.6,
+        "monthsSinceVerify": 0.7,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The small standard-library OTSL-to-HTML decoder runs before existing medical column mapping. It follows official PaddleX token semantics, escapes cell text, preserves horizontal and vertical spans, and never uses field references to repair ",
@@ -955,6 +958,7 @@
         "implemented/architecture/2026-09-29-local-dual-model-lifecycle.md",
         "implemented/architecture/2026-10-08-independent-model-queues.md",
         "implemented/bug-fix/2026-10-10-measured-task-progress.md",
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
         "implemented/feature/2026-09-30-durable-document-tasks.md",
         "implemented/feature/2026-09-30-local-diagnostics.md",
         "implemented/testing/2026-09-30-whole-medical-corpus.md",
@@ -1208,7 +1212,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep existing 生化检验报告单 source attribution and its liver-name/abbreviation whitelist; never treat every biochemical or hepatitis measurement as liver function. When liver_function has no abnormal summary or explicit conclusion, serialize the ",
@@ -1282,6 +1286,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/feature/2026-10-08-hr-document-field-profile.md",
         "implemented/feature/2026-10-09-business-xlsx-layout.md",
@@ -1292,6 +1297,7 @@
         "proposed/architecture/2026-10-09-hosted-web-session-auth.md",
         "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
         "implemented/bug-fix/2026-10-12-degree-school-and-award-mapping.md",
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
         "implemented/feature/2026-10-08-hr-document-field-profile.md",
         "implemented/testing/2026-10-09-diploma-accuracy-refresh.md"
       ],
@@ -1302,8 +1308,8 @@
         "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
-      "summary": "Add observed signatory boundaries including 院长 with spaced-label forms; these delimiters do not restore removed signatory fields. Rank an explicit printed 校名/学校名称 field above an unlabelled cover/title candidate. Distinct equally authoritati",
-      "bodySha256": "a1a5cb2ab484f0b6",
+      "summary": "The subsequent missing-required certificate recovery adds one local GLM recognition when configured required text is absent from a normal primary OCR output. Existing field/date interpretation, source preservation and ambiguity handling bel",
+      "bodySha256": "5669c2f9f44727b3",
       "lines": {
         "title": 1,
         "status": 3,
@@ -1324,35 +1330,35 @@
           },
           {
             "title": "Decision audit",
-            "line": 23
+            "line": 25
           },
           {
             "title": "Diploma number-label tolerance",
-            "line": 27
+            "line": 29
           },
           {
             "title": "Alternatives considered",
-            "line": 35
+            "line": 37
           },
           {
             "title": "Verified invariants",
-            "line": 46
+            "line": 48
           },
           {
             "title": "Verification",
-            "line": 53
+            "line": 55
           },
           {
             "title": "Consequences",
-            "line": 57
+            "line": 59
           },
           {
             "title": "Decimal duration and curriculum level repair",
-            "line": 63
+            "line": 65
           },
           {
             "title": "Missing issue-date glyph repair",
-            "line": 71
+            "line": 73
           }
         ]
       },
@@ -1397,7 +1403,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Automatically populate liver_function only with confirmed abnormal source-backed measurements attributed to the liver group. Keep actual abnormal names, results, units and diagnoses; ignore normal/unknown measurements and normal or unclassi",
@@ -1485,7 +1491,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "When no explicit institution value or conflict already exists, accept the complete observed 普潓/普惠年华健康体检中心 branch line only on page one and within the observed lower-right personal-information band (normalized x-start at least .35, y-start .",
@@ -1577,7 +1583,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Summarize all six groups from measured rows, independently of a printed conclusion. Keep confirmed abnormal results and conflicts ahead of normal fallback. Allow a source-backed, nonempty A-grade UNKNOWN row as report-level normal evidence,",
@@ -1658,7 +1664,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "For blood_routine, urine_routine, ecg, dr_imaging and abdominal_ultrasound, derive 未见异常 when the observed group contains at least one eligible measured row, every group row has a real source and nonempty result, every row is NORMAL with a r",
@@ -1830,7 +1836,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Extend native table recovery with one bounded adjacent-page context for an observed split header: a qualified medical header at the prior page bottom ends in 风险, and the aligned next-page top header contains only 等级 in its last cell. Requir",
@@ -1914,7 +1920,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Initialize the calendar with today's Shanghai civil date and immediately filter the server-side batch list to that day. Day/week/month select the period containing the chosen anchor, so each view shows only that selected period. Clearing th",
@@ -2417,7 +2423,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Retain the existing evidence-bound extraction. Split a closed gender token only when followed by an explicit demographic label present in the current profile. Preserve the original source and genuine disagreements. Do not infer demographics",
@@ -2505,7 +2511,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD uses a dedicated classifier path, selected by an optional internal doc_type keyword on prepare_image. Bounded CPU OpenCV contour analysis operates on a maximum1000-pixel thumbnail: blurred gray dark Otsu, saturation Otsu and Canny",
@@ -2581,7 +2587,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Share school whitespace normalization and signature boundaries between diploma and degree extraction. In degrees, an unlabelled institution immediately adjacent to a signing title within the same text block has the same authority as an expl",
@@ -2659,7 +2665,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Lock the complete upload/confirmation operation against reentry, capture the client, target/version, mode, files and types before asking the attribution question, and cancel its continuation after unmount, abort, identity change or selectio",
@@ -2738,7 +2744,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "The user approves 已识别明细未见异常 only for normal summaries derived from measured rows without a printed conclusion. Explicit source conclusions and manual values keep their original meaning. Read/export projections apply the rule without rewriti",
@@ -2838,7 +2844,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Require an authorization callback for save_configuration and execute it inside BEGIN IMMEDIATE before reading or changing policy, including no-op saves. The HTTP route supplies the existing live administrator-session check; trusted internal",
@@ -3264,7 +3270,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Use the modern Clipboard API when available. Otherwise synchronously attempt selection-based copy inside the user click and active dialog, with temporary text removed and focus restored. A rejected modern write may attempt the same fallback",
@@ -3355,7 +3361,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Exclude QUEUED and active processing states from automatic expiry and use the same set for retention impact counts. Preserve original upload deadlines, explicit cancellation and eventual expiry after processing stops. Do not expand ACTIVE i",
@@ -3443,7 +3449,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Keep ordinary save as the authorized acknowledgment interaction. Confirm only targets with a selected value: medical findings require a live result association and nonempty result, and medical items require a nonempty result with selected o",
@@ -3528,7 +3534,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Vue errors use the existing diagnostic path and retain console behavior. Browser ErrorEvent records prefer parsed stack positions and fall back to bounded numeric event coordinates. Exact known ResizeObserver and opaque script messages map ",
@@ -3689,7 +3695,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-18"
       },
       "summary": "- All page placeholders share one A4 aspect-ratio reservation: .img-wrap, .page-holder, .page-skeleton get aspect-ratio: 210 / 297, and .page-image fills the reserved box (height: 100%). The list reaches final height before any bytes arrive",
@@ -3745,7 +3751,8 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
-        "implemented/bug-fix/2026-10-19-audit-query-error-codes.md"
+        "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
+        "implemented/bug-fix/2026-10-20-help-toc-groups.md"
       ],
       "citedBy": [],
       "lastVerified": "2026-10-19",
@@ -3756,7 +3763,7 @@
         "rule": "最近复核 2026-10-19"
       },
       "summary": "- Options load independently with their own loading/error state and a 重新加载筛选项 retry (options GET is idempotent per the backend note); the first page always fires. The retry stays mounted while in flight — optionsError clears only on success",
-      "bodySha256": "935e31cedc12c414",
+      "bodySha256": "f87651b110d0d3fc",
       "lines": {
         "title": 1,
         "status": 3,
@@ -4393,6 +4400,212 @@
       "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-19-stable-bank-script-spelling.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/bug-fix/2026-10-20-batch-board-visuals.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-20-batch-board-visuals.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-20-batch-board-visuals.md",
+      "title": "Batch board visual review fixes (#19 pager/range suffix/toolbar, #20 unnamed batch title)",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-20",
+      "scope": [
+        "frontend/src/batchCalendar.ts",
+        "frontend/src/components/BatchBoard.vue",
+        "frontend/tests/batch-board-visuals.test.ts"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [],
+      "citedBy": [],
+      "lastVerified": "2026-10-20",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-20"
+      },
+      "summary": "- Pagination hides on empty lists via v-if=\"monitor.state.serverTotal 0\". serverTotal is the pager's own total source in monitor.ts: starts at 0, set to list.total on list load, zeroed by setDateRange(range) (which also clears listedIds and",
+      "bodySha256": "f13143a1e17f1b7e",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 9
+          },
+          {
+            "title": "Decision",
+            "line": 14
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Verification",
+            "line": 28
+          },
+          {
+            "title": "Consequences",
+            "line": 34
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-20-batch-board-visuals.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+      "title": "Retry one observed local certificate region for missing required fields",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-20",
+      "scope": [
+        "backend/ocr_app/pipeline.py",
+        "backend/ocr_app",
+        "backend/runtime_worker.py",
+        "tests",
+        "scripts",
+        "SPEC.md",
+        "openapi.yaml",
+        "FRONTEND_FIELDS.md",
+        "RUNTIME.md",
+        "CHANGELOG.md"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+        "implemented/feature/2026-10-10-configurable-required-fields.md",
+        "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md",
+        "implemented/architecture/2026-10-19-runtime-two-image-batches.md",
+        "rejected/feature/2026-10-09-certificate-field-localization.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+        "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+        "implemented/feature/2026-10-10-configurable-required-fields.md"
+      ],
+      "lastVerified": "2026-10-20",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-20"
+      },
+      "summary": "The pipeline inspects missing editable required fields after primary OCR for single-page DIPLOMA/DEGREE_CERT documents. It uses the administrator required-field snapshot at recognition start, excluding optional fields and fields with existi",
+      "bodySha256": "b108d0aa60150c89",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Related-note audit",
+            "line": 21
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 25
+          },
+          {
+            "title": "Verification",
+            "line": 34
+          },
+          {
+            "title": "Consequences",
+            "line": 42
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/bug-fix/2026-10-20-help-toc-groups.md",
+      "path": ".agents/notes/implemented/bug-fix/2026-10-20-help-toc-groups.md",
+      "anchor": "// Note: .agents/notes/implemented/bug-fix/2026-10-20-help-toc-groups.md",
+      "title": "Group help TOC so chapters 1-10 run consecutively",
+      "lifecycle": "implemented",
+      "class": "bug-fix",
+      "date": "2026-10-20",
+      "scope": [
+        "frontend/public/help/index.html",
+        "frontend/tests/help-toc.test.ts"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-20-export-tip-hover.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-19-audit-panel-recovery.md",
+        "implemented/feature/2026-10-20-export-tip-hover.md"
+      ],
+      "lastVerified": "2026-10-20",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-20"
+      },
+      "summary": "- Nav gains four group headers: 快速上手, 基础流程（第 1–6 节）, 进阶说明（第 7–10 节）, 专题：特定场景与维护. Numbered chapters stay 1–10 with zero renumbering; the four special topics move into the trailing group. - Body sections are reordered so nav order exactly mir",
+      "bodySha256": "b71ee1f1156d8a78",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 9
+          },
+          {
+            "title": "Decision",
+            "line": 14
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 21
+          },
+          {
+            "title": "Verification",
+            "line": 27
+          },
+          {
+            "title": "Consequences",
+            "line": 35
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/bug-fix/2026-10-20-help-toc-groups.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-09-30-durable-document-tasks.md",
       "path": ".agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-09-30-durable-document-tasks.md",
@@ -4711,7 +4924,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Result projection repair limits bank-profile completion to actual result objects. Task summaries do not acquire fabricated empty fields; legacy results retain current profile fields and labels.",
@@ -5083,7 +5296,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Review binds task_id, run_id and expected_revision in a short atomic transaction. Patches accept only editable business fields, current item/finding/member IDs and explicit acceptance of currently acceptable issues. Keep raw OCR/source and ",
@@ -5393,7 +5606,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Provision HRSSC as admin using hidden terminal input and the existing Argon2id account store. Account names remain case-insensitive. Change the creation/reset minimum to eight characters; preserve the 128-character maximum and login throttl",
@@ -5484,7 +5697,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "BANK_CARD accepts decoded single photographs, including full front faces, and cropped rows. Upload does not call a recognizer; encrypted source persistence and independent per-file tasks match the other document families. PDF remains unsupp",
@@ -5581,7 +5794,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Default to day-grouped all-date browsing. Day/week/month controls change grouping, and a corresponding date/week/month picker selects a server-side creation-date range; clearing it restores all dates. Use Shanghai UTC+8 civil dates and Mond",
@@ -5686,7 +5899,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Replace the technical workbook with business worksheets grouped by material type. A document row contains its latest saved field values in profile order with Chinese labels, plus a readable source filename to distinguish repeated names/mate",
@@ -5780,7 +5993,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "All three workbench download actions use Chinese material labels and a Shanghai UTC+8 export-start timestamp: 体检报告_20261009_151530.xlsx. Combine distinct types with + for a mixed selection; unknown or missing types use 识别结果 without copying ",
@@ -5883,7 +6096,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "The user approves the field/extraction/review/export plan and explicitly defines the project count as the count of the body 本次体检项目意义 catalogue. Keep that editable catalogue as supporting evidence. Derive a read-only integer exam_project_cou",
@@ -5997,7 +6210,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Add an additive SQLite migration for named users, hashed opaque sessions and login throttling. Deployment operators create/change/disable accounts with a masked-password CLI; no default password, registration or browser account administrati",
@@ -6260,6 +6473,7 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
         "implemented/bug-fix/2026-10-12-review-repairs.md",
         "implemented/simplification/2026-10-08-required-fields-only-export.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
@@ -6269,6 +6483,7 @@
       ],
       "citedBy": [
         "implemented/bug-fix/2026-10-12-review-repairs.md",
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
         "implemented/feature/2026-10-08-card-and-document-profiles.md",
         "implemented/feature/2026-10-08-frontend-rebuild-element-plus.md",
         "implemented/feature/2026-10-10-web-user-manual.md",
@@ -6283,8 +6498,8 @@
         "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-10"
       },
-      "summary": "An administrator-only settings tab provides authenticated GET/PUT endpoints under /admin/required-fields. The application persists document-type overrides and one monotonic revision in a small SQLite settings table; default absence preserve",
-      "bodySha256": "57558e00884526c0",
+      "summary": "The subsequent certificate recovery reads this policy once at the beginning of eligible recognition to select missing fields for one local retry. It does not change these current-policy read/review/export checks or rewrite historical values",
+      "bodySha256": "dc403da1ba901637",
       "lines": {
         "title": 1,
         "status": 3,
@@ -6305,19 +6520,19 @@
           },
           {
             "title": "Decision audit",
-            "line": 19
+            "line": 21
           },
           {
             "title": "Alternatives considered",
-            "line": 23
+            "line": 25
           },
           {
             "title": "Verification",
-            "line": 30
+            "line": 32
           },
           {
             "title": "Consequences",
-            "line": 38
+            "line": 40
           }
         ]
       },
@@ -6683,7 +6898,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "The CPU helper uses the Apache-2.0 PaddlePaddle PP-LCNet_x1_0_doc_ori official ONNX export, pinned to revision 7330ab7039123e46af2dc03154b9969aa412c61d and SHA256 af9a0a4f317ff0709ce752067807f819cb15d883f8ecad89f28df1c6ee2d9c92. Each view f",
@@ -6762,7 +6977,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Treat the back as an optional material. Preserve independent ID_CARD_FRONT tasks and their own required fields; no back upload is needed for completion or export. Keep missing_back as a compatible presence state but display 国徽面未上传（可选，可仅识别人像",
@@ -6944,7 +7159,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Person-package exports use 人员信息总表 instead of 人员材料总览 as their first sheet. Personnel name and naming status come first, followed by every current profile field of each selected material type, and then package source/count/candidate metadata.",
@@ -7159,7 +7374,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "Offer explicit 按人员整理 and 按类型批量 modes; the chosen primary workflow is the person mode, while preserving existing type-batch uploads. A person enters the name once, chooses mixed files together, reviews a list containing thumbnail/file name a",
@@ -7252,7 +7467,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-12"
       },
       "summary": "New successful logins issue a random token with thirty-day absolute validity (30243600 seconds), with matching Cookie Max-Age. Polling/restoration does not extend expiry. Keep hashed server-side tokens, HttpOnly/SameSite/CSRF, secure HTTPS ",
@@ -7429,7 +7644,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "1. 先证明真实样本可以恢复，再接入业务",
@@ -8203,7 +8418,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Keep required-value and table-structure gates. Add one server projection for explicit number-length warnings, current format/checksum failures and unresolved recognition conflicts. Uncalibrated confidence, no official lookup and uncovered r",
@@ -8374,7 +8589,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Add INTERVIEW_FORM with exactly five initial fields: name (姓名), gender (性别), age (年龄), id_number (身份证号) and mobile_number (手机号). All are required by default and remain editable through the existing administrator required-field policy. Prese",
@@ -8543,7 +8758,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "The ordinary non-table review editor sends confirm_export_disputes=true with its existing version-bound save. Apply all edits and current validation first, then acknowledge every remaining confirmable dispute against that resulting value/co",
@@ -8708,7 +8923,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Queued-work recovery clarifies automatic expiry: QUEUED and processing states are both protected and counted as deferred. Completion, failure or cancellation restores eligibility using the original upload deadline. ACTIVE remains reserved f",
@@ -8783,7 +8998,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "目标恢复细节见审查修复：目标隐藏、移除或被新 DOM 替换时重置解析状态，稳定后重新绑定正确高亮；移除的旧节点立即解绑，保留既有作用域、退出和草稿保护边界。",
@@ -8869,7 +9084,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Diagnostic recovery and scan bounds extends this design with awaited thread-pool HTTP logging, per-file maintenance isolation and explicit partial-query/ZIP metadata. Damaged sources remain intact while valid records/files remain accessible",
@@ -8952,7 +9167,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Default and invalid OCR_LOG_LEVEL values resolve to ERROR, retaining ERROR and CRITICAL. Explicit existing troubleshooting overrides remain available. The original five-level product lookup is narrowed by the serious-query restriction; the ",
@@ -9033,7 +9248,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Use the first valid, trimmed, nonempty candidate in the existing upstream ranking. Skip candidates with control characters or more than 200 characters. Preserve all original candidates and existing OCR titles. Saved human tables remain auth",
@@ -9311,7 +9526,9 @@
       "supersedes": null,
       "supersededBy": [],
       "cites": [],
-      "citedBy": [],
+      "citedBy": [
+        "implemented/feature/2026-10-20-export-tip-hover.md"
+      ],
       "lastVerified": "2026-10-16",
       "archivedDate": null,
       "freshness": {
@@ -9594,7 +9811,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-18"
       },
       "summary": "- TableReview: save is enabled while the table has never been saved (reviewed_tables empty) even with zero edits, so pre-fills can be committed as-is; the alert chain gains two info states — pre-filled-not-saved (fresh) and no-modification-",
@@ -9654,7 +9871,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-18"
       },
       "summary": "- ResultView and ReviewEditor now render each non-acceptable field-level review issue as an inline red line under its field (role=\"status\"), in both the read view and the editor, so the top notice, the read table and the edit form tell one ",
@@ -10163,6 +10380,72 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-19-review-usability-fixes-batch-c.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-20-export-tip-hover.md",
+      "path": ".agents/notes/implemented/feature/2026-10-20-export-tip-hover.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-20-export-tip-hover.md",
+      "title": "Hover-only export block reason with warning styling",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-20",
+      "scope": [
+        "frontend/src/components/ExportControls.vue",
+        "frontend/src/components/TaskResultDrawer.vue",
+        "frontend/src/style.css",
+        "frontend/tests/detail-loading.test.ts"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/bug-fix/2026-10-20-help-toc-groups.md",
+        "implemented/feature/2026-10-16-batch-expanded-toolbar-one-row.md"
+      ],
+      "citedBy": [
+        "implemented/bug-fix/2026-10-20-help-toc-groups.md"
+      ],
+      "lastVerified": "2026-10-20",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-20"
+      },
+      "summary": "- ExportControls: the button is wrapped in el-tooltip (:disabled=\"!blocked\", effect light, popper-class export-tip-popper, placement top) whose content slot renders .export-tip — WarningFilled icon + the blocked text. The button itself is w",
+      "bodySha256": "6fad3009cfb8cf02",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 9
+          },
+          {
+            "title": "Decision",
+            "line": 14
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 22
+          },
+          {
+            "title": "Verification",
+            "line": 28
+          },
+          {
+            "title": "Consequences",
+            "line": 34
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-20-export-tip-hover.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/process/2026-09-29-dde-project-workflow.md",
       "path": ".agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
       "anchor": "// Note: .agents/notes/implemented/process/2026-09-29-dde-project-workflow.md",
@@ -10419,7 +10702,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-18"
       },
       "summary": "Freeze feature work on this tree until the Codex thread resumes: no other harness edits backend/frontend/tests while the thread is paused. Two safeguards were applied on 2026-10-18:",
@@ -10844,7 +11127,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Remove source filename headers and matching values from all business worksheets. Personnel tables keep every selected current business field, numbered repeated-document groups, names/status/counts and name candidates with their material typ",
@@ -10924,7 +11207,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-15"
       },
       "summary": "Expose only ERROR and CRITICAL in product filters and records. The empty filter means both serious levels. Apply the restriction before pagination and ZIP construction in the shared service record iterator; reject low-level filter values in",
@@ -11075,7 +11358,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-18"
       },
       "summary": "- All four absence selects deleted from the template. The now-unreachable frontend plumbing went with them: the absence reactive, the absenceObject helper, absence slots on items/findings/members drafts, the absence entry in the deep dirty ",
@@ -11225,7 +11508,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.6,
+        "monthsSinceVerify": 0.7,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The isolated paired diagnostic uses four encrypted certificate inputs and frozen visual references from the valid schema v2 experiment, plus three existing front-side bank-card samples scored only on card_number. Bank references are visuall",
@@ -11303,7 +11586,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.6,
+        "monthsSinceVerify": 0.7,
         "rule": "最近复核 2026-09-30"
       },
       "summary": "The diagnostic freezes source images, SPEC field templates and provisional Agent visual references before model inference. Identical inputs run through text recognition plus the unchanged extractor and explicit English-key and Chinese-field",
@@ -11537,7 +11820,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Visually inspect original images before inference. Copy historical references into a new encrypted fixture and record study endpoints under the user's approved graduation semantics; preserve printed month precision. Add the three current or",
@@ -11833,6 +12116,7 @@
       "citedBy": [
         "implemented/bug-fix/2026-10-09-medical-only-source-navigation.md",
         "implemented/bug-fix/2026-10-12-degree-school-and-award-mapping.md",
+        "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
         "implemented/feature/2026-10-12-certificate-image-upright.md",
         "implemented/feature/2026-10-13-field-region-ocr.md",
         "implemented/feature/2026-10-19-review-usability-fixes-batch-c.md"
@@ -11841,7 +12125,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep GLM/Paddle as the business recognizers. Use pinned rapidocr-onnxruntime1.4.4 with its bundled PP-OCRv4 detector/recognizer and direction classifier as a CPU-only positioning helper. Independent line text is needed to match values relia",
@@ -11924,7 +12208,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-09"
       },
       "summary": "Keep the current business Excel layout until the business team supplies its template, but add reference-threshold review and a separately saved human hiring-opinion field after the user approves this narrowed contract. Automated output is l",
@@ -12409,6 +12693,11 @@
     {
       "type": "cite",
       "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
+      "to": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md",
       "to": "implemented/bug-fix/2026-10-09-native-medical-table-continuation.md"
     },
     {
@@ -12605,6 +12894,11 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-09-biochemistry-ledger-export.md",
       "to": "implemented/bug-fix/2026-10-09-liver-abnormal-only.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md",
+      "to": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md"
     },
     {
       "type": "cite",
@@ -13288,6 +13582,11 @@
     },
     {
       "type": "cite",
+      "from": "implemented/bug-fix/2026-10-19-audit-panel-recovery.md",
+      "to": "implemented/bug-fix/2026-10-20-help-toc-groups.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/bug-fix/2026-10-19-audit-query-error-codes.md",
       "to": "implemented/feature/2026-10-16-numbered-list-pagination.md"
     },
@@ -13425,6 +13724,41 @@
       "type": "cite",
       "from": "implemented/bug-fix/2026-10-19-stable-bank-script-spelling.md",
       "to": "implemented/process/2026-10-16-portable-deployment-fixes-to-main.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+      "to": "implemented/bug-fix/2026-09-30-evidence-bound-field-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+      "to": "implemented/bug-fix/2026-10-09-diploma-school-and-date-mapping.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+      "to": "implemented/feature/2026-10-10-configurable-required-fields.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+      "to": "implemented/bug-fix/2026-10-08-bounded-medical-recognition.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+      "to": "implemented/architecture/2026-10-19-runtime-two-image-batches.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md",
+      "to": "rejected/feature/2026-10-09-certificate-field-localization.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/bug-fix/2026-10-20-help-toc-groups.md",
+      "to": "implemented/feature/2026-10-20-export-tip-hover.md"
     },
     {
       "type": "cite",
@@ -14390,6 +14724,11 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-10-account-owned-batches.md",
       "to": "implemented/feature/2026-10-16-account-operation-audit.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-10-configurable-required-fields.md",
+      "to": "implemented/bug-fix/2026-10-20-certificate-missing-required-recovery.md"
     },
     {
       "type": "cite",
@@ -15500,6 +15839,16 @@
       "type": "cite",
       "from": "implemented/feature/2026-10-19-review-usability-fixes-batch-c.md",
       "to": "rejected/feature/2026-10-09-certificate-field-localization.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-20-export-tip-hover.md",
+      "to": "implemented/bug-fix/2026-10-20-help-toc-groups.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-20-export-tip-hover.md",
+      "to": "implemented/feature/2026-10-16-batch-expanded-toolbar-one-row.md"
     },
     {
       "type": "cite",

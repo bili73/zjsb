@@ -12,6 +12,8 @@ Current graduate_date accepts only explicit graduation labels, while a standalon
 
 ## Decision
 
+The subsequent [missing-required certificate recovery](2026-10-20-certificate-missing-required-recovery.md) adds one local GLM recognition when configured required text is absent from a normal primary OCR output. Existing field/date interpretation, source preservation and ambiguity handling below remain in force; saved results are not rewritten.
+
 Add observed signatory boundaries including 院长 with spaced-label forms; these delimiters do not restore removed signatory fields. Rank an explicit printed 校名/学校名称 field above an unlabelled cover/title candidate. Distinct equally authoritative explicit labels remain conflicts, and lower-authority text stays available as source evidence. Do not fuzzy-correct a school against a guessed dictionary or choose by filename.
 
 Parse observed Chinese date typography, including O/0/〇 within a validated date context, and source-bound certificate footer dates on the same line as a certificate number without modifying the certificate number. Never globally replace identifier characters. Keep actual date precision and invalid/conflicting dates unresolved.

@@ -15,6 +15,7 @@ from .documents import DocumentError, decode_pages, normalized_box, png_bytes, r
 from .extraction import extract_result, issue
 from .image_preprocessing import UPRIGHT_DOCUMENT_TYPES
 from .doc_profiles import BANK_CARD_TYPES
+from .certificate_recovery import RECOVERY_TYPES, missing_required_fields, locate_recovery_region, merge_recovery_fields
 
 
 class _Stop(Exception):
@@ -32,7 +33,8 @@ class RecognitionFailure(RuntimeError):
 def process_document(content: bytes, doc_type: str, *, recognize: Callable, progress: Callable,
                      save_page: Callable, record_attempt: Callable, cancelled: Callable,
                      deadline: float, options: dict | None = None,
-                     model_revisions: dict | None = None) -> dict:
+                     model_revisions: dict | None = None,
+                     required_overrides: dict | None = None) -> dict:
     """Return a TaskResult payload plus pages/state/warnings; caller binds run IDs.
 
     Expected business errors return FAILED/CANCELLED and retained partial data.
@@ -49,6 +51,8 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     pending = {}
     form_lines = {}
     bank_roles = {}
+    recoveries = {}
+    recovery_considered = False
     planning_complete = False
     stage, stop_code = 'PREPROCESSING', None
     preprocessing = {'doc_type': doc_type} if doc_type in UPRIGHT_DOCUMENT_TYPES else None
@@ -187,9 +191,12 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
             for box, region, task in pending[page.index]:
                 publish('OCR')
                 region_id, location = region['region_id'], region['bbox']
+                recovering = region_id in recoveries
+                soft_timeout = 20. if recovering else generation_timeout
                 selected = None
                 successful = False
-                region_models = (model, alternate) if bank_roles.get(region_id) in {'front','supplement','ambiguous_front'} else attempt_models
+                region_models = (model,) if recovering else (
+                    (model, alternate) if bank_roles.get(region_id) in {'front','supplement','ambiguous_front'} else attempt_models)
                 for attempt_index, used_model in enumerate(region_models):
                     check()
                     if interview:
@@ -197,7 +204,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                     if interview and attempt_index:
                         task = 'ocr'  # Alternate text recognition retains out-of-cell handwriting.
                     image = page.image.crop(box)
-                    transform = 'original'
+                    transform = 'required_field_crop' if recovering else 'original'
                     if attempt_index and not paddle_primary:
                         # A real deterministic input repair, recorded separately from inference.
                         image = ImageOps.autocontrast(image)
@@ -209,14 +216,16 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                     started = time.monotonic()
                     input_hash = hashlib.sha256(png).hexdigest()
                     prompt = 'Table Recognition:' if task == 'table' else ('Text Recognition:' if used_model == 'glm_ocr' else 'OCR:')
-                    key = cache_key(used_model, task, prompt, input_hash, transform)
+                    key = None if recovering else cache_key(used_model, task, prompt, input_hash, transform)
                     cached = cache.get(key) if key is not None else None
                     attempt = dict(page_index=page.index, region_id=region_id, bbox=location,
                                    attempt=attempt_index + 1, model=used_model, task=task,
                                    input_sha256=input_hash, transform=transform, prompt=prompt,
-                                   max_new_tokens=4096, generation_timeout_seconds=generation_timeout,
+                                   max_new_tokens=4096, generation_timeout_seconds=soft_timeout,
                                    cache_hit=cached is not None, inference_performed=cached is None,
                                    timeout_seconds=max(0., deadline - started))
+                    if recovering:
+                        attempt.update(recovery_fields=recoveries[region_id], recovery_reason='MISSING_REQUIRED_FIELDS')
                     if page.image_preprocessing is not None:
                         attempt['image_preprocessing'] = dict(page.image_preprocessing)
                     fatal_error, timed_out = None, False
@@ -228,8 +237,8 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                                            reused_from_attempt=cached['attempt'])
                         else:
                             extra = {'context': dict(page=page.index, region_id=region_id, stage=stage)} if accepts_context else {}
-                            if generation_timeout is not None and accepts_generation_timeout:
-                                extra['generation_timeout_seconds'] = generation_timeout
+                            if soft_timeout is not None and accepts_generation_timeout:
+                                extra['generation_timeout_seconds'] = soft_timeout
                             prediction = recognize(used_model, base64.b64encode(png).decode('ascii'),
                                                    task, max(.001, deadline - time.monotonic()), **extra)
                         if not isinstance(prediction, dict):
@@ -245,7 +254,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                         termination = prediction.get('termination_reason', prediction.get('termination'))
                         successful = isinstance(text, str) and bool(text.strip()) and not prediction.get('error_code') and termination not in {
                             'token_limit', 'length', 'repetition_stop', 'truncated', 'timeout', 'time_limit'}
-                        if (generic or interview) and termination != 'eos':successful=False
+                        if (generic or interview or recovering) and termination != 'eos':successful=False
                         if isinstance(text, str) and text.strip():
                             selected = dict(text=text, page=page.index, region_id=region_id,
                                             bbox=location, extraction_method='ocr')
@@ -277,7 +286,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                     record_attempt(attempt)
                     if fatal_error is not None:
                         raise fatal_error
-                    if timed_out:
+                    if timed_out and not recovering:
                         raise _Stop('EXTRACT_TIMEOUT')
                     # Persist text before budget/cancel check so completed partial work survives timeout.
                     if selected:
@@ -292,7 +301,7 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                         # Revision may become known only after a cold worker load.
                         # A clipped actual generation configuration cannot populate
                         # the requested-settings key. Never cache cancelled work.
-                        key = cache_key(used_model, task, prompt, input_hash, transform)
+                        key = None if recovering else cache_key(used_model, task, prompt, input_hash, transform)
                         if (cached is None and key is not None and termination == 'eos'
                                 and prediction.get('generation_timeout_seconds', generation_timeout) == generation_timeout
                                 and prediction.get('max_new_tokens', 4096) == 4096):
@@ -300,6 +309,28 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
                         break
                 if not successful:
                     limitations.append(f'有识别区域在{len(region_models)}次尝试后仍不完整，保留最后一次可用原文。')
+                if (doc_type in RECOVERY_TYPES and len(pages) == 1 and successful and not recovering
+                        and not recovery_considered and all(r['status'] != 'pending' for r in info['regions'])):
+                    recovery_considered = True
+                    missing = missing_required_fields(evidence, doc_type, required_overrides)
+                    if missing:
+                        plan = None
+                        if deadline - time.monotonic() >= 5:
+                            try:
+                                plan = locate_recovery_region(page.image, doc_type, missing, check)
+                            except Exception:
+                                check()
+                            check()
+                        if plan:
+                            recovery_id = str(uuid4())
+                            retry = dict(region_id=recovery_id, bbox=normalized_box(plan['box'], page.image.size),
+                                         extraction_method='ocr', status='pending')
+                            info['regions'].append(retry)
+                            recoveries[recovery_id] = plan['keys']
+                            pending[page.index].append((plan['box'], retry, 'ocr'))
+                            limitations.append('缺失必填字段触发一次局部补识别；仍缺失或有异议的字段请人工填写或核对。')
+                        else:
+                            limitations.append('缺失必填字段未能定位到可靠局部区域或剩余预算不足，请对照原件人工填写。')
                 publish('OCR')
             info['extraction_method'] = 'mixed' if page.evidence else 'ocr'
             # Coordinate coverage is known; semantic OCR coverage remains unverified.
@@ -318,6 +349,13 @@ def process_document(content: bytes, doc_type: str, *, recognize: Callable, prog
     if any(region['status'] == 'pending' for page_info in pages for region in page_info['regions']):
         limitations.append('仍有待OCR区域未处理；已读取的全部页文字及原生表格已保留，结果不代表完整识别。')
     result = extract_result(evidence, doc_type, complete=False)
+    if recoveries:
+        recognized_ids = {r['region_id'] for info in pages for r in info['regions']
+                          if r['region_id'] in recoveries and r['status'] == 'recognized'}
+        merge_recovery_fields(result, evidence, recoveries, recognized_ids)
+    if doc_type in RECOVERY_TYPES and required_overrides is not None:
+        from .required_fields import project_requirements
+        project_requirements(result, required_overrides)
     if bank_admission:
         result['admission_seconds'] = bank_admission.get('elapsed_seconds')
     result['limitations'] = list(dict.fromkeys(result['limitations'] + limitations))

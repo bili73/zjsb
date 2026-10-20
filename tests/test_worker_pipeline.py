@@ -23,6 +23,7 @@ def fake_store():
     store.storage.unpack.return_value = {}
     store.cancelled.return_value = False
     store.save_page.return_value = 'page-fixture'
+    store.required_policy.return_value = dict(revision=0, overrides={})
     store.claim_next.return_value = TASK
     return store
 
@@ -89,6 +90,14 @@ class WorkerPipelineTests(unittest.TestCase):
         self.assertEqual(protocol.getvalue().count('\n'), 1)
         self.assertNotIn('library', protocol.getvalue())
         self.assertIn('snapshot', protocol.getvalue())
+
+    def test_certificate_recovery_receives_current_required_policy_snapshot(self):
+        policy = dict(revision=7, overrides={'DIPLOMA': ['major', 'birth_date']})
+        self.store.required_policy.return_value = policy
+        with patch('ocr_app.pipeline.process_document', return_value=dict(status='NEED_REVIEW')) as pipeline:
+            runtime_worker.process_task(self.store, self.manager, dict(TASK, doc_type='DIPLOMA'), self.logger)
+        self.assertEqual(pipeline.call_args.kwargs['required_overrides'], policy['overrides'])
+        self.store.required_policy.assert_called_once_with()
 
     def test_main_closes_manager_and_stops_claiming_after_fatal_task(self):
         inbox = Mock()

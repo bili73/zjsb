@@ -10,6 +10,8 @@ Required fields are fixed in document profiles. The user wants to set them in th
 
 ## Decision
 
+The subsequent [certificate recovery](../bug-fix/2026-10-20-certificate-missing-required-recovery.md) reads this policy once at the beginning of eligible recognition to select missing fields for one local retry. It does not change these current-policy read/review/export checks or rewrite historical values when settings change during recognition.
+
 An administrator-only settings tab provides authenticated GET/PUT endpoints under /admin/required-fields. The application persists document-type overrides and one monotonic revision in a small SQLite settings table; default absence preserves existing conditional profiles. Saving a type selects its exact editable required field set, including optional household member fields and generic body text. Derived read-only fields cannot become required. Restore defaults removes that type's override, including restoring its conditional rules. An empty custom set permits optional empty business fields while still requiring a saved supported result.
 
 Current server settings govern task export flags, full result metadata, review field validation and atomic whole-selection export. Read one settings snapshot for each read/export/review operation; changes never rewrite historical ciphertext, OCR outputs, manual fields, task status or result revision. Expose a separate optional required_fields_revision on batch/task/result DTOs. Terminal batch rows refresh when it changes; result cache identities invalidate while dirty drafts retain their existing stale-version protection. The generic body and each existing household member use the same selected requirements.

@@ -6,6 +6,8 @@ Last-verified: 2026-09-30
 
 ## Problem
 
+The later [missing-required certificate recovery](2026-10-20-certificate-missing-required-recovery.md) covers a distinct raw-OCR omission with one observed local retry. It preserves this mapper's conservative field interpretation and raw evidence; it does not add a regex default for unread words.
+
 New confirmed cases are implemented in [native medical continuation](2026-10-09-native-medical-table-continuation.md) and [diploma school/date mapping](2026-10-09-diploma-school-and-date-mapping.md). They extend same-page recovery and school ranking, and replace the deliberate interval-end abstention with the user's confirmed enrollment/graduation convention. Source evidence and independent-list-count contracts remain.
 
 The user asks to fix text-to-field mapping using the existing samples and to use medical report conclusions/counts when checking abnormal findings. Several independent losses are verified in the pre-fix pipeline rather than inferred from low OCR scores:
