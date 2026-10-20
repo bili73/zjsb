@@ -14,7 +14,7 @@ import { errorMessages } from '../diagnostics.ts'
 import { entryNeedsReview, entryRunning } from '../monitor.ts'
 import type { BatchEntry, Monitor } from '../monitor.ts'
 import { batchOwnerLabel, expiryText, fairQueueHint, formatTime, taskProgressView } from '../presentation.ts'
-import { groupBatchEntries, periodBounds } from '../batchCalendar.ts'
+import { groupBatchEntries, periodBounds, rangeSuffix } from '../batchCalendar.ts'
 import type { BatchPeriod } from '../batchCalendar.ts'
 
 const props = defineProps<{ monitor: Monitor; canWrite: boolean; isAdmin: boolean; api: BusinessApi | null; uploadReset: number; catalogue: DocProfile[]; active?: boolean }>()
@@ -77,8 +77,12 @@ const pairingTagTypes: Record<IdCardPairing, 'success' | 'warning' | 'info'> = {
   unassigned: 'info', not_provided: 'info', missing_front: 'warning', missing_back: 'info', both_present: 'success',
 }
 
+// 未命名批次回退显示创建时间（分钟精度可区分同日多批）；uuid 前缀对操作员无意义且几乎无法区分。
 function batchTitle(batchId: string) {
-  return props.monitor.state.entries[batchId]?.batch?.display_name || `批次 ${batchId.slice(0, 8)}`
+  const batch = props.monitor.state.entries[batchId]?.batch
+  if (batch?.display_name) return batch.display_name
+  const stamp = batch?.created_at ? formatTime(batch.created_at) : ''
+  return stamp !== '' && stamp !== '—' ? `未命名批次 ${stamp.slice(0, 16)}` : '未命名批次'
 }
 
 function batchMeta(batchId: string) {
@@ -273,9 +277,10 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
         <el-date-picker v-model="anchor" :key="period" :type="period === 'day' ? 'date' : period"
           value-format="YYYY-MM-DD" :format="period === 'month' ? 'YYYY年MM月' : period === 'week' ? 'YYYY-MM-DD [所在周]' : 'YYYY-MM-DD'"
           :placeholder="period === 'day' ? '选择日期' : period === 'week' ? '选择周' : '选择月份'" clearable />
+        <!-- 阅读顺序：先当前范围括注，再「全部日期」清除动作；括注的周语义由 rangeSuffix 按视图给出。 -->
+        <span class="poll-hint">{{ dateRange ? `${dateRange.date_from} 至 ${dateRange.date_to}` : '全部日期' }}{{ rangeSuffix(period, !!dateRange) }}</span>
         <el-button v-if="anchor" link type="primary" @click="anchor = null">全部日期</el-button>
       </span>
-      <span class="poll-hint">{{ dateRange ? `${dateRange.date_from} 至 ${dateRange.date_to}` : '全部日期' }}（UTC+8，周一至周日）</span>
     </div>
     <div class="board-toolbar">
       <el-tag v-if="monitor.state.polling" type="success" effect="plain" round>自动刷新中 · 每 2 秒</el-tag>
@@ -435,7 +440,8 @@ const deleteBlockReason = (entry: BatchEntry) => entryRunning(entry)
       </el-collapse-item>
       </section>
     </el-collapse>
-    <el-pagination background :current-page="monitor.state.page" :page-size="monitor.state.pageSize" :total="monitor.state.serverTotal"
+    <!-- 空列表（含筛选后 serverTotal 为 0）不显示分页器；有记录才给翻页入口。 -->
+    <el-pagination v-if="monitor.state.serverTotal > 0" background :current-page="monitor.state.page" :page-size="monitor.state.pageSize" :total="monitor.state.serverTotal"
       :page-sizes="[20, 50, 100]" :disabled="loadingMore || !!acting" layout="total, sizes, prev, pager, next, jumper" class="list-pager"
       @update:current-page="changePage($event)" @update:page-size="changePage(1, $event)" />
     <el-dialog :model-value="!!appendTarget" title="补充人员材料" width="min(1000px, 94vw)" destroy-on-close @close="appendTarget = null" @closed="monitor.start()">

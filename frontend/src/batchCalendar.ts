@@ -37,3 +37,8 @@ export function groupBatchEntries(entries: readonly Entry[], period: BatchPeriod
   }
   return [...groups.values()]
 }
+
+// 时间范围括注：周语义只在周视图成立；日/月视图与未锚定（全部日期）时只标注时区。
+export function rangeSuffix(period: BatchPeriod, anchored: boolean): string {
+  return anchored && period === 'week' ? '（UTC+8，周一至周日）' : '（UTC+8）'
+}
