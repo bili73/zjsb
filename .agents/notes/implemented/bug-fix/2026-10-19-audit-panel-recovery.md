@@ -38,4 +38,4 @@ vue-tsc clean; 275/275 frontend tests pass. New audit-panel-recovery.test.ts (co
 - Rate-limited or busy audit reads show the same retry-seconds/error-id presentation as the review/export/login surfaces.
 - Editing filters without re-querying and then exporting now gets an explicit choice instead of a silently different predicate; export success is visible; dismissing the error alert no longer rewrites the empty-table verdict.
 - Bank card / table upload tips no longer advertise PDF; mixed mode is unchanged.
-- #6/#20/#21 closed as verified-landed. Still parked: #14 remainder, #18, the auditDetail dead path (product decision), and #17 (help TOC unnumbered group style — now unblocked since the backend committed help/index.html in 42376fc; candidate for the next batch).
+- #6/#20/#21 closed as verified-landed. Still parked: #14 remainder, #18, and the auditDetail dead path (product decision). #17 (help TOC groups) landed 2026-10-20 — [help TOC note](./2026-10-20-help-toc-groups.md).

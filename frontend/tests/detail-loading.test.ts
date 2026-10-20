@@ -11,7 +11,7 @@ const vue = await import(pathToFileURL(require.resolve('vue')).href)
 const dataUrl = (value: string) => `data:text/javascript;base64,${Buffer.from(value).toString('base64')}`
 const child = dataUrl('export default {render(){return null}}')
 const element = dataUrl('export const ElMessage={error(){},warning(){},info(){},success(){}}; export const ElMessageBox={async confirm(){}}')
-const icons = dataUrl('export const Crop={};export const Download={}')
+const icons = dataUrl('export const Crop={};export const Download={};export const WarningFilled={}')
 const renderer = vue.createRenderer({ patchProp(){}, insert(){}, remove(){}, createElement(){return{}},
   createText(){return{}}, createComment(){return{}}, setText(){}, setElementText(){}, parentNode(){return null}, nextSibling(){return null} })
 class Observer { constructor(...args: unknown[]) {} observe() {} disconnect() {} }

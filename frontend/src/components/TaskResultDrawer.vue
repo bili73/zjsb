@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Download } from '@element-plus/icons-vue'
+import { Download, WarningFilled } from '@element-plus/icons-vue'
 import { ApiFailure, isAbort, resultConflictAction } from '../api.ts'
 import type { BusinessApi } from '../api.ts'
 import { resultKey } from '../business.ts'
@@ -225,9 +225,11 @@ async function runExport() {
           <OperationGuide label="本页指引" :context="detailGuideContext(result?.doc_type)" scope="task-result" :can-write="canWrite" :active="open && !!result && !loading && !saving" :reset-key="taskKey" />
           <el-tooltip
             v-if="result && task && exportBlocked"
-            :content="exportBlocked"
+            effect="light"
+            popper-class="export-tip-popper"
             placement="bottom"
           >
+            <template #content><span class="export-tip"><el-icon><WarningFilled /></el-icon>{{ exportBlocked }}</span></template>
             <span data-guide="detail-export"><el-button :icon="Download" disabled>导出 Excel</el-button></span>
           </el-tooltip>
           <!-- NEED_REVIEW 时保存修正才是主操作：导出降为 plain 次级按钮（白底蓝描边），与不可导出的灰色禁用态明确区分；导出门禁不变，仍可点。 -->
