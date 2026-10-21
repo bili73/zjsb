@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema": "dde-agent-index/1",
-  "generatedAt": "2026-10-20T04:06:33.195Z",
+  "generatedAt": "2026-10-21T00:59:31.418Z",
   "generator": "npx tsx scripts/notes.ts index",
   "disclaimer": "本索引是笔记库的派生快照，用于快速导航与关系检索，不是事实源。\n凡涉及代码修改、实现细节核对、或笔记 freshness.state 为 stale/undated 时，\n必须回读 source.path/lines 指向的源文件与相关代码，避免被过期记录误导。",
   "usage": {
@@ -12,13 +12,13 @@
     "markRechecked": "npx tsx scripts/notes.ts touch <笔记路径>   # 刷新 Last-verified 元数据"
   },
   "stats": {
-    "activeNotes": 151,
+    "activeNotes": 153,
     "archivedNotes": 1,
     "modules": 0,
-    "relations": 795,
+    "relations": 801,
     "byLifecycle": {
       "proposed": 2,
-      "implemented": 146,
+      "implemented": 148,
       "rejected": 3
     },
     "staleNotes": []
@@ -440,7 +440,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "When both models complete serial startup successfully, use two bounded document lanes: one certificate lane (DIPLOMA and DEGREE_CERT) and one medical lane, each with at most one supervised CPU task process. Single-resident or startup-degrad",
@@ -610,7 +610,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Keep one exclusive model call per model; the baseline single-image mode admits one active document per lane. The later Windows two-image runtime partially supersedes that admission limit for validated short single-page materials only, retai",
@@ -704,7 +704,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Expose an internal batch-size limit of1 or2, default1 for direct/benchmark RuntimeConfig callers and2 for the qualified Windows launcher. Successful dual startup enables at most three short single-page documents per existing lane and at mos",
@@ -1309,7 +1309,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The subsequent missing-required certificate recovery adds one local GLM recognition when configured required text is absent from a normal primary OCR output. Existing field/date interpretation, source preservation and ambiguity handling bel",
@@ -1754,7 +1754,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The application has no experimental certificate helper, endpoint or added positioning dependencies. Field-level positioning/source controls appear only for medical reports; all document types retain whole-page image preview and manual editi",
@@ -1992,7 +1992,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The entire illustration fits proportionally inside a centered viewer capped at 1000px width and 86 percent of the viewport height. Image scrolling and its explanatory text are removed. The existing cross, Escape, backdrop dismissal and read",
@@ -2058,7 +2058,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Open an illustration in one native modal dialog in the same manual document. Keep a visible 44px close button outside the scrollable image area, support native Escape and backdrop dismissal, and show the image at its original dimensions in ",
@@ -2142,7 +2142,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The pipeline publishes preparation checkpoints and one completed physical OCR-region checkpoint after retries, preserving the current worker callback signature, polling, run/revision fences and180-second deadline. It stays in OCR across pag",
@@ -2211,7 +2211,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "SourcePreview keeps the latest medical source as a cancellable navigation intent. After its image loads, it scrolls to its highlight or existing whole-page fallback. Page-load and preview-size changes coalesce into animation-frame alignment",
@@ -2288,7 +2288,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Element Plus and the existing polling remain. A measured bar appears only during OCR with a known positive region total, accompanied by literal processed/total counts. Queue has no activity spinner; other active phases use the existing Load",
@@ -2356,7 +2356,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The existing latest-selection intent, lazy loading, layout observation, scheduled-frame cancellation and manual-browsing cancellation remain active. Every alignment, including one triggered by page expansion, requests native smooth scrollin",
@@ -2950,7 +2950,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Business endpoints inherit a protected APIRouter default principal dependency, separate from the explicitly public login route. Keep administrator/operator/viewer and immutable batch ownership semantics. Reuse the existing session/legacy-ke",
@@ -3038,7 +3038,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Region OCR reuses the native JobProcess supervisor for the short-lived binary protocol. The ten-second execution budget, bounded output and one in-flight request remain; whole-job cleanup precedes slot release. Job cleanup has its existing ",
@@ -3626,7 +3626,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "Keep SQLite WAL/FULL and the five-second busy timeout. Centralize short write-transaction handling for TaskStore and Accounts, translating only SQLite busy to an explicit retryable 503; never retry a transaction body. HTTP upload/classifica",
@@ -3764,7 +3764,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "- Options load independently with their own loading/error state and a 重新加载筛选项 retry (options GET is idempotent per the backend note); the first page always fires. The retry stays mounted while in flight — optionsError clears only on success",
@@ -3840,7 +3840,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Use AUDIT_FILTER_INVALID for audit list/export filter and paging failures, including FastAPI query validation, and AUDIT_EXPORT_TOO_LARGE when the current export snapshot exceeds10000 rows. Both remain HTTP422, with fixed Chinese backend an",
@@ -3917,7 +3917,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Build batch summaries from status, type, expiry and update metadata without calling public task projection or export validation. Keep source-result reads only where person-package name suggestions require them. Preserve owner checks, pairin",
@@ -3992,7 +3992,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Keep PASS wording and every check outcome/value unchanged. FAIL says the last check digit disagrees, asks the operator to inspect the original, and states local-only verification. Normalize only this known new ID-checksum failure message to",
@@ -4061,7 +4061,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "For --check, validate the saved generatedAt and rebuild the current source tree at that timestamp. Compare every indexed property as before, including freshness, dates, hashes, relations and anchors. Malformed JSON or missing/invalid genera",
@@ -4134,7 +4134,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "The original Paddle checkpoint loads a narrowly scoped adapter from repository code. Weights, cached model source and environments remain unchanged. For packed SDPA vision input, the adapter calls the original attention separately on the cu",
@@ -4207,7 +4207,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Read the preview's version-bound artifact reference through an ordinary connection, then decrypt, encode and durably stage its encrypted access history outside the SQLite writer lock. Recheck account, owner, run and result revision immediat",
@@ -4285,7 +4285,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Active preview requests are limited to two per mounted component, same-page callers share a promise, and explicit location/jump requests precede pending background pages. The observer uses the actual scroll viewport and75percent margin afte",
@@ -4361,7 +4361,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "The later user-requested non-name bank conversion partially supersedes the conversion scope and no-dependency choice below. It owns the broader bank/branch conversion; this note retains the selective Mac backport provenance, original verifi",
@@ -4491,7 +4491,9 @@
         "implemented/feature/2026-10-16-numbered-list-pagination.md",
         "implemented/architecture/2026-10-16-account-fair-document-queue.md"
       ],
-      "citedBy": [],
+      "citedBy": [
+        "implemented/simplification/2026-10-20-batch-board-copy-trim.md"
+      ],
       "lastVerified": "2026-10-20",
       "archivedDate": null,
       "freshness": {
@@ -4999,7 +5001,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The later administrator file retention decision replaces this note's fixed seven-day duration and client-side expiry fallback. Administrators select 7/15/30 days or never for existing and future files after a confirmation dialog; original u",
@@ -5118,7 +5120,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "Diagnostics initialize before launcher configuration and business imports. One structured JSONL writer per process instance rotates at 10 MiB across five files. The verified automatic archive extension provides severity, administrator searc",
@@ -5344,7 +5346,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "- Stack: Vue 3.5 + TypeScript + Vite, Element Plus 2.14 full import with zh-cn locale, pinned exact dependency versions. Composables only (no Pinia, no vue-router), matching ARCHITECTURE.md's composable-first stance for this local tool. - C",
@@ -6606,7 +6608,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Extend administrator management with enable/disable, deletion and password reset for other accounts. Add a self-service change-password dialog to the logged-in user menu for all roles, requiring the current password and confirmation of the ",
@@ -6703,7 +6705,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Persist an immutable owner ID on each batch, inherited by every task. New ownership comes only from the authenticated uploader. Backfill existing batches only when every surviving task has creation audit evidence with one shared actor; ambi",
@@ -6796,7 +6798,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The subsequent certificate recovery reads this policy once at the beginning of eligible recognition to select missing fields for one local retry. It does not change these current-policy read/review/export checks or rewrite historical values",
@@ -6888,7 +6890,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "DELETE /batches/{batch_id} accepts a complete task/run/revision snapshot. Within the same BEGIN IMMEDIATE transaction, recheck the current administrator session, batch membership, allowed states and each version. Only NEED_REVIEW, COMPLETED",
@@ -6963,7 +6965,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Preserve the concurrent HelpDrawer integration and qualify the current build with fresh synthetic real-HTTP account acceptance. The drawer embeds the same generic static manual in an iframe and unmounts its frame when closed; opening/closin",
@@ -7033,7 +7035,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "The later administrator file retention decision replaces this note's fixed seven-day duration and client-side expiry fallback. Administrators select 7/15/30 days or never for existing and future files after a confirmation dialog; original u",
@@ -7109,7 +7111,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "A 使用说明 entry beside 诊断 in the authenticated workbench header is available to every account role. The initial separate-tab navigation is partially replaced by the later embedded-help integration, which owns the current drawer interaction and",
@@ -7375,7 +7377,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "The later administrator file retention decision replaces this note's fixed seven-day duration and client-side expiry fallback. Administrators select 7/15/30 days or never for existing and future files after a confirmation dialog; original u",
@@ -7575,7 +7577,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Represent package intent independently of the confirmed person name using an additive batch flag. Backfill existing explicitly named packages only; leave ordinary and historical unassigned batches unchanged. Mixed file_types creation means ",
@@ -7852,7 +7854,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "The field-button placement and automatic draft application described below are the original decision, partially replaced by source-region text copying. The current component is RegionOcrDialog.vue; the source toolbar opens general transcrip",
@@ -8049,7 +8051,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "A small deterministic browser helper extracts explicit four-digit-year Chinese dates from the current editable OCR text. Accept Arabic/full-width digits and common Chinese digit/year and ten-based month/day notation; whitespace between reco",
@@ -8121,7 +8123,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "For materials with trusted corrected pages (ocrEnabled), clicking a source page image opens the region OCR dialog in a new cinema variant: a fullscreen dark backdrop (82% black modal mask, like the retired stock viewer) with the corrected p",
@@ -8203,7 +8205,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "Put a labelled camera button in SourcePreview's toolbar. It opens the existing bounded page/rectangle dialog at the most visible corrected page, with manual page selection. OCR text appears in the same dialog as an editable textarea. Copy a",
@@ -9293,7 +9295,8 @@
         "implemented/bug-fix/2026-10-15-queued-retention-and-diagnostic-recovery.md",
         "implemented/feature/2026-10-10-embedded-help-integration.md",
         "implemented/feature/2026-10-10-web-user-manual.md",
-        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md"
+        "implemented/feature/2026-10-15-diagnostic-levels-and-backup.md",
+        "implemented/simplification/2026-10-20-batch-board-copy-trim.md"
       ],
       "lastVerified": "2026-10-15",
       "archivedDate": null,
@@ -9640,7 +9643,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "The event scope, per-material granularity and review comparison UI below are partially superseded by the approved concise account actions decision. Identity, transaction, permission and migration decisions remain applicable.",
@@ -9710,7 +9713,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "The presentation and full-list account operations remain; paging follows direct numbered pagination:",
@@ -9772,7 +9775,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "The toolbar presentation remains in place; pagination is now governed by direct numbered pagination:",
@@ -9828,13 +9831,14 @@
       "supersededBy": [],
       "cites": [],
       "citedBy": [
-        "implemented/feature/2026-10-20-export-tip-hover.md"
+        "implemented/feature/2026-10-20-export-tip-hover.md",
+        "implemented/simplification/2026-10-20-batch-board-copy-trim.md"
       ],
       "lastVerified": "2026-10-16",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "- New .batch-actions row in BatchBoard: ExportControls first, then OperationGuide (本批次指引), then the admin 删除批次 button — one adjacent cluster in the requested order (an initial flex-spacer variant that pushed the right group to the row edge ",
@@ -9900,7 +9904,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "- ResultView: field-line 待核对/核对项 tags and 置信度 span removed; medical summary-note alert removed (the medical guide step carries the same completeness caveat verbatim); items-table 置信度 and 核对 columns removed; 仅看待核对 checkbox and its BMI small ",
@@ -9976,13 +9980,14 @@
         "implemented/bug-fix/2026-10-20-batch-task-filename-order.md",
         "implemented/feature/2026-10-09-batch-calendar-browser.md",
         "implemented/feature/2026-10-16-accounts-panel-restyle.md",
-        "implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md"
+        "implemented/feature/2026-10-16-audit-panel-toolbar-restyle.md",
+        "implemented/feature/2026-10-20-batch-collapse-all.md"
       ],
       "lastVerified": "2026-10-16",
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "The three lists use the installed Element Plus pagination control. Keep batch/audit defaults at 50 and accounts at 20, with 20/50/100 choices. Audit accepts page/page_size and returns items/total/page/page_size; legacy cursor/limit calls an",
@@ -10050,7 +10055,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "- App shell gains el-backtop (right 32 / bottom 48, default 200px visibility) plus a companion 跳转到底部 circular button stacked above it, styled after el-backtop (white circle, primary arrow, hover tint). The bottom button appears once the pag",
@@ -10252,7 +10257,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "The application environment uses pinned official OpenCC1.4.2 and its offline t2s dictionary. Only new BANK_CARD/BANK_CARD_COPY recognition candidates for bank_name, branch_name, card_scheme, card_type and valid_thru are simplified before de",
@@ -10335,7 +10340,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Two workbench entries have separate business types: BANK_CARD for ordinary cards, BANK_CARD_COPY for photocopies and handwritten supplemental sheets. Required-field settings remain independent. Defaults are card_number only for BANK_CARD an",
@@ -10414,7 +10419,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "DELETE /tasks/{task_id} accepts run_id and expected_revision. In one write transaction revalidate the session/role, task ownership, stopped state and exact version; capture only task-owned artifact references; append a value-free deletion a",
@@ -10490,7 +10495,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Reuse login_attempts with domain-separated hashed account/source keys. Atomically reserve attempts before Argon2: five attempts per normalized username per 300-second window, sixty per direct peer per 300-second window. A successful login c",
@@ -10572,7 +10577,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "GET/POST preview accept rendition=original|display, default original. Display returns metadata-free corrected PNG with longest edge at most1800 pixels and unchanged aspect ratio, never upscaling. Original retains existing dimensions. X-Prev",
@@ -10645,7 +10650,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "- locate allowlist adds HOUSEHOLD_REGISTER: page-level source navigation only. The rejected certificate helper concerns manufacturing bbox coordinates and stays rejected; SourcePreview's red-box gating remains unchanged and excludes househo",
@@ -10747,6 +10752,73 @@
       "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-20-bank-photocopy-upload-gate-tests.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
+      "id": "implemented/feature/2026-10-20-batch-collapse-all.md",
+      "path": ".agents/notes/implemented/feature/2026-10-20-batch-collapse-all.md",
+      "anchor": "// Note: .agents/notes/implemented/feature/2026-10-20-batch-collapse-all.md",
+      "title": "Collapse all expanded batches with one click",
+      "lifecycle": "implemented",
+      "class": "feature",
+      "date": "2026-10-20",
+      "scope": [
+        "frontend/src/components/BatchBoard.vue"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/simplification/2026-10-20-batch-board-copy-trim.md",
+        "implemented/feature/2026-10-16-numbered-list-pagination.md"
+      ],
+      "citedBy": [
+        "implemented/simplification/2026-10-20-batch-board-copy-trim.md"
+      ],
+      "lastVerified": "2026-10-20",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-20"
+      },
+      "summary": "Add a 「全部收起」 button in the board toolbar's actions cluster, left of 「刷新」. It renders only while at least one listed batch is expanded (v-if on expandedNames.length), so the toolbar gains nothing in the resting state. The click assigns expan",
+      "bodySha256": "0d56a01f70ed98ec",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 15
+          },
+          {
+            "title": "Verification",
+            "line": 20
+          },
+          {
+            "title": "Consequences",
+            "line": 24
+          },
+          {
+            "title": "Related note audit",
+            "line": 28
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/feature/2026-10-20-batch-collapse-all.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
       "id": "implemented/feature/2026-10-20-export-tip-hover.md",
       "path": ".agents/notes/implemented/feature/2026-10-20-export-tip-hover.md",
       "anchor": "// Note: .agents/notes/implemented/feature/2026-10-20-export-tip-hover.md",
@@ -10843,7 +10915,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "NianLog/DDE is installed locally for Codex and Claude Code. The project initially copied the upstream scripts unchanged into scripts/ and retains their license in scripts/DDE-LICENSE.txt. The repository's agent-index.ts now has the narrow s",
@@ -10926,7 +10998,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "Main includes the portable HTTP browser and serious-query commit 84a1045 with its tests and existing decision notes. It also includes only backend/scripts/tests from 7f32595: the dependency-free TaskError contract (still re-exported by task",
@@ -10999,7 +11071,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Any batch that changes the body, contract version, or enumerated current-state capability of a contract document must, in the same batch, update that document's header and cross-references: 依据/对应 lines, 对应业务/API版本, 更新日期（or the dated section",
@@ -11166,7 +11238,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.3,
+        "monthsSinceVerify": 0.4,
         "rule": "最近复核 2026-10-10"
       },
       "summary": "Export current saved, unfiltered results when their business-required values are present. Resolve conditional top-level requirements through doc_profiles.profile(doc_type,current_values), include basic_info-compatible values, each household",
@@ -11657,7 +11729,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "Keep account login/logout and account management, upload/append, completed or failed export, batch deletion, explicit rerun/cancel, and global settings. Stop new worker/maintenance, preview/reveal/region OCR, person confirmation and review ",
@@ -11763,6 +11835,78 @@
         ]
       },
       "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-18-absence-reason-dropdowns-removed.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
+    },
+    {
+      "id": "implemented/simplification/2026-10-20-batch-board-copy-trim.md",
+      "path": ".agents/notes/implemented/simplification/2026-10-20-batch-board-copy-trim.md",
+      "anchor": "// Note: .agents/notes/implemented/simplification/2026-10-20-batch-board-copy-trim.md",
+      "title": "Trim standing batch board hints to the on-demand guides",
+      "lifecycle": "implemented",
+      "class": "simplification",
+      "date": "2026-10-20",
+      "scope": [
+        "frontend/src/components/BatchBoard.vue",
+        "frontend/src/components/UploadPanel.vue",
+        "frontend/src/presentation.ts",
+        "frontend/tests/presentation.test.ts"
+      ],
+      "supersedes": null,
+      "supersededBy": [],
+      "cites": [
+        "implemented/feature/2026-10-20-batch-collapse-all.md",
+        "implemented/feature/2026-10-16-batch-expanded-toolbar-one-row.md",
+        "implemented/bug-fix/2026-10-20-batch-task-filename-order.md",
+        "implemented/feature/2026-10-15-contextual-operation-guide.md"
+      ],
+      "citedBy": [
+        "implemented/feature/2026-10-20-batch-collapse-all.md"
+      ],
+      "lastVerified": "2026-10-20",
+      "archivedDate": null,
+      "freshness": {
+        "state": "fresh",
+        "monthsSinceVerify": 0,
+        "rule": "最近复核 2026-10-20"
+      },
+      "summary": "Delete the standing lines; their knowledge stays reachable where it is actionable. The batches/batch/package/upload guides already carry each topic on demand (batch-list, batch-filter, batch-tasks, package-pairing, upload-mode steps in guid",
+      "bodySha256": "cff0225719c00ca3",
+      "lines": {
+        "title": 1,
+        "status": 3,
+        "scope": [
+          4
+        ],
+        "supersedes": null,
+        "lastVerified": 5,
+        "archived": null,
+        "sections": [
+          {
+            "title": "Problem",
+            "line": 7
+          },
+          {
+            "title": "Decision",
+            "line": 11
+          },
+          {
+            "title": "Alternatives considered",
+            "line": 17
+          },
+          {
+            "title": "Verification",
+            "line": 23
+          },
+          {
+            "title": "Consequences",
+            "line": 27
+          },
+          {
+            "title": "Related note audit",
+            "line": 31
+          }
+        ]
+      },
+      "updateHint": "编辑 .agents/notes/implemented/simplification/2026-10-20-batch-board-copy-trim.md 后运行：npx tsx scripts/notes.ts verify && npx tsx scripts/notes.ts index"
     },
     {
       "id": "implemented/testing/2026-09-29-automatic-layout-evaluation.md",
@@ -12260,7 +12404,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "Freeze backend source and migrations into a unique ignored output directory. Start one loopback Uvicorn process with real authentication, encrypted storage, SQLite, diagnostics and audit, but a runtime stub that never claims queued work or ",
@@ -12334,7 +12478,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.1,
+        "monthsSinceVerify": 0.2,
         "rule": "最近复核 2026-10-16"
       },
       "summary": "Activate the current main worktree with dual residency on the existing local port. Confirm no queued/active/expired material, preserve a consistent SQLite backup plus all material/key hashes and copied files, stop only the verified launcher",
@@ -12407,7 +12551,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0,
+        "monthsSinceVerify": 0.1,
         "rule": "最近复核 2026-10-19"
       },
       "summary": "Use the installed fixed GLM and original Paddle checkpoints, respective CUDA/Transformers environments, bfloat16/SDPA and existing prompt templates. Run each model alone under the existing exclusive GPU experiment lock; serialize model load",
@@ -12650,7 +12794,7 @@
       "archivedDate": null,
       "freshness": {
         "state": "fresh",
-        "monthsSinceVerify": 0.2,
+        "monthsSinceVerify": 0.3,
         "rule": "最近复核 2026-10-13"
       },
       "summary": "被撤回的方案使用OpenCV候选框、Paddle结构识别和GLM备用，保留原始矩阵与人工矩阵；一张照片一个标题命名的XLSX，多张ZIP。其优点是复用了现有模型、版本校验和加密存储，较少引入依赖。",
@@ -16274,6 +16418,16 @@
     },
     {
       "type": "cite",
+      "from": "implemented/feature/2026-10-20-batch-collapse-all.md",
+      "to": "implemented/simplification/2026-10-20-batch-board-copy-trim.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/feature/2026-10-20-batch-collapse-all.md",
+      "to": "implemented/feature/2026-10-16-numbered-list-pagination.md"
+    },
+    {
+      "type": "cite",
       "from": "implemented/feature/2026-10-20-export-tip-hover.md",
       "to": "implemented/bug-fix/2026-10-20-help-toc-groups.md"
     },
@@ -16461,6 +16615,26 @@
       "type": "cite",
       "from": "implemented/simplification/2026-10-16-account-action-audit.md",
       "to": "implemented/bug-fix/2026-10-16-bounded-http-writes.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-20-batch-board-copy-trim.md",
+      "to": "implemented/feature/2026-10-20-batch-collapse-all.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-20-batch-board-copy-trim.md",
+      "to": "implemented/feature/2026-10-16-batch-expanded-toolbar-one-row.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-20-batch-board-copy-trim.md",
+      "to": "implemented/bug-fix/2026-10-20-batch-task-filename-order.md"
+    },
+    {
+      "type": "cite",
+      "from": "implemented/simplification/2026-10-20-batch-board-copy-trim.md",
+      "to": "implemented/feature/2026-10-15-contextual-operation-guide.md"
     },
     {
       "type": "cite",
